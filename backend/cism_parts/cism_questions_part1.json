@@ -1,0 +1,454 @@
+{
+  "questions": [
+    {
+      "question": "Which of the following is the MOST important alignment objective of an information security program?",
+      "option_a": "Minimizing security control costs",
+      "option_b": "Ensuring 100% network availability",
+      "option_c": "Supporting the organization's business goals",
+      "option_d": "Complying with external data laws",
+      "correct_option": "C",
+      "explanation": "Strategic alignment is the core objective. Security must support business goals and enable operations while managing risk, not act as a blocker. Cost control, uptime, and compliance are subordinate goals.",
+      "domain": 1
+    },
+    {
+      "question": "Ultimate accountability for protecting organizational information assets rests with:",
+      "option_a": "the Chief Information Security Officer (CISO).",
+      "option_b": "the Chief Information Officer (CIO).",
+      "option_c": "the Board of Directors.",
+      "option_d": "the Internal Audit Committee.",
+      "correct_option": "C",
+      "explanation": "The Board of Directors holds ultimate accountability for the governance and assets of the organization. The CISO and CIO are responsible for execution, but accountability cannot be delegated.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following documents defines management's high-level intent and goals for information security?",
+      "option_a": "Security Guidelines",
+      "option_b": "Security Procedures",
+      "option_c": "Security Standards",
+      "option_d": "Security Policies",
+      "correct_option": "D",
+      "explanation": "Policies are high-level directives expressing management's intent, rules, and objectives. Standards define specific requirements, procedures list step-by-step instructions, and guidelines offer advice.",
+      "domain": 1
+    },
+    {
+      "question": "An Information Security Steering Committee should PRIMARILY consist of:",
+      "option_a": "representatives from key business units and IT stakeholders.",
+      "option_b": "external security consultants and compliance auditors.",
+      "option_c": "systems administrators and database developers.",
+      "option_d": "legal counsel and public relations team members.",
+      "correct_option": "A",
+      "explanation": "A Steering Committee must be cross-functional to ensure that security strategy is aligned with business unit operations and goals. External auditors and technicians are not committee members.",
+      "domain": 1
+    },
+    {
+      "question": "To justify the budget for a new multi-factor authentication (MFA) solution, a CISO should prepare which of the following?",
+      "option_a": "A vulnerability scan report",
+      "option_b": "A detailed Business Case",
+      "option_c": "A list of industry standards",
+      "option_d": "The CISO charter document",
+      "correct_option": "B",
+      "explanation": "A Business Case is the standard mechanism to justify expenditures. It outlines business benefits, cost-benefit analysis, risk reductions, and operational impacts to help executives make a decision.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following metrics is the BEST indicator that security policies are widely understood across the enterprise?",
+      "option_a": "The number of policy updates published this quarter",
+      "option_b": "The percentage of employees completing security training",
+      "option_c": "An increase in employee feedback regarding policy restrictions",
+      "option_d": "A reduction in policy violations detected during audits",
+      "correct_option": "D",
+      "explanation": "A reduction in policy violations during audits shows that employees are not only completing training but actually following policies in practice, reflecting genuine understanding and compliance.",
+      "domain": 1
+    },
+    {
+      "question": "What is the primary purpose of a Key Risk Indicator (KRI) in governance?",
+      "option_a": "To report historic firewall blocks from last month",
+      "option_b": "To provide early warning alerts before a risk threshold is breached",
+      "option_c": "To show the patch percentage status of host servers",
+      "option_d": "To justify the annual salary of security personnel",
+      "correct_option": "B",
+      "explanation": "KRIs are forward-looking metrics designed to alert management when risk exposures are trending toward established tolerance limits, enabling proactive intervention.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following is the most effective way for a CISO to gain executive management support for security?",
+      "option_a": "Highlighting technical firewall logs and malware blocks",
+      "option_b": "Explaining security risk in business impact terms",
+      "option_c": "Threatening regulatory penalties for any security issues",
+      "option_d": "Detailing server patch levels and buffer overflow exploits",
+      "correct_option": "B",
+      "explanation": "Executive management focuses on business operations, revenue, and risk. Explaining security risk in business impact terms (e.g., potential revenue loss, recovery costs) aligns security with their priorities.",
+      "domain": 1
+    },
+    {
+      "question": "Information security policies are MOST effective when they are:",
+      "option_a": "reviewed annually and approved by the CISO.",
+      "option_b": "approved by the board and updated in response to changes.",
+      "option_c": "copied directly from recognized international standards.",
+      "option_d": "enforced with severe disciplinary actions for any deviation.",
+      "correct_option": "B",
+      "explanation": "Policies must carry the weight of board-level authorization and stay relevant by updating when business models, regulations, or threat environments change.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following security architectures maps business goals directly to technical security controls?",
+      "option_a": "TOGAF",
+      "option_b": "COBIT",
+      "option_c": "SABSA",
+      "option_d": "ISO 27002",
+      "correct_option": "C",
+      "explanation": "SABSA (Sherwood Applied Business Security Architecture) is specifically designed to translate business goals into structured, layered security requirements.",
+      "domain": 1
+    },
+    {
+      "question": "A security metric is considered useful ONLY if it is:",
+      "option_a": "collected and generated automatically.",
+      "option_b": "highly complex and detailed for audit trails.",
+      "option_c": "actionable and meaningful to stakeholders.",
+      "option_d": "zero-based and focused on technical failures.",
+      "correct_option": "C",
+      "explanation": "Metrics must be actionable. If stakeholders cannot use the data to make decisions or take corrective actions, the metric is useless, regardless of how complex or automatic it is.",
+      "domain": 1
+    },
+    {
+      "question": "When developing an information security strategy, what is the FIRST step?",
+      "option_a": "Purchase security monitoring software licenses",
+      "option_b": "Perform a gap analysis of the current state",
+      "option_c": "Review the organization's business objectives",
+      "option_d": "Draft the employee security awareness materials",
+      "correct_option": "C",
+      "explanation": "Before doing any analysis or design, the security team must understand the organization's business objectives so that the resulting security strategy is aligned with business needs.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following is the main reason for defining roles and responsibilities in a security charter?",
+      "option_a": "To satisfy external PCI compliance checkers",
+      "option_b": "To establish accountability and authorize CISO operations",
+      "option_c": "To simplify the recruitment of security technicians",
+      "option_d": "To avoid internal audits of the security division",
+      "correct_option": "B",
+      "explanation": "A charter formally establishes the authority, scope, and accountability of the CISO and security team, preventing scope creep and ensuring organizational backing.",
+      "domain": 1
+    },
+    {
+      "question": "RACI charts are useful in information security governance because they:",
+      "option_a": "calculate quantitative risk ratios automatically.",
+      "option_b": "define clear ownership and execution boundaries.",
+      "option_c": "serve as templates for technical firewall rules.",
+      "option_d": "list all systems that require patches.",
+      "correct_option": "B",
+      "explanation": "RACI charts clearly identify who is responsible for execution, who is accountable (one person), who is consulted, and who is informed, eliminating conflict over task ownership.",
+      "domain": 1
+    },
+    {
+      "question": "The primary objective of a security program maturity assessment is to:",
+      "option_a": "compare security budgets with industry competitor averages.",
+      "option_b": "determine if systems are operating according to policies.",
+      "option_c": "identify gaps between current and desired capability levels.",
+      "option_d": "prepare files for external security certification reviews.",
+      "correct_option": "C",
+      "explanation": "Maturity assessments identify where a security program currently stands (e.g., level 2 repeatable) compared to its targeted maturity goals (e.g., level 4 managed), guiding program improvements.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following represents the organization's overall risk posture bounds?",
+      "option_a": "The Risk Register",
+      "option_b": "The Risk Profile",
+      "option_c": "The Incident Log",
+      "option_d": "The Asset Inventory",
+      "correct_option": "B",
+      "explanation": "A Risk Profile summarizes the collective risk exposures, threats, and vulnerability bounds across the entire organization, defining its current posture.",
+      "domain": 1
+    },
+    {
+      "question": "Security strategies must prioritize resource management to ensure that:",
+      "option_a": "the cheapest security vendors are always selected.",
+      "option_b": "personnel resources are utilized where business risk is highest.",
+      "option_c": "technical controls are updated daily without audits.",
+      "option_d": "the CISO manages all system admin tasks directly.",
+      "correct_option": "B",
+      "explanation": "Resource management optimizes the allocation of staff, budgets, and tools to mitigate the most critical business risk exposures first, delivering optimal value.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following is the BEST way to ensure security compliance during vendor onboarding?",
+      "option_a": "Reviewing vendor website marketing statements",
+      "option_b": "Requiring security requirements in vendor contracts",
+      "option_c": "Running external network vulnerability scans on the vendor",
+      "option_d": "Training the vendor staff directly on corporate policies",
+      "correct_option": "B",
+      "explanation": "Contracts are legally binding. Incorporating specific security mandates and right-to-audit clauses in contracts ensures the vendor is held accountable for compliance.",
+      "domain": 1
+    },
+    {
+      "question": "The CISO wants to publish a new policy. What is the most critical approval needed?",
+      "option_a": "System administrator consensus",
+      "option_b": "Executive management or Board authorization",
+      "option_c": "External compliance auditor validation",
+      "option_d": "Internal HR department approval",
+      "correct_option": "B",
+      "explanation": "Policies express management's intent. To carry authority and ensure compliance, they must be formally approved by senior executive leadership or the board.",
+      "domain": 1
+    },
+    {
+      "question": "A balanced scorecard is used in security governance primarily to:",
+      "option_a": "calculate quantitative risk ALE values.",
+      "option_b": "measure program performance across multiple perspectives.",
+      "option_c": "verify server firewall configurations.",
+      "option_d": "audit database backup schedules.",
+      "correct_option": "B",
+      "explanation": "The Balanced Scorecard evaluates the security program across multiple metrics (financial, customer/business, internal processes, learning/growth) to ensure balanced performance.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following represents 'Due Care'?",
+      "option_a": "Researching vendor backgrounds before signing an agreement",
+      "option_b": "Acting responsibly to protect company assets and prevent harm",
+      "option_c": "Defining the CISO charter document roles",
+      "option_d": "Conducting monthly vulnerability audits on servers",
+      "correct_option": "B",
+      "explanation": "Due Care is taking responsible actions (doing what a reasonable person would do) to protect assets. Due Diligence is the background research and analysis done beforehand.",
+      "domain": 1
+    },
+    {
+      "question": "Information security governance is PRIMARILY concerned with:",
+      "option_a": "implementing complex encryption algorithms.",
+      "option_b": "managing firewall rule configuration scripts.",
+      "option_c": "establishing accountability, direction, and controls.",
+      "option_d": "restoring system server backups after disasters.",
+      "correct_option": "C",
+      "explanation": "Governance is about oversight. It establishes leadership structures, defines accountability, dictates strategic direction, and monitors controls to ensure alignment.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following is the most important element of an effective security culture?",
+      "option_a": "Strict disciplinary action for policy infractions",
+      "option_b": "Security awareness and active participation from all staff",
+      "option_c": "Using AI firewall monitors for network sweeps",
+      "option_d": "Having zero policies to avoid employee confusion",
+      "correct_option": "B",
+      "explanation": "Culture is driven by people. Active awareness, vigilance, and reporting habits across all staff levels create a strong security culture that technical controls cannot replace.",
+      "domain": 1
+    },
+    {
+      "question": "A security guideline is different from a security standard because guidelines are:",
+      "option_a": "never written down.",
+      "option_b": "non-mandatory recommendations.",
+      "option_c": "legally binding in court.",
+      "option_d": "technical configuration values.",
+      "correct_option": "B",
+      "explanation": "Standards are mandatory rules. Guidelines are recommended, flexible best practices designed to assist users in applying policies.",
+      "domain": 1
+    },
+    {
+      "question": "Which organizational stakeholder is responsible for prioritizing business unit security funding?",
+      "option_a": "The Lead Security Technician",
+      "option_b": "The Information Security Steering Committee",
+      "option_c": "The External Compliance Auditor",
+      "option_d": "The Database Administrator",
+      "correct_option": "B",
+      "explanation": "The Steering Committee (representing key business unit leaders) oversees, directs, and prioritizes resource allocation and budget funding for security initiatives.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following represents the relationship: Risk = Threat * Vulnerability * Impact?",
+      "option_a": "Quantitative Risk Matrix",
+      "option_b": "Risk Definition Formula",
+      "option_c": "ALE Calculation Matrix",
+      "option_d": "BIA Timeline Formula",
+      "correct_option": "B",
+      "explanation": "Risk requires a threat, a vulnerability that can be exploited, and a resulting negative impact. If any of these values is zero, the risk is zero.",
+      "domain": 2
+    },
+    {
+      "question": "An organization is willing to accept up to $50,000 in monthly fraud losses. This represents its:",
+      "option_a": "Risk Capacity.",
+      "option_b": "Risk Appetite.",
+      "option_c": "Inherent Risk.",
+      "option_d": "Residual Risk.",
+      "correct_option": "B",
+      "explanation": "Risk Appetite is the high-level amount of risk an organization is willing to accept to run its business operations and meet its targets.",
+      "domain": 2
+    },
+    {
+      "question": "Risk capacity is different from risk appetite because risk capacity defines:",
+      "option_a": "the ideal level of risk management wanted.",
+      "option_b": "the absolute maximum risk exposure the organization can survive.",
+      "option_c": "the cost of purchasing commercial insurance.",
+      "option_d": "the total number of files on server hard drives.",
+      "correct_option": "B",
+      "explanation": "Risk capacity is the physical/financial limit of risk survival. Risk appetite is the level of risk management is *willing* to accept. Appetite should always be lower than capacity.",
+      "domain": 2
+    },
+    {
+      "question": "A qualitative risk assessment is BEST suited for which of the following scenarios?",
+      "option_a": "Calculating the precise ROI of a new firewall purchase",
+      "option_b": "Assessing risk when historical financial loss data is unavailable",
+      "option_c": "Determining exact insurance premium payouts",
+      "option_d": "Reviewing system database column size requirements",
+      "correct_option": "B",
+      "explanation": "Qualitative assessments use scales (High/Med/Low) and expert judgment, making them ideal when precise financial stats or threat frequency data is unavailable.",
+      "domain": 2
+    },
+    {
+      "question": "Single Loss Expectancy (SLE) is calculated using which of the following formulas?",
+      "option_a": "Asset Value * Exposure Factor",
+      "option_b": "Asset Value * ARO",
+      "option_c": "ALE * Exposure Factor",
+      "option_d": "Impact * Likelihood",
+      "correct_option": "A",
+      "explanation": "SLE is the monetary loss expected from a single threat exploit event. Formula: Asset Value ($) * Exposure Factor (% of loss).",
+      "domain": 2
+    },
+    {
+      "question": "An organization's primary e-commerce server is valued at $100,000. A DDoS attack would result in a 20% Exposure Factor. The attack occurs 5 times a year. What is the ALE?",
+      "option_a": "$20,000",
+      "option_b": "$100,000",
+      "option_c": "$10,000",
+      "option_d": "$500,000",
+      "correct_option": "B",
+      "explanation": "SLE = $100,000 * 0.20 = $20,000. ARO = 5. ALE = SLE * ARO = $20,000 * 5 = $100,000.",
+      "domain": 2
+    },
+    {
+      "question": "If an organization decides to purchase a cyber insurance policy to handle potential breach costs, the risk strategy is:",
+      "option_a": "Mitigation.",
+      "option_b": "Avoidance.",
+      "option_c": "Transfer.",
+      "option_d": "Acceptance.",
+      "correct_option": "C",
+      "explanation": "Purchasing insurance transfers the financial burden of the risk to a third party (the insurer), which represents a Risk Transfer strategy.",
+      "domain": 2
+    },
+    {
+      "question": "To completely eliminate the risk of online transaction fraud, a CISO recommends shutting down the online store. This risk response is:",
+      "option_a": "Mitigation.",
+      "option_b": "Avoidance.",
+      "option_c": "Transfer.",
+      "option_d": "Acceptance.",
+      "correct_option": "B",
+      "explanation": "Risk Avoidance is ceasing the activity that introduces the risk, completely eliminating the exposure (along with the business opportunity).",
+      "domain": 2
+    },
+    {
+      "question": "Residual risk represents the level of risk:",
+      "option_a": "present before any security controls are implemented.",
+      "option_b": "remaining after risk response controls are active.",
+      "option_c": "transferred to the insurance company.",
+      "option_d": "that cannot be quantified by risk analysts.",
+      "correct_option": "B",
+      "explanation": "Residual risk is the left-over risk exposure that remains after implementing controls (Mitigation). Formula: Inherent Risk - Control Impact = Residual Risk.",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following is the PRIMARY source of information for defining system RTO and RPO values?",
+      "option_a": "Vulnerability scanning reports",
+      "option_b": "A Business Impact Analysis (BIA)",
+      "option_c": "Firewall configuration logs",
+      "option_d": "The CISO charter document",
+      "correct_option": "B",
+      "explanation": "The BIA determines the criticality, downtime tolerances (MTD), and recovery time metrics (RTO, RPO) based on business requirements and process dependencies.",
+      "domain": 2
+    },
+    {
+      "question": "What does a Recovery Point Objective (RPO) of 4 hours indicate?",
+      "option_a": "Systems must be restored within 4 hours of a disaster",
+      "option_b": "No more than 4 hours of data transactions can be lost",
+      "option_c": "The BCP exercise must run for at least 4 hours",
+      "option_d": "Backups must be verified every 4 hours",
+      "correct_option": "B",
+      "explanation": "RPO defines the maximum acceptable data loss measured in time. An RPO of 4 hours means backups must be taken at least every 4 hours so no more than 4 hours of data is lost.",
+      "domain": 2
+    },
+    {
+      "question": "Recovery Time Objective (RTO) represents the target time to:",
+      "option_a": "rebuild the primary data center facility.",
+      "option_b": "restore a system or process to normal operations after a failure.",
+      "option_c": "notify customers of an active security incident.",
+      "option_d": "archive audit log files to tape storage.",
+      "correct_option": "B",
+      "explanation": "RTO is the target recovery time frame. Systems must be restored back online inside the RTO to avoid exceeding the Maximum Tolerable Downtime (MTD).",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following is a central document tracking risk assessments, owners, and remediation plans?",
+      "option_a": "Security Policy",
+      "option_b": "Risk Register",
+      "option_c": "Incident Log",
+      "option_d": "SLA Agreement",
+      "correct_option": "B",
+      "explanation": "The Risk Register is the master document recording identified risks, assessment values, ownership, selected response strategies, and status updates.",
+      "domain": 2
+    },
+    {
+      "question": "A vulnerability is different from a threat because vulnerabilities are:",
+      "option_a": "external events beyond control.",
+      "option_b": "weaknesses inherent in system designs or processes.",
+      "option_c": "always caused by malicious software.",
+      "option_d": "the financial costs of threat occurrences.",
+      "correct_option": "B",
+      "explanation": "Vulnerabilities are internal weaknesses (such as missing patches or lack of training). Threats are external events or actors (such as hackers or storms) that exploit weaknesses.",
+      "domain": 2
+    },
+    {
+      "question": "What is the main driver for performing regular threat modeling?",
+      "option_a": "To satisfy server hardware warranty requirements",
+      "option_b": "To identify potential entry points and threat vectors systematically",
+      "option_c": "To calculate quantitative SLE values",
+      "option_d": "To ensure compliance with local zoning laws",
+      "correct_option": "B",
+      "explanation": "Threat modeling identifies threats, attack paths, and threat vectors against an application or network, enabling developers to build appropriate defenses.",
+      "domain": 2
+    },
+    {
+      "question": "The risk that a security scanning tool fails to detect a known database patch exploit is:",
+      "option_a": "Control Risk.",
+      "option_b": "Inherent Risk.",
+      "option_c": "Detection Risk.",
+      "option_d": "Residual Risk.",
+      "correct_option": "C",
+      "explanation": "Detection Risk is the probability that monitoring, scans, or audits will fail to identify a vulnerability or security issue.",
+      "domain": 2
+    },
+    {
+      "question": "When assessing the risk of vendor outsourcing, what is the MOST critical check?",
+      "option_a": "Assessing the vendor's financial credit history",
+      "option_b": "Evaluating the vendor's security control environment",
+      "option_c": "Reviewing the vendor's office layout",
+      "option_d": "Comparing vendor pricing structures",
+      "correct_option": "B",
+      "explanation": "Evaluating the vendor's security controls (e.g., SOC 2 audit reports) ensures they can protect the organization's shared data assets, mitigating third-party risk.",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following is the primary objective of Risk Management?",
+      "option_a": "Completely eliminating all organizational risks",
+      "option_b": "Reducing risk to a level acceptable to management (within appetite)",
+      "option_c": "Buying insurance policies for every database server",
+      "option_d": "Minimizing the security department's operating budget",
+      "correct_option": "B",
+      "explanation": "Risk cannot be entirely eliminated. The objective of risk management is to assess risks and mitigate them down to a level that executive management accepts (residual risk < risk appetite).",
+      "domain": 2
+    },
+    {
+      "question": "A BIA reveals that a critical accounting function has an MTD of 24 hours. The RTO should be set to:",
+      "option_a": "exactly 24 hours.",
+      "option_b": "less than 24 hours.",
+      "option_c": "greater than 24 hours.",
+      "option_d": "RTO is unrelated to MTD.",
+      "correct_option": "B",
+      "explanation": "RTO must be less than MTD. If systems take longer than the MTD to restore, the business will face severe, potentially fatal consequences.",
+      "domain": 2
+    },
+    {
+      "question": "Who is the most appropriate stakeholder to approve risk acceptance decisions?",
+      "option_a": "The Lead Security Technician",
+      "option_b": "The Business Risk Owner",
+      "option_c": "The External Compliance Auditor",
+      "option_d": "The CISO",
+      "correct_option": "B",
+      "explanation": "Risk acceptance decisions must be made by the business risk owner (senior management accountable for the business process), as they carry the liability for potential losses.",
+      "domain": 2
+    }
+  ]
+}

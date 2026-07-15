@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nycto's Project Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=3" />
+</head>
+<body>
+  <div class="mesh-glow nebula-1"></div>
+  <div class="mesh-glow nebula-2"></div>
+  <div class="mesh-glow nebula-3"></div>
+
+  <header class="header">
+    <div class="logo">
+      <span class="logo-icon">⚡</span>
+      <h1>Nycto's Project Lab</h1>
+    </div>
+    <div class="system-status" aria-label="System diagnostics status">
+      <span class="status-indicator"></span>
+      <span class="status-text">All Systems Online</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="intro-section">
+      <p class="subtitle font-display">Lab Directory</p>
+      <p class="description">
+        Welcome to the lab. Below is a curated directory of web applications, retro emulator tools, and interface experiments currently in active development or planning phases.
+      </p>
+    </section>
+
+    <section class="projects-grid">
+      <!-- Project 1: Handheld Gaming Log -->
+      <article class="project-card active">
+        <div class="card-glow"></div>
+        <div class="card-inner">
+          <header class="card-header">
+            <span class="badge badge-active">Active</span>
+            <span class="project-index">01</span>
+          </header>
+          <div class="card-content">
+            <h2 class="project-title font-display">Handheld Gaming Log</h2>
+            <p class="project-desc">
+              A premium Steam Deck-inspired log book to track play sessions, frame performance ratings, and cumulative stats. Uses browser persistence to save logs.
+            </p>
+            <div class="tech-tags">
+              <span>Vanilla JS</span>
+              <span>CSS Grid</span>
+              <span>LocalStorage</span>
+            </div>
+          </div>
+          <footer class="card-footer">
+            <a href="gaming-log" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+          </footer>
+        </div>
+      </article>
+
+      <!-- Project 2: Mortgage & Housing Calculator -->
+      <article class="project-card active">
+        <div class="card-glow"></div>
+        <div class="card-inner">
+          <header class="card-header">
+            <span class="badge badge-active">Active</span>
+            <span class="project-index">02</span>
+          </header>
+          <div class="card-content">
+            <h2 class="project-title font-display">Housing Cost Calculator</h2>
+            <p class="project-desc">
+              A comprehensive calculator to estimate monthly mortgage payments (15-yr vs. 30-yr side-by-side). Includes escrow (PMI, taxes, insurance), HOA fees, and debt-to-income analysis.
+            </p>
+            <div class="tech-tags">
+              <span>Amortization Math</span>
+              <span>DTI Meter</span>
+              <span>CSS Flexgrid</span>
+            </div>
+          </div>
+          <footer class="card-footer">
+            <a href="housing-calculator" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+          </footer>
+        </div>
+      </article>
+
+      <!-- Project 3: CISM Practice Trainer -->
+      <article class="project-card active">
+        <div class="card-glow"></div>
+        <div class="card-inner">
+          <header class="card-header">
+            <span class="badge badge-active">Active</span>
+            <span class="project-index">03</span>
+          </header>
+          <div class="card-content">
+            <h2 class="project-title font-display">CISM Practice Trainer</h2>
+            <p class="project-desc">
+              An interactive ISACA-aligned exam simulator console. Features active recall flashcards, domain accuracy tracking, custom question curators, and timed mock exams.
+            </p>
+            <div class="tech-tags">
+              <span>SQLite Sync</span>
+              <span>Mock Timer</span>
+              <span>HUD Dashboard</span>
+            </div>
+          </div>
+          <footer class="card-footer">
+            <a href="cism" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+          </footer>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="main-footer">
+    <p>&copy; 2026 Nycto. Created in collaboration with Antigravity.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

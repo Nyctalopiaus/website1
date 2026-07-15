@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CISM Exam Trainer Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=2" />
+</head>
+<body>
+  <div class="glow-bg"></div>
+
+  <header class="header">
+    <div class="logo">
+      <a href="../" class="btn-back">← Back to Lab</a>
+      <span class="logo-text">CISM // SECURITY COMMANDER</span>
+    </div>
+    <div class="system-status">
+      <span class="status-indicator"></span>
+      <span class="status-text font-mono" id="system-time">ONLINE</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Section 1: Dashboard and Stats -->
+    <section class="dashboard-panel">
+      <div class="stats-overview">
+        <div class="stat-card">
+          <span class="stat-label">Total Answered</span>
+          <span class="stat-value font-mono" id="stat-answered">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Overall Accuracy</span>
+          <span class="stat-value font-mono" id="stat-accuracy">0%</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Flagged Items</span>
+          <span class="stat-value font-mono" id="stat-flagged">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Mock Exams Passed</span>
+          <span class="stat-value font-mono" id="stat-passed">0</span>
+        </div>
+      </div>
+
+      <!-- Domain progress circles -->
+      <div class="domain-mastery">
+        <h3>Syllabus Domain Mastery</h3>
+        <div class="domains-grid">
+          <div class="domain-card" data-domain="1">
+            <div class="domain-circle-wrapper">
+              <svg width="70" height="70" viewBox="0 0 70 70">
+                <circle cx="35" cy="35" r="28" class="circle-bg" />
+                <circle cx="35" cy="35" r="28" class="circle-bar" id="domain-bar-1" />
+              </svg>
+              <span class="circle-percent font-mono" id="domain-pct-1">0%</span>
+            </div>
+            <div class="domain-meta">
+              <span class="domain-num">Domain 1 (24%)</span>
+              <span class="domain-title">Information Security Governance</span>
+            </div>
+          </div>
+
+          <div class="domain-card" data-domain="2">
+            <div class="domain-circle-wrapper">
+              <svg width="70" height="70" viewBox="0 0 70 70">
+                <circle cx="35" cy="35" r="28" class="circle-bg" />
+                <circle cx="35" cy="35" r="28" class="circle-bar" id="domain-bar-2" />
+              </svg>
+              <span class="circle-percent font-mono" id="domain-pct-2">0%</span>
+            </div>
+            <div class="domain-meta">
+              <span class="domain-num">Domain 2 (30%)</span>
+              <span class="domain-title">Information Risk Management</span>
+            </div>
+          </div>
+
+          <div class="domain-card" data-domain="3">
+            <div class="domain-circle-wrapper">
+              <svg width="70" height="70" viewBox="0 0 70 70">
+                <circle cx="35" cy="35" r="28" class="circle-bg" />
+                <circle cx="35" cy="35" r="28" class="circle-bar" id="domain-bar-3" />
+              </svg>
+              <span class="circle-percent font-mono" id="domain-pct-3">0%</span>
+            </div>
+            <div class="domain-meta">
+              <span class="domain-num">Domain 3 (27%)</span>
+              <span class="domain-title">Program Development & Mgmt</span>
+            </div>
+          </div>
+
+          <div class="domain-card" data-domain="4">
+            <div class="domain-circle-wrapper">
+              <svg width="70" height="70" viewBox="0 0 70 70">
+                <circle cx="35" cy="35" r="28" class="circle-bg" />
+                <circle cx="35" cy="35" r="28" class="circle-bar" id="domain-bar-4" />
+              </svg>
+              <span class="circle-percent font-mono" id="domain-pct-4">0%</span>
+            </div>
+            <div class="domain-meta">
+              <span class="domain-num">Domain 4 (19%)</span>
+              <span class="domain-title">Incident Management</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <nav class="study-tabs">
+      <button class="tab-btn active" data-target="tab-flashcards">Flashcards</button>
+      <button class="tab-btn" data-target="tab-quiz">Practice Quiz</button>
+      <button class="tab-btn" data-target="tab-mock">Mock Exam</button>
+      <button class="tab-btn" data-target="tab-guides">Concept Guides</button>
+      <button class="tab-btn" data-target="tab-curator">Deck Curator</button>
+    </nav>
+
+    <!-- Tab Contents -->
+    <div class="tab-content">
+      <!-- 1. Flashcards -->
+      <div class="tab-pane active" id="tab-flashcards">
+        <div class="flashcard-panel">
+          <div class="filter-bar">
+            <span>Filter Domain:</span>
+            <select id="flashcard-domain-select" class="hud-select">
+              <option value="all">All Domains</option>
+              <option value="1">Domain 1: Security Governance</option>
+              <option value="2">Domain 2: Risk Management</option>
+              <option value="3">Domain 3: Program Development</option>
+              <option value="4">Domain 4: Incident Management</option>
+            </select>
+          </div>
+
+          <div class="flashcard-container">
+            <div class="flashcard" id="cism-card">
+              <div class="card-face card-front">
+                <div class="card-domain-tag" id="card-domain-tag">Domain 1</div>
+                <h3 class="card-term" id="card-term">Term Loading...</h3>
+                <span class="click-hint">Click card to reveal definition</span>
+              </div>
+              <div class="card-face card-back">
+                <h4 class="definition-header">ISACA Definition:</h4>
+                <p class="card-definition" id="card-definition">Loading definition content...</p>
+                <span class="click-hint">Click card to flip back</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="hud-controls">
+            <button class="btn-hud" id="btn-prev-card">◀ Prev</button>
+            <span class="hud-counter font-mono" id="card-counter">0 / 0</span>
+            <button class="btn-hud" id="btn-next-card">Next ▶</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Practice Quiz -->
+      <div class="tab-pane" id="tab-quiz">
+        <div class="quiz-panel">
+          <div class="quiz-header">
+            <span class="hud-badge" id="quiz-domain-tag">Domain</span>
+            <button class="btn-bookmark" id="btn-quiz-bookmark" aria-label="Bookmark Question">★</button>
+          </div>
+
+          <div class="quiz-body">
+            <p class="quiz-question" id="quiz-question">Question loading...</p>
+            <div class="quiz-options" id="quiz-options-list">
+              <!-- Options loaded dynamically -->
+            </div>
+            
+            <div class="quiz-explanation-box" id="quiz-explanation-container">
+              <h4 id="explanation-status">CORRECT</h4>
+              <p id="explanation-text">Explanation details...</p>
+            </div>
+          </div>
+
+          <div class="quiz-footer">
+            <button class="btn-hud" id="btn-prev-quiz">◀ Prev Question</button>
+            <span class="hud-counter font-mono" id="quiz-counter">0 / 0</span>
+            <button class="btn-hud" id="btn-next-quiz">Next Question ▶</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Mock Exam -->
+      <div class="tab-pane" id="tab-mock">
+        <div class="mock-panel">
+          <!-- Start screen -->
+          <div class="mock-setup-screen" id="mock-setup">
+            <h2>CISM Mock Examination</h2>
+            <p>
+              Simulate the real exam constraints. You will face a randomized selection of CISM domain questions under time pressure. Your scores will be written to the database logs.
+            </p>
+            <div class="mock-specs">
+              <div class="spec-item">
+                <span class="spec-label">Questions</span>
+                <span class="spec-value font-mono">10 Questions</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Time Allowed</span>
+                <span class="spec-value font-mono">15 Minutes</span>
+              </div>
+              <div class="spec-item">
+                <span class="spec-label">Target Score</span>
+                <span class="spec-value font-mono">70% Pass</span>
+              </div>
+            </div>
+            <button class="btn-primary-hud" id="btn-start-mock">ENGAGE EXAM DAEMON</button>
+          </div>
+
+          <!-- Active Exam Screen -->
+          <div class="mock-active-screen" id="mock-active">
+            <div class="mock-header">
+              <span class="hud-counter font-mono" id="mock-progress">Question 1 of 10</span>
+              <div class="mock-timer font-mono" id="mock-timer">15:00</div>
+            </div>
+            
+            <div class="mock-body">
+              <p class="quiz-question" id="mock-question">Mock question content...</p>
+              <div class="quiz-options" id="mock-options-list">
+                <!-- Radio options -->
+              </div>
+            </div>
+
+            <div class="mock-footer">
+              <button class="btn-hud" id="btn-mock-prev" disabled>◀ Back</button>
+              <button class="btn-hud btn-warn" id="btn-mock-flag">Flag Question</button>
+              <button class="btn-hud" id="btn-mock-next">Next ▶</button>
+            </div>
+          </div>
+
+          <!-- Results screen -->
+          <div class="mock-results-screen" id="mock-results">
+            <h2>Mock Exam Diagnostics</h2>
+            <div class="results-layout">
+              <div class="results-score font-mono">
+                <span id="results-pct">0%</span>
+                <span class="results-label" id="results-status">FAILED</span>
+              </div>
+              <div class="results-data">
+                <p>Correct Answers: <span id="results-correct" class="font-mono">0 / 0</span></p>
+                <p>Duration: <span id="results-duration" class="font-mono">0s</span></p>
+                <p>Status: <span id="results-verdict">Risk management capability not achieved.</span></p>
+              </div>
+            </div>
+            <button class="btn-primary-hud" id="btn-mock-reset">RETURN TO CONSOLE</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Concept Deep Dive Guides -->
+      <div class="tab-pane" id="tab-guides">
+        <div class="guides-layout">
+          <!-- Sidebar selector -->
+          <aside class="guides-sidebar">
+            <h3>Hard-to-Grasp Topics</h3>
+            <ul class="guides-menu">
+              <li class="guide-menu-item active" data-guide="guide-bia">1. BIA Recovery Timelines</li>
+              <li class="guide-menu-item" data-guide="guide-appetite">2. Risk Posture Levels</li>
+              <li class="guide-menu-item" data-guide="guide-ir">3. Incident Response Stages</li>
+              <li class="guide-menu-item" data-guide="guide-controls">4. Security Control Matrix</li>
+              <li class="guide-menu-item" data-guide="guide-gov">5. Governance & Risk Owner</li>
+              <li class="guide-menu-item" data-guide="guide-quant">6. Quantitative Risk Formulas</li>
+            </ul>
+          </aside>
+
+          <!-- Viewer Display Area -->
+          <div class="guides-viewer">
+            <!-- 1. BIA Timeline -->
+            <article class="guide-detail active" id="guide-bia">
+              <h2>BIA Recovery Metrics Timeline</h2>
+              <div class="guide-grid-container">
+                <div class="guide-text-col">
+                  <p class="guide-intro">
+                    Business Continuity and Disaster Recovery metrics are heavily tested. The key is understanding how they flow sequentially and their relationship with MTD.
+                  </p>
+                  <div class="guide-notes">
+                    <h4>Key ISACA Principles:</h4>
+                    <ul>
+                      <li><strong>RPO (Recovery Point Objective)</strong>: Measures maximum data loss in time (e.g., 4 hours of transactions). It dictates backup frequency.</li>
+                      <li><strong>RTO (Recovery Time Objective)</strong>: The time allowed to get hardware/systems back online (e.g., restore server from OS install).</li>
+                      <li><strong>WRT (Work Recovery Time)</strong>: The time required to restore/verify databases, catch up on transactions, and perform checks.</li>
+                      <li><strong>MTD (Maximum Tolerable Downtime)</strong>: The absolute limit. Formula: <code>RTO + WRT &le; MTD</code>. Exceeding MTD means operational survival is threatened.</li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="guide-graphic-col">
+                  <div class="guide-graphic">
+                    <svg viewBox="0 0 750 200" class="guide-svg">
+                      <!-- RPO segment (going backward) -->
+                      <path d="M 120 100 L 220 100" class="timeline-path rpo-line" />
+                      <polygon points="120,100 130,95 130,105" fill="var(--accent-red)" />
+                      <text x="170" y="85" class="svg-label red-text" fill="#ef4444">RPO (Data Loss)</text>
+
+                      <!-- Timeline baseline (going forward) -->
+                      <path d="M 240 100 L 680 100" class="timeline-path" />
+                      
+                      <!-- Points -->
+                      <circle cx="120" cy="100" r="5" fill="var(--accent-red)" />
+                      <circle cx="240" cy="100" r="7" fill="#ef4444" class="pulse-point" />
+                      <circle cx="400" cy="100" r="5" fill="var(--accent-cyan)" />
+                      <circle cx="540" cy="100" r="5" fill="var(--accent-orange)" />
+                      <circle cx="680" cy="100" r="5" fill="var(--accent-green)" />
+
+                      <!-- Text Labels -->
+                      <text x="120" y="130" class="svg-point-label font-mono" fill="#9ca3af">Last Backup</text>
+                      
+                      <text x="240" y="130" class="svg-point-label bold font-mono" fill="#f3f4f6">DISASTER</text>
+                      <text x="240" y="145" class="svg-point-label font-mono" fill="#9ca3af">Event (t=0)</text>
+
+                      <text x="400" y="130" class="svg-point-label font-mono" fill="#9ca3af">RTO</text>
+                      <text x="400" y="145" class="svg-point-label font-mono" fill="#9ca3af">(Restored)</text>
+
+                      <text x="540" y="130" class="svg-point-label font-mono" fill="#9ca3af">WRT</text>
+                      <text x="540" y="145" class="svg-point-label font-mono" fill="#9ca3af">(Validated)</text>
+
+                      <text x="680" y="130" class="svg-point-label font-mono" fill="#9ca3af">MTD</text>
+                      <text x="680" y="145" class="svg-point-label font-mono" fill="#9ca3af">(Ruin Point)</text>
+
+                      <!-- Connecting brackets -->
+                      <path d="M 242 60 L 400 60" stroke="var(--accent-cyan)" stroke-width="1.5" fill="none" />
+                      <text x="320" y="50" class="svg-label cyan-text" fill="#06b6d4">Recovery Time (RTO)</text>
+
+                      <path d="M 400 60 L 538 60" stroke="var(--accent-orange)" stroke-width="1.5" fill="none" />
+                      <text x="470" y="50" class="svg-label orange-text" fill="#f59e0b">Work Recovery (WRT)</text>
+
+                      <path d="M 240 30 L 680 30" stroke="var(--accent-green)" stroke-width="1.5" fill="none" />
+                      <text x="460" y="20" class="svg-label green-text" fill="#10b981">Max Downtime (MTD)</text>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- 2. Risk Posture Levels -->
+            <article class="guide-detail" id="guide-appetite">
+              <h2>Risk Capacity, Tolerance & Appetite</h2>
+              <div class="guide-grid-container">
+                <div class="guide-text-col">
+                  <p class="guide-intro">
+                    These thresholds represent the boundaries of risk an organization faces. They dictate risk responses and controls.
+                  </p>
+                  <div class="guide-notes">
+                    <h4>Key ISACA Principles:</h4>
+                    <ul>
+                      <li><strong>Risk Capacity</strong>: The objective maximum financial limit of risk the company can take on before going out of business.</li>
+                      <li><strong>Risk Appetite</strong>: The target amount of risk management is <em>willing</em> to accept to achieve business strategies. Set by the Board.</li>
+                      <li><strong>Risk Tolerance</strong>: The acceptable deviation boundary. If a risk goes slightly over appetite (e.g. temporary project requirements), it's acceptable if approved, as long as it stays below capacity.</li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="guide-graphic-col">
+                  <div class="guide-graphic">
+                    <svg viewBox="0 0 750 200" class="guide-svg">
+                      <!-- Threshold Lines -->
+                      <path d="M 50 150 L 700 150" stroke="#10b981" stroke-width="2" />
+                      <text x="75" y="140" fill="#10b981" class="font-mono">RISK APPETITE (Preferred comfort zone)</text>
+
+                      <path d="M 50 100 L 700 100" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 4" />
+                      <text x="75" y="90" fill="#f59e0b" class="font-mono">RISK TOLERANCE (Acceptable variance zone)</text>
+
+                      <path d="M 50 50 L 700 50" stroke="#ef4444" stroke-width="2" />
+                      <text x="75" y="40" fill="#ef4444" class="font-mono">RISK CAPACITY (Absolute survival limit - Ruin)</text>
+
+                      <!-- Zones -->
+                      <rect x="50" y="150" width="650" height="40" fill="rgba(16, 185, 129, 0.05)" />
+                      <rect x="50" y="100" width="650" height="50" fill="rgba(245, 158, 11, 0.04)" />
+                      <rect x="50" y="50" width="650" height="50" fill="rgba(239, 68, 68, 0.05)" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- 3. Incident Response Stages -->
+            <article class="guide-detail" id="guide-ir">
+              <h2>Incident Response Lifecycle</h2>
+              <div class="guide-grid-container">
+                <div class="guide-text-col">
+                  <p class="guide-intro">
+                    Understanding the sequence of incident handling is crucial. The priority is containing the damage before performing diagnostics or restoring files.
+                  </p>
+                  <div class="guide-notes">
+                    <h4>Key ISACA Principles:</h4>
+                    <ul>
+                      <li><strong>Active Threat Priority</strong>: When an active breach or data leak is identified, the immediate priority is **Containment** (e.g. isolating infected subnets).</li>
+                      <li><strong>Eradication vs. Recovery</strong>: You cannot restore system backups (Recovery) until the malware or compromise vector has been completely purged (Eradication).</li>
+                      <li><strong>Post-Incident Activity</strong>: The Lessons Learned phase is the most critical for governance, ensuring processes are updated to prevent recurrence.</li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="guide-graphic-col">
+                  <div class="guide-graphic">
+                    <svg viewBox="0 0 750 160" class="guide-svg">
+                      <!-- Chevrons -->
+                      <g class="chevron-group active">
+                        <polygon points="10,20 110,20 130,50 110,80 10,80 30,50" fill="rgba(255, 255, 255, 0.05)" stroke="var(--border-color)" />
+                        <text x="70" y="45" class="chevron-text" fill="#f3f4f6">1. Prep</text>
+                        <text x="70" y="65" class="chevron-sub" fill="#9ca3af">Plans/Tools</text>
+                      </g>
+                      
+                      <g class="chevron-group active">
+                        <polygon points="120,20 220,20 240,50 220,80 120,80 140,50" fill="rgba(255, 255, 255, 0.05)" stroke="var(--border-color)" />
+                        <text x="180" y="45" class="chevron-text" fill="#f3f4f6">2. Identify</text>
+                        <text x="180" y="65" class="chevron-sub" fill="#9ca3af">Triage/Confirm</text>
+                      </g>
+
+                      <g class="chevron-group highlight">
+                        <polygon points="230,20 330,20 350,50 330,80 230,80 250,50" fill="rgba(16, 185, 129, 0.15)" stroke="var(--accent-green)" />
+                        <text x="290" y="45" class="chevron-text bold" fill="#f3f4f6">3. Contain</text>
+                        <text x="290" y="65" class="chevron-sub bold" fill="#10b981">Isolate/Stop</text>
+                      </g>
+
+                      <g class="chevron-group">
+                        <polygon points="340,20 440,20 460,50 440,80 340,80 360,50" fill="rgba(255, 255, 255, 0.05)" stroke="var(--border-color)" />
+                        <text x="400" y="45" class="chevron-text" fill="#f3f4f6">4. Eradicate</text>
+                        <text x="400" y="65" class="chevron-sub" fill="#9ca3af">Clean Cause</text>
+                      </g>
+
+                      <g class="chevron-group">
+                        <polygon points="450,20 550,20 570,50 550,80 450,80 470,50" fill="rgba(255, 255, 255, 0.05)" stroke="var(--border-color)" />
+                        <text x="510" y="45" class="chevron-text" fill="#f3f4f6">5. Recover</text>
+                        <text x="510" y="65" class="chevron-sub" fill="#9ca3af">Restore/Test</text>
+                      </g>
+
+                      <g class="chevron-group">
+                        <polygon points="560,20 660,20 680,50 660,80 560,80 580,50" fill="rgba(255, 255, 255, 0.05)" stroke="var(--border-color)" />
+                        <text x="620" y="45" class="chevron-text" fill="#f3f4f6">6. Lessons</text>
+                        <text x="620" y="65" class="chevron-sub" fill="#9ca3af">Review/Fix</text>
+                      </g>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- 4. Security Control Matrix -->
+            <article class="guide-detail" id="guide-controls">
+              <h2>Security Control Matrix</h2>
+              <div class="guide-grid-container">
+                <div class="guide-text-col">
+                  <p class="guide-intro">
+                    Controls are classified by category (how they are enforced) and type (what phase of the threat they act on).
+                  </p>
+                  <div class="guide-notes">
+                    <h4>Key ISACA Principles:</h4>
+                    <ul>
+                      <li><strong>Preventive</strong>: Intended to stop a violation before it starts (e.g., locks, firewalls).</li>
+                      <li><strong>Detective</strong>: Intended to locate violations after they occur (e.g., audit logs, alarms).</li>
+                      <li><strong>Corrective</strong>: Intended to restore systems and mitigate further harm (e.g., backups, software restores).</li>
+                      <li><strong>Compensating</strong>: Alt controls active when standard controls are not possible.</li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="guide-graphic-col">
+                  <div class="control-matrix">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Category</th>
+                          <th>Preventive (Before)</th>
+                          <th>Detective (During)</th>
+                          <th>Corrective (After)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td class="font-display bold">Administrative</td>
+                          <td>Background Checks / Policy signing</td>
+                          <td>Job Rotation / Audit checks</td>
+                          <td>Disciplinary Procedures / IRP updates</td>
+                        </tr>
+                        <tr>
+                          <td class="font-display bold">Technical (Logical)</td>
+                          <td>Firewalls / Encryption / MFA</td>
+                          <td>IDS alert log analysis / SIEM</td>
+                          <td>System restore / Antivirus quarantine</td>
+                        </tr>
+                        <tr>
+                          <td class="font-display bold">Physical</td>
+                          <td>Biometric lock / High fence</td>
+                          <td>CCTV monitoring / Alarm triggers</td>
+                          <td>Fire suppression systems</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- 5. Governance & Risk Owner -->
+            <article class="guide-detail" id="guide-gov">
+              <h2>Governance & Risk Accountability Hierarchy</h2>
+              <div class="guide-grid-container">
+                <div class="guide-text-col">
+                  <p class="guide-intro">
+                    CISM heavily tests the division of security duties and risk ownership. CISOs direct the program, but Business Owners own the risk.
+                  </p>
+                  <div class="guide-notes">
+                    <h4>Key ISACA Principles:</h4>
+                    <ul>
+                      <li><strong>Strategic Oversight</strong>: The Board of Directors sets the overall risk appetite and defines governance strategy.</li>
+                      <li><strong>Risk Acceptance Owner</strong>: The **Business Unit Owner** (not the CISO) owns the data and system risk. Therefore, only they can authorize risk acceptance or policy exceptions.</li>
+                      <li><strong>CISO Role</strong>: The CISO is an advisor and strategist. They design controls and recommend responses, but do not own the business assets.</li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="guide-graphic-col">
+                  <div class="guide-graphic">
+                    <svg viewBox="0 0 750 200" class="guide-svg">
+                      <!-- Pyramid -->
+                      <polygon points="375,10 525,190 225,190" fill="none" stroke="var(--border-color)" stroke-width="2" />
+                      
+                      <!-- Lines -->
+                      <line x1="325" y1="70" x2="425" y2="70" stroke="var(--border-color)" />
+                      <line x1="275" y1="130" x2="475" y2="130" stroke="var(--border-color)" />
+
+                      <!-- Node labels -->
+                      <text x="375" y="50" class="pyramid-text bold" fill="#f3f4f6">1. Board / CEO</text>
+                      <text x="375" y="60" class="pyramid-sub font-mono" fill="#06b6d4">Accountability / Appetite</text>
+
+                      <text x="375" y="100" class="pyramid-text bold" fill="#f3f4f6">2. Business Unit Managers</text>
+                      <text x="375" y="110" class="pyramid-sub font-mono" fill="#06b6d4">Risk Owners / Approval</text>
+
+                      <text x="375" y="155" class="pyramid-text bold" fill="#f3f4f6">3. CISO & Security Team</text>
+                      <text x="375" y="165" class="pyramid-sub font-mono" fill="#06b6d4">Execution / Strategy Advisors</text>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- 6. Quantitative Risk Formulas -->
+            <article class="guide-detail" id="guide-quant">
+              <h2>Quantitative Risk Math Flow</h2>
+              <div class="guide-grid-container">
+                <div class="guide-text-col">
+                  <p class="guide-intro">
+                    Quantitative risk assessment evaluates loss values in monetary metrics. You must memorize these three formulas.
+                  </p>
+                  <div class="guide-notes">
+                    <h4>Core Implementation Principles:</h4>
+                    <ul>
+                      <li><strong>Asset Value (AV)</strong>: Focuses on replacement cost, productivity loss, and liability.</li>
+                      <li><strong>Exposure Factor (EF)</strong>: The percentage of loss (e.g. partial breach = 0.15).</li>
+                      <li><strong>ARO (Annual Rate of Occurrence)</strong>: Frequency of the event per year.</li>
+                      <li><strong>Cost-Justification Rule</strong>: A control's cost must not exceed the ALE reduction it brings.</li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="guide-graphic-col">
+                  <div class="math-flow-container font-mono">
+                    <div class="math-block">
+                      <div class="math-title">Single Loss Expectancy (SLE)</div>
+                      <div class="math-formula">SLE = Asset Value * Exposure Factor (EF)</div>
+                      <div class="math-desc">Cost of a single impact event (e.g. $100k Asset * 20% EF = $20k SLE)</div>
+                    </div>
+
+                    <div class="math-block">
+                      <div class="math-title">Annual Loss Expectancy (ALE)</div>
+                      <div class="math-formula">ALE = SLE * Annual Rate of Occurrence (ARO)</div>
+                      <div class="math-desc">Cost of the risk over a year (e.g. $20k SLE * 3 ARO = $60k ALE)</div>
+                    </div>
+
+                    <div class="math-block">
+                      <div class="math-title">Cost-Benefit Analysis</div>
+                      <div class="math-formula">Net Benefit = ALE_before - ALE_after - Annual_Control_Cost</div>
+                      <div class="math-desc">Control value must exceed its annual upkeep costs to be justified.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Deck Curator (Manager) -->
+      <div class="tab-pane" id="tab-curator">
+        <div class="curator-panel">
+          <h2>Database Study Deck Curator</h2>
+          <p>
+            Expand your exam preparation. Manually enter custom multiple-choice questions or active recall flashcards directly into the SQLite database.
+          </p>
+
+          <div class="curator-layout">
+            <!-- Add Flashcard -->
+            <form class="curator-form" id="form-add-flashcard">
+              <h3>Create Custom Flashcard</h3>
+              <div class="form-group">
+                <label>Target Term</label>
+                <input type="text" name="term" required placeholder="e.g., Business Continuity Plan (BCP)" />
+              </div>
+              <div class="form-group">
+                <label>ISACA Definition</label>
+                <textarea name="definition" required placeholder="Provide clear definitions and criteria..."></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Domain Area</label>
+                  <select name="domain" required>
+                    <option value="1">Domain 1: Security Governance</option>
+                    <option value="2">Domain 2: Risk Management</option>
+                    <option value="3">Domain 3: Program Development</option>
+                    <option value="4">Domain 4: Incident Management</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" class="btn-curate">Commit Card to DB</button>
+              <div class="form-status" id="flashcard-form-status"></div>
+            </form>
+
+            <!-- Add Question -->
+            <form class="curator-form" id="form-add-question">
+              <h3>Create Custom Practice Question</h3>
+              <div class="form-group">
+                <label>Question Scenario</label>
+                <textarea name="question" required placeholder="Write a scenario-based practice question..."></textarea>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Option A</label>
+                  <input type="text" name="option_a" required placeholder="Option A" />
+                </div>
+                <div class="form-group">
+                  <label>Option B</label>
+                  <input type="text" name="option_b" required placeholder="Option B" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Option C</label>
+                  <input type="text" name="option_c" required placeholder="Option C" />
+                </div>
+                <div class="form-group">
+                  <label>Option D</label>
+                  <input type="text" name="option_d" required placeholder="Option D" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Correct Choice</label>
+                  <select name="correct_option" required>
+                    <option value="A">Option A</option>
+                    <option value="B">Option B</option>
+                    <option value="C">Option C</option>
+                    <option value="D">Option D</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Domain</label>
+                  <select name="domain" required>
+                    <option value="1">Domain 1: Security Governance</option>
+                    <option value="2">Domain 2: Risk Management</option>
+                    <option value="3">Domain 3: Program Development</option>
+                    <option value="4">Domain 4: Incident Management</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Rationale Explanation</label>
+                <textarea name="explanation" required placeholder="Explain why the correct option is the best choice and why others are incorrect..."></textarea>
+              </div>
+              <button type="submit" class="btn-curate">Commit Question to DB</button>
+              <div class="form-status" id="question-form-status"></div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="main-footer">
+    <p>&copy; 2026 CISM Commander Console. Connected to SQLite Database.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

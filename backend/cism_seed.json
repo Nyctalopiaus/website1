@@ -1,0 +1,181 @@
+{
+  "questions": [
+    {
+      "question": "Which of the following is the PRIMARY driver for aligning an information security program with business objectives?",
+      "option_a": "Compliance with international security standards",
+      "option_b": "Management's commitment to security investment",
+      "option_c": "Maximizing business value and managing risk appropriately",
+      "option_d": "Minimizing the number of successful security breaches",
+      "correct_option": "C",
+      "explanation": "Security exists to support the business. The primary driver is to maximize business value by enabling business objectives while managing risks to an acceptable level (within risk appetite). Compliance, investment, and breach reduction are secondary benefits.",
+      "domain": 1
+    },
+    {
+      "question": "Who holds the ULTIMATE responsibility for information security governance within an enterprise?",
+      "option_a": "The Chief Information Security Officer (CISO)",
+      "option_b": "The Board of Directors",
+      "option_c": "The Steering Committee",
+      "option_d": "The Chief Information Officer (CIO)",
+      "correct_option": "B",
+      "explanation": "Ultimate responsibility for governance and oversight always rests with the Board of Directors. Executive management (such as the CISO or CIO) is responsible for executing the strategy, but governance accountability cannot be delegated.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following metrics is the BEST indicator of the effectiveness of a security awareness program?",
+      "option_a": "An increase in the number of security policies acknowledged by staff",
+      "option_b": "A decrease in the total number of security incidents reported",
+      "option_c": "An increase in the number of security incidents reported by staff",
+      "option_d": "A reduction in the budget required for security training materials",
+      "correct_option": "C",
+      "explanation": "An effective security awareness program teaches employees how to identify threats. An increase in the reporting of security incidents indicates that staff are vigilant, aware, and actively participating in defensive protocols.",
+      "domain": 3
+    },
+    {
+      "question": "During a risk assessment, a risk is identified that exceeds the organization's risk appetite, but falls within its risk tolerance. What is the most appropriate action?",
+      "option_a": "Reject the risk assessment findings and recalculate exposure",
+      "option_b": "Immediately cease the associated business activity to avoid risk",
+      "option_c": "Formally document the risk and monitor it closely for changes",
+      "option_d": "Purchase insurance immediately to transfer the entire risk",
+      "correct_option": "C",
+      "explanation": "Risk tolerance represents the acceptable variation in risk appetite. If a risk is within tolerance boundaries, it is acceptable in the short term, but it must be formally documented, approved by management, and monitored closely.",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following is the MOST critical output of a Business Impact Analysis (BIA)?",
+      "option_a": "A list of vulnerabilities in critical host servers",
+      "option_b": "The identification of critical business processes and recovery targets",
+      "option_c": "The cost of installing redundant power generators",
+      "option_d": "A list of threats categorized by historical likelihood",
+      "correct_option": "B",
+      "explanation": "The primary goal of a BIA is to identify critical business functions and determine their recovery time frames (RTO, MTD) and dependencies. Threat and vulnerability analysis are part of risk assessment, not BIA.",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following is the FIRST step that should be taken when a critical system is suspected of being compromised by ransomware?",
+      "option_a": "Notify regulatory authorities of a data breach",
+      "option_b": "Restore the system from the latest offline backup",
+      "option_c": "Isolate the affected system from the network",
+      "option_d": "Initiate negotiation with the threat actors",
+      "correct_option": "C",
+      "explanation": "Containment is the priority. Isolating the system prevents the ransomware from spreading laterally to other network devices and servers. Recovery (backups) and notification occur during later incident handling phases.",
+      "domain": 4
+    },
+    {
+      "question": "What is the primary difference between a Service Level Agreement (SLA) and an Operation Level Agreement (OLA)?",
+      "option_a": "SLA is legally binding; OLA is never documented",
+      "option_b": "SLA is between business units; OLA is with external vendors",
+      "option_c": "SLA is with external customers/vendors; OLA is between internal support groups",
+      "option_d": "SLA defines recovery time; OLA only defines prevention actions",
+      "correct_option": "C",
+      "explanation": "SLAs are agreements between a service provider and external customers or vendors. OLAs are agreements between internal support groups within the organization to define how they will support the commitments in the SLA.",
+      "domain": 3
+    },
+    {
+      "question": "Following a major security incident that has been successfully resolved, what is the MOST important task for the incident response team?",
+      "option_a": "Update the security awareness slides with details of the event",
+      "option_b": "Conduct a post-incident review (lessons learned session)",
+      "option_c": "Disciplinary action against the employees who clicked the link",
+      "option_d": "Purchase new technical controls to prevent similar attacks",
+      "correct_option": "B",
+      "explanation": "Conducting a post-incident review (lessons learned) is crucial to evaluate response performance, improve response plans, identify root causes, and adjust future security policies to prevent recurrence.",
+      "domain": 4
+    },
+    {
+      "question": "A Key Risk Indicator (KRI) is designed to provide which of the following?",
+      "option_a": "A metric showing how well a security control is operating",
+      "option_b": "An early warning signal that a risk tolerance threshold is being approached",
+      "option_c": "A retrospective report detailing last month's data leak count",
+      "option_d": "A baseline measurement of network bandwidth utilization",
+      "correct_option": "B",
+      "explanation": "KRIs are forward-looking metrics designed to provide early warnings of operational risk shifts or threshold breaches, allowing management to act proactively. KPI (Performance) tracks control operations.",
+      "domain": 1
+    },
+    {
+      "question": "An asset has a valuation of $200,000. A threat event is estimated to cause a 30% exposure factor. What is the Single Loss Expectancy (SLE)?",
+      "option_a": "$60,000",
+      "option_b": "$140,000",
+      "option_c": "$200,000",
+      "option_d": "$6,000",
+      "correct_option": "A",
+      "explanation": "Single Loss Expectancy (SLE) is calculated as: Asset Value * Exposure Factor (EF). In this case: $200,000 * 0.30 = $60,000.",
+      "domain": 2
+    }
+  ],
+  "flashcards": [
+    {
+      "term": "Information Security Governance",
+      "definition": "The system by which directing and controlling security activities is aligned with organizational goals, managed through policies, and overseen by leadership.",
+      "domain": 1
+    },
+    {
+      "term": "Risk Appetite",
+      "definition": "The amount and type of risk that an organization is willing to pursue, retain, or take on in order to meet its strategic business objectives.",
+      "domain": 2
+    },
+    {
+      "term": "Risk Tolerance",
+      "definition": "The acceptable level of variation relative to the achievement of objectives, establishing the boundaries of acceptable risk exposure.",
+      "domain": 2
+    },
+    {
+      "term": "Recovery Time Objective (RTO)",
+      "definition": "The target period of time after a disaster or disruption within which a business process must be restored to avoid unacceptable consequences.",
+      "domain": 2
+    },
+    {
+      "term": "Recovery Point Objective (RPO)",
+      "definition": "The maximum acceptable amount of data loss measured in time, representing the age of files that must be recovered from backup storage for operations to resume.",
+      "domain": 2
+    },
+    {
+      "term": "Maximum Tolerable Downtime (MTD)",
+      "definition": "The absolute maximum period of time a business process can be disrupted before causing irreversible damage or operational failure.",
+      "domain": 4
+    },
+    {
+      "term": "Business Impact Analysis (BIA)",
+      "definition": "A systematic process to evaluate the potential effects of an interruption to critical business operations, identifying dependencies and recovery time frames.",
+      "domain": 2
+    },
+    {
+      "term": "Preventive Controls",
+      "definition": "Proactive safety measures designed to prevent threats, unauthorized access, or errors from occurring in the first place (e.g., firewalls, encryption).",
+      "domain": 3
+    },
+    {
+      "term": "Detective Controls",
+      "definition": "Reactive measures designed to identify and alert security teams of anomalies, threats, or unauthorized activity after they occur (e.g., IDS, audit logs).",
+      "domain": 3
+    },
+    {
+      "term": "Corrective Controls",
+      "definition": "Controls designed to mitigate damage, remediate vulnerabilities, and restore systems back to normal operations after a compromise has occurred.",
+      "domain": 3
+    },
+    {
+      "term": "Information Security Steering Committee",
+      "definition": "A cross-functional body of senior management stakeholders that ensures security initiatives align with business goals and receive proper resource allocation.",
+      "domain": 1
+    },
+    {
+      "term": "Key Risk Indicator (KRI)",
+      "definition": "A metric that provides early warning indicators of potential high-risk exposure changes, helping management proactively adjust defensive postures.",
+      "domain": 1
+    },
+    {
+      "term": "Service Delivery Objective (SDO)",
+      "definition": "The level of service or functionality that must be provided during the recovery phase before full operations are completely restored.",
+      "domain": 4
+    },
+    {
+      "term": "Risk Register",
+      "definition": "A central database repository documenting identified risks, their likelihood/impact, ownership, selected response, and mitigation status.",
+      "domain": 2
+    },
+    {
+      "term": "Annual Loss Expectancy (ALE)",
+      "definition": "The calculated annual monetary cost of a specific risk occurrence. Calculated as: Single Loss Expectancy (SLE) * Annual Rate of Occurrence (ARO).",
+      "domain": 2
+    }
+  ]
+}

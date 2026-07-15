@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amortization Schedule Ledger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=4" />
+</head>
+<body>
+  <div class="glow-bg"></div>
+
+  <header class="header">
+    <div class="header-nav">
+      <a href="index.html" class="btn-back">← Back to Calculator</a>
+      <h1 id="amort-title">Amortization Ledger</h1>
+    </div>
+    <button class="btn-rates-toggle" onclick="window.print()">🖨️ Print Schedule</button>
+  </header>
+
+  <main class="container">
+    <p class="dti-desc" id="amort-subtitle" style="margin-bottom: 2.25rem;">
+      Generating schedule details...
+    </p>
+
+    <!-- Error Screen (if loaded without query strings) -->
+    <div class="panel-card" id="error-card" style="display: none; text-align: center; padding: 3rem;">
+      <h2 style="color: var(--accent-emerald); font-size: 1.5rem; margin-bottom: 1rem;">No Active Calculator Profile</h2>
+      <p style="color: var(--text-muted); margin-bottom: 2rem;">
+        This page only displays amortization tables when loaded directly from the calculator portal.
+      </p>
+      <a href="index.html" class="btn-back" style="display: inline-block; margin: 0 auto;">
+        Return to Calculator
+      </a>
+    </div>
+
+    <!-- Main Schedule Content -->
+    <div id="amort-content" style="display: none;">
+      <!-- Stats Panel -->
+      <div class="amort-summary-grid">
+        <div class="summary-card">
+          <span class="label">Original Loan</span>
+          <span class="val" id="sum-loan-amount">$-.--</span>
+        </div>
+        <div class="summary-card">
+          <span class="label">Monthly P&I (Req.)</span>
+          <span class="val" id="sum-monthly-pi">$-.--</span>
+        </div>
+        <div class="summary-card">
+          <span class="label">Extra Payment/mo</span>
+          <span class="val accent" id="sum-monthly-extra">$-.--</span>
+        </div>
+        <div class="summary-card">
+          <span class="label">Total Interest Paid</span>
+          <span class="val" id="sum-total-interest">$-.--</span>
+        </div>
+        <div class="summary-card">
+          <span class="label">Payoff Speed</span>
+          <span class="val accent" id="sum-payoff-time">-- years</span>
+        </div>
+      </div>
+
+      <!-- Scrollable Schedule Table -->
+      <div class="amort-table-wrapper">
+        <table class="amort-table" id="schedule-table">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Total Payment</th>
+              <th>Required P&I</th>
+              <th>Extra Principal</th>
+              <th>Interest Component</th>
+              <th>Principal Component</th>
+              <th>Remaining Balance</th>
+            </tr>
+          </thead>
+          <tbody id="schedule-tbody">
+            <!-- Populated dynamically via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <footer class="main-footer">
+    <p>&copy; 2026 Nycto's Project Lab. Estimates only. Print-ready layout.</p>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Parse Query Params
+      const params = new URLSearchParams(window.location.search);
+      const price = parseFloat(params.get('price'));
+      const down = parseFloat(params.get('down')) || 0;
+      const rate30 = parseFloat(params.get('rate30'));
+      const rate15 = parseFloat(params.get('rate15'));
+      const tax = parseFloat(params.get('tax')) || 0;
+      const ins = parseFloat(params.get('ins')) || 0;
+      const pmi = parseFloat(params.get('pmi')) || 0;
+      const hoa = parseFloat(params.get('hoa')) || 0;
+      const additional = parseFloat(params.get('additional')) || 0;
+      const term = parseInt(params.get('term')) || 30;
+
+      // Validate required params
+      if (isNaN(price)) {
+        document.getElementById('error-card').style.display = 'block';
+        return;
+      }
+
+      // Display Content
+      document.getElementById('amort-content').style.display = 'block';
+
+      // Setup inputs
+      const loanAmount = Math.max(0, price - down);
+      const activeRate = term === 30 ? rate30 : rate15;
+      
+      // Update Header Text
+      document.getElementById('amort-title').textContent = `${term}-Year Amortization Schedule`;
+      document.getElementById('amort-subtitle').textContent = `Based on a $${price.toLocaleString()} home price, $${down.toLocaleString()} down payment, and ${activeRate}% interest rate.`;
+
+      // Helper for Currency
+      const formatCurrency = (val) => {
+        return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      };
+
+      // Math Amortization Loop
+      const r = activeRate / 12 / 100;
+      const originalMonths = term * 12;
+      
+      let regularPi = 0;
+      if (activeRate > 0) {
+        regularPi = loanAmount * (r * Math.pow(1 + r, originalMonths)) / (Math.pow(1 + r, originalMonths) - 1);
+      } else {
+        regularPi = loanAmount / originalMonths;
+      }
+
+      const tbody = document.getElementById('schedule-tbody');
+      let balance = loanAmount;
+      let totalInterest = 0;
+      let month = 0;
+      let htmlRows = '';
+
+      // Baseline Interest for comparison
+      const baselineInterest = Math.max(0, (regularPi * originalMonths) - loanAmount);
+
+      while (balance > 0.01 && month < 1200) {
+        month++;
+        const interestThisMonth = balance * r;
+        const requiredPrincipal = Math.max(0, regularPi - interestThisMonth);
+        const extraPaid = additional;
+        const totalPrincipal = requiredPrincipal + extraPaid;
+        
+        const actualPrincipalPaid = Math.min(balance, totalPrincipal);
+        const actualInterestPaid = interestThisMonth;
+        
+        balance -= actualPrincipalPaid;
+        totalInterest += actualInterestPaid;
+
+        // Build Table Row
+        const isLastRow = balance <= 0.01;
+        const rowClass = isLastRow ? 'payoff-highlight' : '';
+        const displayPayment = regularPi + extraPaid;
+
+        htmlRows += `<tr class="${rowClass}">
+          <td><strong>Month ${month}</strong></td>
+          <td>${formatCurrency(displayPayment)}</td>
+          <td>${formatCurrency(regularPi)}</td>
+          <td class="${extraPaid > 0 ? 'accent bold' : 'dim'}">${formatCurrency(extraPaid)}</td>
+          <td class="dim">${formatCurrency(actualInterestPaid)}</td>
+          <td>${formatCurrency(actualPrincipalPaid - (isLastRow ? 0 : extraPaid))}</td>
+          <td class="${isLastRow ? 'bold accent' : ''}">${formatCurrency(Math.max(0, balance))}</td>
+        </tr>`;
+      }
+
+      tbody.innerHTML = htmlRows;
+
+      // Populate Summary metrics
+      document.getElementById('sum-loan-amount').textContent = formatCurrency(loanAmount);
+      document.getElementById('sum-monthly-pi').textContent = formatCurrency(regularPi);
+      document.getElementById('sum-monthly-extra').textContent = formatCurrency(additional);
+      document.getElementById('sum-total-interest').textContent = formatCurrency(totalInterest);
+
+      const yrs = Math.floor(month / 12);
+      const mos = month % 12;
+      let timeStr = '';
+      if (yrs > 0 && mos > 0) {
+        timeStr = `${yrs} yr${yrs > 1 ? 's' : ''}, ${mos} mo${mos > 1 ? 's' : ''}`;
+      } else if (yrs > 0) {
+        timeStr = `${yrs} yr${yrs > 1 ? 's' : ''}`;
+      } else {
+        timeStr = `${mos} mo${mos > 1 ? 's' : ''}`;
+      }
+      
+      const monthsSaved = Math.max(0, originalMonths - month);
+      if (monthsSaved > 0) {
+        const savedYrs = Math.floor(monthsSaved / 12);
+        const savedMos = monthsSaved % 12;
+        let savedStr = '';
+        if (savedYrs > 0 && savedMos > 0) {
+          savedStr = `${savedYrs}y ${savedMos}m`;
+        } else if (savedYrs > 0) {
+          savedStr = `${savedYrs} years`;
+        } else {
+          savedStr = `${savedMos} months`;
+        }
+        timeStr += ` (Saved ${savedStr}!)`;
+      }
+      document.getElementById('sum-payoff-time').textContent = timeStr;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Housing Cost Calculator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=4" />
+</head>
+<body>
+  <div class="glow-bg"></div>
+
+  <header class="header">
+    <div class="header-nav">
+      <a href="../index.html" class="btn-back">← Back to Lab</a>
+      <h1>Housing Cost Calculator</h1>
+    </div>
+    <div class="quick-rates" style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem;">
+      <button id="btn-load-rates" class="btn-rates-toggle">⚡ Load Est. Rates</button>
+      <span id="rates-attribution" class="rates-attribution-text"></span>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="calculator-grid">
+      <!-- Left Panel: Inputs -->
+      <section class="inputs-panel">
+        <div class="panel-card">
+          <h2>Purchase Details</h2>
+          
+          <div class="input-group">
+            <label for="homePrice">Home Price</label>
+            <div class="input-with-prefix">
+              <span class="prefix">$</span>
+              <input id="homePrice" type="number" min="10000" step="5000" value="400000" />
+            </div>
+            <input id="homePriceSlider" type="range" min="100000" max="1500000" step="10000" value="400000" class="slider" />
+          </div>
+
+          <div class="input-group">
+            <label>Down Payment</label>
+            <div class="dual-input">
+              <div class="input-with-prefix">
+                <span class="prefix">$</span>
+                <input id="downPaymentAmount" type="number" min="0" step="1000" value="80000" />
+              </div>
+              <div class="input-with-suffix">
+                <input id="downPaymentPercent" type="number" min="0" max="100" step="1" value="20" />
+                <span class="suffix">%</span>
+              </div>
+            </div>
+            <input id="downPaymentSlider" type="range" min="0" max="100" step="1" value="20" class="slider" />
+          </div>
+
+          <div class="input-group">
+            <label for="additionalPayment">Additional Monthly Payment</label>
+            <div class="input-with-prefix">
+              <span class="prefix">$</span>
+              <input id="additionalPayment" type="number" min="0" step="50" value="0" />
+            </div>
+            <input id="additionalPaymentSlider" type="range" min="0" max="3000" step="50" value="0" class="slider" />
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <h2>Rates & Taxes</h2>
+
+          <div class="grid-2-col">
+            <div class="input-group">
+              <label for="interest30">30-Year Rate</label>
+              <div class="input-with-suffix">
+                <input id="interest30" type="number" min="0.1" max="25" step="0.01" value="6.5" />
+                <span class="suffix">%</span>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="interest15">15-Year Rate</label>
+              <div class="input-with-suffix">
+                <input id="interest15" type="number" min="0.1" max="25" step="0.01" value="5.8" />
+                <span class="suffix">%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="taxRate">Property Tax Rate (Annual)</label>
+            <div class="input-with-suffix">
+              <input id="taxRate" type="number" min="0" max="10" step="0.05" value="1.2" />
+              <span class="suffix">%</span>
+            </div>
+            <span class="help-text">Average annual rate based on home price</span>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <h2>Insurance & Fees</h2>
+
+          <div class="grid-2-col">
+            <div class="input-group">
+              <label for="homeInsurance">Home Insurance</label>
+              <div class="input-with-prefix">
+                <span class="prefix">$</span>
+                <input id="homeInsurance" type="number" min="0" step="50" value="1200" />
+              </div>
+              <span class="help-text">Annual cost</span>
+            </div>
+
+            <div class="input-group">
+              <label for="hoaFees">Monthly HOA</label>
+              <div class="input-with-prefix">
+                <span class="prefix">$</span>
+                <input id="hoaFees" type="number" min="0" step="10" value="0" />
+              </div>
+              <span class="help-text">Monthly dues</span>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label for="pmiRate">PMI Annual Rate</label>
+            <div class="input-with-suffix">
+              <input id="pmiRate" type="number" min="0.1" max="5" step="0.05" value="0.75" />
+              <span class="suffix">%</span>
+            </div>
+            <span class="help-text">Applies if down payment is under 20%</span>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <h2>Affordability Profile</h2>
+          <div class="input-group">
+            <label for="grossIncome">Gross Monthly Income</label>
+            <div class="input-with-prefix">
+              <span class="prefix">$</span>
+              <input id="grossIncome" type="number" min="1000" step="100" value="10000" />
+            </div>
+            <span class="help-text">Pre-tax monthly household income</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Results -->
+      <section class="results-panel">
+        <!-- Amortization Comparisons -->
+        <div class="term-cards-container">
+          <!-- 30-Year Fixed Card -->
+          <div class="term-card selected" id="card-30yr">
+            <div class="term-badge">Standard</div>
+            <h3>30-Year Fixed</h3>
+            <div class="payment-value" id="total-payment-30">$-.--</div>
+            <span class="payment-label">Estimated Monthly</span>
+            <div class="card-details">
+              <div class="detail-row">
+                <span>Principal & Interest</span>
+                <span id="pi-payment-30">$-.--</span>
+              </div>
+              <div class="detail-row">
+                <span>Total Interest Paid</span>
+                <div>
+                  <span id="lifetime-interest-30" class="interest-total">$-.--</span>
+                  <span id="interest-savings-30" class="savings-subtext" style="display: none;">Saved $0</span>
+                </div>
+              </div>
+              <div class="detail-row time-saved-row" id="time-saved-row-30" style="display: none;">
+                <span>Time Saved</span>
+                <span id="time-saved-30" class="time-saved-val">0 years</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 15-Year Fixed Card -->
+          <div class="term-card" id="card-15yr">
+            <div class="term-badge save-badge">Save Interest</div>
+            <h3>15-Year Fixed</h3>
+            <div class="payment-value" id="total-payment-15">$-.--</div>
+            <span class="payment-label">Estimated Monthly</span>
+            <div class="card-details">
+              <div class="detail-row">
+                <span>Principal & Interest</span>
+                <span id="pi-payment-15">$-.--</span>
+              </div>
+              <div class="detail-row">
+                <span>Total Interest Paid</span>
+                <div>
+                  <span id="lifetime-interest-15" class="interest-total">$-.--</span>
+                  <span id="interest-savings-15" class="savings-subtext" style="display: none;">Saved $0</span>
+                </div>
+              </div>
+              <div class="detail-row time-saved-row" id="time-saved-row-15" style="display: none;">
+                <span>Time Saved</span>
+                <span id="time-saved-15" class="time-saved-val">0 years</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-view-amort" id="btn-view-amort">
+          View Full Amortization Schedule ➔
+        </button>
+
+        <!-- Payment Breakdown & Chart -->
+        <div class="panel-card chart-card">
+          <h2>Payment Breakdown (<span id="active-term-label">30-Year</span>)</h2>
+          <div class="chart-container">
+            <div class="svg-wrapper">
+              <svg width="200" height="200" viewBox="0 0 200 200" class="donut-chart">
+                <circle cx="100" cy="100" r="70" class="donut-bg" />
+                <circle cx="100" cy="100" r="70" class="donut-segment pi" />
+                <circle cx="100" cy="100" r="70" class="donut-segment tax" />
+                <circle cx="100" cy="100" r="70" class="donut-segment ins" />
+                <circle cx="100" cy="100" r="70" class="donut-segment pmi" />
+                <circle cx="100" cy="100" r="70" class="donut-segment hoa" />
+                <g class="chart-center-text">
+                  <text x="100" y="95" class="chart-total-text" id="chart-total-val">$-.--</text>
+                  <text x="100" y="115" class="chart-sub-text">Total/mo</text>
+                </g>
+              </svg>
+            </div>
+
+            <div class="chart-legend">
+              <div class="legend-item">
+                <span class="legend-color pi"></span>
+                <span class="legend-label">P&I Payment</span>
+                <span class="legend-val" id="legend-pi">$-.--</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-color tax"></span>
+                <span class="legend-label">Property Taxes</span>
+                <span class="legend-val" id="legend-tax">$-.--</span>
+              </div>
+              <div class="legend-item">
+                <span class="legend-color ins"></span>
+                <span class="legend-label">Home Insurance</span>
+                <span class="legend-val" id="legend-ins">$-.--</span>
+              </div>
+              <div class="legend-item id-pmi-item">
+                <span class="legend-color pmi"></span>
+                <span class="legend-label">PMI</span>
+                <span class="legend-val" id="legend-pmi">$-.--</span>
+              </div>
+              <div class="legend-item id-hoa-item">
+                <span class="legend-color hoa"></span>
+                <span class="legend-label">HOA Fees</span>
+                <span class="legend-val" id="legend-hoa">$-.--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Affordability Analysis -->
+        <div class="panel-card affordability-card">
+          <h2>Affordability Analysis (DTI)</h2>
+          <div class="dti-metric">
+            <div class="dti-value" id="dti-ratio">--%</div>
+            <div class="dti-info">
+              <span class="dti-title">Front-End Debt-to-Income</span>
+              <span id="dti-status-badge" class="badge-dti">Calculating...</span>
+            </div>
+          </div>
+          <div class="progress-bar-container">
+            <div id="dti-progress-bar" class="progress-bar" style="width: 0%;"></div>
+            <div class="progress-markers">
+              <span class="marker" style="left: 28%">28%</span>
+              <span class="marker" style="left: 36%">36%</span>
+            </div>
+          </div>
+          <p id="dti-description" class="dti-desc">
+            Please fill out purchase details and income to verify affordability status.
+          </p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="main-footer">
+    <p>&copy; 2026 Nycto's Project Lab. All calculations are estimates.</p>
+  </footer>
+
+  <script src="app.js?v=4"></script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap');
+
+body {
+  background-color: #080a0f;
+  background-image: radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.03) 0%, transparent 60%);
+  color: #f3f4f6;
+  font-family: 'Outfit', sans-serif;
+  padding: 3rem 1.5rem;
+  min-height: 100vh;
+}
+
+h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 1rem;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+h1::before {
+  content: "⚡";
+  background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+table {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  border-collapse: separate;
+  border-spacing: 0 0.5rem;
+}
+
+th {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #8e96a3;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.06);
+}
+
+tr {
+  background: #0d0f14;
+  transition: all 0.2s ease;
+}
+
+/* Skip the header row from card styling */
+tr:first-child {
+  background: transparent !important;
+}
+
+tr:not(:first-child):hover {
+  background: rgba(255, 255, 255, 0.015) !important;
+  transform: translateY(-1px);
+}
+
+td {
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.925rem;
+  vertical-align: middle;
+}
+
+td:first-child {
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  border-top-left-radius: 0.5rem;
+  border-bottom-left-radius: 0.5rem;
+}
+
+td:last-child {
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-top-right-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+a {
+  color: #06b6d4;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: #8b5cf6;
+}
+
+/* Style default Apache icons */
+tdimg img {
+  filter: invert(1) brightness(0.8);
+  opacity: 0.6;
+}

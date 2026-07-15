@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Handheld Gaming Log</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=2" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-nav">
+      <a href="../index.html" class="btn-back">← Back to Lab</a>
+      <h1>Handheld Gaming Log</h1>
+    </div>
+    <div id="version-bar" class="version-bar">Version: 1.0.0</div>
+  </header>
+
+  <main class="main">
+    <section class="stats-section">
+      <div class="stat-card">
+        <span class="stat-icon">⏱️</span>
+        <div class="stat-info">
+          <span class="stat-label">Playtime</span>
+          <span id="stat-hours" class="stat-value">0.0h</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">🎮</span>
+        <div class="stat-info">
+          <span class="stat-label">Library</span>
+          <span id="stat-count" class="stat-value">0 games</span>
+        </div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">🔥</span>
+        <div class="stat-info">
+          <span class="stat-label">Great Ratio</span>
+          <span id="stat-ratio" class="stat-value">0%</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-section">
+      <form id="gameForm" aria-label="Add a new game entry" class="form-group">
+        <div class="field-group">
+          <div class="form-group">
+            <label for="title">Title</label>
+            <input id="title" name="title" type="text" required placeholder="Enter game title" />
+          </div>
+
+          <div class="form-group">
+            <label for="hours">Play Time (hours)</label>
+            <input id="hours" name="hours" type="number" min="0.5" step="0.1" required placeholder="e.g., 2.5" />
+          </div>
+
+          <div class="form-group">
+            <label for="rating">Performance Rating</label>
+            <select id="rating" name="rating" required aria-describedby="ratingOptions">
+              <option value="">Select</option>
+              <option value="Great">Great</option>
+              <option value="Playable">Playable</option>
+              <option value="Poor">Poor</option>
+            </select>
+            <span id="ratingOptions" class="field-help">Great, Playable, or Poor</span>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit">Add Game</button>
+      </form>
+
+      <div id="error-message" class="error-message" style="display: none;"></div>
+    </section>
+
+    <section class="cards-section">
+      <div class="section-header">
+        <h2>Your Games</h2>
+        <div class="sort-controls">
+          <label for="sortColumnSelect">Sort By</label>
+          <select id="sortColumnSelect" aria-label="Sort games by">
+            <option value="title">Title</option>
+            <option value="hours">Play Time</option>
+            <option value="rating">Rating</option>
+          </select>
+          <button id="toggleSortDirection" class="btn-sort-toggle" aria-label="Toggle sort direction">↑</button>
+        </div>
+      </div>
+
+      <div id="gamesGrid" class="games-grid">
+        <!-- Game cards will be dynamically injected here -->
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

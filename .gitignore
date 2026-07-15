@@ -1,0 +1,12 @@
+# Databases
+backend/database.sqlite
+backend/database.sqlite-journal
+
+# Logs
+backend/app.log
+backend/stderr.log
+
+# OS garbage
+.DS_Store
+Thumbs.db
+desktop.ini
