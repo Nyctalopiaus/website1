@@ -36,14 +36,35 @@
 
 body {
   font-family: var(--font-sans);
-  /* Warm mesh gradient */
-  background: 
-    radial-gradient(circle at 20% 30%, #fff0e6 0%, transparent 60%),
-    radial-gradient(circle at 80% 20%, #ffe5d9 0%, transparent 55%),
-    radial-gradient(circle at 50% 80%, #ffd8b2 0%, transparent 70%),
-    #fdfbf7;
+  background-color: #fdf9f0;
+  /* Premium warm sunset themed background with overlay mesh gradients */
+  background-image:
+    /* Sunrise glow — top-right corner, warm gold */
+    radial-gradient(ellipse at 88% 0%, rgba(251, 191, 36, 0.15) 0%, transparent 52%),
+    /* Horizon warmth — bottom-left, soft amber */
+    radial-gradient(ellipse at 8% 100%, rgba(249, 115, 22, 0.08) 0%, transparent 48%),
+    /* Graph-paper vertical rules — fine 60px grid */
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 59px,
+      rgba(161, 120, 40, 0.04) 59px,
+      rgba(161, 120, 40, 0.04) 60px
+    ),
+    /* Graph-paper horizontal rules */
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 59px,
+      rgba(161, 120, 40, 0.04) 59px,
+      rgba(161, 120, 40, 0.04) 60px
+    ),
+    /* Base warm overlay and beautiful theme-relevant background image */
+    linear-gradient(rgba(254, 251, 243, 0.45), rgba(253, 246, 232, 0.55)),
+    url('../assets/warm_retirement_bg.jpg');
   background-attachment: fixed;
   background-size: cover;
+  background-position: center;
   color: var(--text-main);
   min-height: 100vh;
   padding-bottom: 2rem;
