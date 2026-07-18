@@ -1,181 +1,2156 @@
 {
   "questions": [
     {
-      "question": "Which of the following is the PRIMARY driver for aligning an information security program with business objectives?",
-      "option_a": "Compliance with international security standards",
-      "option_b": "Management's commitment to security investment",
-      "option_c": "Maximizing business value and managing risk appropriately",
-      "option_d": "Minimizing the number of successful security breaches",
+      "question": "Which of the following is the MOST important alignment objective of an information security program?",
+      "option_a": "Minimizing security control costs",
+      "option_b": "Ensuring 100% network availability",
+      "option_c": "Supporting the organization's business goals",
+      "option_d": "Complying with external data laws",
       "correct_option": "C",
-      "explanation": "Security exists to support the business. The primary driver is to maximize business value by enabling business objectives while managing risks to an acceptable level (within risk appetite). Compliance, investment, and breach reduction are secondary benefits.",
+      "explanation": "Strategic alignment is the core objective. Security must support business goals and enable operations while managing risk, not act as a blocker. Cost control, uptime, and compliance are subordinate goals.",
       "domain": 1
     },
     {
-      "question": "Who holds the ULTIMATE responsibility for information security governance within an enterprise?",
-      "option_a": "The Chief Information Security Officer (CISO)",
-      "option_b": "The Board of Directors",
-      "option_c": "The Steering Committee",
-      "option_d": "The Chief Information Officer (CIO)",
-      "correct_option": "B",
-      "explanation": "Ultimate responsibility for governance and oversight always rests with the Board of Directors. Executive management (such as the CISO or CIO) is responsible for executing the strategy, but governance accountability cannot be delegated.",
+      "question": "Ultimate accountability for protecting organizational information assets rests with:",
+      "option_a": "the Chief Information Security Officer (CISO).",
+      "option_b": "the Chief Information Officer (CIO).",
+      "option_c": "the Board of Directors.",
+      "option_d": "the Internal Audit Committee.",
+      "correct_option": "C",
+      "explanation": "The Board of Directors holds ultimate accountability for the governance and assets of the organization. The CISO and CIO are responsible for execution, but accountability cannot be delegated.",
       "domain": 1
     },
     {
-      "question": "Which of the following metrics is the BEST indicator of the effectiveness of a security awareness program?",
-      "option_a": "An increase in the number of security policies acknowledged by staff",
-      "option_b": "A decrease in the total number of security incidents reported",
-      "option_c": "An increase in the number of security incidents reported by staff",
-      "option_d": "A reduction in the budget required for security training materials",
-      "correct_option": "C",
-      "explanation": "An effective security awareness program teaches employees how to identify threats. An increase in the reporting of security incidents indicates that staff are vigilant, aware, and actively participating in defensive protocols.",
-      "domain": 3
-    },
-    {
-      "question": "During a risk assessment, a risk is identified that exceeds the organization's risk appetite, but falls within its risk tolerance. What is the most appropriate action?",
-      "option_a": "Reject the risk assessment findings and recalculate exposure",
-      "option_b": "Immediately cease the associated business activity to avoid risk",
-      "option_c": "Formally document the risk and monitor it closely for changes",
-      "option_d": "Purchase insurance immediately to transfer the entire risk",
-      "correct_option": "C",
-      "explanation": "Risk tolerance represents the acceptable variation in risk appetite. If a risk is within tolerance boundaries, it is acceptable in the short term, but it must be formally documented, approved by management, and monitored closely.",
-      "domain": 2
-    },
-    {
-      "question": "Which of the following is the MOST critical output of a Business Impact Analysis (BIA)?",
-      "option_a": "A list of vulnerabilities in critical host servers",
-      "option_b": "The identification of critical business processes and recovery targets",
-      "option_c": "The cost of installing redundant power generators",
-      "option_d": "A list of threats categorized by historical likelihood",
-      "correct_option": "B",
-      "explanation": "The primary goal of a BIA is to identify critical business functions and determine their recovery time frames (RTO, MTD) and dependencies. Threat and vulnerability analysis are part of risk assessment, not BIA.",
-      "domain": 2
-    },
-    {
-      "question": "Which of the following is the FIRST step that should be taken when a critical system is suspected of being compromised by ransomware?",
-      "option_a": "Notify regulatory authorities of a data breach",
-      "option_b": "Restore the system from the latest offline backup",
-      "option_c": "Isolate the affected system from the network",
-      "option_d": "Initiate negotiation with the threat actors",
-      "correct_option": "C",
-      "explanation": "Containment is the priority. Isolating the system prevents the ransomware from spreading laterally to other network devices and servers. Recovery (backups) and notification occur during later incident handling phases.",
-      "domain": 4
-    },
-    {
-      "question": "What is the primary difference between a Service Level Agreement (SLA) and an Operation Level Agreement (OLA)?",
-      "option_a": "SLA is legally binding; OLA is never documented",
-      "option_b": "SLA is between business units; OLA is with external vendors",
-      "option_c": "SLA is with external customers/vendors; OLA is between internal support groups",
-      "option_d": "SLA defines recovery time; OLA only defines prevention actions",
-      "correct_option": "C",
-      "explanation": "SLAs are agreements between a service provider and external customers or vendors. OLAs are agreements between internal support groups within the organization to define how they will support the commitments in the SLA.",
-      "domain": 3
-    },
-    {
-      "question": "Following a major security incident that has been successfully resolved, what is the MOST important task for the incident response team?",
-      "option_a": "Update the security awareness slides with details of the event",
-      "option_b": "Conduct a post-incident review (lessons learned session)",
-      "option_c": "Disciplinary action against the employees who clicked the link",
-      "option_d": "Purchase new technical controls to prevent similar attacks",
-      "correct_option": "B",
-      "explanation": "Conducting a post-incident review (lessons learned) is crucial to evaluate response performance, improve response plans, identify root causes, and adjust future security policies to prevent recurrence.",
-      "domain": 4
-    },
-    {
-      "question": "A Key Risk Indicator (KRI) is designed to provide which of the following?",
-      "option_a": "A metric showing how well a security control is operating",
-      "option_b": "An early warning signal that a risk tolerance threshold is being approached",
-      "option_c": "A retrospective report detailing last month's data leak count",
-      "option_d": "A baseline measurement of network bandwidth utilization",
-      "correct_option": "B",
-      "explanation": "KRIs are forward-looking metrics designed to provide early warnings of operational risk shifts or threshold breaches, allowing management to act proactively. KPI (Performance) tracks control operations.",
+      "question": "Which of the following documents defines management's high-level intent and goals for information security?",
+      "option_a": "Security Guidelines",
+      "option_b": "Security Procedures",
+      "option_c": "Security Standards",
+      "option_d": "Security Policies",
+      "correct_option": "D",
+      "explanation": "Policies are high-level directives expressing management's intent, rules, and objectives. Standards define specific requirements, procedures list step-by-step instructions, and guidelines offer advice.",
       "domain": 1
     },
     {
-      "question": "An asset has a valuation of $200,000. A threat event is estimated to cause a 30% exposure factor. What is the Single Loss Expectancy (SLE)?",
-      "option_a": "$60,000",
-      "option_b": "$140,000",
-      "option_c": "$200,000",
-      "option_d": "$6,000",
+      "question": "An Information Security Steering Committee should PRIMARILY consist of:",
+      "option_a": "representatives from key business units and IT stakeholders.",
+      "option_b": "external security consultants and compliance auditors.",
+      "option_c": "systems administrators and database developers.",
+      "option_d": "legal counsel and public relations team members.",
       "correct_option": "A",
-      "explanation": "Single Loss Expectancy (SLE) is calculated as: Asset Value * Exposure Factor (EF). In this case: $200,000 * 0.30 = $60,000.",
+      "explanation": "A Steering Committee must be cross-functional to ensure that security strategy is aligned with business unit operations and goals. External auditors and technicians are not committee members.",
+      "domain": 1
+    },
+    {
+      "question": "To justify the budget for a new multi-factor authentication (MFA) solution, a CISO should prepare which of the following?",
+      "option_a": "A vulnerability scan report",
+      "option_b": "A detailed Business Case",
+      "option_c": "A list of industry standards",
+      "option_d": "The CISO charter document",
+      "correct_option": "B",
+      "explanation": "A Business Case is the standard mechanism to justify expenditures. It outlines business benefits, cost-benefit analysis, risk reductions, and operational impacts to help executives make a decision.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following metrics is the BEST indicator that security policies are widely understood across the enterprise?",
+      "option_a": "The number of policy updates published this quarter",
+      "option_b": "The percentage of employees completing security training",
+      "option_c": "An increase in employee feedback regarding policy restrictions",
+      "option_d": "A reduction in policy violations detected during audits",
+      "correct_option": "D",
+      "explanation": "A reduction in policy violations during audits shows that employees are not only completing training but actually following policies in practice, reflecting genuine understanding and compliance.",
+      "domain": 1
+    },
+    {
+      "question": "What is the primary purpose of a Key Risk Indicator (KRI) in governance?",
+      "option_a": "To report historic firewall blocks from last month",
+      "option_b": "To provide early warning alerts before a risk threshold is breached",
+      "option_c": "To show the patch percentage status of host servers",
+      "option_d": "To justify the annual salary of security personnel",
+      "correct_option": "B",
+      "explanation": "KRIs are forward-looking metrics designed to alert management when risk exposures are trending toward established tolerance limits, enabling proactive intervention.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following is the most effective way for a CISO to gain executive management support for security?",
+      "option_a": "Highlighting technical firewall logs and malware blocks",
+      "option_b": "Explaining security risk in business impact terms",
+      "option_c": "Threatening regulatory penalties for any security issues",
+      "option_d": "Detailing server patch levels and buffer overflow exploits",
+      "correct_option": "B",
+      "explanation": "Executive management focuses on business operations, revenue, and risk. Explaining security risk in business impact terms (e.g., potential revenue loss, recovery costs) aligns security with their priorities.",
+      "domain": 1
+    },
+    {
+      "question": "Information security policies are MOST effective when they are:",
+      "option_a": "reviewed annually and approved by the CISO.",
+      "option_b": "approved by the board and updated in response to changes.",
+      "option_c": "copied directly from recognized international standards.",
+      "option_d": "enforced with severe disciplinary actions for any deviation.",
+      "correct_option": "B",
+      "explanation": "Policies must carry the weight of board-level authorization and stay relevant by updating when business models, regulations, or threat environments change.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following security architectures maps business goals directly to technical security controls?",
+      "option_a": "TOGAF",
+      "option_b": "COBIT",
+      "option_c": "SABSA",
+      "option_d": "ISO 27002",
+      "correct_option": "C",
+      "explanation": "SABSA (Sherwood Applied Business Security Architecture) is specifically designed to translate business goals into structured, layered security requirements.",
+      "domain": 1
+    },
+    {
+      "question": "A security metric is considered useful ONLY if it is:",
+      "option_a": "collected and generated automatically.",
+      "option_b": "highly complex and detailed for audit trails.",
+      "option_c": "actionable and meaningful to stakeholders.",
+      "option_d": "zero-based and focused on technical failures.",
+      "correct_option": "C",
+      "explanation": "Metrics must be actionable. If stakeholders cannot use the data to make decisions or take corrective actions, the metric is useless, regardless of how complex or automatic it is.",
+      "domain": 1
+    },
+    {
+      "question": "When developing an information security strategy, what is the FIRST step?",
+      "option_a": "Purchase security monitoring software licenses",
+      "option_b": "Perform a gap analysis of the current state",
+      "option_c": "Review the organization's business objectives",
+      "option_d": "Draft the employee security awareness materials",
+      "correct_option": "C",
+      "explanation": "Before doing any analysis or design, the security team must understand the organization's business objectives so that the resulting security strategy is aligned with business needs.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following is the main reason for defining roles and responsibilities in a security charter?",
+      "option_a": "To satisfy external PCI compliance checkers",
+      "option_b": "To establish accountability and authorize CISO operations",
+      "option_c": "To simplify the recruitment of security technicians",
+      "option_d": "To avoid internal audits of the security division",
+      "correct_option": "B",
+      "explanation": "A charter formally establishes the authority, scope, and accountability of the CISO and security team, preventing scope creep and ensuring organizational backing.",
+      "domain": 1
+    },
+    {
+      "question": "RACI charts are useful in information security governance because they:",
+      "option_a": "calculate quantitative risk ratios automatically.",
+      "option_b": "define clear ownership and execution boundaries.",
+      "option_c": "serve as templates for technical firewall rules.",
+      "option_d": "list all systems that require patches.",
+      "correct_option": "B",
+      "explanation": "RACI charts clearly identify who is responsible for execution, who is accountable (one person), who is consulted, and who is informed, eliminating conflict over task ownership.",
+      "domain": 1
+    },
+    {
+      "question": "The primary objective of a security program maturity assessment is to:",
+      "option_a": "compare security budgets with industry competitor averages.",
+      "option_b": "determine if systems are operating according to policies.",
+      "option_c": "identify gaps between current and desired capability levels.",
+      "option_d": "prepare files for external security certification reviews.",
+      "correct_option": "C",
+      "explanation": "Maturity assessments identify where a security program currently stands (e.g., level 2 repeatable) compared to its targeted maturity goals (e.g., level 4 managed), guiding program improvements.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following represents the organization's overall risk posture bounds?",
+      "option_a": "The Risk Register",
+      "option_b": "The Risk Profile",
+      "option_c": "The Incident Log",
+      "option_d": "The Asset Inventory",
+      "correct_option": "B",
+      "explanation": "A Risk Profile summarizes the collective risk exposures, threats, and vulnerability bounds across the entire organization, defining its current posture.",
+      "domain": 1
+    },
+    {
+      "question": "Security strategies must prioritize resource management to ensure that:",
+      "option_a": "the cheapest security vendors are always selected.",
+      "option_b": "personnel resources are utilized where business risk is highest.",
+      "option_c": "technical controls are updated daily without audits.",
+      "option_d": "the CISO manages all system admin tasks directly.",
+      "correct_option": "B",
+      "explanation": "Resource management optimizes the allocation of staff, budgets, and tools to mitigate the most critical business risk exposures first, delivering optimal value.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following is the BEST way to ensure security compliance during vendor onboarding?",
+      "option_a": "Reviewing vendor website marketing statements",
+      "option_b": "Requiring security requirements in vendor contracts",
+      "option_c": "Running external network vulnerability scans on the vendor",
+      "option_d": "Training the vendor staff directly on corporate policies",
+      "correct_option": "B",
+      "explanation": "Contracts are legally binding. Incorporating specific security mandates and right-to-audit clauses in contracts ensures the vendor is held accountable for compliance.",
+      "domain": 1
+    },
+    {
+      "question": "The CISO wants to publish a new policy. What is the most critical approval needed?",
+      "option_a": "System administrator consensus",
+      "option_b": "Executive management or Board authorization",
+      "option_c": "External compliance auditor validation",
+      "option_d": "Internal HR department approval",
+      "correct_option": "B",
+      "explanation": "Policies express management's intent. To carry authority and ensure compliance, they must be formally approved by senior executive leadership or the board.",
+      "domain": 1
+    },
+    {
+      "question": "A balanced scorecard is used in security governance primarily to:",
+      "option_a": "calculate quantitative risk ALE values.",
+      "option_b": "measure program performance across multiple perspectives.",
+      "option_c": "verify server firewall configurations.",
+      "option_d": "audit database backup schedules.",
+      "correct_option": "B",
+      "explanation": "The Balanced Scorecard evaluates the security program across multiple metrics (financial, customer/business, internal processes, learning/growth) to ensure balanced performance.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following represents 'Due Care'?",
+      "option_a": "Researching vendor backgrounds before signing an agreement",
+      "option_b": "Acting responsibly to protect company assets and prevent harm",
+      "option_c": "Defining the CISO charter document roles",
+      "option_d": "Conducting monthly vulnerability audits on servers",
+      "correct_option": "B",
+      "explanation": "Due Care is taking responsible actions (doing what a reasonable person would do) to protect assets. Due Diligence is the background research and analysis done beforehand.",
+      "domain": 1
+    },
+    {
+      "question": "Information security governance is PRIMARILY concerned with:",
+      "option_a": "implementing complex encryption algorithms.",
+      "option_b": "managing firewall rule configuration scripts.",
+      "option_c": "establishing accountability, direction, and controls.",
+      "option_d": "restoring system server backups after disasters.",
+      "correct_option": "C",
+      "explanation": "Governance is about oversight. It establishes leadership structures, defines accountability, dictates strategic direction, and monitors controls to ensure alignment.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following is the most important element of an effective security culture?",
+      "option_a": "Strict disciplinary action for policy infractions",
+      "option_b": "Security awareness and active participation from all staff",
+      "option_c": "Using AI firewall monitors for network sweeps",
+      "option_d": "Having zero policies to avoid employee confusion",
+      "correct_option": "B",
+      "explanation": "Culture is driven by people. Active awareness, vigilance, and reporting habits across all staff levels create a strong security culture that technical controls cannot replace.",
+      "domain": 1
+    },
+    {
+      "question": "A security guideline is different from a security standard because guidelines are:",
+      "option_a": "never written down.",
+      "option_b": "non-mandatory recommendations.",
+      "option_c": "legally binding in court.",
+      "option_d": "technical configuration values.",
+      "correct_option": "B",
+      "explanation": "Standards are mandatory rules. Guidelines are recommended, flexible best practices designed to assist users in applying policies.",
+      "domain": 1
+    },
+    {
+      "question": "Which organizational stakeholder is responsible for prioritizing business unit security funding?",
+      "option_a": "The Lead Security Technician",
+      "option_b": "The Information Security Steering Committee",
+      "option_c": "The External Compliance Auditor",
+      "option_d": "The Database Administrator",
+      "correct_option": "B",
+      "explanation": "The Steering Committee (representing key business unit leaders) oversees, directs, and prioritizes resource allocation and budget funding for security initiatives.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following represents the relationship: Risk = Threat * Vulnerability * Impact?",
+      "option_a": "Quantitative Risk Matrix",
+      "option_b": "Risk Definition Formula",
+      "option_c": "ALE Calculation Matrix",
+      "option_d": "BIA Timeline Formula",
+      "correct_option": "B",
+      "explanation": "Risk requires a threat, a vulnerability that can be exploited, and a resulting negative impact. If any of these values is zero, the risk is zero.",
       "domain": 2
+    },
+    {
+      "question": "An organization is willing to accept up to $50,000 in monthly fraud losses. This represents its:",
+      "option_a": "Risk Capacity.",
+      "option_b": "Risk Appetite.",
+      "option_c": "Inherent Risk.",
+      "option_d": "Residual Risk.",
+      "correct_option": "B",
+      "explanation": "Risk Appetite is the high-level amount of risk an organization is willing to accept to run its business operations and meet its targets.",
+      "domain": 2
+    },
+    {
+      "question": "Risk capacity is different from risk appetite because risk capacity defines:",
+      "option_a": "the ideal level of risk management wanted.",
+      "option_b": "the absolute maximum risk exposure the organization can survive.",
+      "option_c": "the cost of purchasing commercial insurance.",
+      "option_d": "the total number of files on server hard drives.",
+      "correct_option": "B",
+      "explanation": "Risk capacity is the physical/financial limit of risk survival. Risk appetite is the level of risk management is *willing* to accept. Appetite should always be lower than capacity.",
+      "domain": 2
+    },
+    {
+      "question": "A qualitative risk assessment is BEST suited for which of the following scenarios?",
+      "option_a": "Calculating the precise ROI of a new firewall purchase",
+      "option_b": "Assessing risk when historical financial loss data is unavailable",
+      "option_c": "Determining exact insurance premium payouts",
+      "option_d": "Reviewing system database column size requirements",
+      "correct_option": "B",
+      "explanation": "Qualitative assessments use scales (High/Med/Low) and expert judgment, making them ideal when precise financial stats or threat frequency data is unavailable.",
+      "domain": 2
+    },
+    {
+      "question": "Single Loss Expectancy (SLE) is calculated using which of the following formulas?",
+      "option_a": "Asset Value * Exposure Factor",
+      "option_b": "Asset Value * ARO",
+      "option_c": "ALE * Exposure Factor",
+      "option_d": "Impact * Likelihood",
+      "correct_option": "A",
+      "explanation": "SLE is the monetary loss expected from a single threat exploit event. Formula: Asset Value ($) * Exposure Factor (% of loss).",
+      "domain": 2
+    },
+    {
+      "question": "An organization's primary e-commerce server is valued at $100,000. A DDoS attack would result in a 20% Exposure Factor. The attack occurs 5 times a year. What is the ALE?",
+      "option_a": "$20,000",
+      "option_b": "$100,000",
+      "option_c": "$10,000",
+      "option_d": "$500,000",
+      "correct_option": "B",
+      "explanation": "SLE = $100,000 * 0.20 = $20,000. ARO = 5. ALE = SLE * ARO = $20,000 * 5 = $100,000.",
+      "domain": 2
+    },
+    {
+      "question": "If an organization decides to purchase a cyber insurance policy to handle potential breach costs, the risk strategy is:",
+      "option_a": "Mitigation.",
+      "option_b": "Avoidance.",
+      "option_c": "Transfer.",
+      "option_d": "Acceptance.",
+      "correct_option": "C",
+      "explanation": "Purchasing insurance transfers the financial burden of the risk to a third party (the insurer), which represents a Risk Transfer strategy.",
+      "domain": 2
+    },
+    {
+      "question": "To completely eliminate the risk of online transaction fraud, a CISO recommends shutting down the online store. This risk response is:",
+      "option_a": "Mitigation.",
+      "option_b": "Avoidance.",
+      "option_c": "Transfer.",
+      "option_d": "Acceptance.",
+      "correct_option": "B",
+      "explanation": "Risk Avoidance is ceasing the activity that introduces the risk, completely eliminating the exposure (along with the business opportunity).",
+      "domain": 2
+    },
+    {
+      "question": "Residual risk represents the level of risk:",
+      "option_a": "present before any security controls are implemented.",
+      "option_b": "remaining after risk response controls are active.",
+      "option_c": "transferred to the insurance company.",
+      "option_d": "that cannot be quantified by risk analysts.",
+      "correct_option": "B",
+      "explanation": "Residual risk is the left-over risk exposure that remains after implementing controls (Mitigation). Formula: Inherent Risk - Control Impact = Residual Risk.",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following is the PRIMARY source of information for defining system RTO and RPO values?",
+      "option_a": "Vulnerability scanning reports",
+      "option_b": "A Business Impact Analysis (BIA)",
+      "option_c": "Firewall configuration logs",
+      "option_d": "The CISO charter document",
+      "correct_option": "B",
+      "explanation": "The BIA determines the criticality, downtime tolerances (MTD), and recovery time metrics (RTO, RPO) based on business requirements and process dependencies.",
+      "domain": 2
+    },
+    {
+      "question": "What does a Recovery Point Objective (RPO) of 4 hours indicate?",
+      "option_a": "Systems must be restored within 4 hours of a disaster",
+      "option_b": "No more than 4 hours of data transactions can be lost",
+      "option_c": "The BCP exercise must run for at least 4 hours",
+      "option_d": "Backups must be verified every 4 hours",
+      "correct_option": "B",
+      "explanation": "RPO defines the maximum acceptable data loss measured in time. An RPO of 4 hours means backups must be taken at least every 4 hours so no more than 4 hours of data is lost.",
+      "domain": 2
+    },
+    {
+      "question": "Recovery Time Objective (RTO) represents the target time to:",
+      "option_a": "rebuild the primary data center facility.",
+      "option_b": "restore a system or process to normal operations after a failure.",
+      "option_c": "notify customers of an active security incident.",
+      "option_d": "archive audit log files to tape storage.",
+      "correct_option": "B",
+      "explanation": "RTO is the target recovery time frame. Systems must be restored back online inside the RTO to avoid exceeding the Maximum Tolerable Downtime (MTD).",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following is a central document tracking risk assessments, owners, and remediation plans?",
+      "option_a": "Security Policy",
+      "option_b": "Risk Register",
+      "option_c": "Incident Log",
+      "option_d": "SLA Agreement",
+      "correct_option": "B",
+      "explanation": "The Risk Register is the master document recording identified risks, assessment values, ownership, selected response strategies, and status updates.",
+      "domain": 2
+    },
+    {
+      "question": "A vulnerability is different from a threat because vulnerabilities are:",
+      "option_a": "external events beyond control.",
+      "option_b": "weaknesses inherent in system designs or processes.",
+      "option_c": "always caused by malicious software.",
+      "option_d": "the financial costs of threat occurrences.",
+      "correct_option": "B",
+      "explanation": "Vulnerabilities are internal weaknesses (such as missing patches or lack of training). Threats are external events or actors (such as hackers or storms) that exploit weaknesses.",
+      "domain": 2
+    },
+    {
+      "question": "What is the main driver for performing regular threat modeling?",
+      "option_a": "To satisfy server hardware warranty requirements",
+      "option_b": "To identify potential entry points and threat vectors systematically",
+      "option_c": "To calculate quantitative SLE values",
+      "option_d": "To ensure compliance with local zoning laws",
+      "correct_option": "B",
+      "explanation": "Threat modeling identifies threats, attack paths, and threat vectors against an application or network, enabling developers to build appropriate defenses.",
+      "domain": 2
+    },
+    {
+      "question": "The risk that a security scanning tool fails to detect a known database patch exploit is:",
+      "option_a": "Control Risk.",
+      "option_b": "Inherent Risk.",
+      "option_c": "Detection Risk.",
+      "option_d": "Residual Risk.",
+      "correct_option": "C",
+      "explanation": "Detection Risk is the probability that monitoring, scans, or audits will fail to identify a vulnerability or security issue.",
+      "domain": 2
+    },
+    {
+      "question": "When assessing the risk of vendor outsourcing, what is the MOST critical check?",
+      "option_a": "Assessing the vendor's financial credit history",
+      "option_b": "Evaluating the vendor's security control environment",
+      "option_c": "Reviewing the vendor's office layout",
+      "option_d": "Comparing vendor pricing structures",
+      "correct_option": "B",
+      "explanation": "Evaluating the vendor's security controls (e.g., SOC 2 audit reports) ensures they can protect the organization's shared data assets, mitigating third-party risk.",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following is the primary objective of Risk Management?",
+      "option_a": "Completely eliminating all organizational risks",
+      "option_b": "Reducing risk to a level acceptable to management (within appetite)",
+      "option_c": "Buying insurance policies for every database server",
+      "option_d": "Minimizing the security department's operating budget",
+      "correct_option": "B",
+      "explanation": "Risk cannot be entirely eliminated. The objective of risk management is to assess risks and mitigate them down to a level that executive management accepts (residual risk < risk appetite).",
+      "domain": 2
+    },
+    {
+      "question": "A BIA reveals that a critical accounting function has an MTD of 24 hours. The RTO should be set to:",
+      "option_a": "exactly 24 hours.",
+      "option_b": "less than 24 hours.",
+      "option_c": "greater than 24 hours.",
+      "option_d": "RTO is unrelated to MTD.",
+      "correct_option": "B",
+      "explanation": "RTO must be less than MTD. If systems take longer than the MTD to restore, the business will face severe, potentially fatal consequences.",
+      "domain": 2
+    },
+    {
+      "question": "Who is the most appropriate stakeholder to approve risk acceptance decisions?",
+      "option_a": "The Lead Security Technician",
+      "option_b": "The Business Risk Owner",
+      "option_c": "The External Compliance Auditor",
+      "option_d": "The CISO",
+      "correct_option": "B",
+      "explanation": "Risk acceptance decisions must be made by the business risk owner (senior management accountable for the business process), as they carry the liability for potential losses.",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following is the PRIMARY purpose of implementing a defense-in-depth strategy?",
+      "option_a": "To satisfy complex regulatory compliance checklists",
+      "option_b": "To ensure that if one security control fails, others protect the asset",
+      "option_c": "To minimize the annual cost of purchasing firewall equipment",
+      "option_d": "To encrypt all files on hard drives automatically",
+      "correct_option": "B",
+      "explanation": "Defense-in-depth implements layered, redundant controls (preventive, detective, corrective) to protect an asset. If a single control is compromised, subsequent layers prevent a complete compromise.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following controls is the BEST example of a preventive control?",
+      "option_a": "Reviewing system database access logs weekly",
+      "option_b": "Installing a biometric lock on the server room door",
+      "option_c": "Restoring virtual machines from offline backup files",
+      "option_d": "Configuring email alerts for failed login attempts",
+      "correct_option": "B",
+      "explanation": "A biometric lock physically blocks unauthorized users from entry, making it a preventive control. Log reviews and alerts are detective, while backup restores are corrective.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following controls is the BEST example of a detective control?",
+      "option_a": "Restricting database column access via role permissions",
+      "option_b": "Reviewing audit logs for unauthorized configuration modifications",
+      "option_c": "Running automatic software virus quarantine engines",
+      "option_d": "Encrypting customer password files in databases",
+      "correct_option": "B",
+      "explanation": "Reviewing audit logs detects violations or modifications after they have occurred. Permissions and encryption are preventive, while quarantine engines are corrective/preventive.",
+      "domain": 3
+    },
+    {
+      "question": "An organization implements a secondary firewall because the primary firewall cannot support encryption rules. The secondary firewall is considered a:",
+      "option_a": "Preventive Control.",
+      "option_b": "Compensating Control.",
+      "option_c": "Administrative Control.",
+      "option_d": "Corrective Control.",
+      "correct_option": "B",
+      "explanation": "A compensating control is an alternative measure implemented when a primary control is not feasible or fails to meet the required security standard.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following is the MOST important factor when designing a security awareness program?",
+      "option_a": "Using the same training slides for all employee roles",
+      "option_b": "Tailoring the training content to specific target audiences",
+      "option_c": "Minimizing the length of training sessions to under 5 minutes",
+      "option_d": "Focusing training purely on complex cryptography math",
+      "correct_option": "B",
+      "explanation": "Awareness training is most effective when customized for target audiences (e.g., developers need secure coding training, executives need spear-phishing alerts, general staff need basic password safety).",
+      "domain": 3
+    },
+    {
+      "question": "The CISO wants to ensure that developers are writing secure code. Which of the following should be integrated into the SDLC?",
+      "option_a": "Annual compliance audits after software releases",
+      "option_b": "Static and dynamic application security testing (SAST and DAST)",
+      "option_c": "External database backup verification checks",
+      "option_d": "Restricting code editor folder access to local Admins",
+      "correct_option": "B",
+      "explanation": "SAST (reviewing code patterns) and DAST (testing running applications) are secure coding checks that locate flaws early in the SDLC, enabling developers to remediate before release.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following access control models restricts privileges based on attributes of the user, resource, and environment?",
+      "option_a": "Role-Based Access Control (RBAC)",
+      "option_b": "Attribute-Based Access Control (ABAC)",
+      "option_c": "Mandatory Access Control (MAC)",
+      "option_d": "Discretionary Access Control (DAC)",
+      "correct_option": "B",
+      "explanation": "ABAC evaluates attributes (user department, resource classification, environmental factors like time or location) to make access decisions, providing extreme flexibility.",
+      "domain": 3
+    },
+    {
+      "question": "What is the primary objective of a Change Control Board (CCB)?",
+      "option_a": "To write system patch code directly for administrators",
+      "option_b": "To evaluate, schedule, and approve system changes to minimize business disruption",
+      "option_c": "To audit database entries for regulatory compliance",
+      "option_d": "To manage the security awareness program materials",
+      "correct_option": "B",
+      "explanation": "The CCB reviews requested changes to assess operational risk, coordinate resource schedules, and ensure rollback plans exist, preventing unexpected outages.",
+      "domain": 3
+    },
+    {
+      "question": "Which cryptographic method provides non-repudiation in electronic transactions?",
+      "option_a": "Symmetric AES encryption",
+      "option_b": "Digital signatures using public key cryptography",
+      "option_c": "Hashing the transaction logs with SHA-256",
+      "option_d": "Salting passwords in database files",
+      "correct_option": "B",
+      "explanation": "Non-repudiation prevents a sender from denying they sent a message. It is achieved via digital signatures, where the sender encrypts a hash using their unique private key.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following is the primary risk of using symmetric encryption for global data exchanges?",
+      "option_a": "High computational overhead compared to asymmetric math",
+      "option_b": "Secure distribution of the shared secret key to all parties",
+      "option_c": "Lack of support for standard security algorithms",
+      "option_d": "Slow data encryption speed for large files",
+      "correct_option": "B",
+      "explanation": "Symmetric encryption uses the same key for encrypting and decrypting. If the key must be shared globally, securely distributing and protecting the key is the primary challenge.",
+      "domain": 3
+    },
+    {
+      "question": "An organization wants to centralize log collection and correlate events across servers. The CISO should recommend:",
+      "option_a": "a local Intrusion Detection System (IDS).",
+      "option_b": "a Security Information and Event Management (SIEM) system.",
+      "option_c": "an Endpoint Detection and Response (EDR) agent.",
+      "option_d": "a Cloud Access Security Broker (CASB).",
+      "correct_option": "B",
+      "explanation": "SIEM systems aggregate log files from multiple hosts, correlate events in real time, and generate alerts, providing a unified security monitoring console.",
+      "domain": 3
+    },
+    {
+      "question": "What is the main advantage of network segmentation in corporate networks?",
+      "option_a": "Increasing network bandwidth speed for public sites",
+      "option_b": "Restricting lateral movement of attackers if a breach occurs",
+      "option_c": "Ensuring database backup compliance",
+      "option_d": "Simplifying external audit inspections",
+      "correct_option": "B",
+      "explanation": "By dividing the network into isolated subnets, an attacker who compromises a single endpoint cannot easily access critical databases or server networks, limiting breach scope.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following is the primary responsibility of a Certificate Authority (CA) in a PKI framework?",
+      "option_a": "Encrypting local server hard drives",
+      "option_b": "Verifying identities and issuing digital certificates",
+      "option_c": "Filtering external network port scans",
+      "option_d": "Writing security awareness training guides",
+      "correct_option": "B",
+      "explanation": "The CA is a trusted entity that validates the identity of certificate requestors and signs digital certificates to bind those identities to public keys.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following is the BEST way to mitigate the risk of Shadow IT?",
+      "option_a": "Enacting severe disciplinary actions for any software download",
+      "option_b": "Implementing Cloud Access Security Brokers (CASBs) and educating users",
+      "option_c": "Shutting down the company Internet access completely",
+      "option_d": "Permitting all software downloads without reviews",
+      "correct_option": "B",
+      "explanation": "Shadow IT is often used because corporate tools don't meet user needs. Monitoring via CASB provides visibility, while educating users aligns them with safe procurement channels.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following concepts refers to the security state where a user's privileges are validated continuously before accessing any resource?",
+      "option_a": "Defense-in-depth",
+      "option_b": "Zero Trust Architecture",
+      "option_c": "Symmetric cryptography",
+      "option_d": "Role-Based Access Control",
+      "correct_option": "B",
+      "explanation": "Zero Trust operates on the principle 'never trust, always verify,' requiring continuous authentication and validation of users and devices for all resource requests.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following is the MOST important factor when reviewing patch management performance?",
+      "option_a": "The total volume of patches released by vendors",
+      "option_b": "The time elapsed between patch release and system installation",
+      "option_c": "The amount of server RAM saved after updates",
+      "option_d": "The cost of downloading patch files from vendor sites",
+      "correct_option": "B",
+      "explanation": "The critical metric is the 'exposure window' (time between patch release/vulnerability public disclosure and installation). Minimizing this window reduces exploit probability.",
+      "domain": 3
+    },
+    {
+      "question": "A CISO wants to ensure that database administrators cannot modify application source logs without detection. This is achieved via:",
+      "option_a": "Separation of Duties and write-once logs.",
+      "option_b": "Least Privilege permissions on columns.",
+      "option_c": "Encrypting all logs with symmetric keys.",
+      "option_d": "Using local admin passwords on database servers.",
+      "correct_option": "A",
+      "explanation": "Separation of Duties prevents a single user (even an administrator) from performing conflicting tasks, and sending logs to write-once media prevents audit tampering.",
+      "domain": 3
+    },
+    {
+      "question": "The primary objective of implementing Data Loss Prevention (DLP) software is to:",
+      "option_a": "accelerate backup restore speeds.",
+      "option_b": "detect and block unauthorized transfers of sensitive data.",
+      "option_c": "compress database transaction tables.",
+      "option_d": "prevent database column deletion errors.",
+      "correct_option": "B",
+      "explanation": "DLP inspects data in use, in transit, and at rest to identify confidential patterns (e.g., credit card numbers) and block unauthorized leaks.",
+      "domain": 3
+    },
+    {
+      "question": "What is the primary risk of using outdated cryptography algorithms like WEP or DES?",
+      "option_a": "High hardware costs for key processing",
+      "option_b": "Vulnerabilities to rapid mathematical decryption attacks",
+      "option_c": "Lack of technical vendor support",
+      "option_d": "Slow network transfer rates",
+      "correct_option": "B",
+      "explanation": "Outdated algorithms contain known cryptographic weaknesses and can be cracked in minutes by modern computing systems, providing zero protection.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following is the best way to verify control effectiveness?",
+      "option_a": "Copying control definitions from policy guidelines",
+      "option_b": "Performing regular independent testing and audits",
+      "option_c": "Having system owners self-certify compliance",
+      "option_d": "Increasing the budget of the security program",
+      "correct_option": "B",
+      "explanation": "Independent testing (such as audits, penetration tests, or vulnerability assessments) provides objective verification of control existence and operational effectiveness.",
+      "domain": 3
+    },
+    {
+      "question": "A company requires developers to use multi-factor authentication to log in to coding environments. This control is:",
+      "option_a": "Administrative.",
+      "option_b": "Technical.",
+      "option_c": "Physical.",
+      "option_d": "Compensating.",
+      "correct_option": "B",
+      "explanation": "Multi-factor authentication is a software/technical mechanism implemented on authentication gateways, making it a technical control.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following should be defined FIRST when establishing an identity management system?",
+      "option_a": "The type of biometric reader hardware to purchase",
+      "option_b": "The business requirements and access policies of the organization",
+      "option_c": "The database database schema for user profiles",
+      "option_d": "The password complexity guidelines for general staff",
+      "correct_option": "B",
+      "explanation": "All systems must be driven by business requirements. Access policies define *who* gets *what* access, which must be established before choosing technology or database schemas.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following is the most effective security control against SQL injection exploits on public web applications?",
+      "option_a": "Daily network vulnerability sweeps",
+      "option_b": "Input validation and parameterized database queries",
+      "option_c": "Restricting web port access to internal IPs",
+      "option_d": "Using symmetric encryption on web directories",
+      "correct_option": "B",
+      "explanation": "SQL injection occurs when user input is executed as database command code. Input validation and parameterized queries treat input as variables, blocking code execution exploits.",
+      "domain": 3
+    },
+    {
+      "question": "The primary role of the Change Control Board during emergency security patching is to:",
+      "option_a": "block emergency changes to prevent operational disruption.",
+      "option_b": "expedite review while ensuring minimal testing and rollbacks exist.",
+      "option_c": "write code patches for the database administrators.",
+      "option_d": "notify regulatory compliance officers of the change.",
+      "correct_option": "B",
+      "explanation": "Emergency changes cannot follow slow approval timelines, but the CCB must expedite the process while ensuring testing is performed and a back-out plan exists.",
+      "domain": 3
+    },
+    {
+      "question": "What is the primary objective of a post-implementation review of a newly installed security control?",
+      "option_a": "To confirm the control was purchased under budget",
+      "option_b": "To verify the control is operating correctly and achieving risk reduction goals",
+      "option_c": "To prepare training guides for the compliance audit team",
+      "option_d": "To write a press release detailing the new system",
+      "correct_option": "B",
+      "explanation": "A post-implementation review verifies that the control operates as designed, aligns with policies, and successfully mitigates the targeted risk exposure.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following is the MOST critical first step when establishing an incident management capability?",
+      "option_a": "Purchasing digital forensics write blocker hardware",
+      "option_b": "Defining what constitutes an incident (incident criteria)",
+      "option_c": "Setting up a 24/7 hotline with public relations",
+      "option_d": "Restoring database systems from backups",
+      "correct_option": "B",
+      "explanation": "Before you can respond to an incident, you must define the criteria for what is considered an event vs. a security incident, preventing alarm fatigue and guiding escalations.",
+      "domain": 4
+    },
+    {
+      "question": "During which phase of the incident response lifecycle is log file aggregation and triage performed?",
+      "option_a": "Preparation Phase",
+      "option_b": "Identification (Triage) Phase",
+      "option_c": "Containment Phase",
+      "option_d": "Eradication Phase",
+      "correct_option": "B",
+      "explanation": "Log reviews and triage occur during the Identification phase, where the team detects, analyzes, and confirms that a security incident is actively occurring.",
+      "domain": 4
+    },
+    {
+      "question": "An active data leak is detected on a database server. What is the priority incident response action?",
+      "option_a": "Perform a post-incident review (lessons learned)",
+      "option_b": "Contain the incident by isolating or taking the database offline",
+      "option_c": "Initiate forensic cloning of the database hard drive",
+      "option_d": "Notify the legal compliance team of a data breach",
+      "correct_option": "B",
+      "explanation": "Containment is the priority once an incident is identified. Isolating the system stops the active data leak immediately, minimizing damage.",
+      "domain": 4
+    },
+    {
+      "question": "The phase of incident response that focuses on removing malware, disabling compromised accounts, and fixing vulnerabilities is:",
+      "option_a": "Containment Phase.",
+      "option_b": "Eradication Phase.",
+      "option_c": "Recovery Phase.",
+      "option_d": "Preparation Phase.",
+      "correct_option": "B",
+      "explanation": "Eradication focuses on removing the root cause of the incident from systems, paving the way for safe recovery operations.",
+      "domain": 4
+    },
+    {
+      "question": "Which of the following is the primary objective of a Lessons Learned review meeting?",
+      "option_a": "To assign disciplinary actions to administrators",
+      "option_b": "To evaluate incident handling performance and improve future response capabilities",
+      "option_c": "To calculate the quantitative ALE of the threat event",
+      "option_d": "To write draft templates for compliance regulatory reports",
+      "correct_option": "B",
+      "explanation": "The Lessons Learned phase analyzes the incident timeline, identifies process bottlenecks or gaps, and updates policies/plans to improve future response.",
+      "domain": 4
+    },
+    {
+      "question": "A forensic analyst must clone a compromised server drive. Which tool is critical to preserve the integrity of original evidence?",
+      "option_a": "A high-speed database query engine",
+      "option_b": "A hardware write-blocker device",
+      "option_c": "An encrypted USB storage card",
+      "option_d": "A local antivirus sweep scanner",
+      "correct_option": "B",
+      "explanation": "A write-blocker blocks write commands to the original media. This ensures that copying the data does not modify file timestamps or evidence headers, maintaining integrity.",
+      "domain": 4
+    },
+    {
+      "question": "What is the primary purpose of maintaining a strict 'Chain of Custody' document?",
+      "option_a": "To satisfy internal budget review committees",
+      "option_b": "To ensure digital evidence is legally admissible in court",
+      "option_c": "To track the salary history of forensic analysts",
+      "option_d": "To document server backup tape rotation schedules",
+      "correct_option": "B",
+      "explanation": "Chain of Custody documents every person who handled, transferred, or analyzed the evidence. Without this document, the evidence can be rejected as untrustworthy in court.",
+      "domain": 4
+    },
+    {
+      "question": "An incident escalation matrix defines which of the following?",
+      "option_a": "The mathematical steps to restore database tables",
+      "option_b": "When and how to notify different management tiers or authorities based on severity",
+      "option_c": "The list of network ports blocked by firewalls",
+      "option_d": "The backup schedule frequency for host servers",
+      "correct_option": "B",
+      "explanation": "The escalation matrix maps incident severity levels (Low, Med, High, Critical) to corresponding communication flows and response timelines.",
+      "domain": 4
+    },
+    {
+      "question": "Which disaster recovery site option is best suited when database downtime tolerance is less than 30 minutes?",
+      "option_a": "A cold site",
+      "option_b": "A warm site",
+      "option_c": "A hot site",
+      "option_d": "A reciprocal agreement site",
+      "correct_option": "C",
+      "explanation": "A hot site provides active data replication and ready hardware, enabling rapid failovers in minutes. Warm and cold sites require hours or days to configure.",
+      "domain": 4
+    },
+    {
+      "question": "Which of the following BCP tests requires the highest level of coordination and introduces the most risk to business operations?",
+      "option_a": "A walkthrough review session",
+      "option_b": "A tabletop classroom exercise",
+      "option_c": "A parallel recovery test",
+      "option_d": "A full interruption cut-over test",
+      "correct_option": "D",
+      "explanation": "Full interruption tests shut down production systems to force the recovery site to take over, introducing high operational risks if recovery fails.",
+      "domain": 4
+    },
+    {
+      "question": "A tabletop exercise is primarily designed to:",
+      "option_a": "restore server databases from tape backups physically.",
+      "option_b": "simulate incidents in a classroom environment to verify stakeholder roles and plans.",
+      "option_c": "test the electrical output of redundant power supplies",
+      "option_d": "measure network transit speeds between recovery sites",
+      "correct_option": "B",
+      "explanation": "Tabletop exercises are discussion-based reviews where key stakeholders sit around a table and walk through response checklists for hypothetical scenarios, validating plan logic.",
+      "domain": 4
+    },
+    {
+      "question": "If an organization wants to test recovery site capabilities without shutting down any production databases, they should run a:",
+      "option_a": "Full Interruption test.",
+      "option_b": "Parallel test.",
+      "option_c": "Change control audit.",
+      "option_d": "Standard firewall scan.",
+      "correct_option": "B",
+      "explanation": "Parallel tests bring recovery systems online to process mock transactions in parallel with live production, verifying system capability without interrupting business operations.",
+      "domain": 4
+    },
+    {
+      "question": "A CSIRT is primarily responsible for:",
+      "option_a": "updating corporate billing directories.",
+      "option_b": "handling and coordinating response to security incidents.",
+      "option_c": "auditing financial quarterly tax statements.",
+      "option_d": "testing the strength of physical fence wires.",
+      "correct_option": "B",
+      "explanation": "The CSIRT (Computer Security Incident Response Team) is the core operational group responsible for containing, analyzing, and resolving active security breaches.",
+      "domain": 4
+    },
+    {
+      "question": "What is the primary benefit of conducting a walkthrough test of a Disaster Recovery Plan?",
+      "option_a": "Restoring systems back online in parallel configurations",
+      "option_b": "Checking plans and contact directories for accuracy at low cost and risk",
+      "option_c": "Testing the battery capacity of local UPS backups",
+      "option_d": "Obtaining final SOC 2 compliance certificates",
+      "correct_option": "B",
+      "explanation": "Walkthrough tests involve stakeholders sitting down and reading through procedures, making it a very low-cost and low-risk way to find errors, outdated contacts, or gaps in plans.",
+      "domain": 4
+    },
+    {
+      "question": "Which of the following is the most critical factor in determining the frequency of database backup operations?",
+      "option_a": "The maximum data loss tolerance (RPO)",
+      "option_b": "The target time to restore services (RTO)",
+      "option_c": "The file storage capacity of backup tape drives",
+      "option_d": "The annual rate of threat occurrence (ARO)",
+      "correct_option": "A",
+      "explanation": "RPO defines the maximum acceptable data loss. If the RPO is 8 hours, backups must occur at least every 8 hours. RTO dictates recovery speed, not backup frequency.",
+      "domain": 4
+    },
+    {
+      "question": "A ransomware attack has compromised a corporate server, but the database logs are clean. The CISO should first:",
+      "option_a": "pay the threat actors to secure decryption key templates.",
+      "option_b": "activate the Incident Response Plan to contain the server.",
+      "option_c": "delete the database logs to hide the incident details.",
+      "option_d": "notify the media of a major corporate security breach.",
+      "correct_option": "B",
+      "explanation": "When an active threat is identified, the CISO must activate the IRP immediately. Paying ransom and notifying media occur in later phases, if at all.",
+      "domain": 4
+    },
+    {
+      "question": "Which of the following recovery strategies is the most appropriate when the business has an MTD of 1 week and a limited budget?",
+      "option_a": "A fully synchronized active-active Hot Site",
+      "option_b": "A cold site with hardware procurement agreements",
+      "option_c": "A mobile recovery bus caravan",
+      "option_d": "A reciprocal agreement with another company",
+      "correct_option": "B",
+      "explanation": "An MTD of 1 week allows substantial time for recovery. A cold site is the most cost-effective solution, as it provides basic facilities while procurement agreements ensure hardware arrives on time.",
+      "domain": 4
+    },
+    {
+      "question": "During a post-incident review, a CISO discovers that incident response was delayed because team members could not access the call list. What should be done?",
+      "option_a": "Discipline the team members for not memorizing the list",
+      "option_b": "Store the call list in multiple secure, offline, and online locations",
+      "option_c": "Delete the call list to avoid future access issues",
+      "option_d": "Assign call list management to external auditors",
+      "correct_option": "B",
+      "explanation": "Incident response plans and contacts must be accessible during a crisis, even if the primary network is offline. Storing copies in secure offline/alternative locations resolves this vulnerability.",
+      "domain": 4
+    },
+    {
+      "question": "Which backup method copies only the files that have changed since the last full or incremental backup, resetting the archive bit?",
+      "option_a": "Differential Backup",
+      "option_b": "Incremental Backup",
+      "option_c": "Copy Backup",
+      "option_d": "Daily Backup",
+      "correct_option": "B",
+      "explanation": "Incremental backups copy changed files and reset the archive bit (flagging them as backed up). Differential backups copy changed files since the last full backup, without resetting the bit.",
+      "domain": 4
+    },
+    {
+      "question": "Which of the following is the most important metrics to track during a disaster recovery test?",
+      "option_a": "The quantity of coffee consumed by the team",
+      "option_b": "Actual recovery times compared to target RTO and RPO metrics",
+      "option_c": "The amount of server RAM used during restoration",
+      "option_d": "The total page count of the disaster recovery plan",
+      "correct_option": "B",
+      "explanation": "The core objective of a DR test is to prove that systems can be restored within recovery thresholds (RTO, RPO). Tracking actual vs. target times measures success.",
+      "domain": 4
+    },
+    {
+      "question": "Which of the following should be the FIRST step when conflict arises between local country privacy regulations and corporate security policies?",
+      "option_a": "Enforce the corporate policy globally without changes",
+      "option_b": "Seek guidance from legal counsel and compliance stakeholders",
+      "option_c": "Immediately modify the local server firewall parameters",
+      "option_d": "Terminate business operations in that local country",
+      "correct_option": "B",
+      "explanation": "Legal and regulatory compliance must be verified. Consulting legal counsel and compliance stakeholders helps identify the legal obligations and options to adjust policies without breaching local laws.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following is the primary objective of establishing a formal security policy exception process?",
+      "option_a": "To permit managers to bypass any controls they find inconvenient",
+      "option_b": "To ensure risks introduced by exceptions are documented, approved, and monitored",
+      "option_c": "To simplify compliance auditing for third-party examiners",
+      "option_d": "To eliminate the need for future security updates",
+      "correct_option": "B",
+      "explanation": "Exceptions are sometimes necessary for business operations. A formal process ensures that the resulting risk is assessed, approved by a business owner, documented in the risk register, and monitored.",
+      "domain": 1
+    },
+    {
+      "question": "What is the best way for a CISO to demonstrate security value to the Board of Directors?",
+      "option_a": "Provide technical charts of daily spam mail blocks",
+      "option_b": "Present a dashboard showing security alignment with business risk and goals",
+      "option_c": "Show the number of security awareness sessions held",
+      "option_d": "List the total files currently stored on backups",
+      "correct_option": "B",
+      "explanation": "The board focuses on strategic alignment and risk. Showing how security mitigates business risk and supports operational objectives demonstrates actual value.",
+      "domain": 1
+    },
+    {
+      "question": "When defining information security metrics, which of the following is the most important criteria?",
+      "option_a": "The metric must be generated by automated software",
+      "option_b": "The metric must be actionable and relevant to business decision-making",
+      "option_c": "The metric must contain highly detailed technical parameters",
+      "option_d": "The metric must always show zero errors or breaches",
+      "correct_option": "B",
+      "explanation": "A metric is only useful if it helps stakeholders make informed decisions or take actions. Actionable relevance is the priority.",
+      "domain": 1
+    },
+    {
+      "question": "An organization is merging with a competitor. What is the CISO's most critical first task?",
+      "option_a": "Merge the firewall rules of both companies immediately",
+      "option_b": "Assess and compare the security posture and risk profiles of both entities",
+      "option_c": "Train the new employees on corporate security procedures",
+      "option_d": "Terminate the competitor's active CISO contract",
+      "correct_option": "B",
+      "explanation": "Before integrating systems, the CISO must perform due diligence to identify security gaps, different risk appetites, and potential threats inherited from the merge partner.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following frameworks is primarily focused on IT service management and operations support?",
+      "option_a": "COBIT",
+      "option_b": "ITIL",
+      "option_c": "ISO 27001",
+      "option_d": "NIST CSF",
+      "correct_option": "B",
+      "explanation": "ITIL (Information Technology Infrastructure Library) is the standard framework for IT service management (ITSM) and operations.",
+      "domain": 1
+    },
+    {
+      "question": "A CISO wants to ensure that business unit managers take ownership of their security decisions. What should be established?",
+      "option_a": "An automated system patch portal",
+      "option_b": "A formal security steering committee with business representation",
+      "option_c": "Strict penalties for any security configuration mistakes",
+      "option_d": "A centralized firewall monitoring dashboard",
+      "correct_option": "B",
+      "explanation": "A Steering Committee involving business unit leaders forces cross-functional ownership, alignment, and collaborative security decision-making.",
+      "domain": 1
+    },
+    {
+      "question": "Which of the following is the primary role of internal audits in governance?",
+      "option_a": "To implement security controls on active host servers",
+      "option_b": "To provide independent assurance of control effectiveness and policy compliance",
+      "option_c": "To draft the daily security awareness program materials",
+      "option_d": "To act as risk owners for operational business units",
+      "correct_option": "B",
+      "explanation": "Internal audit functions independently to verify that controls are operating as designed and that processes comply with corporate policies and external laws.",
+      "domain": 1
+    },
+    {
+      "question": "Information security strategy is most successful when it is updated in response to:",
+      "option_a": "weekly firewall scan updates.",
+      "option_b": "changes in corporate business strategy and external regulations.",
+      "option_c": "updates to server operating systems.",
+      "option_d": "reductions in the security program budget.",
+      "correct_option": "B",
+      "explanation": "Security must align with business strategy. If business goals or compliance regulations shift, the security strategy must adapt to support those changes.",
+      "domain": 1
+    },
+    {
+      "question": "Who should approve the organization's information security policy charter?",
+      "option_a": "The Lead System Administrator",
+      "option_b": "The Board of Directors or CEO",
+      "option_c": "The Chief Information Security Officer (CISO)",
+      "option_d": "The External Compliance Auditor",
+      "correct_option": "B",
+      "explanation": "The charter establishes the security program's authority and mandate. Board or CEO approval ensures it carries company-wide backing and authority.",
+      "domain": 1
+    },
+    {
+      "question": "A quantitative risk assessment reveals a threat event has a Single Loss Expectancy (SLE) of $50,000 and occurs once every two years. What is the ALE?",
+      "option_a": "$100,000",
+      "option_b": "$25,000",
+      "option_c": "$50,000",
+      "option_d": "$12,500",
+      "correct_option": "B",
+      "explanation": "Annual Rate of Occurrence (ARO) is 0.5 (once every 2 years). ALE = SLE * ARO = $50,000 * 0.5 = $25,000.",
+      "domain": 2
+    },
+    {
+      "question": "What is the primary objective of risk analysis?",
+      "option_a": "To implement preventive controls on all IT endpoints",
+      "option_b": "To identify threats, vulnerabilities, and quantify potential impacts to guide response decisions",
+      "option_c": "To purchase high-yield commercial insurance policies",
+      "option_d": "To satisfy external data protection regulators",
+      "correct_option": "B",
+      "explanation": "Risk analysis evaluates threat impact and probability, allowing the business to prioritize response decisions (Mitigate, Avoid, Transfer, Accept) efficiently.",
+      "domain": 2
+    },
+    {
+      "question": "An organization accepts a residual risk because the cost of mitigation ($10,000) exceeds the potential ALE ($2,000). This decision is based on:",
+      "option_a": "Qualitative Risk analysis.",
+      "option_b": "Cost-Benefit Analysis.",
+      "option_c": "Compliance requirements.",
+      "option_d": "SLA criteria.",
+      "correct_option": "B",
+      "explanation": "Cost-benefit analysis dictates that the cost of implementing a control should not exceed the value of the asset or the expected financial loss (ALE) it prevents.",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following represents the risk level before any security controls or mitigations are implemented?",
+      "option_a": "Residual Risk",
+      "option_b": "Inherent Risk",
+      "option_c": "Control Risk",
+      "option_d": "Detection Risk",
+      "correct_option": "B",
+      "explanation": "Inherent risk is the raw risk exposure present in a system or activity before taking any protective measures or controls.",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following is the most important input when defining an organization's Risk Appetite?",
+      "option_a": "The budget of the information security program",
+      "option_b": "The organization's corporate strategy and management culture",
+      "option_c": "The patch levels of database servers",
+      "option_d": "A list of vulnerabilities from a recent scan",
+      "correct_option": "B",
+      "explanation": "Risk appetite is set by executive leadership based on corporate strategy, business objectives, culture, and the financial capacity to absorb losses.",
+      "domain": 2
+    },
+    {
+      "question": "The primary difference between qualitative and quantitative risk assessment is that quantitative assessment:",
+      "option_a": "relies entirely on expert group consensus.",
+      "option_b": "uses financial metrics and numerical values.",
+      "option_c": "is much faster and cheaper to perform.",
+      "option_d": "cannot be used to satisfy compliance audits.",
+      "correct_option": "B",
+      "explanation": "Quantitative risk analysis focuses on numerical/financial metrics (SLE, ALE, ARO) to represent risk, whereas qualitative analysis uses descriptive ordinal scales.",
+      "domain": 2
+    },
+    {
+      "question": "A vulnerability scan identifies a critical exploit on a legacy system that cannot be patched without breaking the application. What is the CISO's best option?",
+      "option_a": "Ignore the scan findings to avoid breaking the application",
+      "option_b": "Implement compensating controls and document risk acceptance",
+      "option_c": "Force the immediate installation of the patch regardless of downtime",
+      "option_d": "Delete the legacy application code immediately",
+      "correct_option": "B",
+      "explanation": "Compensating controls (like isolating the legacy server behind a firewall) mitigate the threat without installing the patch, allowing the business process to run safely.",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following is a forward-looking risk management document that records exposures, severity, risk responses, and ownership?",
+      "option_a": "Security Policy",
+      "option_b": "Risk Register",
+      "option_c": "Audit Report",
+      "option_d": "Incident Log",
+      "correct_option": "B",
+      "explanation": "The Risk Register compiles all identified risks, severity metrics, owner details, selected responses, and mitigation tasks, serving as a dynamic risk tracker.",
+      "domain": 2
+    },
+    {
+      "question": "What is the primary goal of conducting a Business Impact Analysis (BIA)?",
+      "option_a": "To locate software bugs in custom web applications",
+      "option_b": "To establish recovery metrics and prioritize business processes",
+      "option_c": "To write firewall configuration policies",
+      "option_d": "To negotiate lower insurance premium rates",
+      "correct_option": "B",
+      "explanation": "The BIA identifies business process criticality, dependencies, and timelines (RTO, MTD) to guide continuity planning and recovery resource priorities.",
+      "domain": 2
+    },
+    {
+      "question": "A critical server has a Maximum Tolerable Downtime (MTD) of 4 hours. The RTO must be set to:",
+      "option_a": "exactly 4 hours.",
+      "option_b": "less than 4 hours.",
+      "option_c": "greater than 4 hours.",
+      "option_d": "RTO does not depend on MTD.",
+      "correct_option": "B",
+      "explanation": "Systems must recover (RTO) before the business suffers fatal, irreversible impact (MTD). Therefore, RTO must always be strictly less than MTD.",
+      "domain": 2
+    },
+    {
+      "question": "Which BIA metric represents the maximum acceptable age of data files that must be recovered from storage after a disruption?",
+      "option_a": "Recovery Time Objective (RTO)",
+      "option_b": "Recovery Point Objective (RPO)",
+      "option_c": "Service Delivery Objective (SDO)",
+      "option_d": "Maximum Tolerable Downtime (MTD)",
+      "correct_option": "B",
+      "explanation": "RPO is measured in time and represents the data loss threshold. It dictates the maximum age of backup files required to resume operations safely.",
+      "domain": 2
+    },
+    {
+      "question": "If an organization has a low risk appetite for database downtime, they should allocate budget to:",
+      "option_a": "purchasing multiple cybersecurity insurance policies.",
+      "option_b": "implementing high availability systems and redundant components.",
+      "option_c": "hiring more external compliance auditors.",
+      "option_d": "running weekly software patch checks.",
+      "correct_option": "B",
+      "explanation": "High availability (HA) and redundancy prevent system downtime, aligning operations with the low downtime risk tolerance.",
+      "domain": 2
+    },
+    {
+      "question": "Who holds the accountability for accepting risk when a corporate policy exception is approved?",
+      "option_a": "The Lead Developer",
+      "option_b": "The Business Risk Owner",
+      "option_c": "The Security Auditor",
+      "option_d": "The CISO",
+      "correct_option": "B",
+      "explanation": "The business risk owner (senior manager accountable for the business process) must accept the risk, as they hold the budget and carry the operational liability.",
+      "domain": 2
+    },
+    {
+      "question": "An asset inventory is critical for risk management because it is impossible to protect assets if:",
+      "option_a": "their backup schedule is not documented daily.",
+      "option_b": "the organization does not know they exist.",
+      "option_c": "they are not encrypted with symmetric keys.",
+      "option_d": "external compliance auditors do not inspect them.",
+      "correct_option": "B",
+      "explanation": "You cannot manage or protect what you don't know exists. A comprehensive asset inventory is the foundational starting point for all security mapping.",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following is the best example of a risk transfer strategy?",
+      "option_a": "Shutting down the customer web server",
+      "option_b": "Purchasing a cyber breach insurance policy",
+      "option_c": "Enabling multi-factor login checks",
+      "option_d": "Documenting risk acceptance guidelines",
+      "correct_option": "B",
+      "explanation": "Purchasing insurance transfers the financial consequences of a risk event to a third-party insurer.",
+      "domain": 2
+    },
+    {
+      "question": "Which of the following is the most important factor in securing cryptographic keys?",
+      "option_a": "The mathematical complexity of the encryption algorithm",
+      "option_b": "The security of key storage and lifecycle management",
+      "option_c": "The speed of the processor encrypting data",
+      "option_d": "The total file size of the encrypted output",
+      "correct_option": "B",
+      "explanation": "Even the strongest algorithm is useless if the encryption keys are compromised. Key management (storage, rotation, revocation, security) is the weakest point in cryptography.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following access control principles restricts user permissions to only what is necessary to complete their tasks?",
+      "option_a": "Need to Know",
+      "option_b": "Principle of Least Privilege",
+      "option_c": "Separation of Duties",
+      "option_d": "Role-Based Access Control",
+      "correct_option": "B",
+      "explanation": "The Principle of Least Privilege limits access rights for users to the bare minimum required to perform their authorized job functions, reducing vulnerability exposure.",
+      "domain": 3
+    },
+    {
+      "question": "A CISO wants to ensure that a newly built customer database is securely configured before going live. What should be performed?",
+      "option_a": "An external compliance audit review",
+      "option_b": "A vulnerability assessment and configuration audit against the security baseline",
+      "option_c": "A post-incident response planning session",
+      "option_d": "Creating a new steering committee charter",
+      "correct_option": "B",
+      "explanation": "Auditing configuration parameters against the baseline and scanning for vulnerabilities identifies weaknesses *before* system deployment, mitigating launch risks.",
+      "domain": 3
+    },
+    {
+      "question": "What is the primary objective of a security program roadmap?",
+      "option_a": "To provide step-by-step instructions for resetting server configurations",
+      "option_b": "To coordinate security projects, resources, and milestones with business goals over a multi-year timeline",
+      "option_c": "To track daily firewall blocks from external threat locations",
+      "option_d": "To detail the backup file restoration steps for technicians",
+      "correct_option": "B",
+      "explanation": "A roadmap is a strategic execution plan mapping out project priorities, budgets, resource schedules, and security capability growth milestones over time.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following is the main risk of failing to perform regular patch testing before installation?",
+      "option_a": "Failing to satisfy compliance auditors",
+      "option_b": "Operational disruptions or database server crashes caused by faulty patch updates",
+      "option_c": "Increasing the file size of database backups",
+      "option_d": "Reducing the speed of server processor computations",
+      "correct_option": "B",
+      "explanation": "Patches occasionally conflict with custom applications or database configurations. Testing updates in a staging environment verifies stability before production rollout.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following controls is best suited to prevent lateral movement of a hacker who has compromised a workstation?",
+      "option_a": "Using biometric card readers on office doors",
+      "option_b": "Implementing strict internal network segmentation and firewalls",
+      "option_c": "Increasing the frequency of daily backups",
+      "option_d": "Rewriting the corporate security policy charter",
+      "correct_option": "B",
+      "explanation": "Segmenting the network separates workstation zones from critical database/server zones, blocking lateral traffic flow if a workstation is breached.",
+      "domain": 3
+    },
+    {
+      "question": "What is the primary benefit of using a SIEM system?",
+      "option_a": "It automatically patches vulnerable server software",
+      "option_b": "It provides centralized log correlation and real-time security event alerts",
+      "option_c": "It eliminates the need for security steering committees",
+      "option_d": "It physically prevents unauthorized server room access",
+      "correct_option": "B",
+      "explanation": "SIEM aggregates event logs from routers, servers, and databases, correlates events to detect complex attack patterns, and generates alerts for SOC analysis.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following is the best way to evaluate user compliance with security policies?",
+      "option_a": "Reviewing security policy training completion percentages",
+      "option_b": "Performing regular audits and checks of actual systems and practices",
+      "option_c": "Asking employees to self-certify compliance via email",
+      "option_d": "Drafting new standards for security exceptions",
+      "correct_option": "B",
+      "explanation": "System audits and tests (e.g. clean desk checks, phishing tests) reveal real-world behavior and compliance levels, providing much better data than training completion logs.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following is the main reason for defining security baselines?",
+      "option_a": "To satisfy external PCI compliance checkers",
+      "option_b": "To establish a mandatory minimum standard of security settings across all corporate systems",
+      "option_c": "To lower the cost of purchasing software licenses",
+      "option_d": "To document the roles of audit committee members",
+      "correct_option": "B",
+      "explanation": "Baselines ensure that all systems (servers, routers, laptops) meet a minimum, consistent security threshold, preventing configuration gaps.",
+      "domain": 3
+    },
+    {
+      "question": "An organization wants to encrypt sensitive data transit across public networks. Which protocol is best?",
+      "option_a": "Symmetric AES encryption",
+      "option_b": "Transport Layer Security (TLS)",
+      "option_c": "Digital signature hashes",
+      "option_d": "Wired Equivalent Privacy (WEP)",
+      "correct_option": "B",
+      "explanation": "TLS (Transport Layer Security) is the standard cryptographic protocol designed to protect data transit over networks, securing web traffic (HTTPS) and APIs.",
+      "domain": 3
+    },
+    {
+      "question": "A critical server room contains servers with confidential data. What is the most appropriate physical security check?",
+      "option_a": "Requiring two-factor software login checks",
+      "option_b": "Deploying biometric entry locks and video surveillance cameras",
+      "option_c": "Encrypting server disk drives with symmetric keys",
+      "option_d": "Publishing physical security standards online",
+      "correct_option": "B",
+      "explanation": "Biometric locks (Preventive) and video monitoring (Detective) protect physical server spaces from unauthorized entries, matching physical security goals.",
+      "domain": 3
+    },
+    {
+      "question": "The primary role of the Change Control Board (CCB) is to protect production systems by ensuring:",
+      "option_a": "no changes are ever allowed to occur.",
+      "option_b": "changes are tested, documented, approved, and have rollback plans.",
+      "option_c": "system administrators are certified in secure coding.",
+      "option_d": "budget parameters are strictly followed during change deployments.",
+      "correct_option": "B",
+      "explanation": "The CCB ensures changes do not cause outages by validating tests, approvals, schedules, and rollback procedures, keeping systems stable.",
+      "domain": 3
+    },
+    {
+      "question": "Which of the following is the first action to take when a high-priority software vulnerability is disclosed by the vendor?",
+      "option_a": "Immediately install the patch on production databases",
+      "option_b": "Perform a risk assessment to determine the organization's exposure and vulnerability status",
+      "option_c": "Conduct a post-incident lessons learned review session",
+      "option_d": "Submit a change request to the steering committee",
+      "correct_option": "B",
+      "explanation": "Before acting, the organization must verify if they use the affected software and if the vulnerability is exploitable in their current architecture, guiding patch urgency.",
+      "domain": 3
+    },
+    {
+      "question": "What is the primary benefit of hosting regular tabletop security exercises?",
+      "option_a": "Restoring database systems physically to test backup integrity",
+      "option_b": "Validating incident response plans and confirming stakeholder roles at low cost and risk",
+      "option_c": "Measuring network throughput latency between recovery sites",
+      "option_d": "Meeting the requirements of regulatory tax audits",
+      "correct_option": "B",
+      "explanation": "Tabletop exercises walk through scenarios in discussion format. This is a highly efficient way to test response procedures, find plan errors, and train stakeholders without risk of outages.",
+      "domain": 4
+    },
+    {
+      "question": "An active ransomware breach is confirmed on a user's workstation. What is the priority incident response action?",
+      "option_a": "Notify the regulatory authorities of a data breach",
+      "option_b": "Contain the threat by isolating the workstation from the network",
+      "option_c": "Begin restoring the workstation from backup files",
+      "option_d": "Conduct a lessons learned post-incident review",
+      "correct_option": "B",
+      "explanation": "Containment is the critical immediate priority. Isolating the workstation blocks lateral movement, preventing the ransomware from encrypting server files.",
+      "domain": 4
+    },
+    {
+      "question": "Which of the following BCP tests requires shut down of primary database services to verify DR site capability?",
+      "option_a": "A walkthrough review session",
+      "option_b": "A tabletop classroom exercise",
+      "option_c": "A parallel test loop",
+      "option_d": "A full interruption cut-over test",
+      "correct_option": "D",
+      "explanation": "Full interruption tests represent the highest operational risk, as they disable production systems and force the backup facility to take over.",
+      "domain": 4
+    },
+    {
+      "question": "Which of the following represents the phase of incident response focused on identifying the root cause and removing it from systems?",
+      "option_a": "Containment Phase",
+      "option_b": "Eradication Phase",
+      "option_c": "Recovery Phase",
+      "option_d": "Lessons Learned Phase",
+      "correct_option": "B",
+      "explanation": "Eradication involves identifying and clean-removing the threat root cause (e.g. deleting malware, closing ports, disabling compromised logins) from systems.",
+      "domain": 4
+    },
+    {
+      "question": "What is the primary benefit of running a parallel BCP recovery test?",
+      "option_a": "It is the cheapest test method available",
+      "option_b": "It verifies DR site capabilities without disrupting live production services",
+      "option_c": "It satisfies all external compliance requirements instantly",
+      "option_d": "It does not require coordination with database administrators",
+      "correct_option": "B",
+      "explanation": "Parallel tests bring recovery servers online to process copies of transactions alongside live systems, verifying restoration logic without production downtime risks.",
+      "domain": 4
+    },
+    {
+      "question": "What is the primary output of the post-incident Lessons Learned phase?",
+      "option_a": "Disciplinary alerts for staff who caused the issue",
+      "option_b": "Process improvements, plan updates, and policy adjustments to prevent future recurrence",
+      "option_c": "A detailed invoice for forensic hardware tools purchased",
+      "option_d": "A press release template for marketing groups",
+      "correct_option": "B",
+      "explanation": "The Lessons Learned phase analyzes the incident handling process to improve response procedures, close security holes, and adjust future program strategy.",
+      "domain": 4
+    },
+    {
+      "question": "A forensic analyst must verify that an extracted evidence image matches the original disk. This is achieved by:",
+      "option_a": "comparing original files on screens.",
+      "option_b": "calculating and comparing cryptographic hash values (e.g. SHA-256) of both disks.",
+      "option_c": "auditing database database backup records.",
+      "option_d": "writing the files to encrypted USB cards.",
+      "correct_option": "B",
+      "explanation": "If the hash values of the original drive and the forensic clone match, it mathematically proves that the copy is identical to the original, preserving evidence integrity.",
+      "domain": 4
+    },
+    {
+      "question": "The documentation detailing every person who collected, held, transferred, or audited a piece of security evidence is:",
+      "option_a": "Incident Escalation Matrix.",
+      "option_b": "Chain of Custody.",
+      "option_c": "RACI Responsibility Chart.",
+      "option_d": "SLA Vendor Contract.",
+      "correct_option": "B",
+      "explanation": "Chain of Custody is the master tracking document for evidence control. Without a clean chain of custody, evidence can be thrown out of court.",
+      "domain": 4
+    },
+    {
+      "question": "A disaster recovery site option requiring the installation of database backups and network wiring before services can resume is:",
+      "option_a": "a Hot Site.",
+      "option_b": "a Cold Site.",
+      "option_c": "a Warm Site.",
+      "option_d": "a Mobile Bus Site.",
+      "correct_option": "C",
+      "explanation": "Warm sites have hardware pre-installed but do not contain live data replicas, requiring databases to be restored from backup storage before service activation.",
+      "domain": 4
+    },
+    {
+      "question": "Which backup strategy copies all files changed since the last full backup, without resetting the archive bit?",
+      "option_a": "Incremental Backup",
+      "option_b": "Differential Backup",
+      "option_c": "Copy Backup",
+      "option_d": "Daily Backup",
+      "correct_option": "B",
+      "explanation": "Differential backups copy changed files since the last full backup. They do not reset the archive bit, so subsequent differentials continue to copy all changes since the full backup, simplifying restores.",
+      "domain": 4
+    },
+    {
+      "question": "Which of the following metrics dictates the maximum age of backup files that must be recovered during DR operations?",
+      "option_a": "Recovery Time Objective (RTO)",
+      "option_b": "Recovery Point Objective (RPO)",
+      "option_c": "Service Delivery Objective (SDO)",
+      "option_d": "Maximum Tolerable Downtime (MTD)",
+      "correct_option": "B",
+      "explanation": "RPO defines the maximum data loss tolerance. The database backup schedule must match the RPO to ensure recovery files are newer than the data loss limit.",
+      "domain": 4
+    },
+    {
+      "question": "A CISO is designing an incident response escalation path. The matrix should be structured based on:",
+      "option_a": "the age of corporate database servers.",
+      "option_b": "incident severity levels and potential business impact.",
+      "option_c": "the salary levels of network technicians.",
+      "option_d": "external compliance audits cycles.",
+      "correct_option": "B",
+      "explanation": "Escalations must match severity. Low severity incidents are resolved by operational staff; high severity incidents (e.g. data leaks) trigger escalations to executives, legal, and PR.",
+      "domain": 4
     }
   ],
   "flashcards": [
     {
       "term": "Information Security Governance",
-      "definition": "The system by which directing and controlling security activities is aligned with organizational goals, managed through policies, and overseen by leadership.",
+      "definition": "The system by which directing and controlling security activities is aligned with organizational goals.",
       "domain": 1
     },
     {
-      "term": "Risk Appetite",
-      "definition": "The amount and type of risk that an organization is willing to pursue, retain, or take on in order to meet its strategic business objectives.",
-      "domain": 2
+      "term": "Board of Directors",
+      "definition": "The governing body with ultimate responsibility for oversight, strategic direction, and security governance.",
+      "domain": 1
     },
     {
-      "term": "Risk Tolerance",
-      "definition": "The acceptable level of variation relative to the achievement of objectives, establishing the boundaries of acceptable risk exposure.",
-      "domain": 2
+      "term": "Steering Committee",
+      "definition": "A senior management group ensuring security initiatives align with business goals and receive proper funding.",
+      "domain": 1
     },
     {
-      "term": "Recovery Time Objective (RTO)",
-      "definition": "The target period of time after a disaster or disruption within which a business process must be restored to avoid unacceptable consequences.",
-      "domain": 2
+      "term": "Information Security Strategy",
+      "definition": "A high-level plan designed to align security programs with business objectives, managing risks appropriately.",
+      "domain": 1
     },
     {
-      "term": "Recovery Point Objective (RPO)",
-      "definition": "The maximum acceptable amount of data loss measured in time, representing the age of files that must be recovered from backup storage for operations to resume.",
-      "domain": 2
+      "term": "Security Policy",
+      "definition": "A formal, high-level document expressing management's mandates, goals, and rules regarding information security.",
+      "domain": 1
     },
     {
-      "term": "Maximum Tolerable Downtime (MTD)",
-      "definition": "The absolute maximum period of time a business process can be disrupted before causing irreversible damage or operational failure.",
-      "domain": 4
+      "term": "Security Standard",
+      "definition": "Mandatory rules, actions, or configurations that implement policies and enforce consistency.",
+      "domain": 1
     },
     {
-      "term": "Business Impact Analysis (BIA)",
-      "definition": "A systematic process to evaluate the potential effects of an interruption to critical business operations, identifying dependencies and recovery time frames.",
-      "domain": 2
+      "term": "Security Guideline",
+      "definition": "Recommended practices or advice that are non-mandatory and allow for flexibility in implementation.",
+      "domain": 1
     },
     {
-      "term": "Preventive Controls",
-      "definition": "Proactive safety measures designed to prevent threats, unauthorized access, or errors from occurring in the first place (e.g., firewalls, encryption).",
-      "domain": 3
-    },
-    {
-      "term": "Detective Controls",
-      "definition": "Reactive measures designed to identify and alert security teams of anomalies, threats, or unauthorized activity after they occur (e.g., IDS, audit logs).",
-      "domain": 3
-    },
-    {
-      "term": "Corrective Controls",
-      "definition": "Controls designed to mitigate damage, remediate vulnerabilities, and restore systems back to normal operations after a compromise has occurred.",
-      "domain": 3
-    },
-    {
-      "term": "Information Security Steering Committee",
-      "definition": "A cross-functional body of senior management stakeholders that ensures security initiatives align with business goals and receive proper resource allocation.",
+      "term": "Security Procedure",
+      "definition": "Step-by-step instructions detailing exactly how a standard or policy is to be carried out.",
       "domain": 1
     },
     {
       "term": "Key Risk Indicator (KRI)",
-      "definition": "A metric that provides early warning indicators of potential high-risk exposure changes, helping management proactively adjust defensive postures.",
+      "definition": "A forward-looking metric providing early warnings of changes in risk exposure or threshold breaches.",
       "domain": 1
     },
     {
-      "term": "Service Delivery Objective (SDO)",
-      "definition": "The level of service or functionality that must be provided during the recovery phase before full operations are completely restored.",
-      "domain": 4
+      "term": "Key Performance Indicator (KPI)",
+      "definition": "A metric that measures how effectively a security process or control is operating against set targets.",
+      "domain": 1
     },
     {
-      "term": "Risk Register",
-      "definition": "A central database repository documenting identified risks, their likelihood/impact, ownership, selected response, and mitigation status.",
+      "term": "RACI Matrix",
+      "definition": "A tool used to define roles and responsibilities: Responsible, Accountable, Consulted, and Informed.",
+      "domain": 1
+    },
+    {
+      "term": "Business Case",
+      "definition": "A justification document outlining business benefits, costs, risks, and ROI for a proposed security project.",
+      "domain": 1
+    },
+    {
+      "term": "Due Diligence",
+      "definition": "The research and analysis performed to identify risk before entering into an agreement or business decision.",
+      "domain": 1
+    },
+    {
+      "term": "Due Care",
+      "definition": "Taking reasonable steps and protective actions to prevent harm and protect enterprise assets (acting responsibly).",
+      "domain": 1
+    },
+    {
+      "term": "Balanced Scorecard",
+      "definition": "A strategic management tool measuring performance across financial, customer, process, and learning perspectives.",
+      "domain": 1
+    },
+    {
+      "term": "COBIT Framework",
+      "definition": "An ISACA governance framework that helps align business objectives with IT governance and management goals.",
+      "domain": 1
+    },
+    {
+      "term": "Strategic Alignment",
+      "definition": "The process of ensuring that the security strategy directly supports the business strategy and operations.",
+      "domain": 1
+    },
+    {
+      "term": "Value Delivery",
+      "definition": "Ensuring that the security program optimizes investments and delivers measurable business benefits.",
+      "domain": 1
+    },
+    {
+      "term": "Risk Management Integration",
+      "definition": "Aligning risk identification and response processes with the enterprise risk management (ERM) framework.",
+      "domain": 1
+    },
+    {
+      "term": "Resource Management",
+      "definition": "Optimizing security knowledge, infrastructure, personnel, and operations efficiently.",
+      "domain": 1
+    },
+    {
+      "term": "Performance Measurement",
+      "definition": "Monitoring security program metrics (KPIs, KRIs) to evaluate control success and strategy progress.",
+      "domain": 1
+    },
+    {
+      "term": "Segregation of Duties (SoD)",
+      "definition": "Splitting critical tasks among multiple users to prevent fraud, error, or unauthorized activities.",
+      "domain": 1
+    },
+    {
+      "term": "Security Charter",
+      "definition": "A formal document granting the authority, scope, and responsibilities of the security program and CISO.",
+      "domain": 1
+    },
+    {
+      "term": "Compliance Risk",
+      "definition": "The risk of legal, financial, or reputational penalties due to failure to comply with laws or regulations.",
+      "domain": 1
+    },
+    {
+      "term": "Corporate Culture",
+      "definition": "The shared beliefs, values, and habits within an organization that dictate how security is prioritized.",
+      "domain": 1
+    },
+    {
+      "term": "Audit Committee",
+      "definition": "A subgroup of the Board that oversees financial reporting, internal audits, and external compliance audits.",
+      "domain": 1
+    },
+    {
+      "term": "SABSA Framework",
+      "definition": "A business-driven security architecture framework mapping business requirements to technical control layers.",
+      "domain": 1
+    },
+    {
+      "term": "Threat Modeling",
+      "definition": "A structured approach to identifying, prioritizing, and mitigating potential threats to an application or system.",
+      "domain": 1
+    },
+    {
+      "term": "Metric Relevance",
+      "definition": "Ensuring that security metrics are actionable, measurable, clear, and relevant to business stakeholders.",
+      "domain": 1
+    },
+    {
+      "term": "Third-Party Risk Management",
+      "definition": "The process of assessing and mitigating security risks introduced by external vendors, suppliers, and partners.",
+      "domain": 1
+    },
+    {
+      "term": "Security Baseline",
+      "definition": "A minimum set of mandatory security controls and configurations required for systems and platforms.",
+      "domain": 1
+    },
+    {
+      "term": "Enterprise Risk Profile",
+      "definition": "A high-level view of the collective risk exposures and vulnerabilities across the entire organization.",
+      "domain": 1
+    },
+    {
+      "term": "Security Maturity Assessment",
+      "definition": "Evaluating the progress and capability of a security program against a maturity model (e.g., CMMI).",
+      "domain": 1
+    },
+    {
+      "term": "Asset Valuation",
+      "definition": "Determining the financial or qualitative value of an asset to guide risk response and budget priority.",
+      "domain": 2
+    },
+    {
+      "term": "Threat",
+      "definition": "Any potential circumstance or event with the capacity to cause harm, loss, or unauthorized access to an asset.",
+      "domain": 2
+    },
+    {
+      "term": "Vulnerability",
+      "definition": "A weakness in a system, process, control, or design that can be exploited by a threat source.",
+      "domain": 2
+    },
+    {
+      "term": "Likelihood",
+      "definition": "The estimated probability or frequency of a threat successfully exploiting a vulnerability.",
+      "domain": 2
+    },
+    {
+      "term": "Impact",
+      "definition": "The magnitude of loss, damage, or disruption to business operations if a threat event successfully occurs.",
+      "domain": 2
+    },
+    {
+      "term": "Risk Appetite",
+      "definition": "The high-level amount of risk an organization is willing to accept to achieve its business objectives.",
+      "domain": 2
+    },
+    {
+      "term": "Risk Tolerance",
+      "definition": "The acceptable level of variance or deviation allowed around the defined risk appetite thresholds.",
+      "domain": 2
+    },
+    {
+      "term": "Risk Capacity",
+      "definition": "The absolute maximum level of risk exposure an organization can survive before facing bankruptcy or ruin.",
+      "domain": 2
+    },
+    {
+      "term": "Inherent Risk",
+      "definition": "The raw level of risk exposure present before any security controls or mitigation actions are applied.",
+      "domain": 2
+    },
+    {
+      "term": "Residual Risk",
+      "definition": "The remaining level of risk exposure that exists after security controls and mitigations are implemented.",
+      "domain": 2
+    },
+    {
+      "term": "Qualitative Risk Analysis",
+      "definition": "Assessing risk using descriptive scales (High, Medium, Low) based on experience, judgment, and scenarios.",
+      "domain": 2
+    },
+    {
+      "term": "Quantitative Risk Analysis",
+      "definition": "Assessing risk using numerical values, monetary units, and historical probability models (SLE, ALE).",
+      "domain": 2
+    },
+    {
+      "term": "Single Loss Expectancy (SLE)",
+      "definition": "The monetary loss expected from a single risk event. Calculated as: Asset Value * Exposure Factor.",
+      "domain": 2
+    },
+    {
+      "term": "Annual Rate of Occurrence (ARO)",
+      "definition": "The estimated number of times a specific threat event is expected to occur within a year.",
       "domain": 2
     },
     {
       "term": "Annual Loss Expectancy (ALE)",
-      "definition": "The calculated annual monetary cost of a specific risk occurrence. Calculated as: Single Loss Expectancy (SLE) * Annual Rate of Occurrence (ARO).",
+      "definition": "The estimated annual cost of a risk occurrence. Calculated as: Single Loss Expectancy (SLE) * ARO.",
       "domain": 2
+    },
+    {
+      "term": "Risk Mitigation",
+      "definition": "A risk response strategy that implements controls to reduce the likelihood or impact of a risk event.",
+      "domain": 2
+    },
+    {
+      "term": "Risk Avoidance",
+      "definition": "A risk response strategy that eliminates risk by ceasing the associated business activity or project.",
+      "domain": 2
+    },
+    {
+      "term": "Risk Transfer",
+      "definition": "A risk response strategy that shifts the financial burden of risk to an external third party (e.g., insurance).",
+      "domain": 2
+    },
+    {
+      "term": "Risk Acceptance",
+      "definition": "A risk response strategy where management acknowledges the risk but chooses to take no active mitigation action.",
+      "domain": 2
+    },
+    {
+      "term": "Business Impact Analysis (BIA)",
+      "definition": "A process to identify critical business functions and determine recovery requirements (RTO, MTD) and dependencies.",
+      "domain": 2
+    },
+    {
+      "term": "Recovery Time Objective (RTO)",
+      "definition": "The target duration of time inside which a business process must be restored after a disruption.",
+      "domain": 2
+    },
+    {
+      "term": "Recovery Point Objective (RPO)",
+      "definition": "The maximum acceptable data loss measured in time, dictating data backup frequency targets.",
+      "domain": 2
+    },
+    {
+      "term": "Maximum Tolerable Downtime (MTD)",
+      "definition": "The maximum duration a business can survive without a critical function before failing irreversibly.",
+      "domain": 2
+    },
+    {
+      "term": "Service Delivery Objective (SDO)",
+      "definition": "The minimum level of service capability that must be provided during the recovery phase.",
+      "domain": 2
+    },
+    {
+      "term": "Risk Register",
+      "definition": "A central database tracking identified risks, their assessment values, owners, and mitigation actions.",
+      "domain": 2
+    },
+    {
+      "term": "Control Risk",
+      "definition": "The risk that existing security controls will fail to prevent, detect, or correct a threat event.",
+      "domain": 2
+    },
+    {
+      "term": "Detection Risk",
+      "definition": "The risk that an audit, scan, or monitoring system will fail to identify a threat or vulnerability.",
+      "domain": 2
+    },
+    {
+      "term": "Threat Intelligence",
+      "definition": "Structured, analyzed data about emerging cyber threats, malicious actors, and software exploits.",
+      "domain": 2
+    },
+    {
+      "term": "Exposure Factor (EF)",
+      "definition": "The percentage of loss expected to an asset if a specific threat event successfully occurs.",
+      "domain": 2
+    },
+    {
+      "term": "Risk Identification",
+      "definition": "The process of discovering, recognizing, and documenting threat events and system vulnerabilities.",
+      "domain": 2
+    },
+    {
+      "term": "Risk Assessment Report",
+      "definition": "A document summarizing risk assessment findings, methodologies, risk matrices, and remediation ideas.",
+      "domain": 2
+    },
+    {
+      "term": "Vulnerability Assessment",
+      "definition": "An internal scan or audit to identify weaknesses, outdated patches, or misconfigurations.",
+      "domain": 2
+    },
+    {
+      "term": "Penetration Testing",
+      "definition": "An active, simulated security attack designed to find exploitable vulnerabilities in targets.",
+      "domain": 2
+    },
+    {
+      "term": "Business Continuity Plan (BCP)",
+      "definition": "A plan to maintain business operations during and after a significant disruption or disaster.",
+      "domain": 2
+    },
+    {
+      "term": "Disaster Recovery Plan (DRP)",
+      "definition": "A technically focused plan to restore IT systems, networks, and database services after a disaster.",
+      "domain": 2
+    },
+    {
+      "term": "Risk Owner",
+      "definition": "A senior manager accountable for making decisions regarding risk response, monitoring, and funding.",
+      "domain": 2
+    },
+    {
+      "term": "Enterprise Risk Management (ERM)",
+      "definition": "A unified framework to identify, assess, manage, and monitor risks across all business divisions.",
+      "domain": 2
+    },
+    {
+      "term": "Operational Risk",
+      "definition": "The risk of loss resulting from inadequate or failed internal processes, people, systems, or events.",
+      "domain": 2
+    },
+    {
+      "term": "Financial Risk",
+      "definition": "Risk associated with monetary loss, credit defaults, exchange rate shifts, or capital shortages.",
+      "domain": 2
+    },
+    {
+      "term": "Reputational Risk",
+      "definition": "The risk of losing customer trust, brand value, or public confidence due to a breach or incident.",
+      "domain": 2
+    },
+    {
+      "term": "Compliance Audit",
+      "definition": "An independent review to verify if system operations match specific regulatory laws or policies.",
+      "domain": 2
+    },
+    {
+      "term": "Asset Classification",
+      "definition": "Categorizing assets based on sensitivity or criticality to apply appropriate security protections.",
+      "domain": 2
+    },
+    {
+      "term": "Preventive Controls",
+      "definition": "Controls designed to proactively block unauthorized activities or threats from occurring.",
+      "domain": 3
+    },
+    {
+      "term": "Detective Controls",
+      "definition": "Controls designed to identify and record security violations, threats, or anomalies after they occur.",
+      "domain": 3
+    },
+    {
+      "term": "Corrective Controls",
+      "definition": "Controls designed to restore systems, remedy vulnerabilities, and repair damage after an incident occurs.",
+      "domain": 3
+    },
+    {
+      "term": "Compensating Controls",
+      "definition": "Alternative controls implemented to mitigate risk when standard controls are not feasible or cost-effective.",
+      "domain": 3
+    },
+    {
+      "term": "Administrative Controls",
+      "definition": "Policies, standards, training, and guidelines that dictate personnel behavior and program management.",
+      "domain": 3
+    },
+    {
+      "term": "Technical Controls",
+      "definition": "Hardware or software mechanisms designed to protect assets (e.g., firewalls, encryption, access controls).",
+      "domain": 3
+    },
+    {
+      "term": "Physical Controls",
+      "definition": "Barriers designed to protect physical environments, facilities, and hardware (e.g., locks, fences, security guards).",
+      "domain": 3
+    },
+    {
+      "term": "Defense in Depth",
+      "definition": "A security strategy implementing multiple layers of redundant controls so that if one fails, others protect the asset.",
+      "domain": 3
+    },
+    {
+      "term": "Security Program Roadmap",
+      "definition": "A project planning timeline aligning security initiatives, milestones, budgets, and capabilities over time.",
+      "domain": 3
+    },
+    {
+      "term": "Service Level Agreement (SLA)",
+      "definition": "A contract with external vendors specifying service expectations, performance metrics, and penalties.",
+      "domain": 3
+    },
+    {
+      "term": "Operational Level Agreement (OLA)",
+      "definition": "An internal agreement defining support commitments and expectations between support groups to fulfill SLAs.",
+      "domain": 3
+    },
+    {
+      "term": "Least Privilege Principle",
+      "definition": "Restricting user access rights to the absolute minimum necessary to perform their specific job functions.",
+      "domain": 3
+    },
+    {
+      "term": "Need to Know",
+      "definition": "Restricting access to specific data files or resources to users who require them for current tasks.",
+      "domain": 3
+    },
+    {
+      "term": "Identity and Access Management (IAM)",
+      "definition": "A framework managing digital identities and resource access privileges.",
+      "domain": 3
+    },
+    {
+      "term": "Multi-Factor Authentication (MFA)",
+      "definition": "Verifying identity using two or more factors: something you know, something you have, and something you are.",
+      "domain": 3
+    },
+    {
+      "term": "Role-Based Access Control (RBAC)",
+      "definition": "Restricting access privileges based on defined job roles or group memberships rather than individual identities.",
+      "domain": 3
+    },
+    {
+      "term": "Attribute-Based Access Control (ABAC)",
+      "definition": "Restricting access privileges based on attributes of the user, resource, environment, or system state.",
+      "domain": 3
+    },
+    {
+      "term": "Symmetric Encryption",
+      "definition": "An encryption method using a single shared private key for both encrypting and decrypting data.",
+      "domain": 3
+    },
+    {
+      "term": "Asymmetric Encryption",
+      "definition": "An encryption method using a mathematically linked public-private key pair (public encrypts, private decrypts).",
+      "domain": 3
+    },
+    {
+      "term": "Public Key Infrastructure (PKI)",
+      "definition": "A framework managing digital certificates, public keys, and trust systems via Certificate Authorities.",
+      "domain": 3
+    },
+    {
+      "term": "Digital Signature",
+      "definition": "A cryptographic hash signed by a sender's private key, providing integrity, authenticity, and non-repudiation.",
+      "domain": 3
+    },
+    {
+      "term": "Vulnerability Management",
+      "definition": "The continuous lifecycle of identifying, evaluating, prioritizing, remediating, and reporting system vulnerabilities.",
+      "domain": 3
+    },
+    {
+      "term": "Patch Management",
+      "definition": "The process of testing, approving, and installing software updates to fix bugs and address security vulnerabilities.",
+      "domain": 3
+    },
+    {
+      "term": "Change Control Board (CCB)",
+      "definition": "A committee of stakeholders that reviews, schedules, and approves system or architecture changes to limit disruptions.",
+      "domain": 3
+    },
+    {
+      "term": "Secure SDLC",
+      "definition": "Integrating security checks, threat modeling, code analysis, and testing throughout all phases of software development.",
+      "domain": 3
+    },
+    {
+      "term": "SAST (Static Analysis)",
+      "definition": "Security testing that reviews application source code for flaws without executing the program.",
+      "domain": 3
+    },
+    {
+      "term": "DAST (Dynamic Analysis)",
+      "definition": "Security testing that evaluates an application for vulnerabilities while it is actively running.",
+      "domain": 3
+    },
+    {
+      "term": "Attack Surface",
+      "definition": "The sum total of all entry points and interfaces that an attacker could attempt to exploit.",
+      "domain": 3
+    },
+    {
+      "term": "Demilitarized Zone (DMZ)",
+      "definition": "A subnetwork separating internal networks from external networks (e.g., hosting public web servers).",
+      "domain": 3
+    },
+    {
+      "term": "Intrusion Detection System (IDS)",
+      "definition": "A device or software application that monitors networks or systems for malicious activity or policy violations.",
+      "domain": 3
+    },
+    {
+      "term": "Intrusion Prevention System (IPS)",
+      "definition": "An active network security device that detects, alerts, and blocks malicious traffic or attacks in real time.",
+      "domain": 3
+    },
+    {
+      "term": "SIEM System",
+      "definition": "A security platform providing centralized log aggregation, real-time alert analysis, correlation, and compliance reporting.",
+      "domain": 3
+    },
+    {
+      "term": "Endpoint Detection & Response (EDR)",
+      "definition": "An agent-based technology that monitors endpoints (laptops, servers) to detect, investigate, and block threats.",
+      "domain": 3
+    },
+    {
+      "term": "Threat Vector",
+      "definition": "The path or method a threat source uses to gain access to a system or cause harm (e.g., email, USB, web link).",
+      "domain": 3
+    },
+    {
+      "term": "Social Engineering",
+      "definition": "The psychological manipulation of people to trick them into performing actions or revealing sensitive credentials.",
+      "domain": 3
+    },
+    {
+      "term": "Phishing Simulation",
+      "definition": "Controlled mock phishing campaigns designed to test employee awareness and measure reporting habits.",
+      "domain": 3
+    },
+    {
+      "term": "Controls Assessment",
+      "definition": "The systematic evaluation of security controls to determine if they are implemented correctly and operating as intended.",
+      "domain": 3
+    },
+    {
+      "term": "Data Loss Prevention (DLP)",
+      "definition": "A software solution that inspects, detects, and blocks sensitive data from leaving the corporate network boundaries.",
+      "domain": 3
+    },
+    {
+      "term": "Zero Trust Architecture",
+      "definition": "A security model centered on the premise that no user or device is trusted by default, requiring continuous verification.",
+      "domain": 3
+    },
+    {
+      "term": "Shadow IT",
+      "definition": "IT systems, hardware, or cloud software deployed inside an organization without explicit approval or oversight from the IT department.",
+      "domain": 3
+    },
+    {
+      "term": "Encryption at Rest",
+      "definition": "Applying cryptographic protections to data stored in physical storage devices (HDDs, SSDs, backups).",
+      "domain": 3
+    },
+    {
+      "term": "Encryption in Transit",
+      "definition": "Applying cryptographic protections to data traveling across public or private networks (e.g., HTTPS, TLS).",
+      "domain": 3
+    },
+    {
+      "term": "Cloud Access Security Broker (CASB)",
+      "definition": "A tool placed between cloud service users and cloud applications to enforce corporate security policies.",
+      "domain": 3
+    },
+    {
+      "term": "Network Segmentation",
+      "definition": "Dividing a network into isolated smaller segments (subnets) to restrict lateral movement of threat actors.",
+      "domain": 3
+    },
+    {
+      "term": "Configuration Management Database (CMDB)",
+      "definition": "A database storing configuration items, profiles, and relationships between IT systems and services.",
+      "domain": 3
+    },
+    {
+      "term": "Incident Response Plan (IRP)",
+      "definition": "A formal, step-by-step document directing security teams on how to detect, contain, and recover from security incidents.",
+      "domain": 4
+    },
+    {
+      "term": "Incident Response Team (IRT)",
+      "definition": "A cross-functional group of security, IT, legal, and PR experts trained to execute the Incident Response Plan.",
+      "domain": 4
+    },
+    {
+      "term": "Incident Classification",
+      "definition": "Categorizing security events by type, scope, and impact (severity) to guide escalation pathways.",
+      "domain": 4
+    },
+    {
+      "term": "Triage (Identification Phase)",
+      "definition": "The initial assessment of a suspected security event to determine its validity, impact, and severity.",
+      "domain": 4
+    },
+    {
+      "term": "Containment",
+      "definition": "The phase of incident response focused on stopping the spread of an active attack and limiting damages.",
+      "domain": 4
+    },
+    {
+      "term": "Eradication",
+      "definition": "The phase of incident response focused on identifying and removing the root cause of an exploit (e.g., malware removal).",
+      "domain": 4
+    },
+    {
+      "term": "Recovery Phase",
+      "definition": "The phase of incident response focused on restoring systems to production and testing services for normal operation.",
+      "domain": 4
+    },
+    {
+      "term": "Lessons Learned (Post-Incident)",
+      "definition": "A mandatory review meeting after incident closure to analyze actions, identify process improvements, and update policies.",
+      "domain": 4
+    },
+    {
+      "term": "Chain of Custody",
+      "definition": "A chronological document detailing the collection, control, transfer, and analysis of physical or digital evidence.",
+      "domain": 4
+    },
+    {
+      "term": "Digital Forensics",
+      "definition": "The application of scientific methods to locate, preserve, extract, and analyze digital evidence for investigations.",
+      "domain": 4
+    },
+    {
+      "term": "Write Blocker",
+      "definition": "A hardware device or software tool that prevents write commands to storage media, preserving original evidence.",
+      "domain": 4
+    },
+    {
+      "term": "Log Retention Policy",
+      "definition": "A policy defining the duration for which system log events must be preserved for compliance and investigation.",
+      "domain": 4
+    },
+    {
+      "term": "Disaster Declaration",
+      "definition": "The formal decision made by authorized senior executives to trigger BCP/DRP recovery systems.",
+      "domain": 4
+    },
+    {
+      "term": "Hot Site",
+      "definition": "A fully equipped recovery data center with mirrored databases and systems ready to assume operations in minutes.",
+      "domain": 4
+    },
+    {
+      "term": "Warm Site",
+      "definition": "A partially equipped recovery facility with network hardware but requiring database restoring before assuming operations.",
+      "domain": 4
+    },
+    {
+      "term": "Cold Site",
+      "definition": "A basic physical facility with power and cooling, but zero pre-installed IT hardware or database connections.",
+      "domain": 4
+    },
+    {
+      "term": "Reciprocal Agreement",
+      "definition": "A mutual pact between two similar organizations to share space and hardware in the event of a disaster (low-cost but risky).",
+      "domain": 4
+    },
+    {
+      "term": "Incremental Backup",
+      "definition": "A backup strategy that copies only the files that have changed since the last backup (full or incremental).",
+      "domain": 4
+    },
+    {
+      "term": "Differential Backup",
+      "definition": "A backup strategy that copies all files that have changed since the last full backup (faster restore than incremental).",
+      "domain": 4
+    },
+    {
+      "term": "Full Backup",
+      "definition": "A backup strategy that copies all data files, databases, and system configuration records to storage media.",
+      "domain": 4
+    },
+    {
+      "term": "Redundancy",
+      "definition": "Duplicating critical system components (e.g., RAID, dual power supplies) to eliminate single points of failure.",
+      "domain": 4
+    },
+    {
+      "term": "High Availability (HA)",
+      "definition": "A design system configured to operate continuously with minimal downtime, utilizing automated failovers.",
+      "domain": 4
+    },
+    {
+      "term": "Mean Time Between Failures (MTBF)",
+      "definition": "A metric measuring the average reliability of a system component before it encounters a failure.",
+      "domain": 4
+    },
+    {
+      "term": "Mean Time to Repair (MTTR)",
+      "definition": "A metric measuring the average duration required to repair a system component and restore service.",
+      "domain": 4
+    },
+    {
+      "term": "Tabletop Exercise",
+      "definition": "A low-impact classroom test of emergency plans where stakeholders discuss response actions based on a hypothetical scenario.",
+      "domain": 4
+    },
+    {
+      "term": "Walkthrough Test",
+      "definition": "A plan test where recovery members review policies and check step-by-step procedures to identify errors.",
+      "domain": 4
+    },
+    {
+      "term": "Simulation Test",
+      "definition": "A test where recovery members execute recovery processes using mock hardware without disrupting production operations.",
+      "domain": 4
+    },
+    {
+      "term": "Parallel Test",
+      "definition": "A test where recovery systems are restored and run in parallel alongside live production systems to verify data integrity.",
+      "domain": 4
+    },
+    {
+      "term": "Full Interruption Test",
+      "definition": "A high-risk test where production systems are completely shut down to verify the disaster recovery site can assume operations.",
+      "domain": 4
+    },
+    {
+      "term": "Escalation Matrix",
+      "definition": "A structured flowchart defining when and how to notify higher tiers of management or external authorities during an incident.",
+      "domain": 4
     }
   ]
 }

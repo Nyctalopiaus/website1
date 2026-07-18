@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Local Performance Stats
   const STORAGE_PERF_KEY = 'cism_performance_v1';
+  let currentUser = localStorage.getItem('cism_user') || 'Nycto';
   let perfData = {
     answered: 0,
     correct: 0,
@@ -95,6 +96,44 @@ document.addEventListener('DOMContentLoaded', () => {
       4: { answered: 0, correct: 0 }
     }
   };
+
+  // Migration of legacy performance data
+  const legacyPerf = localStorage.getItem(STORAGE_PERF_KEY);
+  if (legacyPerf) {
+    localStorage.setItem(`${STORAGE_PERF_KEY}_Nycto`, legacyPerf);
+    localStorage.removeItem(STORAGE_PERF_KEY);
+  }
+
+  function loadUserStats() {
+    const savedPerf = localStorage.getItem(`${STORAGE_PERF_KEY}_${currentUser}`);
+    if (savedPerf) {
+      try {
+        perfData = JSON.parse(savedPerf);
+      } catch (e) {
+        console.error('[SYSTEM] Failed to load local stats:', e);
+        resetPerfData();
+      }
+    } else {
+      resetPerfData();
+    }
+  }
+
+  function resetPerfData() {
+    perfData = {
+      answered: 0,
+      correct: 0,
+      domains: {
+        1: { answered: 0, correct: 0 },
+        2: { answered: 0, correct: 0 },
+        3: { answered: 0, correct: 0 },
+        4: { answered: 0, correct: 0 }
+      }
+    };
+  }
+
+  function saveUserStats() {
+    localStorage.setItem(`${STORAGE_PERF_KEY}_${currentUser}`, JSON.stringify(perfData));
+  }
 
   // Mock Exam Variables
   let mockQuestions = [];
@@ -150,15 +189,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Load performance data from storage
-  const savedPerf = localStorage.getItem(STORAGE_PERF_KEY);
-  if (savedPerf) {
-    try {
-      perfData = JSON.parse(savedPerf);
-    } catch (e) {
-      console.error('[SYSTEM] Failed to load local stats:', e);
-    }
+  // Bind Operator Profile Selection dropdown
+  const operatorSelector = document.getElementById('operator-selector');
+  if (operatorSelector) {
+    operatorSelector.value = currentUser;
+    operatorSelector.addEventListener('change', (e) => {
+      currentUser = e.target.value;
+      localStorage.setItem('cism_user', currentUser);
+      loadUserStats();
+      loadData();
+    });
   }
+
+  // Initial stats load
+  loadUserStats();
 
   // ==========================================
   // API FETCH & ENGINE ACTIONS
@@ -174,12 +218,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const fRes = await fetch('/api/cism/flashcards');
       if (fRes.ok) flashcards = await fRes.json();
 
-      // 3. Fetch bookmarks
-      const bRes = await fetch('/api/cism/bookmarks');
+      // 3. Fetch bookmarks scoped to current user
+      const bRes = await fetch(`/api/cism/bookmarks?user=${encodeURIComponent(currentUser)}`);
       if (bRes.ok) bookmarks = await bRes.json();
 
-      // 4. Fetch attempts
-      const aRes = await fetch('/api/cism/attempts');
+      // 4. Fetch attempts scoped to current user
+      const aRes = await fetch(`/api/cism/attempts?user=${encodeURIComponent(currentUser)}`);
       if (aRes.ok) attempts = await aRes.json();
 
       // Setup and render
@@ -219,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function savePerformance() {
-    localStorage.setItem(STORAGE_PERF_KEY, JSON.stringify(perfData));
+    saveUserStats();
     updateDashboardStats();
   }
 
@@ -326,7 +370,8 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({
             item_type: 'question',
             item_id: q.id,
-            bookmarked: !isBookmarked
+            bookmarked: !isBookmarked,
+            user: currentUser
           })
         });
 
@@ -605,7 +650,8 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({
           item_type: 'question',
           item_id: q.id,
-          bookmarked: !isBookmarked
+          bookmarked: !isBookmarked,
+          user: currentUser
         })
       });
 
@@ -648,7 +694,8 @@ document.addEventListener('DOMContentLoaded', () => {
           score: scorePct,
           correct_count: correctCount,
           total_count: totalCount,
-          duration_seconds: mockSecondsElapsed
+          duration_seconds: mockSecondsElapsed,
+          user: currentUser
         })
       });
       if (res.ok) {

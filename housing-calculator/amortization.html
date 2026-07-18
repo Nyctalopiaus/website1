@@ -17,7 +17,10 @@
       <a href="index.html" class="btn-back">← Back to Calculator</a>
       <h1 id="amort-title">Amortization Ledger</h1>
     </div>
-    <button class="btn-rates-toggle" onclick="window.print()">🖨️ Print Schedule</button>
+    <div style="display: flex; gap: 1rem;">
+      <button id="btn-export-csv" class="btn-rates-toggle">⬇️ Download CSV</button>
+      <button class="btn-rates-toggle" onclick="window.print()">🖨️ Print Schedule</button>
+    </div>
   </header>
 
   <main class="container">
@@ -68,8 +71,10 @@
           <thead>
             <tr>
               <th>Month</th>
-              <th>Total Payment</th>
+              <th>True Total (P&I + Escrow)</th>
               <th>Required P&I</th>
+              <th>Escrow (Tax/Ins/HOA)</th>
+              <th>PMI</th>
               <th>Extra Principal</th>
               <th>Interest Component</th>
               <th>Principal Component</th>
@@ -90,18 +95,34 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      // Parse Query Params
-      const params = new URLSearchParams(window.location.search);
-      const price = parseFloat(params.get('price'));
-      const down = parseFloat(params.get('down')) || 0;
-      const rate30 = parseFloat(params.get('rate30'));
-      const rate15 = parseFloat(params.get('rate15'));
-      const tax = parseFloat(params.get('tax')) || 0;
-      const ins = parseFloat(params.get('ins')) || 0;
-      const pmi = parseFloat(params.get('pmi')) || 0;
-      const hoa = parseFloat(params.get('hoa')) || 0;
-      const additional = parseFloat(params.get('additional')) || 0;
-      const term = parseInt(params.get('term')) || 30;
+      // Parse data from localStorage
+      const saved = localStorage.getItem('housing_calculator_inputs');
+      if (!saved) {
+        document.getElementById('error-card').style.display = 'block';
+        return;
+      }
+      
+      let data;
+      try {
+        data = JSON.parse(saved);
+      } catch (e) {
+        console.error('[ERROR] Failed to parse calculator inputs from localStorage:', e);
+        document.getElementById('error-card').style.display = 'block';
+        return;
+      }
+
+      const price = parseFloat(data.homePrice);
+      const down = parseFloat(data.downPaymentAmount) || 0;
+      const rate30 = parseFloat(data.interest30);
+      const rate15 = parseFloat(data.interest15);
+      const tax = parseFloat(data.taxRate) || 0;
+      const ins = parseFloat(data.homeInsurance) || 0;
+      const pmi = parseFloat(data.pmiRate) || 0;
+      const hoa = parseFloat(data.hoaFees) || 0;
+      const additional = parseFloat(data.additionalPayment) || 0;
+      const lumpSumAmt = parseFloat(data.lumpSumAmount) || 0;
+      const lumpSumFreq = parseInt(data.lumpSumFrequency) || 12;
+      const term = parseInt(data.activeTerm) || 30;
 
       // Validate required params
       if (isNaN(price)) {
@@ -136,6 +157,13 @@
         regularPi = loanAmount / originalMonths;
       }
 
+      // Escrow and PMI calculations
+      const monthlyTax = (price * (data.taxRate / 100)) / 12;
+      const monthlyIns = data.homeInsurance / 12;
+      const monthlyHoa = data.hoaFees || 0;
+      const staticEscrow = monthlyTax + monthlyIns + monthlyHoa;
+      const originalPmi = (down / price < 0.2) ? (loanAmount * (data.pmiRate / 100)) / 12 : 0;
+
       const tbody = document.getElementById('schedule-tbody');
       let balance = loanAmount;
       let totalInterest = 0;
@@ -145,12 +173,14 @@
       // Baseline Interest for comparison
       const baselineInterest = Math.max(0, (regularPi * originalMonths) - loanAmount);
 
-      while (balance > 0.01 && month < 1200) {
+       while (balance > 0.01 && month < 1200) {
         month++;
         const interestThisMonth = balance * r;
         const requiredPrincipal = Math.max(0, regularPi - interestThisMonth);
         const extraPaid = additional;
-        const totalPrincipal = requiredPrincipal + extraPaid;
+        let bonusPayment = 0;
+        if (lumpSumAmt > 0 && month % lumpSumFreq === 0) { bonusPayment = lumpSumAmt; }
+        const totalPrincipal = requiredPrincipal + extraPaid + bonusPayment;
         
         const actualPrincipalPaid = Math.min(balance, totalPrincipal);
         const actualInterestPaid = interestThisMonth;
@@ -158,18 +188,24 @@
         balance -= actualPrincipalPaid;
         totalInterest += actualInterestPaid;
 
+        // PMI drop-off check based on current equity percentage
+        const currentEquityPercent = 1 - (balance / price);
+        const activePmi = (currentEquityPercent < 0.20) ? originalPmi : 0;
+
         // Build Table Row
         const isLastRow = balance <= 0.01;
         const rowClass = isLastRow ? 'payoff-highlight' : '';
-        const displayPayment = regularPi + extraPaid;
+        const trueTotalPayment = regularPi + extraPaid + bonusPayment + staticEscrow + activePmi;
 
         htmlRows += `<tr class="${rowClass}">
           <td><strong>Month ${month}</strong></td>
-          <td>${formatCurrency(displayPayment)}</td>
+          <td>${formatCurrency(trueTotalPayment)}</td>
           <td>${formatCurrency(regularPi)}</td>
-          <td class="${extraPaid > 0 ? 'accent bold' : 'dim'}">${formatCurrency(extraPaid)}</td>
+          <td>${formatCurrency(staticEscrow)}</td>
+          <td>${formatCurrency(activePmi)}</td>
+          <td class="${(extraPaid + bonusPayment) > 0 ? 'accent bold' : 'dim'}">${formatCurrency(extraPaid + bonusPayment)}</td>
           <td class="dim">${formatCurrency(actualInterestPaid)}</td>
-          <td>${formatCurrency(actualPrincipalPaid - (isLastRow ? 0 : extraPaid))}</td>
+          <td>${formatCurrency(actualPrincipalPaid - (isLastRow ? 0 : (extraPaid + bonusPayment)))}</td>
           <td class="${isLastRow ? 'bold accent' : ''}">${formatCurrency(Math.max(0, balance))}</td>
         </tr>`;
       }
@@ -208,6 +244,38 @@
         timeStr += ` (Saved ${savedStr}!)`;
       }
       document.getElementById('sum-payoff-time').textContent = timeStr;
+
+      // 5. CSV Export Trigger
+      const btnExportCSV = document.getElementById('btn-export-csv');
+      if (btnExportCSV) {
+        btnExportCSV.addEventListener('click', () => {
+          const rows = document.querySelectorAll('#schedule-table tr');
+          let csvContent = '';
+          rows.forEach(row => {
+            const cols = row.querySelectorAll('th, td');
+            const rowData = [];
+            cols.forEach(col => {
+              let cellText = col.innerText || col.textContent || '';
+              cellText = cellText.replace(/[$,]/g, '').trim();
+              if (cellText.includes(' ') || cellText.includes('\n')) {
+                cellText = `"${cellText.replace(/"/g, '""')}"`;
+              }
+              rowData.push(cellText);
+            });
+            csvContent += rowData.join(',') + '\n';
+          });
+
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.setAttribute('href', url);
+          link.setAttribute('download', 'amortization_schedule.csv');
+          link.style.visibility = 'hidden';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        });
+      }
     });
   </script>
 </body>

@@ -13,6 +13,9 @@
   --accent-emerald-dim: rgba(16, 185, 129, 0.1);
   --accent-emerald-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
   
+  --accent-cyan: #06b6d4;
+  --accent-cyan-dim: rgba(6, 182, 212, 0.1);
+  
   /* Chart segment colors */
   --color-pi: #10b981;
   --color-tax: #3b82f6;
@@ -433,6 +436,53 @@ input[type="number"]:focus {
 }
 
 /* Donut Chart panel */
+/* Payment Breakdown + Affordability side-by-side row */
+.analysis-row-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* Within the compact half-width cards, always stack donut above legend */
+.analysis-row-grid .chart-container {
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.analysis-row-grid .svg-wrapper {
+  width: 148px;
+  height: 148px;
+}
+
+.analysis-row-grid .svg-wrapper svg {
+  width: 148px;
+  height: 148px;
+}
+
+.analysis-row-grid .chart-legend {
+  max-width: 100%;
+  width: 100%;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+@media (max-width: 768px) {
+  .analysis-row-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Burndown chart legend (inside chart-header, not the donut legend) */
+.burndown-legend {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.78rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 .chart-card {
   display: flex;
   flex-direction: column;
@@ -895,4 +945,242 @@ input[type="number"]:focus {
 
 .rates-attribution-text.visible {
   opacity: 0.7;
+}
+
+/* Amortization Burndown Chart */
+.burndown-chart-card {
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  border-radius: 0.75rem;
+}
+
+.burndown-chart-card h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-bright);
+  font-family: var(--font-display);
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-muted);
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-dot.color-balance {
+  background-color: #3182ce;
+}
+
+.legend-dot.color-interest {
+  background-color: #68d391;
+}
+
+.legend-dot.color-payment {
+  background-color: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+}
+
+.burndown-chart-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+.burndown-chart-panel {
+  border: 1px solid var(--border-color);
+  border-radius: 0.65rem;
+  padding: 0.9rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.burndown-chart-panel h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.burndown-chart-wrapper {
+  position: relative;
+  width: 100%;
+  height: 260px;
+}
+
+#burndown-svg-30,
+#burndown-svg-15 {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.chart-grid-line {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-dasharray: 4,4;
+  stroke-width: 1;
+}
+
+.chart-axis {
+  stroke: var(--border-color);
+  stroke-width: 1.5;
+}
+
+/* Ghost / baseline line */
+.chart-path-baseline {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
+  stroke-linecap: round;
+}
+
+/* Equity milestone dots */
+.chart-milestone-dot {
+  fill: rgba(15, 20, 35, 0.85);
+  stroke-width: 2;
+  cursor: pointer;
+  transition: r 0.15s ease;
+}
+
+.chart-milestone-dot:hover {
+  fill: currentColor;
+}
+
+/* Tooltip */
+.chart-tooltip-bg {
+  fill: rgba(12, 18, 38, 0.92);
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 1;
+}
+
+.chart-tooltip-label {
+  fill: #f0f4ff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: var(--font-sans);
+}
+
+.chart-tooltip-text {
+  fill: #94a3b8;
+  font-size: 0.7rem;
+  font-family: var(--font-sans);
+}
+
+.chart-path-balance {
+  fill: none;
+  stroke: #3182ce;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart-path-interest {
+  fill: none;
+  stroke: #68d391;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart-path-payment {
+  fill: none;
+  stroke: #f59e0b;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart-axis-text {
+  fill: #9ca3af;
+  font-size: 0.78rem;
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  /* burndown-chart-grid is already single column — no override needed */
+}
+
+/* Tooltip Utility */
+.label-with-tooltip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  font-weight: 700;
+  cursor: help;
+  position: relative;
+  transition: all 0.2s ease;
+}
+.tooltip-icon:hover {
+  background: var(--accent-emerald);
+  color: #000;
+}
+.tooltip-icon::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 150%;
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  width: max-content;
+  max-width: 220px;
+  background: var(--bg-card);
+  color: var(--text-bright);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  text-transform: none;
+  letter-spacing: normal;
+  text-align: center;
+  line-height: 1.4;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 100;
+  pointer-events: none;
+}
+.tooltip-icon:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
 }

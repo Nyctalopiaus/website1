@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relocation Accessibility & Trail-Proximity Scorer // GIS Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=4" />
+</head>
+<body>
+  <div class="crt-overlay"></div>
+  <div class="scanlines"></div>
+
+  <header class="header">
+    <div class="logo">
+      <a href="../" class="btn-back">← BACK TO LAB</a>
+      <span class="logo-text font-mono">ACCESSIBILITY // SCANNER // V2.8</span>
+    </div>
+    <!-- Simulated GPS Locking status info -->
+    <div class="gps-telemetry font-mono">
+      <span class="pulse-indicator"></span>
+      <span class="gps-coords" id="hdr-gps-coords">LOCATING SAT FEED...</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="dashboard-grid">
+      
+      <!-- Collapsible Instructions Panel -->
+      <section class="panel-card instructions-card">
+        <details open>
+          <summary class="font-mono text-green" style="cursor: pointer; outline: none; font-weight: 700; list-style: none;">[SYS_HELP] ACCESS_OPERATING_INSTRUCTIONS() <span class="summary-arrow"></span></summary>
+          <div class="instructions-content font-mono" style="margin-top: 1rem; font-size: 0.8rem; line-height: 1.6; color: var(--text-muted);">
+            <p style="margin-bottom: 0.5rem;">1. <strong>Adjust Priority Weights</strong>: Drag coefficients (0.0 to 1.0) to set personal preferences for cycling trails, groceries, gym access, and dining density.</p>
+            <p style="margin-bottom: 0.5rem;">2. <strong>Desired Transit Threshold</strong>: Set the max travel offset limit (2-20 mins). If travel to essential retail (grocery) exceeds this target, distance-decay penalties trigger.</p>
+            <p style="margin-bottom: 0.5rem;">3. <strong>Review Suitability Footprint</strong>: Check the multi-axis SVG Radar plot to assess the suitability footprint of your top matched neighborhood.</p>
+            <p>4. <strong>Analyze Infrastructure Table</strong>: Real-time table outlines metrics, highlighting <span class="badge badge-warn">WARNINGS</span> for low values and <span class="badge badge-error">CRITICAL</span> states if limits are violated.</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- Panel 1: Weights and Control Sliders -->
+      <section class="panel-card controls-panel">
+        <div class="panel-header">
+          <span class="panel-icon">🔧</span>
+          <h2>Weighting Parameters</h2>
+        </div>
+
+        <div class="input-group">
+          <div class="slider-header font-mono">
+            <span>Cycling & Trail Networks</span>
+            <span id="val-w-trails" class="slider-val text-green">0.7</span>
+          </div>
+          <input id="weight-trails" type="range" min="0" max="1" step="0.1" value="0.7" class="terminal-slider" />
+          <span class="slider-desc">Weighting coefficient for continuous cycling pathways & raw trail mileage.</span>
+        </div>
+
+        <div class="input-group">
+          <div class="slider-header font-mono">
+            <span>Essential Retail (Grocery)</span>
+            <span id="val-w-retail" class="slider-val text-green">0.6</span>
+          </div>
+          <input id="weight-retail" type="range" min="0" max="1" step="0.1" value="0.6" class="terminal-slider" />
+          <span class="slider-desc">Weighting coefficient for daily food access infrastructure proximity.</span>
+        </div>
+
+        <div class="input-group">
+          <div class="slider-header font-mono">
+            <span>Fitness & Athletics</span>
+            <span id="val-w-fitness" class="slider-val text-green">0.4</span>
+          </div>
+          <input id="weight-fitness" type="range" min="0" max="1" step="0.1" value="0.4" class="terminal-slider" />
+          <span class="slider-desc">Weighting coefficient for active gym counts and training facilities.</span>
+        </div>
+
+        <div class="input-group">
+          <div class="slider-header font-mono">
+            <span>Culinary Diversity Index</span>
+            <span id="val-w-culinary" class="slider-val text-green">0.5</span>
+          </div>
+          <input id="weight-culinary" type="range" min="0" max="1" step="0.1" value="0.5" class="terminal-slider" />
+          <span class="slider-desc">Weighting coefficient for high-variety dining (e.g. Thai & Vietnamese density).</span>
+        </div>
+
+        <div class="input-group border-top-divider">
+          <div class="slider-header font-mono">
+            <span>Maximum Desired Transit Radius</span>
+            <span id="val-transit-radius" class="slider-val text-orange">10 min</span>
+          </div>
+          <input id="transit-radius" type="range" min="2" max="20" step="1" value="10" class="terminal-slider slider-orange" />
+          <span class="slider-desc">Maximum acceptable travel offset. Penalizes neighborhood scores dynamically.</span>
+        </div>
+      </section>
+
+      <!-- Panel 2: Telemetry Display (Radar Chart & Top Neighborhood) -->
+      <section class="panel-card stats-panel">
+        <div class="panel-header">
+          <span class="panel-icon">🛰️</span>
+          <h2>Spatial Footprint Profile</h2>
+        </div>
+
+        <div class="radar-container">
+          <div class="radar-chart-wrapper">
+            <svg id="radar-svg" viewBox="0 0 300 300" preserveAspectRatio="none">
+              <!-- Render dynamic radar graph vectors -->
+            </svg>
+          </div>
+          
+          <div class="top-neighborhood-card font-mono">
+            <span class="card-label">TOP COMPATIBILITY MATCH:</span>
+            <h3 id="top-neighborhood-name">LOADING MATCH...</h3>
+            <div class="card-score-box">
+              <span id="top-neighborhood-score" class="score-val">00</span>
+              <span class="score-label">MATCH INDEX</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel 3: Coordinate scanning matrix -->
+      <section class="panel-card scanner-panel">
+        <div class="panel-header">
+          <span class="panel-icon">💻</span>
+          <h2>Telemetry Scanner Monitor</h2>
+        </div>
+        <div class="scanner-wrapper font-mono">
+          <div class="scanner-matrix-grid" id="scanner-grid">
+            <!-- Simulated coordinate list -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel 4: Neighborhood Scoreboard -->
+      <section class="panel-card scoreboard-panel">
+        <div class="panel-header">
+          <span class="panel-icon">🏆</span>
+          <h2>Neighborhood Compatibility Ranks</h2>
+        </div>
+        <div class="scoreboard-list font-mono" id="scoreboard-list">
+          <!-- Dynamic listing of neighborhoods and index values -->
+        </div>
+      </section>
+
+      <!-- Panel 5: Infrastructure breakdown matrix -->
+      <section class="panel-card matrix-panel">
+        <div class="panel-header">
+          <span class="panel-icon">📋</span>
+          <h2>Infrastructure Breakdown Matrix</h2>
+        </div>
+        <div class="table-wrapper font-mono">
+          <table class="matrix-table" id="matrix-table">
+            <thead>
+              <tr>
+                <th>Neighborhood</th>
+                <th>Grocery Dist</th>
+                <th>Gym Count</th>
+                <th>Trail Miles</th>
+                <th>Culinary Index</th>
+                <th>Decay Penalty</th>
+              </tr>
+            </thead>
+            <tbody id="matrix-tbody">
+              <!-- Real-time grid parameters inserted dynamically -->
+            </tbody>
+          </table>
+        </div>
+        <div class="matrix-legend font-mono">
+          <span class="legend-item"><span class="badge badge-error">CRITICAL</span> Radius limit violation</span>
+          <span class="legend-item"><span class="badge badge-warn">WARNING</span> Vector metric below safety threshold</span>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="main-footer">
+    <p class="font-mono">&copy; 2026 ACCESSIBILITY SPATIAL DECODER. ALL MAP DATUMS GEODETICALLY LOCKED.</p>
+  </footer>
+
+  <script src="app.js?v=1"></script>
+</body>
+</html>

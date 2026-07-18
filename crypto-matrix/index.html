@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Cryptographic Matrix // Cyber Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=5" />
+</head>
+<body>
+  <div class="crt-overlay"></div>
+  <div class="scanlines"></div>
+
+  <header class="header">
+    <div class="logo">
+      <a href="../" class="btn-back">← BACK TO LAB</a>
+      <span class="logo-text font-mono">CRYPTO // MATRIX DECODER</span>
+    </div>
+    <!-- Shannon Entropy Display -->
+    <div class="entropy-header font-mono" title="Shannon Entropy Formula">
+      <span class="entropy-label">Entropy Definition:</span>
+      <span class="entropy-formula">H(X) = - &sum; P(x<sub>i</sub>) log<sub>2</sub> P(x<sub>i</sub>)</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="terminal-grid">
+      
+      <!-- Collapsible Instructions Panel -->
+      <section class="panel-card instructions-card">
+        <details open>
+          <summary class="font-mono text-green" style="cursor: pointer; outline: none; font-weight: 700; list-style: none;">[SYS_HELP] DISPLAY_OPERATION_MANUAL() <span class="summary-arrow"></span></summary>
+          <div class="instructions-content font-mono" style="margin-top: 1rem; font-size: 0.8rem; line-height: 1.6; color: var(--text-muted);">
+            <p style="margin-bottom: 0.5rem;">1. <strong>Select Algorithm</strong>: Choose from Caesar, Vigenère, Rail Fence, or XOR from the dropdown selector.</p>
+            <p style="margin-bottom: 0.5rem;">2. <strong>Set Key Parameters</strong>: Inputs will adjust based on the selected cipher type (integer shift, passphrase, depth rails).</p>
+            <p style="margin-bottom: 0.5rem;">3. <strong>Encode / Decode</strong>: Enter your text payload and trigger the buttons. The output monitor executes an 800ms scramble sequence before locking in decrypted codes.</p>
+            <p style="margin-bottom: 0.5rem;">4. <strong>Analyze Metrics</strong>: Toggle <strong>HEX_DUMP</strong> to view raw memory arrays. Check letter frequency histograms (A-Z) and Shannon entropy metrics.</p>
+            <p>5. <strong>CTF Challenge</strong>: Intercept encoded signals, evaluate the resulting hex values and frequency bounds, identify the cipher type, and submit answers to harvest credentials.</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- Panel 1: Encryption Controls & Input -->
+      <section class="panel-card input-panel">
+        <div class="panel-header">
+          <span class="panel-icon">⚡</span>
+          <h2>Cipher Control Unit</h2>
+        </div>
+        
+        <div class="input-group">
+          <label for="cipher-select">Select Algorithm</label>
+          <select id="cipher-select" class="terminal-input font-mono">
+            <option value="caesar">Caesar Cipher (Substitution)</option>
+            <option value="vigenere">Vigenère Cipher (Polyalphabetic)</option>
+            <option value="railfence">Rail Fence Cipher (Transposition)</option>
+            <option value="xor">Repeating XOR Byte Cipher (Custom Bitwise)</option>
+          </select>
+        </div>
+
+        <div class="input-group" id="key-group-caesar">
+          <label for="key-caesar">Shift Key (Integer 1-25)</label>
+          <input id="key-caesar" type="number" min="1" max="25" value="3" class="terminal-input font-mono" />
+        </div>
+
+        <div class="input-group" id="key-group-vigenere" style="display: none;">
+          <label for="key-vigenere">Passphrase Key (Alphabetic)</label>
+          <input id="key-vigenere" type="text" value="MATRIX" placeholder="Enter word key..." class="terminal-input font-mono" />
+        </div>
+
+        <div class="input-group" id="key-group-railfence" style="display: none;">
+          <label for="key-railfence">Fence Rails Depth (Integer 2-10)</label>
+          <input id="key-railfence" type="number" min="2" max="10" value="3" class="terminal-input font-mono" />
+        </div>
+
+        <div class="input-group" id="key-group-xor" style="display: none;">
+          <label for="key-xor">XOR Passphrase Key (ASCII/UTF-8)</label>
+          <input id="key-xor" type="text" value="SECRET" placeholder="Enter key..." class="terminal-input font-mono" />
+        </div>
+
+        <div class="input-group">
+          <label for="input-text">Input Payload (Source Data)</label>
+          <textarea id="input-text" placeholder="Enter text payload here..." class="terminal-input font-mono text-area-large">THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG</textarea>
+        </div>
+
+        <div class="grid-2-col">
+          <button id="btn-encrypt" class="btn-action btn-encrypt-color font-mono">ENCRYPT_PAYLOAD()</button>
+          <button id="btn-decrypt" class="btn-action btn-decrypt-color font-mono">DECRYPT_PAYLOAD()</button>
+        </div>
+      </section>
+
+      <!-- Panel 2: Decoder Screen / Output -->
+      <section class="panel-card output-panel">
+        <div class="panel-header">
+          <span class="panel-icon">📟</span>
+          <h2>Output Matrix Monitor</h2>
+          <div class="toggle-container">
+            <span class="toggle-label font-mono">HEX_DUMP</span>
+            <label class="switch">
+              <input type="checkbox" id="hex-toggle" />
+              <span class="slider round"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="output-screen-wrapper">
+          <div id="output-text" class="output-screen font-mono">READY // INITIALIZED</div>
+        </div>
+
+        <!-- Real-time Entropy measurement of Output -->
+        <div class="metric-row font-mono">
+          <span>payload_entropy:</span>
+          <span id="output-entropy-val">0.00 bits/char</span>
+        </div>
+      </section>
+
+      <!-- Panel 3: advanced Analytics (Frequency Distribution) -->
+      <section class="panel-card analytics-panel">
+        <div class="panel-header">
+          <span class="panel-icon">📊</span>
+          <h2>Character Frequency Spectrum</h2>
+        </div>
+        <div class="chart-wrapper">
+          <div id="freq-chart" class="freq-chart">
+            <!-- Dynamic bars loaded here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel 4: CTF Hacking Challenge Mode -->
+      <section class="panel-card ctf-panel">
+        <div class="panel-header">
+          <span class="panel-icon">🎯</span>
+          <h2>CTF Decryption Challenge</h2>
+        </div>
+        <div class="ctf-content">
+          <p class="ctf-desc font-mono">
+            Intercepted encrypted packet signal! Identify the cipher using the character frequency spectrum and hex dump. Solve for local credentials.
+          </p>
+          <div class="ctf-actions">
+            <button id="btn-ctf-generate" class="btn-action btn-ctf-color font-mono">INTERCEPT_SIGNAL()</button>
+          </div>
+          
+          <div id="ctf-active-area" style="display: none;" class="ctf-active-area font-mono">
+            <div class="ctf-packet-box">
+              <span class="packet-label">INTERCEPTED_CIPHERTEXT:</span>
+              <div id="ctf-ciphertext" class="packet-data">0x00</div>
+            </div>
+            
+            <div class="input-group">
+              <label for="ctf-guess">Identify Cipher Algorithm:</label>
+              <select id="ctf-guess" class="terminal-input font-mono">
+                <option value="caesar">Caesar Cipher</option>
+                <option value="vigenere">Vigenère Cipher</option>
+                <option value="railfence">Rail Fence Cipher</option>
+                <option value="xor">XOR Byte Cipher</option>
+              </select>
+            </div>
+            
+            <div class="grid-2-col">
+              <button id="btn-ctf-submit" class="btn-action btn-decrypt-color font-mono">SUBMIT_ANSWER()</button>
+              <button id="btn-ctf-reveal" class="btn-action btn-warn font-mono">REVEAL_FLAG()</button>
+            </div>
+            <div id="ctf-feedback" class="ctf-feedback"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="main-footer">
+    <p class="font-mono">&copy; 2026 CRYPTO MATRIX CONSOLE. ALL SHANNON DATA INTEGRITY VERIFIED.</p>
+  </footer>
+
+  <script src="app.js?v=1"></script>
+</body>
+</html>

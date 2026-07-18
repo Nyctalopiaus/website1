@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=2" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
   <div class="glow-bg"></div>
@@ -27,6 +27,13 @@
     <!-- Section 1: Dashboard and Stats -->
     <section class="dashboard-panel">
       <div class="stats-overview">
+        <div class="stat-card operator-card">
+          <span class="stat-label">Active Operator</span>
+          <select id="operator-selector" class="operator-select font-mono">
+            <option value="Nycto">Nycto</option>
+            <option value="Roland">Roland</option>
+          </select>
+        </div>
         <div class="stat-card">
           <span class="stat-label">Total Answered</span>
           <span class="stat-value font-mono" id="stat-answered">0</span>
@@ -677,6 +684,6 @@
     <p>&copy; 2026 CISM Commander Console. Connected to SQLite Database.</p>
   </footer>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>

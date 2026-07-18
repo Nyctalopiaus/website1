@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nycto's Project Lab</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body>
   <div class="mesh-glow nebula-1"></div>
@@ -17,7 +18,14 @@
   <header class="header">
     <div class="logo">
       <span class="logo-icon">⚡</span>
-      <h1>Nycto's Project Lab</h1>
+      <h1>Security Engineering & Personal Lab</h1>
+    </div>
+    <div class="contact-links" style="margin-top: 1rem; display: flex; gap: 1rem; align-items: center;">
+      <span style="color: var(--text-muted); font-size: 0.85rem;">Connect with me:</span>
+      <a href="https://www.linkedin.com/in/jhankins/" target="_blank" style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem; font-weight: 600;">
+        LinkedIn
+      </a>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">(Preferred for contact)</span>
     </div>
     <div class="system-status" aria-label="System diagnostics status">
       <span class="status-indicator"></span>
@@ -25,58 +33,120 @@
     </div>
   </header>
 
+<!-- About Me Section -->
+    <section class="container about-me-section">
+      <div class="panel-card" style="padding: 2.5rem;">
+        <h2 class="font-display" style="font-size: 2rem; margin-bottom: 1.5rem; color: var(--text-bright);">Josh Hankins</h2>
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; align-items: center;">
+          <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-medium);">
+            <p style="margin-bottom: 1rem;">
+              <strong>Cybersecurity Engineer | Threat Hunting & Response</strong>
+            </p>
+            <p>
+              With over 25 years of experience in IT and security, I serve as a Cybersecurity Engineering Lead specializing in threat detection, infrastructure defense, and cross-departmental operational coordination. I focus on bridging the gap between complex security signals and actionable defense strategies, leading teams to build robust monitoring frameworks that provide scalable, enterprise-wide security solutions.
+            </p>
+          </div>
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 12px;">
+            <p style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">
+              "Building tools to automate logistics, financial modeling, and security training. This lab is where I operationalize my curiosity."
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-divider" aria-hidden="true"></div>
+
+<!-- Four-Column 2x2 Balanced Grid -->
+<section class="container skills-section" style="margin-top: 2rem; margin-bottom: 4rem;">
+  <div class="projects-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
+    
+    <!-- 1. Infrastructure & Identity -->
+    <article class="panel-card" style="padding: 1.5rem;">
+      <h3 class="font-display" style="margin-bottom: 1rem; color: var(--primary-color);">Infrastructure & Identity</h3>
+      <ul style="list-style: none; color: var(--text-medium); font-size: 0.9rem; line-height: 2;">
+        <li>• Hybrid Cloud (AWS, VMware, OpenStack)</li>
+        <li>• Identity (Entra ID, Active Directory)</li>
+        <li>• Access Management (RSA, Duo)</li>
+        <li>• Network Defense & Architecture</li>
+      </ul>
+    </article>
+
+    <!-- 2. SOC & Threat Defense -->
+    <article class="panel-card" style="padding: 1.5rem;">
+      <h3 class="font-display" style="margin-bottom: 1rem; color: var(--primary-color);">SOC & Threat Defense</h3>
+      <ul style="list-style: none; color: var(--text-medium); font-size: 0.9rem; line-height: 2;">
+        <li>• SIEM/SOAR (Azure Sentinel, Chronicle)</li>
+        <li>• Threat Hunting & Incident Response</li>
+        <li>• PCI/Compliance & Auditing</li>
+        <li>• Behavioral Analytics</li>
+      </ul>
+    </article>
+
+    <!-- 3. Automation & Engineering -->
+    <article class="panel-card" style="padding: 1.5rem;">
+      <h3 class="font-display" style="margin-bottom: 1rem; color: var(--primary-color);">Automation & Engineering</h3>
+      <ul style="list-style: none; color: var(--text-medium); font-size: 0.9rem; line-height: 2;">
+        <li>• PowerShell & Workflow Integration</li>
+        <li>• API-driven Infrastructure Automation</li>
+        <li>• Claude Code & AI-Assisted Dev</li>
+        <li>• Custom Tooling & Scripting</li>
+      </ul>
+    </article>
+
+    <!-- 4. Leadership & Documentation -->
+    <article class="panel-card" style="padding: 1.5rem;">
+      <h3 class="font-display" style="margin-bottom: 1rem; color: var(--primary-color);">Knowledge Governance & Operational Strategy</h3>
+      <ul style="list-style: none; color: var(--text-medium); font-size: 0.9rem; line-height: 2;">
+        <li>• Cross-functional Leadership & Team Enablement</li>
+        <li>• Wiki Architecture & SOP Templating</li>
+        <li>• Agile/Scrum Sprint Coordination</li>
+        <li>• Strategic Technical Communication</li>
+      </ul>
+    </article>
+
+  </div>
+</section>
+
+  <div class="section-divider" aria-hidden="true"></div>
+
   <main class="container">
     <section class="intro-section">
       <p class="subtitle font-display">Lab Directory</p>
       <p class="description">
-        Welcome to the lab. Below is a curated directory of web applications, retro emulator tools, and interface experiments currently in active development or planning phases.
+        Welcome to the lab. Below is a curated directory of web applications, retro emulator tools, and interface experiments currently in full production, active development or planning phases.
       </p>
     </section>
 
     <section class="projects-grid">
-      <!-- Project 1: Handheld Gaming Log -->
+      <!-- Project 1: Nycto's Mortgage & Housing Calculator -->
       <article class="project-card active">
         <div class="card-glow"></div>
         <div class="card-inner">
-          <header class="card-header">
+        <header class="card-header">
+          <div style="display: flex; gap: 0.5rem;">
+            <!-- "Pro" badge -->
             <span class="badge badge-active">Active</span>
-            <span class="project-index">01</span>
-          </header>
-          <div class="card-content">
-            <h2 class="project-title font-display">Handheld Gaming Log</h2>
-            <p class="project-desc">
-              A premium Steam Deck-inspired log book to track play sessions, frame performance ratings, and cumulative stats. Uses browser persistence to save logs.
-            </p>
-            <div class="tech-tags">
-              <span>Vanilla JS</span>
-              <span>CSS Grid</span>
-              <span>LocalStorage</span>
-            </div>
+            <span class="badge badge-pro">Pro</span>
+            <span class="badge badge-live">Live Data</span>
           </div>
-          <footer class="card-footer">
-            <a href="gaming-log" class="btn-launch">Launch Application <span class="arrow">→</span></a>
-          </footer>
-        </div>
-      </article>
-
-      <!-- Project 2: Mortgage & Housing Calculator -->
-      <article class="project-card active">
-        <div class="card-glow"></div>
-        <div class="card-inner">
-          <header class="card-header">
-            <span class="badge badge-active">Active</span>
-            <span class="project-index">02</span>
-          </header>
+        </header>
           <div class="card-content">
-            <h2 class="project-title font-display">Housing Cost Calculator</h2>
+            <h2 class="project-title font-display">Nycto's Housing Cost Calculator</h2>
             <p class="project-desc">
-              A comprehensive calculator to estimate monthly mortgage payments (15-yr vs. 30-yr side-by-side). Includes escrow (PMI, taxes, insurance), HOA fees, and debt-to-income analysis.
+              A comprehensive calculator to estimate monthly mortgage payments (15-yr vs. 30-yr side-by-side). Includes escrow (PMI, taxes, insurance), HOA fees, and debt-to-income affordability analysis. Now features one-click Redfin property parsing for automated tax/HOA data extraction and live mortgage rate syncing via integrated financial news feeds.
             </p>
-            <div class="tech-tags">
-              <span>Amortization Math</span>
-              <span>DTI Meter</span>
-              <span>CSS Flexgrid</span>
-            </div>
+            <details class="tech-dropdown">
+              <summary class="tech-toggle">Show tech stack</summary>
+              <div class="tech-tags">
+                <span>Amortization Math (For the side-by-side term comparison logic)</span>
+                <span>DTI Affordability (For the front-end Debt-to-Income analysis)</span>
+                <span>DOM Scraping (For the Redfin property parsing engine)</span>
+                <span>RSS Rate Integration (For the Mortgage News Daily live data)</span>
+                <span>Proxy/Caching Layer (For your API proxy and JSON caching logic)</span>
+                <span>State Persistence (For the LocalStorage input saving)</span>
+              </div>
+            </details>
           </div>
           <footer class="card-footer">
             <a href="housing-calculator" class="btn-launch">Launch Application <span class="arrow">→</span></a>
@@ -84,32 +154,340 @@
         </div>
       </article>
 
-      <!-- Project 3: CISM Practice Trainer -->
+      <!-- Project 2: Nycto's Open Road Advisor -->
       <article class="project-card active">
         <div class="card-glow"></div>
         <div class="card-inner">
           <header class="card-header">
-            <span class="badge badge-active">Active</span>
-            <span class="project-index">03</span>
+            <div style="display: flex; gap: 0.5rem;">
+              <!-- "Pro" badge -->
+              <span class="badge badge-active">Active</span>
+              
+              <!-- "LIVE" badge: added 'badge' AND 'badge-active' to inherit the bubble style -->
+              <!-- You can then override the color with the inline style -->
+              <span class="badge badge-pro">Pro</span>
+              <span class="badge badge-live">Live Data</span>
+            </div>
+          </header>
+          <div class="card-content">
+            <h2 class="project-title font-display">Nycto's Open Road Advisor</h2>
+            <p class="project-desc">
+              A predictive travel advisor that maps custom multi-stop routes using OSRM, integrating real-time weather forecasts (Open-Meteo) to monitor wind and precipitation hazards. Features advanced logistics planning including automated fuel stop calculations, meal scheduling, curfew-aware layovers, and a dynamic elevation profile dashboard.
+            </p>
+            <details class="tech-dropdown">
+              <summary class="tech-toggle">Show tech stack</summary>
+              <div class="tech-tags">
+                <span>OSRM Routing (Optimized for driving paths)</span>
+                <span>Spatial Analysis (GIS-based coordinate math)</span>
+                <span>Predictive Weather (Open-Meteo API forecasting)</span>
+                <span>Logistical Engine (Fuel/meal/rest stop injection)</span>
+                <span>Geospatial Visualization (Leaflet map overlay & Elevation graphing)</span>
+                <span>GPX Exporting (Data interoperability)</span>
+                <span>Internationally Usable (Metric and Imperial Units including US Dollars/Euros/Pounds)</span>
+              </div>
+            </details>
+          </div>
+          <footer class="card-footer">
+            <a href="open-road-advisor" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+          </footer>
+        </div>
+      </article>
+
+      <!-- Project 3: Nycto's Retirement Command Center -->
+      <article class="project-card active">
+        <div class="card-glow"></div>
+        <div class="card-inner">
+          <header class="card-header">
+            <div class="badge-group">
+              <span class="badge badge-active">Active</span>
+              <span class="badge badge-live">Beta</span>
+            </div>
+          </header>
+          <div class="card-content">
+            <h2 class="project-title font-display">Nycto's Retirement Forecaster</h2>
+            <p class="project-desc">
+              A warm, client-side forecaster mapping long-term compound growth against strategic bucket drawdowns (Taxable first, then Pre-Tax, then Roth) with inflation toggle.
+            </p>
+            <details class="tech-dropdown">
+              <summary class="tech-toggle">Show tech stack</summary>
+              <div class="tech-tags">
+                <span>Compound Interest Logic (For the long-term growth simulation)</span>
+                <span>Strategic Bucket Drawdown (For your Taxable/Pre-Tax/Roth sequencing logic)</span>
+                <span>SVG Area Visualization (For the stacked area depletion charts)</span>
+                <span>Client-Side Computation (Highlighting that data remains secure in-browser)</span>
+                <span>Dynamic Inflation Modeling (For the adjustable economic toggle)</span>
+              </div>
+            </details>
+          </div>
+          <footer class="card-footer">
+            <a href="retirement-center" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+          </footer>
+        </div>
+      </article>
+
+      <!-- Project 4: Nycto's CISM Practice Trainer -->
+      <article class="project-card active">
+        <div class="card-glow"></div>
+        <div class="card-inner">
+          <header class="card-header">
+            <div class="badge-group">
+              <span class="badge badge-active">Active</span>
+              <span class="badge badge-live">AI Created Training Data</span>
+            </div>
           </header>
           <div class="card-content">
             <h2 class="project-title font-display">CISM Practice Trainer</h2>
             <p class="project-desc">
               An interactive ISACA-aligned exam simulator console. Features active recall flashcards, domain accuracy tracking, custom question curators, and timed mock exams.
             </p>
-            <div class="tech-tags">
-              <span>SQLite Sync</span>
-              <span>Mock Timer</span>
-              <span>HUD Dashboard</span>
-            </div>
+            <details class="tech-dropdown">
+              <summary class="tech-toggle">Show tech stack</summary>
+              <div class="tech-tags">
+                <span>Adaptive Flashcards (For the active recall study flow)</span>
+                <span>Domain Analytics (For accuracy and mastery tracking)</span>
+                <span>Mock Exam Engine (For timed exam simulation)</span>
+                <span>Deck Curator (For custom question generation)</span>
+                <span>SQLite Sync (For persistent progress storage)</span>
+              </div>
+            </details>
           </div>
           <footer class="card-footer">
             <a href="cism" class="btn-launch">Launch Application <span class="arrow">→</span></a>
           </footer>
         </div>
       </article>
+
+      <!-- Project 5: Handheld Gaming Log -->
+      <article class="project-card active">
+        <div class="card-glow"></div>
+        <div class="card-inner">
+          <header class="card-header">
+            <div class="badge-group">
+              <span class="badge badge-active">Active</span>
+              <span class="badge badge-live">Beta</span>
+            </div>
+          </header>
+          <div class="card-content">
+            <h2 class="project-title font-display">Handheld Gaming Log</h2>
+            <p class="project-desc">
+              A premium Steam Deck-inspired log book to track play sessions, frame performance ratings, and cumulative stats. Uses browser persistence to save logs.
+            </p>
+            <details class="tech-dropdown">
+              <summary class="tech-toggle">Show tech stack</summary>
+              <div class="tech-tags">
+                <span>Game Entry Tracking (For logging play sessions and hours)</span>
+                <span>Performance Rating System (For Great/Playable/Poor scoring)</span>
+                <span>Sorting & Filtering (For organizing the library by title, time, or rating)</span>
+                <span>Local Persistence (For saving entries in the browser)</span>
+              </div>
+            </details>
+          </div>
+          <footer class="card-footer">
+            <a href="gaming-log" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+          </footer>
+        </div>
+      </article>
+
+      <!-- Project 6: Interactive Cryptographic Matrix -->
+      <article class="project-card active">
+        <div class="card-glow"></div>
+        <div class="card-inner">
+          <header class="card-header">
+            <div class="badge-group">
+              <span class="badge badge-active">Active</span>
+              <span class="badge badge-live">Beta</span>
+            </div>
+          </header>
+          <div class="card-content">
+            <h2 class="project-title font-display">Crypto Matrix Decoder</h2>
+            <p class="project-desc">
+              An interactive cryptographic analysis terminal. Features real-time frequency analysis histograms, dual hex/ASCII memory dump screens, and multiple cipher modules.
+            </p>
+            <details class="tech-dropdown">
+              <summary class="tech-toggle">Show tech stack</summary>
+              <div class="tech-tags">
+                <span>Cipher Engine (For Caesar, Vigenère, Rail Fence, and XOR transforms)</span>
+                <span>Shannon Entropy Analysis (For measuring information content)</span>
+                <span>Hex Dump Viewer (For raw byte inspection)</span>
+                <span>Frequency Spectrum Chart (For letter distribution analysis)</span>
+                <span>CTF Challenge Mode (For interactive decryption scenarios)</span>
+              </div>
+            </details>
+          </div>
+          <footer class="card-footer">
+            <a href="crypto-matrix" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+          </footer>
+        </div>
+      </article>
+
+      <!-- Project 7: Relocation Accessibility Scorer -->
+      <article class="project-card active">
+        <div class="card-glow"></div>
+        <div class="card-inner">
+          <header class="card-header">
+            <div class="badge-group">
+              <span class="badge badge-active">Active</span>
+              <span class="badge badge-live">Beta</span>
+              <span class="badge badge-live">Static Data</span>
+            </div>
+          </header>
+          <div class="card-content">
+            <h2 class="project-title font-display">Accessibility &amp; Trail Scorer</h2>
+            <p class="project-desc">
+              A real-time spatial analyst dashboard. Evaluates geographic suitability based on trail networks, retail proximity, fitness locations, and culinary density weights.
+            </p>
+            <details class="tech-dropdown">
+              <summary class="tech-toggle">Show tech stack</summary>
+              <div class="tech-tags">
+                <span>Spatial Weighting (For prioritizing trails, retail, gyms, and dining)</span>
+                <span>Distance Decay Penalties (For penalizing long travel offsets)</span>
+                <span>SVG Radar Plots (For comparing neighborhood suitability)</span>
+                <span>Telemetry Scanner Matrix (For ranking infrastructure metrics)</span>
+                <span>Compatibility Scoring (For surfacing top-fit neighborhoods)</span>
+              </div>
+            </details>
+          </div>
+          <footer class="card-footer">
+            <a href="relocation-scorer" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+          </footer>
+        </div>
+      </article>
     </section>
   </main>
+
+  <div class="section-divider" aria-hidden="true"></div>
+
+<!-- Education Section -->
+<section class="container education-section" style="margin-bottom: 4rem;">
+  <h2 class="project-title font-display" style="margin-bottom: 1.5rem; font-size: 1.75rem;">Education</h2>
+  <div class="panel-card" style="padding: 1.5rem;">
+    
+    <div style="margin-bottom: 1.5rem;">
+      <h3 class="font-display" style="color: var(--text-bright); margin-bottom: 0.25rem;">Master of Science in Cybersecurity and Information Assurance</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem;">Western Governors University</p>
+      <p style="font-size: 0.85rem; color: var(--text-medium); font-style: italic;">
+        Advanced training in security architecture and policy, enabling me to design resilient, defense-in-depth strategies for complex hybrid environments.
+      </p>
+    </div>
+    
+    <div>
+      <h3 class="font-display" style="color: var(--text-bright); margin-bottom: 0.25rem;">Bachelor of Science in Cybersecurity and Information Assurance</h3>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem;">Western Governors University</p>
+      <p style="font-size: 0.85rem; color: var(--text-medium); font-style: italic;">
+        Provides a comprehensive technical foundation in systems security, network defense, and ethical hacking—the bedrock of my daily threat-hunting practice.
+      </p>
+    </div>
+    
+  </div>
+</section>
+
+<div class="section-divider" aria-hidden="true"></div>
+
+<!-- Certifications Section -->
+<section class="container certs-section">
+  <h2 class="project-title font-display" style="margin-bottom: 2rem; font-size: 1.75rem;">Professional Certifications</h2>
+  <div class="projects-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
+    
+    <!-- GCIH -->
+    <article class="project-card" style="min-height: auto;">
+      <div class="card-inner" style="padding: 1.25rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">GCIH</h3>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+          <a href="https://www.giac.org/certifications/certified-incident-handler-gcih/" target="_blank" style="color: var(--text-muted); text-decoration: underline;">GIAC</a>
+        </p>
+        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
+          Equips me with hands-on skills to detect, respond to, and resolve complex security incidents.
+        </p>
+        <a href="https://www.credly.com/badges/749022de-deac-471c-b5b6-4aa895eff1d4/public_url" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
+      </div>
+    </article>
+    
+    <!-- CySA+ -->
+    <article class="project-card" style="min-height: auto;">
+      <div class="card-inner" style="padding: 1.25rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">CySA+</h3>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+          <a href="https://www.comptia.org/certifications/cybersecurity-analyst" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
+        </p>
+        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
+          Crucial for my work in threat detection, focusing on behavioral analytics and incident response workflows.
+        </p>
+        <a href="https://www.credly.com/badges/c5017b74-6a78-494f-a9ab-961dea97ed9c" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
+      </div>
+    </article>
+
+    <!-- Security+ -->
+    <article class="project-card" style="min-height: auto;">
+      <div class="card-inner" style="padding: 1.25rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">Security+</h3>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+          <a href="https://www.comptia.org/certifications/security" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
+        </p>
+        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
+          My baseline for managing threat landscapes and hardening infrastructure against evolving vectors.
+        </p>
+        <a href="https://www.credly.com/badges/bb5dec5d-3623-4af0-b784-13891824451d" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
+      </div>
+    </article>
+
+    <!-- SSCP -->
+    <article class="project-card" style="min-height: auto;">
+      <div class="card-inner" style="padding: 1.25rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">SSCP</h3>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+          <a href="https://www.isc2.org/Certifications/SSCP" target="_blank" style="color: var(--text-muted); text-decoration: underline;">ISC2</a>
+        </p>
+        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
+          Validates my expertise in implementing and monitoring security policies to protect organizational assets.
+        </p>
+        <a href="https://www.credly.com/badges/65e853ba-d0d1-4065-97b1-b315ea91b096" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
+      </div>
+    </article>
+
+    <!-- PenTest+ -->
+    <article class="project-card" style="min-height: auto;">
+      <div class="card-inner" style="padding: 1.25rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">PenTest+</h3>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+          <a href="https://www.comptia.org/certifications/pentest" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
+        </p>
+        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
+          Enhances my threat-hunting mindset by simulating adversarial techniques to uncover vulnerabilities.
+        </p>
+        <a href="https://www.credly.com/badges/3e42ceal-22d3-437f-8a52-df0a41916528" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
+      </div>
+    </article>
+
+    <!-- Network+ -->
+    <article class="project-card" style="min-height: auto;">
+      <div class="card-inner" style="padding: 1.25rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">Network+</h3>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+          <a href="https://www.comptia.org/certifications/network" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
+        </p>
+        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
+          Provides the foundation for securing traffic and understanding network-level threats in hybrid environments.
+        </p>
+        <a href="https://www.credly.com/badges/65437474-b214-494d-b74a-elce5f6b0d49" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
+      </div>
+    </article>
+
+    <!-- ITIL 4 -->
+    <article class="project-card" style="min-height: auto;">
+      <div class="card-inner" style="padding: 1.25rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">ITIL 4</h3>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+          <a href="https://www.axelos.com/certifications/itil-certifications" target="_blank" style="color: var(--text-muted); text-decoration: underline;">PeopleCert</a>
+        </p>
+        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
+          Helps me align security operations with broader enterprise service management and efficiency standards.
+        </p>
+        <span style="color: var(--text-light); font-size: 0.75rem;">ID: GR671475065JH</span>
+      </div>
+    </article>
+
+  </div>
+</section>
 
   <footer class="main-footer">
     <p>&copy; 2026 Nycto. Created in collaboration with Antigravity.</p>

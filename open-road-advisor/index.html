@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Open Road Advisor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  
+  <!-- Leaflet GIS Mapping library styles -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <!-- Chart.js library for elevation graphing -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="advisor.css?v=8" />
+</head>
+<body>
+
+  <header class="header">
+    <div class="logo">
+      <a href="../" class="btn-back">← Back to Lab</a>
+      <span class="logo-text">Open Road Advisor</span>
+    </div>
+    <!-- Active advisor connection status badge -->
+    <div class="connection-status">
+      <span class="pulse-indicator"></span>
+      <span class="status-val">Open Road Advisor Active</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="telemetry-grid">
+      
+      <!-- User Friendly Instructions Panel -->
+      <section class="panel-card instructions-card">
+        <details open>
+          <summary class="text-primary" style="cursor: pointer; outline: none; font-weight: 600; list-style: none;">How to Use the Open Road Advisor <span class="summary-arrow"></span></summary>
+          <div class="instructions-content" style="margin-top: 1rem; font-size: 0.9rem; line-height: 1.6; color: var(--text-muted);">
+            <p style="margin-bottom: 0.5rem;">This utility maps your driving route, computes milestone arrival offsets, and queries predictive weather forecasts to assess wind impacts and rain risks along your journey.</p>
+            <p style="margin-bottom: 0.5rem;">1. <strong>Select Stops</strong>: Enter your starting origin, dynamic intermediate stops, and final destination (e.g. "Seattle, WA").</p>
+            <p style="margin-bottom: 0.5rem;">2. <strong>Set Ride Parameters</strong>: Choose departure time, planned speed (MPH), sampling intervals, and your vehicle profile (Car, Jeep, or Motorcycle).</p>
+            <p>3. <strong>Scan Highway</strong>: Click <strong>Analyze Open Road Journey</strong> to calculate routes, overlay paths on the map, resolve names, and check milestone conditions.</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- Panel 1: Route & Vehicle Input Setup -->
+      <section class="panel-card input-panel">
+        <div class="panel-header">
+          <span class="panel-icon">⚙️</span>
+          <h2>Journey Settings</h2>
+        </div>
+
+        <!-- Group 1: Vehicle & Route -->
+        <div class="settings-group" style="border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; background: rgba(255,255,255,0.01);">
+          <h3 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary-color); margin-bottom: 0.75rem; font-weight: 700;">Vehicle &amp; Route</h3>
+          
+          <div class="grid-2-col">
+            <div class="input-group">
+              <label for="vehicle-profile">Vehicle Profile Presets<span class="info-tooltip" data-tooltip="Modifies crosswind safety thresholds, aerodynamic drag penalties, and auto-calibrates fuel range.">?</span></label>
+              <select id="vehicle-profile" class="terminal-input">
+                <option value="car" selected>Car</option>
+                <option value="jeep">Jeep Rubicon</option>
+                <option value="motorcycle">Touring Motorcycle</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="start-time">Departure Time</label>
+              <input id="start-time" type="datetime-local" class="terminal-input" />
+            </div>
+          </div>
+
+          <div class="grid-2-col" style="margin-top: 0.75rem;">
+            <div class="input-group">
+              <label for="unit-toggle">Measurement Units</label>
+              <select id="unit-toggle" class="terminal-input">
+                <option value="imperial" selected>Imperial (mi, °F, mph)</option>
+                <option value="metric">Metric (km, °C, km/h)</option>
+              </select>
+            </div>
+            <div class="input-group">
+              <label for="currency-toggle">Currency</label>
+              <select id="currency-toggle" class="terminal-input">
+                <option value="USD" selected>US Dollar ($)</option>
+                <option value="EUR">Euro (€)</option>
+                <option value="GBP">British Pound (£)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="input-group" style="margin-top: 0.75rem;">
+            <label>Route Stops</label>
+            <div id="route-stops-list" style="display: flex; flex-direction: column; gap: 0.75rem; width: 100%;">
+              <div class="stop-input-row" style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
+                <span class="drag-handle" style="cursor: move; padding: 0.25rem; font-size: 0.9rem;">☰</span>
+                <input type="text" list="cities-list" value="Seattle, WA" placeholder="Route stop..." class="terminal-input route-stop-input" style="flex: 1;" />
+                <button type="button" class="btn-action btn-remove-stop" style="background: transparent; border: 1px solid var(--border-color); color: var(--accent-red); padding: 0.65rem 0.85rem; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;">✕</button>
+              </div>
+              <div class="stop-input-row" style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
+                <span class="drag-handle" style="cursor: move; padding: 0.25rem; font-size: 0.9rem;">☰</span>
+                <input type="text" list="cities-list" value="Portland, OR" placeholder="Route stop..." class="terminal-input route-stop-input" style="flex: 1;" />
+                <button type="button" class="btn-action btn-remove-stop" style="background: transparent; border: 1px solid var(--border-color); color: var(--accent-red); padding: 0.65rem 0.85rem; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;">✕</button>
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+              <button type="button" id="btn-add-stop" class="btn-action" style="padding: 0.45rem 1.05rem; font-size: 0.8rem; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-bright); border-radius: 6px;">+ Add Stop</button>
+              <button type="button" id="btn-swap-route" class="btn-action" style="padding: 0.45rem 1.05rem; font-size: 0.8rem; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-bright); border-radius: 6px;">⇅ Swap Route</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Group 2: Pacing & Stops -->
+        <div class="settings-group" style="border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; background: rgba(255,255,255,0.01);">
+          <h3 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary-color); margin-bottom: 0.75rem; font-weight: 700;">Pacing &amp; Stops</h3>
+          
+          <div class="grid-2-col">
+            <div class="input-group">
+              <label for="avg-speed" id="label-avg-speed">Average Speed (MPH)</label>
+              <input id="avg-speed" type="number" value="65" min="10" max="120" class="terminal-input" />
+            </div>
+            <div class="input-group">
+              <label for="fuel-capacity" id="label-fuel-capacity">Fuel Capacity (Gallons)</label>
+              <input id="fuel-capacity" type="number" step="0.1" min="1" max="100" value="12.0" class="terminal-input" />
+            </div>
+          </div>
+
+          <div class="grid-2-col" style="margin-top: 0.75rem;">
+            <div class="input-group">
+              <label for="estimated-mpg" id="label-estimated-mpg">Estimated MPG</label>
+              <input id="estimated-mpg" type="number" min="5" max="150" value="30" class="terminal-input" />
+            </div>
+            <div class="input-group">
+              <label for="fuel-price" id="label-fuel-price">Fuel Price ($/Gal)</label>
+              <input id="fuel-price" type="number" step="0.01" min="0.50" max="20.00" value="3.50" class="terminal-input" />
+            </div>
+          </div>
+
+          <div class="grid-2-col" style="margin-top: 0.75rem;">
+            <div class="input-group" style="grid-column: span 2;">
+              <label for="rest-interval" id="label-rest-interval">Rest Interval (Miles)</label>
+              <input id="rest-interval" type="number" value="150" class="terminal-input" />
+            </div>
+          </div>
+
+          <div class="grid-2-col" style="margin-top: 0.75rem;">
+            <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem; height: 100%;">
+              <input id="enable-rest" type="checkbox" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" checked />
+              <label for="enable-rest" style="cursor: pointer; user-select: none; font-size: 0.85rem;">Schedule Rest Stops</label>
+            </div>
+            <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem; height: 100%;">
+              <input id="top-off-rest" type="checkbox" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" checked />
+              <label for="top-off-rest" style="cursor: pointer; user-select: none; font-size: 0.85rem;">Top off at Rest Stops<span class="info-tooltip" data-tooltip="Simulates filling your gas tank during this stop, resetting your maximum fuel range.">?</span></label>
+            </div>
+          </div>
+
+          <!-- Meal Stops Toggles and Time Pickers -->
+          <div style="margin-top: 1rem; border-top: 1px dashed var(--border-color); padding-top: 0.75rem;">
+            <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <input id="top-off-meals" type="checkbox" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" checked />
+              <label for="top-off-meals" style="cursor: pointer; user-select: none; font-size: 0.85rem; font-weight: 600;">Top off at Meal Stops<span class="info-tooltip" data-tooltip="Simulates filling your gas tank during this stop, resetting your maximum fuel range.">?</span></label>
+            </div>
+            
+            <div class="grid-3-col" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.5rem;">
+              <div class="meal-input-box" style="border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 6px; background: rgba(0,0,0,0.15);">
+                <div style="display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem;">
+                  <input id="enable-breakfast" type="checkbox" checked />
+                  <label for="enable-breakfast" style="font-size: 0.75rem; font-weight: 600;">Breakfast</label>
+                </div>
+                <input id="breakfast-time" type="time" value="08:00" class="terminal-input" style="font-size: 0.75rem; padding: 0.25rem;" />
+              </div>
+              <div class="meal-input-box" style="border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 6px; background: rgba(0,0,0,0.15);">
+                <div style="display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem;">
+                  <input id="enable-lunch" type="checkbox" checked />
+                  <label for="enable-lunch" style="font-size: 0.75rem; font-weight: 600;">Lunch</label>
+                </div>
+                <input id="lunch-time" type="time" value="12:30" class="terminal-input" style="font-size: 0.75rem; padding: 0.25rem;" />
+              </div>
+              <div class="meal-input-box" style="border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 6px; background: rgba(0,0,0,0.15);">
+                <div style="display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem;">
+                  <input id="enable-dinner" type="checkbox" checked />
+                  <label for="enable-dinner" style="font-size: 0.75rem; font-weight: 600;">Dinner</label>
+                </div>
+                <input id="dinner-time" type="time" value="18:30" class="terminal-input" style="font-size: 0.75rem; padding: 0.25rem;" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Group 3: Travel Boundaries -->
+        <div class="settings-group" style="border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; margin-bottom: 1.25rem; background: rgba(255,255,255,0.01);">
+          <h3 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary-color); margin-bottom: 0.75rem; font-weight: 700;">Travel Boundaries</h3>
+          
+          <div class="grid-2-col" style="margin-bottom: 0.75rem;">
+            <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem; height: 100%;">
+              <input id="enforce-curfew" type="checkbox" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" />
+              <label for="enforce-curfew" style="cursor: pointer; user-select: none; font-size: 0.85rem; font-weight: 500;">Enforce Curfew<span class="info-tooltip" data-tooltip="Pauses route progression at your Stop time, injecting an overnight layover until the Start time.">?</span></label>
+            </div>
+            <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem; height: 100%;">
+              <input id="smart-layover" type="checkbox" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" checked />
+              <label for="smart-layover" style="cursor: pointer; user-select: none; font-size: 0.85rem; font-weight: 500;">Smart Layover<span class="info-tooltip" data-tooltip="Prevents stopping in desolate areas by backtracking your overnight layover to the nearest valid city or town.">?</span></label>
+            </div>
+          </div>
+
+          <div class="grid-2-col">
+            <div class="input-group">
+              <label for="curfew-start">Start Travel At</label>
+              <input id="curfew-start" type="time" value="06:00" class="terminal-input" />
+            </div>
+            <div class="input-group">
+              <label for="curfew-end">Stop Travel By</label>
+              <input id="curfew-end" type="time" value="22:00" class="terminal-input" />
+            </div>
+          </div>
+        </div>
+
+        <datalist id="cities-list">
+          <option value="Seattle, WA"></option>
+          <option value="Portland, OR"></option>
+          <option value="Tacoma, WA"></option>
+          <option value="Olympia, WA"></option>
+          <option value="Spokane, WA"></option>
+          <option value="Bellevue, WA"></option>
+          <option value="Vancouver, WA"></option>
+          <option value="Everett, WA"></option>
+          <option value="Bellingham, WA"></option>
+          <option value="Yakima, WA"></option>
+          <option value="Eugene, OR"></option>
+          <option value="Salem, OR"></option>
+          <option value="Bend, OR"></option>
+          <option value="Medford, OR"></option>
+          <option value="San Francisco, CA"></option>
+          <option value="Los Angeles, CA"></option>
+          <option value="San Diego, CA"></option>
+          <option value="San Jose, CA"></option>
+          <option value="Sacramento, CA"></option>
+          <option value="Oakland, CA"></option>
+          <option value="Fresno, CA"></option>
+          <option value="Anaheim, CA"></option>
+          <option value="Las Vegas, NV"></option>
+          <option value="Reno, NV"></option>
+          <option value="Phoenix, AZ"></option>
+          <option value="Tucson, AZ"></option>
+          <option value="Flagstaff, AZ"></option>
+          <option value="Denver, CO"></option>
+          <option value="Colorado Springs, CO"></option>
+          <option value="Boulder, CO"></option>
+          <option value="Salt Lake City, UT"></option>
+          <option value="Provo, UT"></option>
+          <option value="Boise, ID"></option>
+          <option value="Idaho Falls, ID"></option>
+          <option value="Helena, MT"></option>
+          <option value="Missoula, MT"></option>
+          <option value="Cheyenne, WY"></option>
+          <option value="Jackson, WY"></option>
+          <option value="Albuquerque, NM"></option>
+          <option value="Santa Fe, NM"></option>
+          <option value="Dallas, TX"></option>
+          <option value="Houston, TX"></option>
+          <option value="Austin, TX"></option>
+          <option value="San Antonio, TX"></option>
+          <option value="El Paso, TX"></option>
+          <option value="New York, NY"></option>
+          <option value="Boston, MA"></option>
+          <option value="Philadelphia, PA"></option>
+          <option value="Washington, DC"></option>
+          <option value="Chicago, IL"></option>
+          <option value="Miami, FL"></option>
+          <option value="Orlando, FL"></option>
+          <option value="Tampa, FL"></option>
+          <option value="Atlanta, GA"></option>
+          <option value="Nashville, TN"></option>
+          <option value="Memphis, TN"></option>
+          <option value="St. Louis, MO"></option>
+          <option value="Kansas City, MO"></option>
+          <option value="Minneapolis, MN"></option>
+          <option value="St. Paul, MN"></option>
+          <option value="Detroit, MI"></option>
+          <option value="Cleveland, OH"></option>
+          <option value="Columbus, OH"></option>
+          <option value="Cincinnati, OH"></option>
+          <option value="Pittsburgh, PA"></option>
+          <option value="Indianapolis, IN"></option>
+          <option value="Milwaukee, WI"></option>
+          <option value="New Orleans, LA"></option>
+          <option value="Charlotte, NC"></option>
+          <option value="Raleigh, NC"></option>
+          <option value="Richmond, VA"></option>
+          <option value="Baltimore, MD"></option>
+        </datalist>
+
+        <button id="btn-scan" class="btn-action btn-scan-color">Analyze Open Road Journey</button>
+      </section>
+
+      <!-- Panel 2: Live Map View Container -->
+      <section class="panel-card map-panel">
+        <div class="panel-header">
+          <span class="panel-icon">🗺️</span>
+          <h2>Calculated Route Map</h2>
+        </div>
+        <div class="map-wrapper">
+          <div id="map"></div>
+        </div>
+      </section>
+
+
+
+      <!-- Panel 4: Safety HUD readout -->
+      <section class="panel-card hud-panel">
+        <div class="panel-header">
+          <span class="panel-icon">📊</span>
+          <h2>Live Route Conditions</h2>
+        </div>
+        <div class="hud-grid">
+          <div class="hud-stat-box">
+            <div class="label-with-tooltip">
+              <span class="hud-stat-label" id="hud-stability-label">Exposure & Fatigue Risk</span>
+              <span class="tooltip-icon" data-tooltip="An aggregate score combining extreme temperatures, UV intensity, and humidity to estimate how quickly physical fatigue will set in.">?</span>
+            </div>
+            <span id="hud-stability" class="hud-stat-val">--%</span>
+            <span class="hud-stat-desc" id="hud-health-score">Trip Health: --% (Pending)</span>
+          </div>
+          <div class="hud-stat-box">
+            <div class="label-with-tooltip">
+              <span class="hud-stat-label">Surface Grip &amp; Crosswind</span>
+              <span class="tooltip-icon" data-tooltip="Calculates the physical risk to the vehicle by combining precipitation (slick roads) with high wind gusts (crosswind destabilization).">?</span>
+            </div>
+            <span id="hud-exposure" class="hud-stat-val">--%</span>
+            <span class="hud-stat-desc">Route road conditions rating</span>
+          </div>
+          <div class="hud-stat-box">
+            <span class="hud-stat-label">LOGISTICAL STOPS</span>
+            <span id="hud-stops" class="hud-stat-val">--</span>
+            <span class="hud-stat-desc">Fuel, rest, and meal stops</span>
+          </div>
+          <div class="hud-stat-box">
+            <span class="hud-stat-label">TOTAL TRAVEL TIME</span>
+            <span id="hud-duration" class="hud-stat-val">--</span>
+            <span id="hud-eta-desc" class="hud-stat-desc">Calculated duration &amp; ETA</span>
+          </div>
+          <div class="hud-stat-box">
+            <span class="hud-stat-label">EST. FUEL COST</span>
+            <span id="hud-fuel-cost" class="hud-stat-val">$--</span>
+            <span class="hud-stat-desc">Estimated route fuel expense</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel 5: Milestone Weather Outlook -->
+      <section class="panel-card matrix-panel">
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span class="panel-icon">📋</span>
+            <h2>Journey Details</h2>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <button id="btn-copy-itinerary" class="btn-action" style="padding: 0.45rem 1.05rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-bright); display: flex; align-items: center; gap: 0.4rem; cursor: pointer; transition: all 0.2s;" disabled>📋 Copy Itinerary</button>
+            <button id="btn-export-gpx" class="btn-action" style="padding: 0.45rem 1.05rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-bright); display: flex; align-items: center; gap: 0.4rem; cursor: pointer; transition: all 0.2s;" disabled>📂 Export GPX</button>
+            <button id="btn-print" class="btn-action" style="padding: 0.45rem 1.05rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-bright); display: flex; align-items: center; gap: 0.4rem; cursor: pointer; transition: all 0.2s;" disabled>🖨️ Print Itinerary</button>
+          </div>
+        </div>
+        <div id="route-safety-alert" style="display: none; font-size: 0.85rem; padding: 0.85rem 1.25rem; border-radius: 8px; margin-bottom: 0.5rem; font-weight: 500; line-height: 1.5;"></div>
+        
+        <div id="milestones-timeline" class="milestones-timeline">
+          <div class="timeline-empty" style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem;">
+            No journey milestones generated. Configure your route and click Analyze above.
+          </div>
+        </div>
+
+        <div class="matrix-legend">
+          <span class="legend-item"><span class="badge badge-error">High Wind Alert</span> Dangerous wind gusts or slick roads</span>
+          <span class="legend-item"><span class="badge badge-warn">Plan Ahead</span> Moderate wind or rain conditions</span>
+          <span class="legend-item"><span class="badge badge-success">Smooth Riding</span> Optimal weather conditions</span>
+        </div>
+      </section>
+
+      <!-- Panel 6: Elevation Profile Graph -->
+      <section class="panel-card elevation-panel" style="grid-column: span 12;">
+        <details class="itinerary-details">
+          <summary class="itinerary-summary" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span class="panel-icon">📈</span>
+              <h2 style="margin: 0; font-size: 1.05rem; font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-bright);">Elevation Profile (Feet)</h2>
+            </div>
+            <span class="summary-arrow"></span>
+          </summary>
+          <div style="padding: 1rem; background: rgba(0,0,0,0.15); border-radius: 8px; border: 1px solid var(--border-color); margin-top: 1rem;">
+            <canvas id="elevation-chart" style="width: 100%; height: 250px;"></canvas>
+          </div>
+        </details>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="main-footer">
+    <p>&copy; 2026 Open Road Advisor. Built with OpenStreetMap &amp; Open-Meteo APIs.</p>
+  </footer>
+
+  <!-- Leaflet GIS Mapping library script -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="advisor.js?v=9"></script>
+</body>
+</html>

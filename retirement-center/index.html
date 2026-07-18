@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retirement Command Center</title>
+  <!-- Google Fonts for premium tech feel -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=1.0.4">
+</head>
+<body>
+<!-- Horizon animations removed -->
+
+  <header class="app-header">
+    <div class="header-left">
+      <a href="../" class="btn-back">← Back to Dashboard</a>
+      <div class="title-wrap">
+        <h1>Retirement Command Center</h1>
+        <p class="subtitle">Stateless client-side forecaster mapping bucket growth and drawdown dynamics.</p>
+      </div>
+    </div>
+    
+    <div class="header-right">
+      <div class="toggle-container">
+        <span class="toggle-label">Show Future Dollars (Nominal)</span>
+        <label class="switch-control">
+          <input type="checkbox" id="toggle-purchasing-power" checked>
+          <span class="slider-switch"></span>
+        </label>
+        <span class="toggle-label active" id="purchasing-power-label">Show Today's Purchasing Power</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <div style="background: var(--color-success-dim); border: 1px solid rgba(15, 118, 110, 0.15); border-radius: 1rem; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.85rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; box-shadow: 0 4px 15px -3px rgba(15, 118, 110, 0.05);">
+      <span style="font-size: 1.25rem; line-height: 1.2;">🔒</span>
+      <div>
+        <strong style="color: var(--color-success); font-family: var(--font-display); letter-spacing: 0.01em; display: block; margin-bottom: 0.15rem; font-size: 0.95rem;">100% Private & Local.</strong>
+        Your financial data never leaves this device. All calculations happen securely within your own browser. We do not track, store, or transmit your numbers.
+      </div>
+    </div>
+    <section class="control-bar" aria-label="Primary retirement controls">
+      <div class="control-group">
+        <div class="control-label-row">
+          <label for="retirement-age">Retirement Age</label>
+          <span class="control-value" id="val-retirement-age">65</span>
+        </div>
+        <input type="range" id="retirement-age" min="40" max="85" step="1" value="65" class="slider">
+      </div>
+
+      <div class="control-group">
+        <label for="pre-return">Market Return (%)</label>
+        <div class="input-suffix-container">
+          <input type="number" id="pre-return" min="0" max="20" step="0.1" value="7.0">
+          <span class="suffix">%</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="inflation-rate">Inflation Rate (%)</label>
+        <div class="input-suffix-container">
+          <input type="number" id="inflation-rate" min="0" max="10" step="0.1" value="2.5">
+          <span class="suffix">%</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label-row">
+          <label for="social-security">Monthly Social Security ($)</label>
+          <a class="help-link" href="https://www.ssa.gov/OACT/quickcalc/" target="_blank" rel="noopener noreferrer" title="Estimate your benefits on SSA.gov" aria-label="Open Social Security benefit calculator">
+            ?
+          </a>
+        </div>
+        <div class="input-prefix-container">
+          <span class="prefix">$</span>
+          <input type="number" id="social-security" min="0" max="150000" step="500" value="4500">
+        </div>
+      </div>
+    </section>
+
+    <div class="calculator-grid">
+      <!-- Left Panel: Inputs -->
+      <section class="inputs-panel">
+        
+        <!-- Accordion 1: Timeline -->
+        <div class="input-card">
+          <div class="card-header">
+            <span class="card-icon">⏳</span>
+            <h2>Timeline Options</h2>
+          </div>
+          <div class="card-body">
+            <div class="input-group">
+              <div class="input-label-row">
+                <label for="current-age">Current Age</label>
+                <span class="val-display" id="val-current-age">48</span>
+              </div>
+              <input type="range" id="current-age" min="18" max="75" step="1" value="48" class="slider">
+            </div>
+
+            <div class="input-group">
+              <div class="input-label-row">
+                <label for="life-expectancy">Life Expectancy</label>
+                <span class="val-display" id="val-life-expectancy">95</span>
+              </div>
+              <input type="range" id="life-expectancy" min="70" max="110" step="1" value="95" class="slider">
+            </div>
+          </div>
+        </div>
+
+        <!-- Accordion 2: Bucket Strategy -->
+        <div class="input-card">
+          <div class="card-header">
+            <span class="card-icon">🪣</span>
+            <h2>The Three Buckets (Balances &amp; Monthly)</h2>
+          </div>
+          <div class="card-body">
+            
+            <!-- Bucket A: Pre-Tax / Traditional -->
+            <div class="bucket-row-title traditional-color">Traditional (Pre-Tax 401k/IRA)</div>
+            <div class="grid-2-col">
+              <div class="input-group">
+                <label for="pretax-balance">Current Balance</label>
+                <div class="input-prefix-container">
+                  <span class="prefix">$</span>
+                  <input type="number" id="pretax-balance" min="0" max="10000000" step="5000" value="0">
+                </div>
+              </div>
+              <div class="input-group">
+                <label for="pretax-monthly">Monthly Add</label>
+                <div class="input-prefix-container">
+                  <span class="prefix">$</span>
+                  <input type="number" id="pretax-monthly" min="0" max="10000" step="100" value="0">
+                </div>
+              </div>
+            </div>
+
+            <div class="grid-2-col match-row">
+              <div class="input-group">
+                <label for="employer-match-rate">Employer Match (%)</label>
+                <div class="input-suffix-container">
+                  <input type="number" id="employer-match-rate" min="0" max="100" step="0.1" value="0">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+              <div class="input-group">
+                <label for="employer-contrib-monthly">Monthly Employer Contribution</label>
+                <div class="input-prefix-container">
+                  <span class="prefix">$</span>
+                  <input type="text" id="employer-contrib-monthly" value="$0" readonly>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bucket B: Tax-Free / Roth -->
+            <div class="bucket-row-title roth-color">Roth (Tax-Free Growth)</div>
+            <div class="grid-2-col">
+              <div class="input-group">
+                <label for="roth-balance">Current Balance</label>
+                <div class="input-prefix-container">
+                  <span class="prefix">$</span>
+                  <input type="number" id="roth-balance" min="0" max="10000000" step="5000" value="0">
+                </div>
+              </div>
+              <div class="input-group">
+                <label for="roth-monthly">Monthly Add</label>
+                <div class="input-prefix-container">
+                  <span class="prefix">$</span>
+                  <input type="number" id="roth-monthly" min="0" max="10000" step="100" value="0">
+                </div>
+              </div>
+            </div>
+
+            <!-- Bucket C: Taxable / Brokerage -->
+            <div class="bucket-row-title taxable-color">Taxable (Brokerage &amp; Cash)</div>
+            <div class="grid-2-col">
+              <div class="input-group">
+                <label for="taxable-balance">Brokerage / Cash Balance</label>
+                <div class="input-prefix-container">
+                  <span class="prefix">$</span>
+                  <input type="number" id="taxable-balance" min="0" max="10000000" step="5000" value="0">
+                </div>
+              </div>
+              <div class="input-group">
+                <label for="taxable-monthly">Monthly Add</label>
+                <div class="input-prefix-container">
+                  <span class="prefix">$</span>
+                  <input type="number" id="taxable-monthly" min="0" max="20000" step="100" value="0">
+                </div>
+              </div>
+            </div>
+
+            <div class="grid-2-col">
+              <div class="input-group">
+                <label for="taxable-hysa-balance">HYSA Balance</label>
+                <div class="input-prefix-container">
+                  <span class="prefix">$</span>
+                  <input type="number" id="taxable-hysa-balance" min="0" max="10000000" step="5000" value="0">
+                </div>
+              </div>
+              <div class="input-group">
+                <label for="taxable-hysa-monthly">HYSA Monthly Add</label>
+                <div class="input-prefix-container">
+                  <span class="prefix">$</span>
+                  <input type="number" id="taxable-hysa-monthly" min="0" max="20000" step="100" value="0">
+                </div>
+              </div>
+            </div>
+
+            <div class="grid-2-col">
+              <div class="input-group">
+                <label class="checkbox-row" for="taxable-hysa-compound">
+                  <input type="checkbox" id="taxable-hysa-compound" checked>
+                  <span>Include HYSA compounding</span>
+                </label>
+                <div class="helper-note" id="taxable-hysa-note">Compounds only until retirement age is reached.</div>
+              </div>
+              <div class="input-group">
+                <label for="taxable-hysa-rate">HYSA Rate (%)</label>
+                <div class="input-suffix-container">
+                  <input type="number" id="taxable-hysa-rate" min="0" max="20" step="0.1" value="3.5">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Accordion 3: Income & Goals -->
+        <div class="input-card">
+          <div class="card-header">
+            <span class="card-icon">🎯</span>
+            <h2>Income &amp; Retirement Goals</h2>
+          </div>
+          <div class="card-body">
+            <div class="input-group">
+              <label for="retirement-income">Desired Annual Retirement Income <span class="label-info">(Today's $)</span></label>
+              <div class="input-prefix-container">
+                <span class="prefix">$</span>
+                <input type="number" id="retirement-income" min="5000" max="2000000" step="1000" value="90000">
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Accordion 4: Market & Economy -->
+        <div class="input-card">
+          <div class="card-header">
+            <span class="card-icon">📈</span>
+            <h2>Market &amp; Economy Assumptions</h2>
+          </div>
+          <div class="card-body">
+            <div class="grid-2-col">
+              <div class="input-group">
+                <label for="post-return">Post-Retire Return</label>
+                <div class="input-suffix-container">
+                  <input type="number" id="post-return" min="0" max="15" step="0.1" value="4.0">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+
+              <div class="input-group">
+                <div class="label-with-tooltip">
+                  <label for="tax-rate">Effective Tax Rate (Retirement)</label>
+                  <span class="tooltip-icon" data-tooltip="Applied to Traditional/Pre-Tax withdrawals.">?</span>
+                </div>
+                <div class="input-suffix-container">
+                  <input type="number" id="tax-rate" min="0" max="50" step="0.1" value="15.0">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Right Panel: Results & Visualizations -->
+      <section class="results-panel">
+        
+        <!-- Success Indicator Alert Banner -->
+        <div class="success-hud-banner" id="success-banner">
+          <div class="hud-emoji" id="success-emoji">🎉</div>
+          <div class="hud-details-wrap">
+            <div class="hud-headline" id="success-headline">Fully Funded</div>
+            <div class="hud-sub" id="success-sub">Your portfolio is projected to survive past your life expectancy.</div>
+          </div>
+        </div>
+
+        <!-- KPI Stats Dashboard Cards -->
+        <div class="hud-stats-grid">
+          <div class="hud-card">
+            <span class="hud-label">Peak Portfolio Value <span class="stat-power-label">(Today's $)</span></span>
+            <span class="hud-value" id="kpi-peak-val">$0</span>
+            <span class="hud-desc" id="kpi-peak-age">Reached at age 65</span>
+          </div>
+          <div class="hud-card">
+            <span class="hud-label">Out-of-Pocket Cash</span>
+            <span class="hud-value" id="kpi-total-contrib">$0</span>
+            <span class="hud-desc" id="kpi-accum-years">Over 17 accumulation years</span>
+          </div>
+          <div class="hud-card optimal-card">
+            <span class="hud-label">Optimal Retirement Age</span>
+            <span class="hud-value" id="kpi-optimal-age">—</span>
+            <span class="hud-desc" id="kpi-optimal-age-desc">Earliest age with ~ $0 balance at life expectancy</span>
+            <span class="hud-warning" id="kpi-optimal-warning" style="display: none;"><span class="hud-warning-icon">⚠</span> You may need to work longer than expected.</span>
+          </div>
+        </div>
+
+        <!-- Visualization Cards -->
+        <div class="viz-card">
+          <div class="viz-header">
+            <h3>Portfolio Accumulation Phase</h3>
+            <span class="viz-subtitle">Ages <span id="accum-age-start">48</span> to <span id="accum-age-end">65</span></span>
+          </div>
+          <div class="svg-container" id="accum-chart-box">
+            <!-- Custom responsive SVG path for Stacked Area Growth Chart -->
+            <svg id="accum-svg" width="100%" height="240" viewBox="0 0 600 240" preserveAspectRatio="none">
+              <!-- Grid lines & charts will be injected by app.js -->
+            </svg>
+            <div class="chart-tooltip" id="accum-tooltip" style="display: none;"></div>
+          </div>
+          <div class="chart-legend-row">
+            <span class="legend-dot traditional-bg"></span>Traditional
+            <span class="legend-dot roth-bg"></span>Roth
+            <span class="legend-dot taxable-bg"></span>Taxable
+          </div>
+        </div>
+
+        <div class="viz-card">
+          <div class="viz-header">
+            <h3>Portfolio Burndown Phase</h3>
+            <span class="viz-subtitle">Ages <span id="burn-age-start">65</span> to <span id="burn-age-end">95</span></span>
+          </div>
+          <div class="svg-container" id="burn-chart-box">
+            <!-- Custom responsive SVG path for Depletion Chart -->
+            <svg id="burn-svg" width="100%" height="240" viewBox="0 0 600 240" preserveAspectRatio="none">
+              <!-- Grid lines & charts will be injected by app.js -->
+            </svg>
+            <div class="chart-tooltip" id="burn-tooltip" style="display: none;"></div>
+          </div>
+        </div>
+
+        <!-- Ledger Table Details Card -->
+        <div class="ledger-card">
+          <details id="ledger-drawer">
+            <summary class="ledger-summary">
+              <span>View Annual Projection Ledger</span>
+              <span class="summary-arrow"></span>
+            </summary>
+            <div class="ledger-content">
+              <table class="ledger-table">
+                <thead>
+                  <tr>
+                    <th>Age</th>
+                    <th>Year</th>
+                    <th>Traditional</th>
+                    <th>Roth</th>
+                    <th>Taxable</th>
+                    <th>Total Bal.</th>
+                    <th>Withdrawal</th>
+                  </tr>
+                </thead>
+                <tbody id="ledger-tbody">
+                  <!-- Injected by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+
+      </section>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <p>Retirement Command Center &bull; Designed for Clarity &amp; Peace of Mind &bull; 100% Stateless client calculations.</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
