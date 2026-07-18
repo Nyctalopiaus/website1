@@ -933,7 +933,7 @@ details[open] .summary-arrow::after {
 .tooltip-icon:hover::after {
   content: attr(data-tooltip);
   position: absolute;
-  bottom: 125%;
+  top: 125%;
   left: 50%;
   transform: translateX(-50%);
   background: var(--text-main);
@@ -942,7 +942,8 @@ details[open] .summary-arrow::after {
   border-radius: 0.4rem;
   font-size: 0.75rem;
   font-weight: 500;
-  white-space: nowrap;
+  white-space: pre-wrap;
+  width: max-content;
   z-index: 100;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   pointer-events: none;
@@ -951,11 +952,11 @@ details[open] .summary-arrow::after {
 .tooltip-icon:hover::before {
   content: '';
   position: absolute;
-  bottom: 115%;
+  top: 115%;
   left: 50%;
   transform: translateX(-50%);
   border: 5px solid transparent;
-  border-top-color: var(--text-main);
+  border-bottom-color: var(--text-main);
   z-index: 100;
   pointer-events: none;
 }
