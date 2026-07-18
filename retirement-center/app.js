@@ -398,7 +398,9 @@ function solveOptimalRetirementAge() {
     kpiAccumYears.textContent = `Over ${accumYears} accumulation years`;
 
     if (optimalRetirementAge) {
-      kpiOptimalAge.textContent = `${optimalRetirementAge.age}`;
+      const currentAge = parseInt(currentAgeInput.value);
+      const retirementYear = new Date().getFullYear() + (optimalRetirementAge.age - currentAge);
+      kpiOptimalAge.textContent = `${optimalRetirementAge.age} (Year: ${retirementYear})`;
       kpiOptimalAgeDesc.textContent = 'Earliest age with ~ $0 balance at life expectancy';
       const suggestedAge = parseInt(optimalRetirementAge.age);
       const selectedAge = parseInt(retirementAgeInput.value);
