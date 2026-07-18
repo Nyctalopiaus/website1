@@ -829,7 +829,7 @@ svg {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: 1rem;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 4px 20px -2px rgba(120, 110, 90, 0.05);
 }
 
@@ -868,6 +868,7 @@ details[open] .summary-arrow::after {
   border-top: 1px solid var(--border-color);
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: visible;
   background: #ffffff;
 }
 
@@ -879,7 +880,6 @@ details[open] .summary-arrow::after {
 }
 
 .ledger-table th {
-  position: sticky;
   top: 0;
   background: #fbfaf8;
   padding: 0.75rem 1rem;
@@ -887,6 +887,7 @@ details[open] .summary-arrow::after {
   color: var(--text-muted);
   border-bottom: 1.5px solid var(--border-color);
   z-index: 1;
+  overflow: visible;
 }
 
 .ledger-table td {
