@@ -39,8 +39,8 @@
               <span class="tooltip-icon" data-tooltip="Securely pulls price, HOA, and tax data from a Redfin property link.">?</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
-              <input id="mlsNumber" type="text" placeholder="Paste Redfin property page URL..." style="width: 100%; background: rgba(7, 9, 8, 0.5); border: 1px solid var(--border-color); border-radius: 0.4rem; color: var(--text-bright); padding: 0.65rem 0.9rem; font-family: var(--font-sans); outline: none;" />
-              <button id="btn-search-mls" style="width: 100%; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.65rem 1rem; font-weight: 600; cursor: pointer; text-align: center; transition: filter 0.2s ease;" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">🔍 Fetch Property</button>
+              <input id="mlsNumber" type="text" placeholder="Paste Redfin property page URL..." aria-label="Redfin property page URL for auto-fill" style="width: 100%; background: rgba(7, 9, 8, 0.5); border: 1px solid var(--border-color); border-radius: 0.4rem; color: var(--text-bright); padding: 0.65rem 0.9rem; font-family: var(--font-sans); outline: none;" />
+              <button id="btn-search-mls" aria-label="Fetch property data from Redfin URL" style="width: 100%; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.65rem 1rem; font-weight: 600; cursor: pointer; text-align: center; transition: filter 0.2s ease;" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">🔍 Fetch Property</button>
             </div>
             
             <!-- NEW HOUSING PREVIEW CARD -->
@@ -107,7 +107,7 @@
         <div class="panel-card">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
             <h2 style="margin: 0;">Rates & Taxes</h2>
-            <button id="btn-load-rates" style="font-size: 0.75rem; color: var(--accent-emerald); background: var(--accent-emerald-dim); padding: 0.35rem 0.75rem; border-radius: 1rem; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            <button id="btn-load-rates" aria-label="Fetch current mortgage rates from live data" style="font-size: 0.75rem; color: var(--accent-emerald); background: var(--accent-emerald-dim); padding: 0.35rem 0.75rem; border-radius: 1rem; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 600; cursor: pointer; transition: all 0.2s;">
               🔄 Sync Live Rates
             </button>
           </div>
@@ -401,7 +401,7 @@
           </div>
         </div>
 
-        <button class="btn-view-amort" id="btn-view-amort">
+        <button class="btn-view-amort" id="btn-view-amort" aria-label="View detailed amortization schedule with monthly breakdown">
           View Full Amortization Schedule ➔
         </button>
       </section>
@@ -412,6 +412,6 @@
     <p>&copy; 2026 Nycto's Project Lab. All calculations are estimates.</p>
   </footer>
 
-  <script src="app.js?v=5"></script>
+  <script type="module" src="app.js?v=5"></script>
 </body>
 </html>
