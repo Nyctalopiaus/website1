@@ -582,6 +582,13 @@ input:checked + .slider-switch:before {
   color: #1f2937;
 }
 
+.hud-year {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: -0.1rem;
+}
+
 .hud-desc {
   font-size: 0.75rem;
   color: var(--text-light);
@@ -615,6 +622,45 @@ input:checked + .slider-switch:before {
 
 .hud-card.optimal-card .hud-value {
   color: var(--color-primary);
+}
+
+.hud-card.max-income-card {
+  background: linear-gradient(145deg, rgba(15, 118, 110, 0.06), var(--card-bg));
+  border-color: rgba(15, 118, 110, 0.2);
+}
+
+.hud-card.max-income-card .hud-value {
+  color: var(--color-success);
+}
+
+.max-income-breakdown {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+  margin-top: 0.8rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(15, 118, 110, 0.22);
+}
+
+.breakdown-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.breakdown-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+  color: var(--color-success);
+}
+
+.breakdown-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 /* Visualization Cards styling */
@@ -859,6 +905,59 @@ details[open] .summary-arrow::after {
   font-weight: 600;
   border-top: 1.5px solid var(--color-primary);
   border-bottom: 1.5px solid var(--color-primary);
+}
+
+/* Tooltip Styling */
+.label-with-tooltip {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: help;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.tooltip-icon:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text-main);
+  color: #ffffff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+.tooltip-icon:hover::before {
+  content: '';
+  position: absolute;
+  bottom: 115%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--text-main);
+  z-index: 100;
+  pointer-events: none;
 }
 
 /* Footer Section */

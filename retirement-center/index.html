@@ -254,7 +254,7 @@
             <h2>Market &amp; Economy Assumptions</h2>
           </div>
           <div class="card-body">
-            <div class="grid-2-col">
+            <div class="grid-2-col" style="align-items: end;">
               <div class="input-group">
                 <label for="post-return">Post-Retire Return</label>
                 <div class="input-suffix-container">
@@ -306,8 +306,25 @@
           <div class="hud-card optimal-card">
             <span class="hud-label">Optimal Retirement Age</span>
             <span class="hud-value" id="kpi-optimal-age">—</span>
+            <span class="hud-year" id="kpi-optimal-year"></span>
             <span class="hud-desc" id="kpi-optimal-age-desc">Earliest age with ~ $0 balance at life expectancy</span>
             <span class="hud-warning" id="kpi-optimal-warning" style="display: none;"><span class="hud-warning-icon">⚠</span> You may need to work longer than expected.</span>
+          </div>
+          <div class="hud-card max-income-card">
+            <span class="hud-label">Max Monthly Income <span class="stat-power-label">(Today's $)</span></span>
+            <span class="hud-value" id="kpi-max-income">—</span>
+            <span class="hud-year" id="kpi-max-income-vs"></span>
+            <span class="hud-desc" id="kpi-max-income-desc">Monthly amount that draws your portfolio to $0 at life expectancy</span>
+            <div class="max-income-breakdown" id="kpi-max-income-breakdown" style="display:none;">
+              <div class="breakdown-item">
+                <span class="breakdown-value" id="kpi-max-income-annual">—</span>
+                <span class="breakdown-label">Annual Gross</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-value" id="kpi-max-income-aftertax">—</span>
+                <span class="breakdown-label" id="kpi-max-income-aftertax-label">After Tax</span>
+              </div>
+            </div>
           </div>
         </div>
 

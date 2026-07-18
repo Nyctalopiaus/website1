@@ -338,6 +338,57 @@ function solveOptimalRetirementAge() {
   return { age: bestSurvivalAge, type: 'shortfall' };
 }
 
+  /**
+   * Finds the maximum annual income (in today's dollars) that draws the portfolio
+   * to exactly $0 by life expectancy. Uses binary search over a simplified burn
+   * simulation that mirrors the main logic (inflation-adjusted withdrawals, SS offset,
+   * post-retirement growth) without tax-account splitting.
+   * @param {number} startBalance - Total portfolio value at retirement start
+   * @returns {number|null} Max monthly income in today's dollars, or null if not solvable
+   */
+  function solveMaxMonthlyIncome(startBalance) {
+    if (startBalance <= 0) return null;
+
+    const retirementAge  = parseInt(retirementAgeInput.value);
+    const lifeExpectancy = parseInt(lifeExpectancyInput.value);
+    const postReturn     = parseFloat(postReturnInput.value) || 0;
+    const inflation      = parseFloat(inflationRateInput.value) || 0;
+    const ssMonthly      = getScaledSocialSecurityBenefit(socialSecurityInput.value, retirementAge);
+    const ssAnnual       = ssMonthly * 12;
+    const rPostAnnual    = postReturn / 100;
+    const years          = Math.max(1, lifeExpectancy - retirementAge);
+
+    // Simulate burn phase given a candidate annual income (today's $)
+    function simulate(annualIncome) {
+      let balance = startBalance;
+      for (let y = 1; y <= years; y++) {
+        balance *= (1 + rPostAnnual);
+        const netToday   = Math.max(0, annualIncome - ssAnnual);
+        const netFuture  = netToday * Math.pow(1 + inflation / 100, y);
+        balance -= netFuture;
+        if (balance < -1) return balance; // gone negative, stop early
+      }
+      return balance;
+    }
+
+    // If even $0 of income results in a negative balance, can't solve
+    if (simulate(0) < 0) return null;
+
+    // Binary search: find income where final balance ≈ 0
+    let lo = 0;
+    let hi = startBalance; // upper bound: impossible to spend the whole thing in year 1 this way
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      if (simulate(mid) > 0) {
+        lo = mid; // can afford more
+      } else {
+        hi = mid; // too much
+      }
+    }
+
+    return (lo + hi) / 2 / 12; // return monthly figure
+  }
+
   // Recalculation Engine
   function calculateAll() {
     syncLabels();
@@ -400,7 +451,9 @@ function solveOptimalRetirementAge() {
     if (optimalRetirementAge) {
       const currentAge = parseInt(currentAgeInput.value);
       const retirementYear = new Date().getFullYear() + (optimalRetirementAge.age - currentAge);
-      kpiOptimalAge.textContent = `${optimalRetirementAge.age} (Year: ${retirementYear})`;
+      kpiOptimalAge.textContent = `${optimalRetirementAge.age}`;
+      const kpiOptimalYear = document.getElementById('kpi-optimal-year');
+      if (kpiOptimalYear) kpiOptimalYear.textContent = `Year ${retirementYear}`;
       kpiOptimalAgeDesc.textContent = 'Earliest age with ~ $0 balance at life expectancy';
       const suggestedAge = parseInt(optimalRetirementAge.age);
       const selectedAge = parseInt(retirementAgeInput.value);
@@ -409,6 +462,48 @@ function solveOptimalRetirementAge() {
       kpiOptimalAge.textContent = '—';
       kpiOptimalAgeDesc.textContent = 'Increase savings to find a valid age';
       kpiOptimalWarning.style.display = 'none';
+    }
+
+    // Max Monthly Income card
+    const kpiMaxIncome    = document.getElementById('kpi-max-income');
+    const kpiMaxIncomeVs  = document.getElementById('kpi-max-income-vs');
+    const kpiMaxIncomeDesc = document.getElementById('kpi-max-income-desc');
+    if (kpiMaxIncome) {
+      // Use the raw (non-discounted) portfolio balance at retirement start
+      const rawBurnStart = burnData[0]?.total ?? 0;
+      const maxMonthly = solveMaxMonthlyIncome(rawBurnStart);
+      const currentMonthly = (parseFloat(retirementIncomeInput.value) || 0) / 12;
+      if (maxMonthly !== null && maxMonthly > 0) {
+        kpiMaxIncome.textContent = formatCurrency(maxMonthly) + '/mo';
+        const diff = maxMonthly - currentMonthly;
+        if (diff > 1) {
+          kpiMaxIncomeVs.textContent = `+${formatCurrency(diff)}/mo vs. your target`;
+          kpiMaxIncomeVs.style.color = 'var(--color-success)';
+        } else {
+          kpiMaxIncomeVs.textContent = `At or near your income target`;
+          kpiMaxIncomeVs.style.color = 'var(--text-muted)';
+        }
+        kpiMaxIncomeDesc.textContent = 'Monthly amount that draws your portfolio to $0 at life expectancy';
+
+        // Annual gross and after-tax breakdown
+        const breakdown = document.getElementById('kpi-max-income-breakdown');
+        const kpiAnnual = document.getElementById('kpi-max-income-annual');
+        const kpiAfterTax = document.getElementById('kpi-max-income-aftertax');
+        const kpiAfterTaxLabel = document.getElementById('kpi-max-income-aftertax-label');
+        if (breakdown && kpiAnnual && kpiAfterTax) {
+          const taxRate = parseFloat(taxRateInput.value) || 22;
+          const annualGross = maxMonthly * 12;
+          const afterTaxMonthly = maxMonthly * (1 - taxRate / 100);
+          kpiAnnual.textContent = formatCurrency(annualGross) + '/yr';
+          kpiAfterTax.textContent = formatCurrency(afterTaxMonthly) + '/mo';
+          if (kpiAfterTaxLabel) kpiAfterTaxLabel.textContent = `After ~${taxRate}% tax`;
+          breakdown.style.display = 'grid';
+        }
+      } else {
+        kpiMaxIncome.textContent = '—';
+        kpiMaxIncomeVs.textContent = '';
+        kpiMaxIncomeDesc.textContent = 'Increase contributions to calculate';
+      }
     }
 
     // Success HUD Banner details
