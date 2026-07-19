@@ -897,7 +897,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isAfterSunset) {
           const b = document.createElement('span');
           b.classList.add('badge', 'badge-warn');
-          b.textContent = 'Night Riding Alert';
+          b.textContent = 'Night Travel Alert';
           badgesContainer.appendChild(b);
         }
         if (hasSunburnWarning) {
