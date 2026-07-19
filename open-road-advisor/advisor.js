@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const t1 = prevWp.arrivalTimeUnix;
           const t2 = departureTimeUnix + (currentWp.cumulativeMeters / speedMps) + cumulativeDelaySeconds;
 
-          // Curfew-first processing: split the segment at exact curfew-end boundary before logistics.
+          // Hard gate first: check curfew before any logistical event processing.
           if (enforceCurfew && t2 > t1) {
             const localT1 = t1 + approxOffset;
             const localT2 = t2 + approxOffset;
@@ -416,7 +416,9 @@ document.addEventListener('DOMContentLoaded', () => {
               prevWp = layoverWp;
 
               log(`[CURFEW] Boundary enforced at ${(boundaryMile).toFixed(1)} miles (${curfewEndStr} local).`);
-              continue;
+              // Stop processing this segment immediately; restart travel flow on next loop cycle.
+              segmentCompleted = true;
+              break;
             }
           }
 
