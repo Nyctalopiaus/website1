@@ -380,30 +380,18 @@ document.addEventListener('DOMContentLoaded', () => {
           const t2 = departureTimeUnix + (currentWp.cumulativeMeters / speedMps) + cumulativeDelaySeconds;
 
           // Hard gate first: check curfew before any logistical event processing.
-          if (enforceCurfew && t2 > t1) {
+          if (enforceCurfew) {
             const localT1 = t1 + approxOffset;
             const localT2 = t2 + approxOffset;
             const nextBoundaryLocal = getNextCurfewBoundaryLocalUnix(localT1);
 
-            if (nextBoundaryLocal > localT1 && nextBoundaryLocal <= localT2) {
-              // Build boundaryUtc directly from curfew-end local wall-clock time.
-              // This is the authoritative timestamp for layover arrival and ignores speed-derived timing.
-              const boundaryLocalDate = new Date(nextBoundaryLocal * 1000);
-              const boundaryUtc = Date.UTC(
-                boundaryLocalDate.getUTCFullYear(),
-                boundaryLocalDate.getUTCMonth(),
-                boundaryLocalDate.getUTCDate(),
-                curfewEndHour,
-                curfewEndMin,
-                0
-              ) / 1000 - approxOffset;
-
-              // Ratio is only for finding the split coordinate along the segment.
+            if (localT2 > nextBoundaryLocal) {
+              const boundaryUtc = nextBoundaryLocal - approxOffset;
               const ratio = Math.max(0, Math.min(1, (boundaryUtc - t1) / (t2 - t1)));
               const boundaryMile = d1 + ratio * (d2 - d1);
 
               const layoverWp = interpolateWaypoint(prevWp, currentWp, boundaryMile, 'Overnight Layover', 'layover', true);
-              // Hard overwrite: layover occurs exactly at curfew-end boundary.
+              // Hard overwrite: layover occurs exactly at curfew-end boundary (10:00 PM local time).
               layoverWp.arrivalTimeUnix = boundaryUtc;
               layoverWp.cityName = 'Curfew Boundary';
               finalWaypoints.push(layoverWp);
@@ -416,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
               prevWp = layoverWp;
 
               log(`[CURFEW] Boundary enforced at ${(boundaryMile).toFixed(1)} miles (${curfewEndStr} local).`);
-              // Stop processing this segment immediately; restart travel flow on next loop cycle.
+              // Stop processing this segment immediately; restart travel flow on next day.
               segmentCompleted = true;
               break;
             }
