@@ -93,12 +93,17 @@ body {
   font-size: 0.85rem;
   color: var(--text-muted);
   font-weight: 500;
-  margin-bottom: 0.5rem;
-  transition: color 0.2s ease;
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.5);
+  transition: all 0.2s ease;
 }
 
 .btn-back:hover {
   color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: var(--color-primary-dim);
 }
 
 .title-wrap h1 {
