@@ -9,7 +9,6 @@ import {
   calculateBearing,
   geocode,
   reverseGeocode,
-  checkCurfewViolation,
   getCustomMealCrossing,
   fetchOSRMRoute
 } from './geo-utils.js';
@@ -303,7 +302,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const breakfastTimeInput = document.getElementById('breakfast-time');
       const lunchTimeInput = document.getElementById('lunch-time');
       const dinnerTimeInput = document.getElementById('dinner-time');
-      const smartLayoverInput = document.getElementById('smart-layover');
+
+      const enforceCurfew = document.getElementById('enforce-curfew').checked;
+      const curfewStartStr = document.getElementById('curfew-start').value;
+      const curfewEndStr = document.getElementById('curfew-end').value;
+      const [curfewStartHour, curfewStartMin] = curfewStartStr.split(':').map(Number);
+      const [curfewEndHour, curfewEndMin] = curfewEndStr.split(':').map(Number);
 
       const finalWaypoints = [];
       let lastRefuelMile = 0;
@@ -336,6 +340,30 @@ document.addEventListener('DOMContentLoaded', () => {
         };
       }
 
+      function getNextCurfewBoundaryLocalUnix(localUnix) {
+        const d = new Date(localUnix * 1000);
+        const y = d.getUTCFullYear();
+        const m = d.getUTCMonth();
+        const day = d.getUTCDate();
+        let boundary = Date.UTC(y, m, day, curfewEndHour, curfewEndMin, 0) / 1000;
+        if (boundary <= localUnix) {
+          boundary += 86400;
+        }
+        return boundary;
+      }
+
+      function getNextCurfewStartLocalUnix(localUnix) {
+        const d = new Date(localUnix * 1000);
+        const y = d.getUTCFullYear();
+        const m = d.getUTCMonth();
+        const day = d.getUTCDate();
+        let start = Date.UTC(y, m, day, curfewStartHour, curfewStartMin, 0) / 1000;
+        if (start <= localUnix) {
+          start += 86400;
+        }
+        return start;
+      }
+
       for (let i = 1; i < sampledWaypoints.length; i++) {
         const currentWp = sampledWaypoints[i];
         let prevWp = finalWaypoints[finalWaypoints.length - 1];
@@ -350,6 +378,34 @@ document.addEventListener('DOMContentLoaded', () => {
           const d2 = currentWp.distanceMiles;
           const t1 = prevWp.arrivalTimeUnix;
           const t2 = departureTimeUnix + (currentWp.cumulativeMeters / speedMps) + cumulativeDelaySeconds;
+
+          // Curfew-first processing: split the segment at exact curfew-end boundary before logistics.
+          if (enforceCurfew && t2 > t1) {
+            const localT1 = t1 + approxOffset;
+            const localT2 = t2 + approxOffset;
+            const nextBoundaryLocal = getNextCurfewBoundaryLocalUnix(localT1);
+
+            if (nextBoundaryLocal > localT1 && nextBoundaryLocal <= localT2) {
+              const boundaryUtc = nextBoundaryLocal - approxOffset;
+              const ratio = Math.max(0, Math.min(1, (boundaryUtc - t1) / (t2 - t1)));
+              const boundaryMile = d1 + ratio * (d2 - d1);
+
+              const layoverWp = interpolateWaypoint(prevWp, currentWp, boundaryMile, 'Overnight Layover', 'layover', true);
+              layoverWp.arrivalTimeUnix = boundaryUtc;
+              layoverWp.cityName = 'Curfew Boundary';
+              finalWaypoints.push(layoverWp);
+
+              const resumeLocal = getNextCurfewStartLocalUnix(nextBoundaryLocal);
+              const delaySeconds = Math.max(0, resumeLocal - nextBoundaryLocal);
+              cumulativeDelaySeconds += delaySeconds;
+
+              lastRefuelMile = boundaryMile;
+              prevWp = layoverWp;
+
+              log(`[CURFEW] Boundary enforced at ${(boundaryMile).toFixed(1)} miles (${curfewEndStr} local).`);
+              continue;
+            }
+          }
 
           // Check event 1: Fuel Stop needed before running out (safety buffer is 15 miles before limit)
           let fuelStopMile = lastRefuelMile + fuelRange - 15;
@@ -438,86 +494,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const tArrival = departureTimeUnix + (currentWp.cumulativeMeters / speedMps) + cumulativeDelaySeconds;
-        
-        const enforceCurfew = document.getElementById('enforce-curfew').checked;
-        const curfewStartStr = document.getElementById('curfew-start').value;
-        const curfewEndStr = document.getElementById('curfew-end').value;
-
-        const [curfewStartHour, curfewStartMin] = curfewStartStr.split(':').map(Number);
-        const [curfewEndHour, curfewEndMin] = curfewEndStr.split(':').map(Number);
-
-        if (enforceCurfew && checkCurfewViolation(tArrival + approxOffset, curfewStartHour, curfewStartMin, curfewEndHour, curfewEndMin)) {
-          log(`[CURFEW] Curfew breached at coord (${currentWp.distanceMiles} miles). Finding anchor point...`);
-
-          let anchorWp = currentWp;
-          let anchorIndex = i;
-          let anchorName = "";
-
-          if (smartLayoverInput.checked) {
-            let name = currentWp.cityName || await reverseGeocode(currentWp.coord[1], currentWp.coord[0]);
-            currentWp.cityName = name;
-            if (name && !name.toLowerCase().includes("county")) {
-              anchorName = name;
-            } else {
-              log(`[CURFEW] Curfew coordinate in county zone ("${name}"). Rolling back to nearest city/town...`);
-              for (let k = i - 1; k >= 0; k--) {
-                const backWp = sampledWaypoints[k];
-                let backName = backWp.cityName || await reverseGeocode(backWp.coord[1], backWp.coord[0]);
-                backWp.cityName = backName;
-                if (backName && !backName.toLowerCase().includes("county")) {
-                  log(`[CURFEW] Smart Layover anchored at index ${k}: "${backName}" (${backWp.distanceMiles} miles).`);
-                  anchorWp = backWp;
-                  anchorIndex = k;
-                  anchorName = backName;
-                  break;
-                }
-                await new Promise(resolve => setTimeout(resolve, 1000));
-              }
-            }
-          }
-
-          if (!anchorName) {
-            anchorName = anchorWp.cityName || await reverseGeocode(anchorWp.coord[1], anchorWp.coord[0]) || `Waypoint #${anchorIndex + 1}`;
-            anchorWp.cityName = anchorName;
-          }
-
-          // Pop all coordinates from timeline past the anchor point
-          while (finalWaypoints.length > 0 && finalWaypoints[finalWaypoints.length - 1].distanceMiles > anchorWp.distanceMiles) {
-            finalWaypoints.pop();
-          }
-
-          const prevWpBeforeAnchor = finalWaypoints[finalWaypoints.length - 1];
-
-          // Inject Overnight Layover
-          const layoverWp = interpolateWaypoint(prevWpBeforeAnchor, anchorWp, anchorWp.distanceMiles, "Overnight Layover", "layover", true);
-          const anchorArrival = departureTimeUnix + (anchorWp.cumulativeMeters / speedMps) + cumulativeDelaySeconds;
-          layoverWp.arrivalTimeUnix = anchorArrival;
-          layoverWp.cityName = anchorName;
-          finalWaypoints.push(layoverWp);
-
-          // Calculate precise hours/minutes until morning using the local offset
-          const localArrivalUnix = anchorArrival + approxOffset;
-          const arrivalDate = new Date(localArrivalUnix * 1000);
-          const currentHour = arrivalDate.getUTCHours();
-          const currentMin = arrivalDate.getUTCMinutes();
-          
-          let hoursToWait = curfewStartHour - currentHour;
-          let minsToWait = curfewStartMin - currentMin;
-          if (minsToWait < 0) { minsToWait += 60; hoursToWait -= 1; }
-          if (hoursToWait < 0) { hoursToWait += 24; }
-          
-          const delaySeconds = (hoursToWait * 3600) + (minsToWait * 60);
-          cumulativeDelaySeconds += delaySeconds;
-
-          // Reset fuel range
-          lastRefuelMile = anchorWp.distanceMiles;
-
-          // Resume next loop starting from anchorIndex
-          i = anchorIndex;
-          continue;
-        } else {
-          currentWp.arrivalTimeUnix = tArrival;
-        }
+        currentWp.arrivalTimeUnix = tArrival;
         finalWaypoints.push(currentWp);
       }
 
