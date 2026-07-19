@@ -13,6 +13,8 @@ import {
   getCustomMealCrossing,
   fetchOSRMRoute
 } from './geo-utils.js';
+import { initRouteStops } from './route-stops.js';
+import { initUnitCurrencyControls } from './unit-controls.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   let elevationChart = null;
@@ -29,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const hudDuration = document.getElementById('hud-duration');
   const routeSafetyAlert = document.getElementById('route-safety-alert');
   const btnAddStop = document.getElementById('btn-add-stop');
+  const btnSwapRoute = document.getElementById('btn-swap-route');
   const routeStopsList = document.getElementById('route-stops-list');
   const milestonesTimeline = document.getElementById('milestones-timeline');
   const stabilityLabel = document.getElementById('hud-stability-label');
@@ -100,111 +103,17 @@ document.addEventListener('DOMContentLoaded', () => {
     resizeObserver.observe(document.getElementById('map'));
   }
 
-  // Dynamic stops builder and native drag-and-drop events
-  let draggedElement = null;
-
-  function addDragAndDropEvents(row) {
-    const handle = row.querySelector('.drag-handle');
-    if (handle) {
-      handle.addEventListener('mousedown', () => row.setAttribute('draggable', 'true'));
-      handle.addEventListener('mouseup', () => row.removeAttribute('draggable'));
-      handle.addEventListener('mouseleave', () => row.removeAttribute('draggable'));
-    }
-
-    row.addEventListener('dragstart', (e) => {
-      draggedElement = row;
-      row.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-    });
-
-    row.addEventListener('dragend', () => {
-      row.classList.remove('dragging');
-      draggedElement = null;
-    });
-
-    row.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-    });
-
-    row.addEventListener('dragenter', (e) => {
-      e.preventDefault();
-    });
-
-    row.addEventListener('drop', (e) => {
-      e.preventDefault();
-      if (draggedElement && draggedElement !== row) {
-        const container = routeStopsList;
-        const allRows = Array.from(container.children);
-        const draggedIndex = allRows.indexOf(draggedElement);
-        const targetIndex = allRows.indexOf(row);
-
-        if (draggedIndex < targetIndex) {
-          container.insertBefore(draggedElement, row.nextSibling);
-        } else {
-          container.insertBefore(draggedElement, row);
-        }
-      }
-    });
-  }
-
-  // Bind initial route stops list rows drag events
-  Array.from(routeStopsList.children).forEach(row => {
-    addDragAndDropEvents(row);
-    row.querySelector('.btn-remove-stop').addEventListener('click', () => {
-      if (routeStopsList.children.length > 2) {
-        routeStopsList.removeChild(row);
-        log('[SYS] Route stop removed.');
-      } else {
-        alert('Route must have at least two stops.');
-      }
-    });
-  });
-
-  btnAddStop.addEventListener('click', () => {
-    const row = document.createElement('div');
-    row.className = 'stop-input-row';
-    row.style = 'display: flex; gap: 0.5rem; align-items: center; width: 100%;';
-    row.innerHTML = `
-      <span class="drag-handle" style="cursor: move; padding: 0.25rem; font-size: 0.9rem;">☰</span>
-      <input type="text" list="cities-list" placeholder="Enter address..." class="terminal-input route-stop-input" style="flex: 1;" />
-      <button type="button" class="btn-remove-stop" style="background: transparent; border: 1px solid var(--border-color); color: var(--accent-red); padding: 0.65rem 0.85rem; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;">✕</button>
-    `;
-    routeStopsList.appendChild(row);
-    addDragAndDropEvents(row);
-
-    // Remove button handler
-    row.querySelector('.btn-remove-stop').addEventListener('click', () => {
-      if (routeStopsList.children.length > 2) {
-        routeStopsList.removeChild(row);
-        log('[SYS] Route stop removed.');
-      } else {
-        alert('Route must have at least two stops.');
-      }
-    });
-
-    log('[SYS] Dynamic route stop appended. Drag ☰ to reorder.');
-  });
-
-  const btnSwapRoute = document.getElementById('btn-swap-route');
-  if (btnSwapRoute) {
-    btnSwapRoute.addEventListener('click', () => {
-      const inputs = document.querySelectorAll('.route-stop-input');
-      if (inputs.length === 2) {
-        const val0 = inputs[0].value;
-        inputs[0].value = inputs[1].value;
-        inputs[1].value = val0;
-        log('[SYS] Swapped Origin and Destination stops.');
-      } else {
-        alert('Swap is only available for routes with exactly two stops (Origin and Destination).');
-      }
-    });
-  }
-
   function log(message) {
     const timestamp = new Date().toTimeString().split(' ')[0];
     console.log(`[${timestamp}] ${message}`);
   }
+
+  initRouteStops({
+    routeStopsList,
+    btnAddStop,
+    btnSwapRoute,
+    log
+  });
 
   // Main Action Trigger
   btnScan.addEventListener('click', async () => {
@@ -1410,100 +1319,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Dynamic Unit and Currency System Toggle Setup
-  let currentSystem = 'imperial';
-  const unitToggle = document.getElementById('unit-toggle');
-  const currencyToggle = document.getElementById('currency-toggle');
-
-  const labelSpeed = document.getElementById('label-avg-speed');
-  const labelCapacity = document.getElementById('label-fuel-capacity');
-  const labelMpg = document.getElementById('label-estimated-mpg');
-  const labelPrice = document.getElementById('label-fuel-price');
-  const labelRest = document.getElementById('label-rest-interval');
-
-  const inputSpeed = document.getElementById('avg-speed');
-  const inputCapacity = document.getElementById('fuel-capacity');
-  const inputMpg = document.getElementById('estimated-mpg');
-  const inputPrice = document.getElementById('fuel-price');
-  const inputRest = document.getElementById('rest-interval');
-
-  unitToggle.addEventListener('change', () => {
-    const newSystem = unitToggle.value;
-    if (newSystem === currentSystem) return;
-
-    const curValSpeed = parseFloat(inputSpeed.value) || 0;
-    const curValCapacity = parseFloat(inputCapacity.value) || 0;
-    const curValMpg = parseFloat(inputMpg.value) || 0;
-    const curValPrice = parseFloat(inputPrice.value) || 0;
-    const curValRest = parseFloat(inputRest.value) || 0;
-
-    if (newSystem === 'metric') {
-      // Imperial -> Metric
-      // 1. Auto-select Euro currency
-      currencyToggle.value = 'EUR';
-      const symbol = '€';
-
-      // 2. Update labels
-      labelSpeed.textContent = 'Average Speed (km/h)';
-      labelCapacity.textContent = 'Fuel Capacity (Liters)';
-      labelMpg.textContent = 'Estimated km/L';
-      labelPrice.textContent = `Fuel Price (${symbol}/L)`;
-      labelRest.textContent = 'Rest Interval (km)';
-
-      // 3. Set input constraints & convert values
-      inputSpeed.min = '15'; inputSpeed.max = '200';
-      inputSpeed.value = Math.round(curValSpeed * 1.60934);
-
-      inputCapacity.min = '4'; inputCapacity.max = '400';
-      inputCapacity.value = (curValCapacity * 3.78541).toFixed(1);
-
-      inputMpg.min = '2'; inputMpg.max = '65';
-      inputMpg.value = (curValMpg * 0.425144).toFixed(1);
-
-      inputPrice.min = '0.15'; inputPrice.max = '5.50';
-      inputPrice.value = (curValPrice / 3.78541).toFixed(2);
-
-      inputRest.value = Math.round(curValRest * 1.60934);
-
-      currentSystem = 'metric';
-    } else {
-      // Metric -> Imperial
-      // 1. Auto-select USD currency
-      currencyToggle.value = 'USD';
-      const symbol = '$';
-
-      // 2. Update labels
-      labelSpeed.textContent = 'Average Speed (MPH)';
-      labelCapacity.textContent = 'Fuel Capacity (Gallons)';
-      labelMpg.textContent = 'Estimated MPG';
-      labelPrice.textContent = `Fuel Price (${symbol}/Gal)`;
-      labelRest.textContent = 'Rest Interval (Miles)';
-
-      // 3. Set input constraints & convert values
-      inputSpeed.min = '10'; inputSpeed.max = '120';
-      inputSpeed.value = Math.round(curValSpeed / 1.60934);
-
-      inputCapacity.min = '1'; inputCapacity.max = '100';
-      inputCapacity.value = (curValCapacity / 3.78541).toFixed(1);
-
-      inputMpg.min = '5'; inputMpg.max = '150';
-      inputMpg.value = (curValMpg / 0.425144).toFixed(1);
-
-      inputPrice.min = '0.50'; inputPrice.max = '20.00';
-      inputPrice.value = (curValPrice * 3.78541).toFixed(2);
-
-      inputRest.value = Math.round(curValRest / 1.60934);
-
-      currentSystem = 'imperial';
-    }
-  });
-
-  currencyToggle.addEventListener('change', () => {
-    const symbol = getCurrencySymbol(currencyToggle.value);
-    if (unitToggle.value === 'metric') {
-      labelPrice.textContent = `Fuel Price (${symbol}/L)`;
-    } else {
-      labelPrice.textContent = `Fuel Price (${symbol}/Gal)`;
+  // Unit and currency control wiring (no cross-selection side effects)
+  initUnitCurrencyControls({
+    unitToggle: document.getElementById('unit-toggle'),
+    currencyToggle: document.getElementById('currency-toggle'),
+    labels: {
+      labelSpeed: document.getElementById('label-avg-speed'),
+      labelCapacity: document.getElementById('label-fuel-capacity'),
+      labelMpg: document.getElementById('label-estimated-mpg'),
+      labelPrice: document.getElementById('label-fuel-price'),
+      labelRest: document.getElementById('label-rest-interval')
+    },
+    inputs: {
+      inputSpeed: document.getElementById('avg-speed'),
+      inputCapacity: document.getElementById('fuel-capacity'),
+      inputMpg: document.getElementById('estimated-mpg'),
+      inputPrice: document.getElementById('fuel-price'),
+      inputRest: document.getElementById('rest-interval')
     }
   });
 });
