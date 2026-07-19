@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hudStops.textContent = '--';
     hudDuration.textContent = '--';
     document.getElementById('hud-eta-desc').textContent = 'Calculated duration & ETA';
-    document.getElementById('hud-fuel-cost').textContent = '$--';
+    document.getElementById('hud-fuel-cost').textContent = `${currencySymbol}--`;
     document.getElementById('hud-health-score').textContent = 'Trip Health: --% (Pending)';
     document.getElementById('btn-copy-itinerary').textContent = '📋 Copy Itinerary';
     routeSafetyAlert.style.display = 'none';
@@ -1336,6 +1336,7 @@ document.addEventListener('DOMContentLoaded', () => {
       inputMpg: document.getElementById('estimated-mpg'),
       inputPrice: document.getElementById('fuel-price'),
       inputRest: document.getElementById('rest-interval')
-    }
+    },
+    hudFuelCost: document.getElementById('hud-fuel-cost')
   });
 });

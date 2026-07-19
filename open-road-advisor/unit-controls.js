@@ -9,7 +9,22 @@ function updateFuelPriceLabel(unitToggle, currencyToggle, labelPrice) {
   }
 }
 
-export function initUnitCurrencyControls({ unitToggle, currencyToggle, labels, inputs }) {
+function updateHudFuelCostSymbol(currencyToggle, hudFuelCost) {
+  if (!hudFuelCost) return;
+
+  const symbol = getCurrencySymbol(currencyToggle.value);
+  const current = (hudFuelCost.textContent || '').trim();
+
+  if (!current) {
+    hudFuelCost.textContent = symbol + '--';
+    return;
+  }
+
+  // Replace leading currency marker while preserving numeric value or placeholder.
+  hudFuelCost.textContent = current.replace(/^[\$€£]/, symbol);
+}
+
+export function initUnitCurrencyControls({ unitToggle, currencyToggle, labels, inputs, hudFuelCost }) {
   let currentSystem = unitToggle.value || 'imperial';
 
   const { labelSpeed, labelCapacity, labelMpg, labelPrice, labelRest } = labels;
@@ -29,6 +44,7 @@ export function initUnitCurrencyControls({ unitToggle, currencyToggle, labels, i
     }
 
     updateFuelPriceLabel(unitToggle, currencyToggle, labelPrice);
+    updateHudFuelCostSymbol(currencyToggle, hudFuelCost);
   }
 
   function convertUnits(newSystem) {
@@ -80,6 +96,7 @@ export function initUnitCurrencyControls({ unitToggle, currencyToggle, labels, i
 
   currencyToggle.addEventListener('change', () => {
     updateFuelPriceLabel(unitToggle, currencyToggle, labelPrice);
+    updateHudFuelCostSymbol(currencyToggle, hudFuelCost);
   });
 
   applySystemLabels(currentSystem);
