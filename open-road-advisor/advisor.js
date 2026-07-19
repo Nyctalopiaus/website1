@@ -386,11 +386,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const nextBoundaryLocal = getNextCurfewBoundaryLocalUnix(localT1);
 
             if (nextBoundaryLocal > localT1 && nextBoundaryLocal <= localT2) {
-              const boundaryUtc = nextBoundaryLocal - approxOffset;
+              // Build boundaryUtc directly from curfew-end local wall-clock time.
+              // This is the authoritative timestamp for layover arrival and ignores speed-derived timing.
+              const boundaryLocalDate = new Date(nextBoundaryLocal * 1000);
+              const boundaryUtc = Date.UTC(
+                boundaryLocalDate.getUTCFullYear(),
+                boundaryLocalDate.getUTCMonth(),
+                boundaryLocalDate.getUTCDate(),
+                curfewEndHour,
+                curfewEndMin,
+                0
+              ) / 1000 - approxOffset;
+
+              // Ratio is only for finding the split coordinate along the segment.
               const ratio = Math.max(0, Math.min(1, (boundaryUtc - t1) / (t2 - t1)));
               const boundaryMile = d1 + ratio * (d2 - d1);
 
               const layoverWp = interpolateWaypoint(prevWp, currentWp, boundaryMile, 'Overnight Layover', 'layover', true);
+              // Hard overwrite: layover occurs exactly at curfew-end boundary.
               layoverWp.arrivalTimeUnix = boundaryUtc;
               layoverWp.cityName = 'Curfew Boundary';
               finalWaypoints.push(layoverWp);
