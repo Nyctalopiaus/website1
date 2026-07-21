@@ -5,27 +5,22 @@ function getGenreBucketConfig() {
         'all' => [
             'label' => 'All Genres',
             'title' => 'Show every event currently loaded into the concert passport.',
-            'keywords' => []
+            'tags' => []
         ],
         'metal' => [
             'label' => 'Rock & Metal',
-            'title' => 'Rock & Metal catch-all. Covers metal, rock, heavy metal, hard rock, nu-metal, classic rock, progressive metal, and any uncategorized new tags.',
-            'keywords' => ['metal', 'rock', 'heavy metal', 'hard rock', 'nu-metal', 'classic rock', 'progressive metal', 'sludge metal', 'rock & roll', 'progressive rock']
-        ],
-        'extreme' => [
-            'label' => 'Metalcore & Extreme',
-            'title' => 'Covers metalcore, deathcore, hardcore, grindcore, screamo, black metal, death metal, doom metal, thrash metal, and adjacent extreme styles.',
-            'keywords' => ['metalcore', 'deathcore', 'hardcore', 'grindcore', 'screamo', 'black metal', 'death metal', 'doom metal', 'thrash metal', 'sludge']
+            'title' => 'Covers heavy metal, hard rock, classic rock, alternative metal, stoner rock, metalcore, doom metal, thrash metal, screamo, sludge, and adjacent styles.',
+            'tags' => ['acoustic rock', 'alternative metal', 'blues-rock', 'classic rock', 'hard rock', 'heavy metal', 'industrial metal', 'metal', 'nu metal', 'nu-metal', 'post grunge', 'progressive metal', 'progressive rock', 'rock', 'rock & roll', 'soft rock', 'southern rock', 'space rock', 'alternative hardcore', 'doom metal', 'hardcore', 'melodic death metal', 'metalcore', 'screamo', 'sludge metal', 'stoner metal']
         ],
         'indie' => [
             'label' => 'Indie & Alternative',
-            'title' => 'Covers alternative rock, indie rock, alternative, post rock, grunge, shoegaze, dream pop, art rock, and related left-of-center styles.',
-            'keywords' => ['alternative rock', 'indie rock', 'alternative', 'post rock', 'post-rock', 'grunge', 'shoegaze', 'dream pop', 'art rock', 'alt-rock']
+            'title' => 'Covers indie rock, alternative rock, alternative pop, and post-rock.',
+            'tags' => ['alternative', 'alternative r&b', 'alternative rock', 'folk rock', 'garage rock', 'indie rock', 'math rock', 'pop', 'pop rock', 'post rock']
         ],
         'punk' => [
             'label' => 'Punk & Post-Punk',
-            'title' => 'Covers punk, punk rock, pop-punk, post-punk, post-hardcore, skate punk, folk punk, and hardcore punk.',
-            'keywords' => ['punk', 'punk rock', 'pop-punk', 'post-punk', 'post-hardcore', 'skate punk', 'folk punk', 'hardcore punk']
+            'title' => 'Covers punk, punk rock, pop punk, post-punk, post-hardcore, and skate punk.',
+            'tags' => ['folk punk', 'horror punk', 'pop punk', 'post punk', 'punk', 'punk rock']
         ]
     ];
 }

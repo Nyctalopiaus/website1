@@ -194,30 +194,39 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
         if (show && activeGenre !== 'all') {
           const genre = (card.getAttribute('data-genre') || 'metal').toLowerCase();
           const tagsStr = (card.getAttribute('data-tags') || '').toLowerCase();
+          const cardTags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
           const renderedTags = Array.from(card.querySelectorAll('.tag-pill')).map(pill => pill.textContent.toLowerCase().trim());
-          const combinedTags = `${tagsStr} ${renderedTags.join(' ')}`.trim();
+          const allCardTags = [...new Set([...cardTags, ...renderedTags])];
 
-          const extremeKeywords = genreBuckets.extreme?.keywords || [];
-          const indieKeywords = genreBuckets.indie?.keywords || [];
-          const punkKeywords = genreBuckets.punk?.keywords || [];
+          const punkTags = genreBuckets.punk?.tags || [];
+          const indieTags = genreBuckets.indie?.tags || [];
+          const metalTags = genreBuckets.metal?.tags || [];
 
-          const matchGenre = currentGenre => {
-            if (activeGenre === 'extreme') {
-              return currentGenre === 'extreme' || containsAnyKeyword(combinedTags, extremeKeywords);
-            }
-            if (activeGenre === 'indie') {
-              return currentGenre === 'indie' || containsAnyKeyword(combinedTags, indieKeywords);
-            }
-            if (activeGenre === 'punk') {
-              return currentGenre === 'punk' || containsAnyKeyword(combinedTags, punkKeywords);
-            }
-
-            // Rock & Metal is the safe catch-all bucket. Legacy `rock` rows and any uncategorized
-            // items are intentionally surfaced here.
-            return currentGenre === 'metal' || currentGenre === 'rock' || (!['extreme', 'indie', 'punk'].includes(currentGenre));
+          const hasTagInList = (cardTagsList, bucketList) => {
+            return cardTagsList.some(tag => bucketList.includes(tag));
           };
 
-          if (!matchGenre(genre)) {
+          const mapsToPunk = genre === 'punk' || hasTagInList(allCardTags, punkTags);
+          const mapsToIndie = genre === 'indie' || hasTagInList(allCardTags, indieTags);
+          const mapsToMetal = genre === 'metal' || genre === 'rock' || genre === 'extreme' || hasTagInList(allCardTags, metalTags);
+
+          const hasNoCategories = !mapsToPunk && !mapsToIndie && !mapsToMetal;
+          const finalMapsToMetal = mapsToMetal || hasNoCategories;
+
+          const matchGenre = () => {
+            if (activeGenre === 'indie') {
+              return mapsToIndie;
+            }
+            if (activeGenre === 'punk') {
+              return mapsToPunk;
+            }
+            if (activeGenre === 'metal') {
+              return finalMapsToMetal;
+            }
+            return false;
+          };
+
+          if (!matchGenre()) {
             show = false;
           }
         }

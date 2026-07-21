@@ -348,9 +348,6 @@ if (file_exists($lastSyncFile)) {
                                      </div>
                                      <?php if (!empty($event['tags']) || (isset($event['price_min']) && $event['price_min'] !== null)): ?>
                                          <div class="tags-row" style="margin-top: 0.15rem; margin-bottom: 0.65rem;">
-                                             <span class="badge-status <?php echo (isset($event['genre']) && strtolower($event['genre']) === 'indie') ? 'status-rock' : 'status-approved'; ?>" title="Primary genre bucket: <?php echo htmlspecialchars(ucwords(str_replace('-', ' ', $event['genre'] ?? 'metal'))); ?>">
-                                                 <?php echo (isset($event['genre']) && strtolower($event['genre']) === 'indie') ? '🎸 Indie' : ((isset($event['genre']) && strtolower($event['genre']) === 'punk') ? '⚡ Punk' : ((isset($event['genre']) && strtolower($event['genre']) === 'extreme') ? '🔥 Extreme' : '🤘 Rock & Metal')); ?>
-                                             </span>
 
                                              <?php if (isset($event['price_min']) && $event['price_min'] !== null): 
                                                  $pMin = $event['price_min'];
@@ -398,6 +395,11 @@ if (file_exists($lastSyncFile)) {
                                         <span>Show starts at <?php echo $dateInfo['time']; ?></span>
                                         <span class="weather-container" data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>" data-start="<?php echo htmlspecialchars($event['start_time']); ?>"></span>
                                     </div>
+                                    <?php if (!empty($event['tags'])): ?>
+                                        <div style="font-size: 0.65rem; color: var(--text-muted); opacity: 0.6; margin-top: 0.5rem; font-style: italic;">
+                                            *Subgenre tags auto-imported from MusicBrainz / Ticketmaster API
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <div class="ticket-stub">
@@ -465,6 +467,6 @@ if (file_exists($lastSyncFile)) {
 
     <script id="venue-data" type="application/json"><?php echo json_encode($venuesList, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
     <script id="genre-buckets-data" type="application/json"><?php echo json_encode($genreBuckets, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
-    <script type="module" src="assets/js/app.js?v=2"></script>
+    <script type="module" src="assets/js/app.js?v=5"></script>
 </body>
 </html>

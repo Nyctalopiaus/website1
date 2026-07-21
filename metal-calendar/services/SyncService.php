@@ -78,7 +78,11 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
 }
 
 function persistLastSyncTimestamp() {
-    file_put_contents(__DIR__ . '/../cache/last_sync.txt', date('Y-m-d H:i:s'));
+    $dir = __DIR__ . '/../cache';
+    if (!is_dir($dir)) {
+        mkdir($dir, 0775, true);
+    }
+    file_put_contents($dir . '/last_sync.txt', date('Y-m-d H:i:s'));
 }
 
 function backfillMissingSetlists(EventAggregator $aggregator) {

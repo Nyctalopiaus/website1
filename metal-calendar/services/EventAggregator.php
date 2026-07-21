@@ -208,33 +208,94 @@ class EventAggregator {
             return $overrideGenre;
         }
 
+        // Log any unknown/unmapped tags
+        if (!empty($eventTags)) {
+            $this->logUnknownTags($eventTags);
+        }
+
         $signals = $this->collectGenreSignals($artistName, $eventTags);
+        $parts = preg_split('/[|,]/', strtolower($signals));
+        $tags = array_filter(array_map('trim', $parts));
 
         $buckets = getGenreBucketConfig();
-        $extremeKeywords = $buckets['extreme']['keywords'];
-        $punkKeywords = $buckets['punk']['keywords'];
-        $indieKeywords = $buckets['indie']['keywords'];
+        $extremeTags = $buckets['extreme']['tags'] ?? [];
+        $punkTags = $buckets['punk']['tags'] ?? [];
+        $indieTags = $buckets['indie']['tags'] ?? [];
+        $metalTags = $buckets['metal']['tags'] ?? [];
 
-        foreach ($extremeKeywords as $keyword) {
-            if (strpos($signals, strtolower($keyword)) !== false) {
+        foreach ($tags as $tag) {
+            if (in_array($tag, $extremeTags)) {
                 return 'extreme';
             }
         }
 
-        foreach ($punkKeywords as $keyword) {
-            if (strpos($signals, strtolower($keyword)) !== false) {
+        foreach ($tags as $tag) {
+            if (in_array($tag, $punkTags)) {
                 return 'punk';
             }
         }
 
-        foreach ($indieKeywords as $keyword) {
-            if (strpos($signals, strtolower($keyword)) !== false) {
+        foreach ($tags as $tag) {
+            if (in_array($tag, $indieTags)) {
                 return 'indie';
             }
         }
 
-        // Catch-all bucket: anything not explicitly classified elsewhere lives under Rock & Metal.
+        foreach ($tags as $tag) {
+            if (in_array($tag, $metalTags)) {
+                return 'metal';
+            }
+        }
+
         return 'metal';
+    }
+
+    private function logUnknownTags($tagsStr) {
+        if (empty($tagsStr)) {
+            return;
+        }
+
+        $buckets = getGenreBucketConfig();
+        $knownTags = [];
+        foreach ($buckets as $key => $bucket) {
+            if (!empty($bucket['tags'])) {
+                foreach ($bucket['tags'] as $t) {
+                    $knownTags[strtolower($t)] = true;
+                }
+            }
+        }
+
+        $parts = array_filter(array_map('trim', explode(',', $tagsStr)));
+        if (empty($parts)) {
+            return;
+        }
+
+        $cacheDir = __DIR__ . '/../cache';
+        if (!is_dir($cacheDir)) {
+            mkdir($cacheDir, 0775, true);
+        }
+        $logPath = $cacheDir . '/unknown_genres.txt';
+
+        $existing = [];
+        if (file_exists($logPath)) {
+            $lines = file($logPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            if (is_array($lines)) {
+                foreach ($lines as $line) {
+                    $existing[strtolower(trim($line))] = true;
+                }
+            }
+        }
+
+        foreach ($parts as $part) {
+            $normalizedPart = strtolower($part);
+            if (empty($part) || isset($knownTags[$normalizedPart]) || in_array($normalizedPart, ['metal', 'rock', 'punk', 'indie', 'extreme'])) {
+                continue;
+            }
+            if (!isset($existing[$normalizedPart])) {
+                $existing[$normalizedPart] = true;
+                file_put_contents($logPath, $part . "\n", FILE_APPEND | LOCK_EX);
+            }
+        }
     }
 
     private function isCatchAllGenre($genre) {

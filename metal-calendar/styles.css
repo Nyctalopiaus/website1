@@ -660,11 +660,11 @@ body {
 /* Strict Mode Hidden Rules */
 /* Interested Concert Card Variant */
 .event-card.is-interested {
-    border-color: rgba(245, 158, 11, 0.25) !important;
+    border-color: rgba(245, 158, 11, 0.7) !important;
     box-shadow: 0 4px 20px rgba(245, 158, 11, 0.08) !important;
 }
 .event-card.is-interested:hover {
-    border-color: rgba(245, 158, 11, 0.45) !important;
+    border-color: rgba(245, 158, 11, 0.95) !important;
     box-shadow: 0 8px 25px rgba(245, 158, 11, 0.12) !important;
 }
 .event-card.is-interested .date-stub {
