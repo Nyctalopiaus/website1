@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/actions/common.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -14,10 +15,16 @@ require_once __DIR__ . '/PHPMailer/PHPMailer.php';
 require_once __DIR__ . '/PHPMailer/SMTP.php';
 
 header('Content-Type: application/json');
+applyApiResponseHeaders();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['status' => 'error', 'message' => 'Invalid request method.']);
     exit;
+}
+
+$retryAfter = 0;
+if (isRateLimited('email-passport', 3, 900, $retryAfter)) {
+    jsonRateLimitResponse('Email dispatch is rate limited. Please try again later.', $retryAfter);
 }
 
 $inputJSON = file_get_contents('php://input');
@@ -53,7 +60,8 @@ try {
     $stmt->execute(array_values($eventIds));
     $events = $stmt->fetchAll();
 } catch (Exception $e) {
-    echo json_encode(['status' => 'error', 'message' => 'Database Query Error: ' . $e->getMessage()]);
+    logServerException('email-passport-db-query', $e);
+    echo json_encode(['status' => 'error', 'message' => 'Unable to prepare your passport right now.']);
     exit;
 }
 
@@ -191,5 +199,7 @@ try {
     $mail->send();
     echo json_encode(['status' => 'success', 'message' => 'Passport emailed successfully! Check your inbox (and spam folder).']);
 } catch (Exception $e) {
-    echo json_encode(['status' => 'error', 'message' => 'Mail delivery failed: ' . $mail->ErrorInfo]);
+    logServerException('email-passport-mail', $e);
+    error_log('[email-passport] Mailer error: ' . $mail->ErrorInfo);
+    echo json_encode(['status' => 'error', 'message' => 'Mail delivery failed. Please try again later.']);
 }

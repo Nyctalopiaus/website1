@@ -7,6 +7,7 @@ function getDbConnection() {
         $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         return $db;
     } catch (PDOException $e) {
-        die('Database connection failed: ' . $e->getMessage());
+        error_log(sprintf('[%s] db-connection: %s in %s:%d', date('Y-m-d H:i:s'), $e->getMessage(), $e->getFile(), $e->getLine()));
+        die('Database connection failed.');
     }
 }

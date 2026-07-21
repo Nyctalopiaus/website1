@@ -72,7 +72,7 @@ export function initArtistInsights() {
         }
 
         drawer.innerHTML = `
-          <div class="insights-bio">${details.bio_summary}</div>
+          <div class="insights-bio">${escapeHtml(details.bio_summary || '')}</div>
           ${tagsHtml ? `<div class="insights-tags">${tagsHtml}</div>` : ''}
         `;
       } else {

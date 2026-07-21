@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 /** Event aggregation service */
 require_once __DIR__ . '/../genre_buckets.php';
@@ -764,6 +764,3 @@ class EventAggregator {
         return true;
     }
 }
-
-/**
- * Fetch Artist Bio & Tags from Last.fm (or SQLite cache / fallback)

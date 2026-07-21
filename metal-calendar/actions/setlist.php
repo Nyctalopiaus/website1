@@ -33,6 +33,7 @@ function handleGetSetlist() {
 
         jsonResponse(['status' => 'success', 'songs' => $songs]);
     } catch (Exception $e) {
-        jsonResponse(['status' => 'error', 'message' => $e->getMessage()]);
+        logServerException('setlist', $e);
+        jsonResponse(['status' => 'error', 'message' => 'Unable to load the setlist right now.']);
     }
 }

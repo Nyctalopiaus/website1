@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 /** Venue scraping service */
 class VenueScraper {

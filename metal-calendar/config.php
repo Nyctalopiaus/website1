@@ -3,21 +3,89 @@
  * Configuration Settings for Metal Concert Calendar
  */
 
+$localConfigPath = __DIR__ . '/config.local.php';
+if (file_exists($localConfigPath)) {
+    require_once $localConfigPath;
+}
+
+$envFilePath = getenv('METAL_CALENDAR_ENV_FILE');
+if ($envFilePath === false || trim($envFilePath) === '') {
+    $envFilePath = '/home/nyctltlc/api.env';
+}
+
+$GLOBALS['METAL_CALENDAR_FILE_ENV'] = [];
+if (is_readable($envFilePath)) {
+    $lines = file($envFilePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (is_array($lines)) {
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '' || strpos($trimmed, '#') === 0) {
+                continue;
+            }
+
+            $parts = explode('=', $trimmed, 2);
+            if (count($parts) !== 2) {
+                continue;
+            }
+
+            $key = trim($parts[0]);
+            $value = trim($parts[1]);
+            if ($key === '') {
+                continue;
+            }
+
+            $hasDoubleQuotes = strlen($value) >= 2 && $value[0] === '"' && $value[strlen($value) - 1] === '"';
+            $hasSingleQuotes = strlen($value) >= 2 && $value[0] === "'" && $value[strlen($value) - 1] === "'";
+            if ($hasDoubleQuotes || $hasSingleQuotes) {
+                $value = substr($value, 1, strlen($value) - 2);
+            }
+
+            $GLOBALS['METAL_CALENDAR_FILE_ENV'][$key] = $value;
+        }
+    }
+}
+
+if (!function_exists('cfgEnv')) {
+    function cfgEnv($name, $default = '') {
+        $value = getenv($name);
+        if ($value !== false && $value !== '') {
+            return $value;
+        }
+
+        $fileEnv = $GLOBALS['METAL_CALENDAR_FILE_ENV'] ?? [];
+        if (isset($fileEnv[$name]) && $fileEnv[$name] !== '') {
+            return $fileEnv[$name];
+        }
+
+        return $default;
+    }
+}
+
 // Force America/Denver timezone for consistent date formatting across APIs
 date_default_timezone_set('America/Denver');
 
 // API Credentials
-define('TICKETMASTER_API_KEY', '8zZhK2lQ9qlRXs7GeF3UYz9OoBNCASYf'); // User's developer key
-define('BANDSINTOWN_APP_ID', 'metal_calendar'); // Default app_id, replace if needed
+if (!defined('TICKETMASTER_API_KEY')) {
+    define('TICKETMASTER_API_KEY', cfgEnv('TICKETMASTER_API_KEY', ''));
+}
+if (!defined('BANDSINTOWN_APP_ID')) {
+    define('BANDSINTOWN_APP_ID', cfgEnv('BANDSINTOWN_APP_ID', 'metal_calendar'));
+}
 
 // Optional: Paste your free Scrape.do token below to bypass Cloudflare/WAF blocks on venue sites.
-define('SCRAPE_DO_TOKEN', '337712a748d749be9b10e4f63e36e52a0609bb22cd1');
+if (!defined('SCRAPE_DO_TOKEN')) {
+    define('SCRAPE_DO_TOKEN', cfgEnv('SCRAPE_DO_TOKEN', ''));
+}
 
 // Setlist.fm API key (Register free at https://www.setlist.fm/settings/api)
-define('SETLIST_FM_API_KEY', 'Daz7fWnHMCq1D-CzNOT5Xdjwk0hmuj6MXGsu');
+if (!defined('SETLIST_FM_API_KEY')) {
+    define('SETLIST_FM_API_KEY', cfgEnv('SETLIST_FM_API_KEY', ''));
+}
 
 // Last.fm API Key for artist biographies and tags retrieval
-define('LASTFM_API_KEY', '');
+if (!defined('LASTFM_API_KEY')) {
+    define('LASTFM_API_KEY', cfgEnv('LASTFM_API_KEY', ''));
+}
 
 
 // Database Configuration
@@ -125,10 +193,29 @@ const SCRAPER_TARGETS = [
 ];
 
 // SMTP Mail Server Settings for Concert Passport email dispatch
-define('SMTP_HOST', 'localhost'); // Namecheap local SMTP relay server
-define('SMTP_PORT', 25);           // Port 25 is standard for localhost non-secure cPanel relay
-define('SMTP_USERNAME', 'ConcertPassport@nycto.ninja');
-define('SMTP_PASSWORD', '');       // Configure if external SMTP server is used
-define('SMTP_ENCRYPTION', '');     // 'ssl', 'tls', or empty for local port 25 relay
+if (!defined('SMTP_HOST')) {
+    define('SMTP_HOST', cfgEnv('SMTP_HOST', 'localhost'));
+}
+if (!defined('SMTP_PORT')) {
+    define('SMTP_PORT', (int)cfgEnv('SMTP_PORT', '25'));
+}
+if (!defined('SMTP_USERNAME')) {
+    define('SMTP_USERNAME', cfgEnv('SMTP_USERNAME', 'ConcertPassport@nycto.ninja'));
+}
+if (!defined('SMTP_PASSWORD')) {
+    define('SMTP_PASSWORD', cfgEnv('SMTP_PASSWORD', ''));
+}
+if (!defined('SMTP_ENCRYPTION')) {
+    define('SMTP_ENCRYPTION', cfgEnv('SMTP_ENCRYPTION', ''));
+}
+
+if (!defined('ALLOW_WEB_SYNC')) {
+    $allowWebSyncRaw = strtolower(trim((string)cfgEnv('ALLOW_WEB_SYNC', '0')));
+    define('ALLOW_WEB_SYNC', in_array($allowWebSyncRaw, ['1', 'true', 'yes', 'on'], true));
+}
+
+if (!defined('AGGREGATOR_ACTION_TOKEN')) {
+    define('AGGREGATOR_ACTION_TOKEN', cfgEnv('AGGREGATOR_ACTION_TOKEN', ''));
+}
 
 

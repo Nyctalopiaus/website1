@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 /** Artist details lookup service */
 function fetchArtistDetails($artistName) {
@@ -33,19 +33,15 @@ function fetchArtistDetails($artistName) {
     $tags = [];
     
     if (!empty($apiKey)) {
-        $url = "http://ws.audioscrobbler.com/2.0/?method=artist.getinfo&artist=" . urlencode($artistName) . "&api_key=" . urlencode($apiKey) . "&format=json";
-        
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 6);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'MetalConcertCalendar/1.0 (contact@nycto.ninja)');
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($httpCode === 200 && !empty($response)) {
+        $url = "https://ws.audioscrobbler.com/2.0/?method=artist.getinfo&artist=" . urlencode($artistName) . "&api_key=" . urlencode($apiKey) . "&format=json";
+
+        $result = fetchHttpResource($url, [
+            'timeout' => 6,
+            'user_agent' => 'MetalConcertCalendar/1.0 (contact@nycto.ninja)'
+        ]);
+
+        if ($result['status'] === 200 && !empty($result['body'])) {
+            $response = $result['body'];
             $data = json_decode($response, true);
             if (isset($data['artist'])) {
                 $artistData = $data['artist'];
@@ -67,17 +63,14 @@ function fetchArtistDetails($artistName) {
     if (empty($bio)) {
         $searchQuery = $artistName . " band";
         $searchUrl = "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=" . urlencode($searchQuery) . "&utf8=1&format=json";
-        
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $searchUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 6);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'MetalPassport/1.0 (contact@nycto.ninja)');
-        $searchResponse = curl_exec($ch);
-        $searchHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($searchHttpCode === 200 && !empty($searchResponse)) {
+
+        $searchResult = fetchHttpResource($searchUrl, [
+            'timeout' => 6,
+            'user_agent' => 'MetalPassport/1.0 (contact@nycto.ninja)'
+        ]);
+
+        if ($searchResult['status'] === 200 && !empty($searchResult['body'])) {
+            $searchResponse = $searchResult['body'];
             $searchData = json_decode($searchResponse, true);
             $results = $searchData['query']['search'] ?? [];
             
@@ -137,17 +130,14 @@ function fetchArtistDetails($artistName) {
             if (!empty($bestTitle)) {
                 // Fetch page summary
                 $summaryUrl = "https://en.wikipedia.org/api/rest_v1/page/summary/" . urlencode(str_replace(' ', '_', $bestTitle));
-                
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $summaryUrl);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 6);
-                curl_setopt($ch, CURLOPT_USERAGENT, 'MetalPassport/1.0 (contact@nycto.ninja)');
-                $summaryResponse = curl_exec($ch);
-                $summaryHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-                
-                if ($summaryHttpCode === 200 && !empty($summaryResponse)) {
+
+                $summaryResult = fetchHttpResource($summaryUrl, [
+                    'timeout' => 6,
+                    'user_agent' => 'MetalPassport/1.0 (contact@nycto.ninja)'
+                ]);
+
+                if ($summaryResult['status'] === 200 && !empty($summaryResult['body'])) {
+                    $summaryResponse = $summaryResult['body'];
                     $summaryData = json_decode($summaryResponse, true);
                     $pageType = $summaryData['type'] ?? '';
                     $description = strtolower($summaryData['description'] ?? '');

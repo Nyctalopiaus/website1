@@ -195,7 +195,7 @@ export function initSetlistModal() {
         let listOpen = false;
 
         data.songs.forEach(song => {
-          if (song.startsWith('\u2728 Expected Tour Setlist')) {
+          if (song.includes('Expected Tour Setlist')) {
             if (listOpen) {
               songsHtml += '</ol>';
               listOpen = false;

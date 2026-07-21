@@ -18,7 +18,8 @@ function handleAddToLogbook() {
         ]);
         jsonResponse(['status' => 'success', 'message' => 'Show added to logbook archive.']);
     } catch (Exception $e) {
-        jsonResponse(['status' => 'error', 'message' => $e->getMessage()]);
+        logServerException('logbook-add', $e);
+        jsonResponse(['status' => 'error', 'message' => 'Unable to save the logbook entry right now.']);
     }
 }
 
@@ -30,6 +31,7 @@ function handleRemoveFromLogbook() {
         $stmt->execute([':id' => $eventId]);
         jsonResponse(['status' => 'success', 'message' => 'Show removed from logbook.']);
     } catch (Exception $e) {
-        jsonResponse(['status' => 'error', 'message' => $e->getMessage()]);
+        logServerException('logbook-remove', $e);
+        jsonResponse(['status' => 'error', 'message' => 'Unable to remove the logbook entry right now.']);
     }
 }

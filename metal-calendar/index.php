@@ -7,6 +7,14 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/genre_buckets.php';
 require_once __DIR__ . '/ignored_artists.php';
 
+if (!headers_sent()) {
+    header("Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://*.mzstatic.com; connect-src 'self' https://api.open-meteo.com https://itunes.apple.com; media-src 'self' https://*.itunes.apple.com https://*.apple.com https://*.mzstatic.com; upgrade-insecure-requests");
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+}
+
 $db = getDbConnection();
 $genreBuckets = getGenreBucketConfig();
 $ignoredArtists = getIgnoredArtistsNormalized();
@@ -81,7 +89,6 @@ if (file_exists($lastSyncFile)) {
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.open-meteo.com https://unpkg.com https://widgets.mortgagenewsdaily.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://*.basemaps.cartocdn.com https://*.mzstatic.com; connect-src 'self' https://api.open-meteo.com https://nominatim.openstreetmap.org https://widgets.mortgagenewsdaily.com https://router.project-osrm.org https://itunes.apple.com; media-src 'self' https://*.itunes.apple.com https://*.apple.com https://*.mzstatic.com;" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nycto's Front Range Rock & Metal Passport // Concert Calendar</title>
     <link rel="stylesheet" href="styles.css?v=9" />
@@ -147,7 +154,7 @@ if (file_exists($lastSyncFile)) {
             <div style="background: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.45;">
                 <span style="font-size: 1rem; line-height: 1;">🔒</span>
                 <div>
-                    <strong style="color: var(--accent-crimson); font-family: var(--font-header); letter-spacing: 0.02em; display: block; margin-bottom: 0.15rem; text-transform: uppercase; font-size: 0.75rem;">100% Private & Dispatch-Only</strong>
+                    <strong style="color: #ffd6d6; text-shadow: 0 1px 2px rgba(0,0,0,0.65); font-family: var(--font-header); letter-spacing: 0.02em; display: block; margin-bottom: 0.15rem; text-transform: uppercase; font-size: 0.75rem;">100% Private & Dispatch-Only</strong>
                     Your email address is used for this one-time dispatch only. It is not stored in our database, nor will it ever be shared or used for marketing.
                 </div>
             </div>
@@ -199,8 +206,8 @@ if (file_exists($lastSyncFile)) {
         <div class="privacy-banner-container" style="background: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 0.75rem; padding: 0.85rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.85rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
             <span style="font-size: 1.15rem; line-height: 1.2;">🔒</span>
             <div>
-                <strong style="color: var(--accent-crimson); font-family: var(--font-header); letter-spacing: 0.02em; display: block; margin-bottom: 0.2rem; text-transform: uppercase; font-size: 0.85rem;">100% Private & Dispatch-Only</strong>
-                Your data is processed locally. If you choose to email your passport, your email address is used for this one-time dispatch only. It is not stored in our database, nor will it ever be shared or used for future marketing.
+                <strong style="color: #ffd6d6; text-shadow: 0 1px 2px rgba(0,0,0,0.65); font-family: var(--font-header); letter-spacing: 0.02em; display: block; margin-bottom: 0.2rem; text-transform: uppercase; font-size: 0.85rem;">100% Private & Dispatch-Only</strong>
+                Your data is processed locally to you. If you choose to email your passport, your email address is used for this one-time dispatch only. It is not stored in our database, nor will it ever be shared or used for future marketing.
             </div>
         </div>
 

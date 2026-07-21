@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 /** Setlist lookup service */
 function parseSongsFromSetlistFmResponse($setlist) {
@@ -53,20 +53,19 @@ function fetchSetlistFromSetlistFm($artist, $date, $city) {
     // 1. Try to find the exact setlist for this show
     $formattedDate = date('d-m-Y', strtotime($date));
     $url = "https://api.setlist.fm/rest/1.0/search/setlists?artistName=" . urlencode($artist) . "&date=" . urlencode($formattedDate) . "&cityName=" . urlencode($city);
-    
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Accept: application/json',
-        'x-api-key: ' . $apiKey,
-        'User-Agent: MetalConcertCalendar/1.0'
+
+    $result = fetchHttpResource($url, [
+        'timeout' => 12,
+        'user_agent' => 'MetalConcertCalendar/1.0',
+        'headers' => [
+            'Accept: application/json',
+            'x-api-key: ' . $apiKey
+        ]
     ]);
-    
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    
+
+    $response = $result['body'];
+    $httpCode = $result['status'];
+
     if ($httpCode === 200 || $httpCode === 404) {
         $shouldCache = true;
     }
@@ -81,20 +80,19 @@ function fetchSetlistFromSetlistFm($artist, $date, $city) {
     // 2. Fallback: Search for the most recent past setlist for this artist
     if (empty($songs)) {
         $url = "https://api.setlist.fm/rest/1.0/search/setlists?artistName=" . urlencode($artist) . "&p=1";
-        
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Accept: application/json',
-            'x-api-key: ' . $apiKey,
-            'User-Agent: MetalConcertCalendar/1.0'
+
+        $fallbackResult = fetchHttpResource($url, [
+            'timeout' => 12,
+            'user_agent' => 'MetalConcertCalendar/1.0',
+            'headers' => [
+                'Accept: application/json',
+                'x-api-key: ' . $apiKey
+            ]
         ]);
-        
-        $response = curl_exec($ch);
-        $httpCodeFallback = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
+
+        $response = $fallbackResult['body'];
+        $httpCodeFallback = $fallbackResult['status'];
+
         if ($httpCodeFallback === 200 || $httpCodeFallback === 404) {
             $shouldCache = true;
         }
@@ -121,7 +119,7 @@ function fetchSetlistFromSetlistFm($artist, $date, $city) {
                             $refDateFormatted = date('M j, Y', strtotime($refDateRaw));
                         }
                         
-                        $bannerText = "âœ¨ Expected Tour Setlist (from " . $refVenue . " in " . $refCity . $refStateText . " on " . $refDateFormatted . ")";
+                        $bannerText = "\xE2\x9C\xA8 Expected Tour Setlist (from " . $refVenue . " in " . $refCity . $refStateText . " on " . $refDateFormatted . ")";
                         $songs = array_merge([$bannerText], $candidateSongs);
                         break;
                     }
@@ -133,3 +131,5 @@ function fetchSetlistFromSetlistFm($artist, $date, $city) {
     return [
         'songs' => $songs,
         'should_cache' => $shouldCache
+    ];
+}

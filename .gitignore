@@ -6,6 +6,9 @@ backend/database.sqlite-journal
 backend/app.log
 backend/stderr.log
 
+# Local secrets and environment overrides
+metal-calendar/config.local.php
+
 # OS garbage
 .DS_Store
 Thumbs.db
