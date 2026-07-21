@@ -340,6 +340,39 @@ document.addEventListener('DOMContentLoaded', () => {
         };
       }
 
+      function getApproxTzOffset(longitude, unixSecs) {
+        let stdOffset = -8; // Default Pacific Time (PST = UTC-8)
+        if (longitude >= -85) {
+          stdOffset = -5; // Eastern Standard Time (EST = UTC-5)
+        } else if (longitude >= -104) {
+          stdOffset = -6; // Central Standard Time (CST = UTC-6)
+        } else if (longitude >= -117) {
+          stdOffset = -7; // Mountain Standard Time (MST = UTC-7)
+        }
+        
+        // Check if Daylight Saving Time (DST) is active
+        const d = new Date(unixSecs * 1000);
+        const month = d.getUTCMonth(); // 0 = Jan, 11 = Dec
+        let isDst = false;
+        if (month > 2 && month < 10) {
+          isDst = true; // Apr-Oct
+        } else if (month === 2) {
+          // March: starts second Sunday
+          const date = d.getUTCDate();
+          const day = d.getUTCDay(); // 0 = Sunday
+          const prevSunday = date - day;
+          isDst = (prevSunday >= 8);
+        } else if (month === 10) {
+          // November: ends first Sunday
+          const date = d.getUTCDate();
+          const day = d.getUTCDay();
+          const prevSunday = date - day;
+          isDst = (prevSunday < 1);
+        }
+        
+        return (stdOffset + (isDst ? 1 : 0)) * 3600;
+      }
+
       function getNextCurfewBoundaryLocalUnix(localUnix) {
         const d = new Date(localUnix * 1000);
         const y = d.getUTCFullYear();
@@ -368,16 +401,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentWp = sampledWaypoints[i];
         let prevWp = finalWaypoints[finalWaypoints.length - 1];
 
-        const approxOffset = Math.round(currentWp.coord[0] / 15) * 3600;
+        const approxOffset = getApproxTzOffset(currentWp.coord[0], prevWp.arrivalTimeUnix);
 
         // Process any logistical events inside this segment chronologically
         let segmentCompleted = false;
         while (!segmentCompleted) {
-          const approxOffset = Math.round(currentWp.coord[0] / 15) * 3600;
           const d1 = prevWp.distanceMiles;
           const d2 = currentWp.distanceMiles;
           const t1 = prevWp.arrivalTimeUnix;
           const t2 = departureTimeUnix + (currentWp.cumulativeMeters / speedMps) + cumulativeDelaySeconds;
+          const approxOffset = getApproxTzOffset(currentWp.coord[0], t1);
 
           // Hard gate first: check curfew before any logistical event processing.
           if (enforceCurfew) {
@@ -393,7 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
               const layoverWp = interpolateWaypoint(prevWp, currentWp, boundaryMile, 'Overnight Layover', 'layover', true);
               // Hard overwrite: layover occurs exactly at curfew-end boundary (10:00 PM local time).
               layoverWp.arrivalTimeUnix = boundaryUtc;
-              layoverWp.cityName = 'Curfew Boundary';
+              // cityName will be resolved dynamically via reverse geocoding to show where the vehicle stops
               finalWaypoints.push(layoverWp);
 
               const resumeLocal = getNextCurfewStartLocalUnix(nextBoundaryLocal);
@@ -670,6 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       let displayCounter = 1;
       let lastRenderedMile = 0;
+      let lastWasLayover = false;
       for (let idx = 0; idx < finalWaypoints.length; idx++) {
         const wp = finalWaypoints[idx];
         const lat = wp.coord[1];
@@ -864,6 +898,16 @@ document.addEventListener('DOMContentLoaded', () => {
         badgesContainer.style.gap = '0.5rem';
         badgesContainer.style.alignItems = 'center';
         badgesContainer.style.flexWrap = 'wrap';
+
+        if (wp.logisticalType === 'layover') {
+          const b = document.createElement('span');
+          b.classList.add('badge', 'badge-error');
+          b.style.background = 'rgba(239, 68, 68, 0.15)';
+          b.style.color = '#ef4444';
+          b.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+          b.textContent = '⏱️ Curfew Boundary';
+          badgesContainer.appendChild(b);
+        }
 
         if (wp.toppedOff) {
           const b = document.createElement('span');
@@ -1091,9 +1135,24 @@ document.addEventListener('DOMContentLoaded', () => {
             divider.appendChild(spanEl);
             detailedCardsContainer.appendChild(divider);
           }
+
+          if (lastWasLayover) {
+            const divider = document.createElement('div');
+            divider.classList.add('timezone-divider');
+            const spanEl = document.createElement('span');
+            spanEl.textContent = `🌅 Day Start: Travel Resumed`;
+            divider.appendChild(spanEl);
+            detailedCardsContainer.appendChild(divider);
+            lastWasLayover = false;
+          }
+
           detailedCardsContainer.appendChild(card);
           lastTimeZone = currentTzAbbr;
           displayCounter++;
+
+          if (wp.logisticalType === 'layover') {
+            lastWasLayover = true;
+          }
         }
       }
 

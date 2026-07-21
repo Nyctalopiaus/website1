@@ -86,11 +86,11 @@ document.addEventListener('DOMContentLoaded', () => {
       card.style.setProperty('--mx', `${x}px`);
       card.style.setProperty('--my', `${y}px`);
 
-      // 3D Tilt calculation (max 7 degrees)
+      // 3D Tilt calculation (max 2.5 degrees)
       const halfWidth = rect.width / 2;
       const halfHeight = rect.height / 2;
-      const tiltX = -((y - halfHeight) / halfHeight) * 7;
-      const tiltY = ((x - halfWidth) / halfWidth) * 7;
+      const tiltX = -((y - halfHeight) / halfHeight) * 2.5;
+      const tiltY = ((x - halfWidth) / halfWidth) * 2.5;
 
       // Apply transform and disable transitions during movement for responsiveness
       card.style.transition = 'none';

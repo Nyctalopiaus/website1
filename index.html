@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+      <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.open-meteo.com https://unpkg.com https://widgets.mortgagenewsdaily.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://*.basemaps.cartocdn.com; connect-src 'self' https://api.open-meteo.com https://nominatim.openstreetmap.org https://widgets.mortgagenewsdaily.com https://router.project-osrm.org;" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nycto's Project Lab</title>
   <link rel="icon" type="image/png" href="favicon.png" />
@@ -189,6 +190,41 @@
           </div>
           <footer class="card-footer">
             <a href="open-road-advisor" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+          </footer>
+        </div>
+      </article>
+
+      <!-- Project: Nycto's Front Range Rock and Metal Passport -->
+<article class="project-card active">
+<div class="card-glow"></div>
+<div class="card-inner">
+<header class="card-header">
+<div style="display: flex; gap: 0.5rem;">
+<span class="badge badge-active">Active</span>
+<span class="badge badge-pro">Pro</span>
+<span class="badge badge-live">Live Data</span>
+</div>
+</header>
+<div class="card-content">
+<h2 class="project-title font-display">Nycto's Front Range Rock & Metal Passport</h2>
+            <p class="project-desc">
+              A premium, web-based concert discovery calendar, moderator dashboard, and backend aggregator for metal shows along the Colorado Front Range (Colorado Springs to Fort Collins). Integrates Ticketmaster and Bandsintown APIs, deduplicates incoming events, filters geographically, handles automated setlist caching, and features a personal concert logbook.
+            </p>
+            <details class="tech-dropdown">
+              <summary class="tech-toggle">Show tech stack</summary>
+              <div class="tech-tags">
+                <span>API Aggregator & Scraper (Ticketmaster & Bandsintown)</span>
+                <span>SQLite DB & Hashed Admin Security (Bcrypt verification)</span>
+                <span>Dynamic Search Filter (Artist, venue, subgenre tags)</span>
+                <span>Automated CLI Cron Sync (CGI-fcgi environment support)</span>
+                <span>Personal Show Logbook (Rating, media, journals, local cache)</span>
+                <span>Setlist.fm Backfill Integration (Automated cache)</span>
+                <span>Modern Backstage UI (High-contrast ticket-stub cards)</span>
+              </div>
+            </details>
+          </div>
+          <footer class="card-footer">
+            <a href="metal-calendar" class="btn-launch">Launch Application <span class="arrow">→</span></a>
           </footer>
         </div>
       </article>

@@ -1,0 +1,5 @@
+# Artist genre overrides (one per line)
+# Format: Artist Name = genre
+# Allowed genres: metal, extreme, punk, indie
+
+The Strokes = indie

@@ -251,11 +251,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      outputText.innerHTML = displayFormat(scrambled);
+      outputText.textContent = displayFormat(scrambled);
 
       if (frame >= totalFrames) {
         clearInterval(animationInterval);
-        outputText.innerHTML = displayFormat(finalText);
+        outputText.textContent = displayFormat(finalText);
       }
     }, intervalMs);
   }
@@ -378,9 +378,9 @@ document.addEventListener('DOMContentLoaded', () => {
   hexToggle.addEventListener('change', () => {
     if (rawOutput) {
       if (hexToggle.checked) {
-        outputText.innerHTML = toHexDump(rawOutput);
+        outputText.textContent = toHexDump(rawOutput);
       } else {
-        outputText.innerHTML = printableText(rawOutput);
+        outputText.textContent = printableText(rawOutput);
       }
     }
   });
@@ -488,9 +488,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Apply the display formats to output monitor
     if (hexToggle.checked) {
-      outputText.innerHTML = toHexDump(ciphertext);
+      outputText.textContent = toHexDump(ciphertext);
     } else {
-      outputText.innerHTML = printableText(ciphertext);
+      outputText.textContent = printableText(ciphertext);
     }
 
     // Toggle active area UI
