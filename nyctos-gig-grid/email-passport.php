@@ -1,6 +1,6 @@
 <?php
 /**
- * Email Passport Endpoint - Stateless mail client using PHPMailer
+ * Email Show List Endpoint - Stateless mail client using PHPMailer
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
@@ -61,7 +61,7 @@ try {
     $events = $stmt->fetchAll();
 } catch (Exception $e) {
     logServerException('email-passport-db-query', $e);
-    echo json_encode(['status' => 'error', 'message' => 'Unable to prepare your passport right now.']);
+    echo json_encode(['status' => 'error', 'message' => 'Unable to prepare your show list right now.']);
     exit;
 }
 
@@ -84,7 +84,7 @@ $emailBody = '<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Your Front Range Concert Passport</title>
+    <title>Your Nycto\'s Gig Grid Show List</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #111215; font-family: \'Outfit\', -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; color: #e2e8f0; -webkit-font-smoothing: antialiased;">
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #111215; padding: 40px 20px;">
@@ -94,12 +94,12 @@ $emailBody = '<!DOCTYPE html>
                     <tr>
                         <td style="background-color: #111215; padding: 30px 40px; border-bottom: 2px solid #ef4444; text-align: center;">
                             <span style="font-size: 32px; vertical-align: middle;">🤘</span>
-                            <span style="font-size: 20px; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 0.1em; vertical-align: middle; margin-left: 10px;">Front Range Rock & Metal</span>
+                            <span style="font-size: 20px; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 0.1em; vertical-align: middle; margin-left: 10px;">Nycto\'s Gig Grid</span>
                         </td>
                     </tr>
                     <tr>
                         <td style="padding: 40px 40px 20px 40px;">
-                            <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin-top: 0; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Your Concert Passport</h1>
+                            <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin-top: 0; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Your Show List</h1>
                             <p style="font-size: 14px; color: #94a3b8; line-height: 1.6; margin-bottom: 30px;">Here is the custom list of upcoming rock and metal shows you saved. Get ready to hit the pit!</p>';
 
 foreach ($events as $e) {
@@ -107,6 +107,7 @@ foreach ($events as $e) {
     $artistName = htmlspecialchars($e['artist_name']);
     $venueName = htmlspecialchars($e['venue_name']);
     $cityName = htmlspecialchars($e['city_name']);
+    $locationText = htmlspecialchars(formatMarketLocation($e['city_name'] ?? '', $e['market'] ?? 'front-range'));
     $ticketUrl = $e['ticket_url'] ?: 'https://www.google.com/search?q=' . urlencode($e['artist_name'] . ' concert ' . $e['venue_name']);
 
     $emailBody .= '
@@ -120,7 +121,7 @@ foreach ($events as $e) {
                                     <td style="padding: 20px 24px;" valign="middle">
                                         <div style="font-size: 18px; font-weight: 800; color: #ffffff; margin-bottom: 8px; text-transform: uppercase;">' . $artistName . '</div>
                                         <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 4px;">
-                                            <span style="margin-right: 5px;">📍</span><strong>' . $venueName . '</strong> <span style="color: #64748b;">// ' . $cityName . ', CO</span>
+                                            <span style="margin-right: 5px;">📍</span><strong>' . $venueName . '</strong> <span style="color: #64748b;">// ' . $locationText . '</span>
                                         </div>
                                         <div style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">
                                             <span style="margin-right: 5px;">⏱️</span>Show starts at ' . $dateInfo['time'] . '
@@ -150,7 +151,7 @@ $emailBody .= '
                     </tr>
                     <tr>
                         <td style="background-color: #0c0d0f; padding: 30px 40px; text-align: center; border-top: 1px solid #2d3139;">
-                            <p style="font-size: 12px; color: #64748b; margin: 0;">Sent via ConcertPassport@nycto.ninja</p>
+                            <p style="font-size: 12px; color: #64748b; margin: 0;">Sent via Nycto\'s Gig Grid</p>
                         </td>
                     </tr>
                 </table>
@@ -190,14 +191,14 @@ try {
         ];
     }
 
-    $mail->setFrom('ConcertPassport@nycto.ninja', 'Concert Passport');
+    $mail->setFrom('ConcertPassport@nycto.ninja', "Nycto's Gig Grid");
     $mail->addAddress($email);
     $mail->isHTML(true);
-    $mail->Subject = 'Your Front Range Concert Passport';
+    $mail->Subject = "Your Nycto's Gig Grid Show List";
     $mail->Body = $emailBody;
 
     $mail->send();
-    echo json_encode(['status' => 'success', 'message' => 'Passport emailed successfully! Check your inbox (and spam folder).']);
+    echo json_encode(['status' => 'success', 'message' => 'Show list emailed successfully! Check your inbox (and spam folder).']);
 } catch (Exception $e) {
     logServerException('email-passport-mail', $e);
     error_log('[email-passport] Mailer error: ' . $mail->ErrorInfo);

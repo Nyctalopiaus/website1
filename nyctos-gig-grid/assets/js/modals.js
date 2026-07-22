@@ -20,14 +20,14 @@ export function initEmailModal(getInterestedIds) {
   const openEmailModal = () => {
     const interestedIds = getInterestedIds();
     if (interestedIds.length === 0) {
-      alert('Your Interested Shows list is empty. Please star some concerts first before emailing your passport!');
+      alert('Your Interested Shows list is empty. Please star some concerts first before emailing your show list!');
       return;
     }
 
     emailError.style.display = 'none';
     emailSuccess.style.display = 'none';
     emailForm.reset();
-    resetSubmitButton(`${ICONS.email} Dispatch Passport`);
+    resetSubmitButton(`${ICONS.email} Send Show List`);
     emailModal.style.display = 'flex';
   };
 
@@ -75,7 +75,7 @@ export function initEmailModal(getInterestedIds) {
       if (!response.ok) {
         emailError.textContent = 'Server responded with an error. Please try again.';
         emailError.style.display = 'block';
-        resetSubmitButton(`${ICONS.email} Dispatch Passport`);
+        resetSubmitButton(`${ICONS.email} Send Show List`);
         return;
       }
 
@@ -89,13 +89,38 @@ export function initEmailModal(getInterestedIds) {
       } else {
         emailError.textContent = data.message;
         emailError.style.display = 'block';
-        resetSubmitButton(`${ICONS.email} Dispatch Passport`);
+        resetSubmitButton(`${ICONS.email} Send Show List`);
       }
     } catch (error) {
       console.error('Email dispatch request error', error);
       emailError.textContent = 'Failed to connect to the mail dispatcher. Try again.';
       emailError.style.display = 'block';
-      resetSubmitButton(`${ICONS.email} Dispatch Passport`);
+      resetSubmitButton(`${ICONS.email} Send Show List`);
+    }
+  });
+}
+
+export function initFeatureModal() {
+  const btnOpenFeatures = document.getElementById('btn-open-features');
+  const featuresModal = document.getElementById('features-modal');
+  if (!btnOpenFeatures || !featuresModal) return;
+
+  const btnCloseFeatures = document.getElementById('btn-close-features');
+
+  const openFeaturesModal = () => {
+    featuresModal.style.display = 'flex';
+  };
+
+  const closeFeaturesModal = () => {
+    featuresModal.style.display = 'none';
+  };
+
+  btnOpenFeatures.addEventListener('click', openFeaturesModal);
+  if (btnCloseFeatures) btnCloseFeatures.addEventListener('click', closeFeaturesModal);
+
+  featuresModal.addEventListener('click', event => {
+    if (event.target === featuresModal) {
+      closeFeaturesModal();
     }
   });
 }

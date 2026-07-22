@@ -7,7 +7,7 @@ backend/app.log
 backend/stderr.log
 
 # Local secrets and environment overrides
-metal-calendar/config.local.php
+nyctos-gig-grid/config.local.php
 
 # OS garbage
 .DS_Store

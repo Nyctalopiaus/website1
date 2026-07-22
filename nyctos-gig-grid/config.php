@@ -218,4 +218,33 @@ if (!defined('AGGREGATOR_ACTION_TOKEN')) {
     define('AGGREGATOR_ACTION_TOKEN', cfgEnv('AGGREGATOR_ACTION_TOKEN', ''));
 }
 
+if (!function_exists('getMarketLocationSuffix')) {
+    function getMarketLocationSuffix($market) {
+        $normalized = strtolower(trim((string)$market));
+        switch ($normalized) {
+            case 'socal':
+                return 'CA';
+            case 'scotland':
+                return 'Scotland';
+            case 'front-range':
+            default:
+                return 'CO';
+        }
+    }
+}
+
+if (!function_exists('formatMarketLocation')) {
+    function formatMarketLocation($cityName, $market) {
+        $city = trim((string)$cityName);
+        $suffix = trim((string)getMarketLocationSuffix($market));
+        if ($city === '') {
+            return $suffix;
+        }
+        if ($suffix === '') {
+            return $city;
+        }
+        return $city . ', ' . $suffix;
+    }
+}
+
 

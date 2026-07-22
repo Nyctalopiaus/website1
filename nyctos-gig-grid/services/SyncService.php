@@ -34,7 +34,8 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
         $scrapedEvents = loadScrapedEventsForTarget($target, $cacheDir, $aggregator, $scraper);
 
         foreach ($scrapedEvents as $event) {
-            if (!$aggregator->isTargetVenue($event['venue_name'])) {
+            $resolvedVenue = $aggregator->resolveTargetVenue($event['venue_name']);
+            if (!$resolvedVenue) {
                 continue;
             }
 
@@ -54,17 +55,18 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
             }
 
             $status = 'Approved';
-            $eventId = $aggregator->generateDedupeKey($event['artist_name'], $event['venue_name'], $event['start_time']);
+            $eventId = $aggregator->generateDedupeKey($event['artist_name'], $resolvedVenue['venue_name'], $event['start_time'], $resolvedVenue['market']);
 
             $aggregator->saveEvent([
                 'event_id' => $eventId,
                 'artist_name' => $event['artist_name'],
-                'venue_name' => $event['venue_name'],
+                'venue_name' => $resolvedVenue['venue_name'],
                 'city_name' => $event['city_name'],
                 'start_time' => $event['start_time'],
                 'ticket_url' => $event['ticket_url'],
                 'status' => $status,
-                'source' => $event['source']
+                'source' => $event['source'],
+                'market' => $resolvedVenue['market']
             ]);
             $scrapedCount++;
         }

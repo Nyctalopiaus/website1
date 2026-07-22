@@ -12,6 +12,7 @@ function ensureDatabaseSchema(PDO $db) {
         artist_name TEXT NOT NULL,
         venue_name TEXT NOT NULL,
         city_name TEXT NOT NULL,
+        market TEXT NOT NULL DEFAULT 'front-range',
         start_time DATETIME NOT NULL,
         ticket_url TEXT,
         status TEXT NOT NULL DEFAULT 'Approved',
@@ -19,14 +20,25 @@ function ensureDatabaseSchema(PDO $db) {
         genre TEXT NOT NULL DEFAULT 'Metal',
         tags TEXT,
         price_min REAL,
-        price_max REAL
+        price_max REAL,
+        price_last_changed_at DATETIME,
+        price_dropped_flag INTEGER NOT NULL DEFAULT 0,
+        price_drop_amount REAL,
+        price_drop_detected_at DATETIME,
+        low_ticket_flag INTEGER NOT NULL DEFAULT 0
     )");
 
     foreach ([
         "ALTER TABLE events ADD COLUMN genre TEXT NOT NULL DEFAULT 'Metal'",
         "ALTER TABLE events ADD COLUMN tags TEXT",
         "ALTER TABLE events ADD COLUMN price_min REAL",
-        "ALTER TABLE events ADD COLUMN price_max REAL"
+        "ALTER TABLE events ADD COLUMN price_max REAL",
+        "ALTER TABLE events ADD COLUMN price_last_changed_at DATETIME",
+        "ALTER TABLE events ADD COLUMN price_dropped_flag INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE events ADD COLUMN price_drop_amount REAL",
+        "ALTER TABLE events ADD COLUMN price_drop_detected_at DATETIME",
+        "ALTER TABLE events ADD COLUMN low_ticket_flag INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE events ADD COLUMN market TEXT NOT NULL DEFAULT 'front-range'"
     ] as $sql) {
         try {
             @$db->exec($sql);
@@ -36,6 +48,21 @@ function ensureDatabaseSchema(PDO $db) {
 
     $db->exec("CREATE INDEX IF NOT EXISTS idx_events_time ON events(start_time)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_events_status ON events(status)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_events_market_time ON events(market, start_time)");
+
+    $db->exec("CREATE TABLE IF NOT EXISTS event_price_history (
+        history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id TEXT NOT NULL,
+        observed_price_min REAL,
+        observed_price_max REAL,
+        price_source TEXT,
+        observed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        drop_amount REAL DEFAULT 0,
+        drop_detected INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY(event_id) REFERENCES events(event_id) ON DELETE CASCADE
+    )");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_price_history_event_id ON event_price_history(event_id)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_price_history_observed_at ON event_price_history(observed_at)");
 
     $db->exec("CREATE TABLE IF NOT EXISTS attended_log (
         log_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,11 +95,25 @@ function ensureDatabaseSchema(PDO $db) {
     $db->exec("CREATE TABLE IF NOT EXISTS venues (
         venue_key TEXT PRIMARY KEY,
         venue_name TEXT NOT NULL,
+        market TEXT NOT NULL DEFAULT 'front-range',
         address TEXT NOT NULL,
         city TEXT NOT NULL,
+        latitude REAL,
+        longitude REAL,
         capacity TEXT,
         maps_url TEXT NOT NULL
     )");
+    foreach ([
+        "ALTER TABLE venues ADD COLUMN market TEXT NOT NULL DEFAULT 'front-range'",
+        "ALTER TABLE venues ADD COLUMN latitude REAL",
+        "ALTER TABLE venues ADD COLUMN longitude REAL"
+    ] as $sql) {
+        try {
+            @$db->exec($sql);
+        } catch (PDOException $e) {
+        }
+    }
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_venues_market_name ON venues(market, venue_name)");
     $db->exec("CREATE TABLE IF NOT EXISTS artist_details_cache (
         artist_name TEXT PRIMARY KEY,
         bio_summary TEXT,

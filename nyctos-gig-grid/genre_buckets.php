@@ -4,7 +4,7 @@ function getGenreBucketConfig() {
     return [
         'all' => [
             'label' => 'All Genres',
-            'title' => 'Show every event currently loaded into the concert passport.',
+            'title' => 'Show every event currently loaded into Nycto\'s Gig Grid.',
             'tags' => []
         ],
         'metal' => [

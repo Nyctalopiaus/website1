@@ -4,6 +4,14 @@ function containsAnyKeyword(value, keywords) {
   return keywords.some(keyword => value.includes(keyword));
 }
 
+function normalizeLocationToken(value) {
+  return (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInterestedIds }) {
   const venueList = document.getElementById('venue-checkboxes-list');
   const dropdownToggle = document.getElementById('venue-dropdown-toggle');
@@ -22,12 +30,26 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   let activeRegion = 'all';
   let activeGenre = 'all';
   let filterInterestedOnly = false;
+  const activeMarket = document.body?.dataset?.market || 'front-range';
 
-  const regionCities = {
-    springs: ['colorado springs', 'pueblo', 'castle rock'],
-    denver: ['denver', 'boulder', 'golden', 'morrison', 'englewood', 'littleton', 'arvada', 'westminster', 'thornton'],
-    north: ['fort collins', 'greeley', 'loveland', 'longmont']
+  const regionCitiesByMarket = {
+    'front-range': {
+      springs: ['colorado springs', 'pueblo', 'castle rock'],
+      denver: ['denver', 'boulder', 'golden', 'morrison', 'englewood', 'littleton', 'arvada', 'westminster', 'thornton'],
+      north: ['fort collins', 'greeley', 'loveland', 'longmont', 'bellvue']
+    },
+    socal: {
+      la: ['los angeles', 'la', 'inglewood', 'hollywood'],
+      oc: ['anaheim', 'santa ana', 'orange', 'fullerton', 'costa mesa', 'irvine'],
+      sd: ['san diego', 'chula vista', 'la mesa', 'el cajon', 'oceanside']
+    },
+    scotland: {
+      glasgow: ['glasgow', 'glasgow scotland'],
+      edinburgh: ['edinburgh', 'edinburgh scotland'],
+      other: ['dundee', 'aberdeen', 'stirling', 'perth', 'falkirk', 'paisley', 'inverness']
+    }
   };
+  const regionCities = regionCitiesByMarket[activeMarket] || regionCitiesByMarket['front-range'];
 
   const venuesSet = new Set();
   cards.forEach(card => {
@@ -161,8 +183,9 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
 
         if (view.id !== 'interested-view') {
           if (show && activeRegion !== 'all') {
-            const targetCities = regionCities[activeRegion] || [];
-            if (!targetCities.includes(cardCity)) show = false;
+            const targetCities = (regionCities[activeRegion] || []).map(normalizeLocationToken);
+            const normalizedCardCity = normalizeLocationToken(cardCity);
+            if (!containsAnyKeyword(normalizedCardCity, targetCities)) show = false;
           }
           if (show && !checkedVenues.includes(cardVenue)) show = false;
         }
@@ -236,7 +259,13 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       });
 
       if (searchQuery !== '' || filterInterestedOnly) {
-        view.classList.toggle('active', visibleCount > 0);
+        // Avoid duplicate cards when interested-only mode is active: the dedicated
+        // interested view contains clones of cards from month views.
+        if (filterInterestedOnly && view.id === 'interested-view') {
+          view.classList.remove('active');
+        } else {
+          view.classList.toggle('active', visibleCount > 0);
+        }
       } else {
         view.classList.toggle('active', view.id === targetId);
       }
@@ -308,56 +337,28 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   }
 
   if (genreHelpTrigger && genreHelpPanel) {
-    let helpPanelHideTimer = null;
-    let helpPanelFadeTimer = null;
-
-    const clearHelpPanelTimers = () => {
-      if (helpPanelHideTimer) {
-        clearTimeout(helpPanelHideTimer);
-        helpPanelHideTimer = null;
-      }
-      if (helpPanelFadeTimer) {
-        clearTimeout(helpPanelFadeTimer);
-        helpPanelFadeTimer = null;
-      }
-    };
-
     const hideHelpPanel = () => {
-      clearHelpPanelTimers();
       genreHelpPanel.classList.remove('fading');
       genreHelpPanel.classList.remove('active');
     };
 
     const showHelpPanel = () => {
-      clearHelpPanelTimers();
       genreHelpPanel.classList.remove('fading');
       genreHelpPanel.classList.add('active');
-
-      // Leave enough time to read before fading out.
-      helpPanelHideTimer = setTimeout(() => {
-        genreHelpPanel.classList.add('fading');
-        helpPanelFadeTimer = setTimeout(() => {
-          hideHelpPanel();
-        }, 300);
-      }, 4200);
     };
 
-    genreHelpTrigger.addEventListener('click', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (genreHelpPanel.classList.contains('active') && !genreHelpPanel.classList.contains('fading')) {
+    genreHelpTrigger.addEventListener('mouseenter', showHelpPanel);
+    genreHelpTrigger.addEventListener('mouseleave', event => {
+      if (!genreHelpPanel.contains(event.relatedTarget)) {
         hideHelpPanel();
-      } else {
-        showHelpPanel();
       }
     });
-
-    genreHelpTrigger.addEventListener('mouseenter', showHelpPanel);
     genreHelpTrigger.addEventListener('focus', showHelpPanel);
-    genreHelpPanel.addEventListener('mouseenter', showHelpPanel);
+    genreHelpTrigger.addEventListener('blur', hideHelpPanel);
 
-    document.addEventListener('click', event => {
-      if (!genreHelpPanel.contains(event.target) && event.target !== genreHelpTrigger) {
+    genreHelpPanel.addEventListener('mouseenter', showHelpPanel);
+    genreHelpPanel.addEventListener('mouseleave', event => {
+      if (event.relatedTarget !== genreHelpTrigger) {
         hideHelpPanel();
       }
     });

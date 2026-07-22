@@ -47,15 +47,15 @@ function escapeIcs($str) {
 
 echo "BEGIN:VCALENDAR\r\n";
 echo "VERSION:2.0\r\n";
-echo "PRODID:-//Front Range Metal Passport//Concert Calendar//EN\r\n";
+echo "PRODID:-//Nyctos Gig Grid//Live Show Intelligence//EN\r\n";
 echo "CALSCALE:GREGORIAN\r\n";
 echo "BEGIN:VEVENT\r\n";
-echo "UID:" . $event['event_id'] . "@frontrangemetalpassport\r\n";
+echo "UID:" . $event['event_id'] . "@nyctosgiggrid\r\n";
 echo "DTSTAMP:" . gmdate('Ymd\THis\Z') . "\r\n";
 echo "DTSTART:" . $dtStart . "\r\n";
 echo "DTEND:" . $dtEnd . "\r\n";
 echo "SUMMARY:" . escapeIcs($event['artist_name'] . " @ " . $event['venue_name']) . "\r\n";
-echo "LOCATION:" . escapeIcs($event['venue_name'] . ", " . $event['city_name'] . ", CO") . "\r\n";
+echo "LOCATION:" . escapeIcs($event['venue_name'] . ", " . formatMarketLocation($event['city_name'] ?? '', $event['market'] ?? 'front-range')) . "\r\n";
 echo "DESCRIPTION:" . escapeIcs("Concert Details:\nArtist: " . $event['artist_name'] . "\nVenue: " . $event['venue_name'] . "\nTicket Link: " . ($event['ticket_url'] ?? 'N/A')) . "\r\n";
 echo "END:VEVENT\r\n";
 echo "END:VCALENDAR\r\n";

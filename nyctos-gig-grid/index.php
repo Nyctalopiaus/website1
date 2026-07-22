@@ -31,17 +31,20 @@ if (($_COOKIE['market'] ?? null) !== $activeMarket) {
 
 $marketConfig = [
     'front-range' => [
-        'title' => "Nycto's Gig Grid // Front Range Rock & Metal",
+        'title' => "Nycto's Gig Grid - Front Range Rock & Metal",
+        'region_name' => 'Front Range Rock & Metal',
         'logo_text' => "Nycto's Gig Grid",
         'intro' => 'Your direct link to heavy music events between Colorado Springs and Fort Collins. Real-time API aggregation, zero AI noise.'
     ],
     'socal' => [
-        'title' => "Nycto's Gig Grid // SoCal Rock & Metal",
+        'title' => "Nycto's Gig Grid - SoCal Rock & Metal",
+        'region_name' => 'SoCal Rock & Metal',
         'logo_text' => "Nycto's Gig Grid",
         'intro' => 'Your direct link to heavy music events from Los Angeles to San Diego. Real-time API aggregation, zero AI noise.'
     ],
     'scotland' => [
-        'title' => "Nycto's Gig Grid // Scotland Rock & Metal",
+        'title' => "Nycto's Gig Grid - Scotland Rock & Metal",
+        'region_name' => 'Scotland Rock & Metal',
         'logo_text' => "Nycto's Gig Grid",
         'intro' => 'Your direct link to heavy music events across Glasgow, Edinburgh, and the Scottish central belt. Real-time API aggregation, zero AI noise.'
     ]
@@ -193,12 +196,12 @@ if (file_exists($lastSyncFile)) {
         </div>
     </div>
 
-    <!-- Email Passport Modal -->
+    <!-- Email Show List Modal -->
     <div id="email-modal" class="sync-overlay" style="display: none; align-items: center; justify-content: center; z-index: 125; background: rgba(0,0,0,0.85);">
         <div class="modal-content" style="background: #14161a; border: 1px solid var(--card-border); max-width: 460px; width: 90%; padding: 2rem; border-radius: var(--border-radius); box-shadow: 0 20px 50px rgba(0,0,0,0.9); position: relative;">
             <button id="btn-close-email" style="position: absolute; top: 1rem; right: 1.25rem; background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; transition: color 0.2s; outline: none;">&times;</button>
             
-            <h2 style="font-family: var(--font-header); font-size: 1.8rem; color: var(--text-bright); text-transform: uppercase; margin-bottom: 1.25rem; border-bottom: 2px solid var(--accent-crimson); padding-bottom: 0.5rem; letter-spacing: 0.02em;">Email Passport</h2>
+            <h2 style="font-family: var(--font-header); font-size: 1.8rem; color: var(--text-bright); text-transform: uppercase; margin-bottom: 1.25rem; border-bottom: 2px solid var(--accent-crimson); padding-bottom: 0.5rem; letter-spacing: 0.02em;">Email Show List</h2>
             
             <!-- Explicit Modal Privacy Notice -->
             <div style="background: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.45;">
@@ -221,7 +224,7 @@ if (file_exists($lastSyncFile)) {
                 <div style="display: flex; gap: 1rem; justify-content: flex-end;">
                     <button type="button" id="btn-cancel-email" class="btn-tickets secondary" style="margin-top: 0; padding: 0.5rem 1.25rem; border-radius: 4px;">Cancel</button>
                     <button type="submit" id="btn-submit-email" class="btn-tickets" style="margin-top: 0; padding: 0.5rem 1.5rem; border-radius: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 0.5rem;">
-                        ✉️ Dispatch Passport
+                        ✉️ Send Show List
                     </button>
                 </div>
             </form>
@@ -233,7 +236,7 @@ if (file_exists($lastSyncFile)) {
         <div class="modal-content feature-modal-content">
             <button id="btn-close-features" class="modal-close-button" aria-label="Close feature overview">&times;</button>
 
-            <h2 class="feature-modal-title">What This Passport Can Do</h2>
+            <h2 class="feature-modal-title">What Nycto's Gig Grid Can Do</h2>
             <p class="feature-modal-intro">A fast, heavy-music calendar built to help you find shows, compare options, and move from discovery to planning without jumping between five tabs.</p>
 
             <ul class="feature-modal-list">
@@ -280,7 +283,10 @@ if (file_exists($lastSyncFile)) {
     <main class="container">
         <!-- Banner Intro -->
         <section class="intro">
-            <h1><?php echo htmlspecialchars($activeMarketConfig['title']); ?></h1>
+            <h1>
+                <span class="intro-title-main">NYCTO'S GIG GRID</span>
+                <span class="intro-title-region"><?php echo htmlspecialchars($activeMarketConfig['region_name']); ?></span>
+            </h1>
             <p><?php echo htmlspecialchars($activeMarketConfig['intro']); ?></p>
         </section>
 
@@ -289,7 +295,7 @@ if (file_exists($lastSyncFile)) {
             <span class="privacy-banner-icon" style="font-size: 1.15rem; line-height: 1.2;">🔒</span>
             <div class="privacy-banner-copy">
                 <strong style="color: #ffd6d6; text-shadow: 0 1px 2px rgba(0,0,0,0.65); font-family: var(--font-header); letter-spacing: 0.02em; display: block; margin-bottom: 0.2rem; text-transform: uppercase; font-size: 0.85rem;">100% Private & Dispatch-Only</strong>
-                Your data is processed locally to you. If you choose to email your passport, your email address is used for this one-time dispatch only. It is not stored in our database, nor will it ever be shared or used for future marketing.
+                Your data is processed locally to you. If you choose to email your show list, your email address is used for this one-time dispatch only. It is not stored in our database, nor will it ever be shared or used for future marketing.
             </div>
             <button type="button" id="btn-open-features" class="privacy-feature-button" title="View site features">
                 <span class="privacy-feature-button-icon">◌</span>
@@ -373,7 +379,7 @@ if (file_exists($lastSyncFile)) {
                 </button>
             </div>
 
-            <!-- 5. Email Passport Dispatch -->
+            <!-- 5. Email Show List Dispatch -->
             <div class="filter-group" style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto;">
                 <button type="button" id="btn-email-passport" class="btn-tickets btn-email-passport-premium">
                     <span class="btn-email-passport-icon">✉️</span>
@@ -586,6 +592,6 @@ if (file_exists($lastSyncFile)) {
 
     <script id="venue-data" type="application/json"><?php echo json_encode($venuesList, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
     <script id="genre-buckets-data" type="application/json"><?php echo json_encode($genreBuckets, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
-    <script type="module" src="assets/js/app.js?v=8"></script>
+    <script type="module" src="assets/js/app.js?v=9"></script>
 </body>
 </html>
