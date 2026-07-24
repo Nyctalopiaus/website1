@@ -5,7 +5,7 @@
  */
 
 define('TICKETMASTER_API_KEY', 'replace_me');
-define('BANDSINTOWN_APP_ID', 'metal_calendar');
+define('BANDSINTOWN_APP_ID', 'js_nyctos_gig_grid');
 define('SCRAPE_DO_TOKEN', 'replace_me_or_blank');
 define('SETLIST_FM_API_KEY', 'replace_me');
 define('LASTFM_API_KEY', 'replace_me_or_blank');

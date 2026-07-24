@@ -39,11 +39,6 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
                 continue;
             }
 
-            if ($aggregator->isIgnoredArtistName($event['artist_name'])) {
-                $aggregator->log("[IGNORE] Skipped blocked artist '{$event['artist_name']}' from scraper source.");
-                continue;
-            }
-
             $isMetal = $aggregator->isMetalArtist($event['artist_name']);
             if (!$isMetal) {
                 $isMetal = $aggregator->fetchArtistGenreMetadata($event['artist_name']);
@@ -80,11 +75,23 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
 }
 
 function persistLastSyncTimestamp() {
+    $nowStr = date('Y-m-d H:i:s');
     $dir = __DIR__ . '/../cache';
     if (!is_dir($dir)) {
-        mkdir($dir, 0775, true);
+        @mkdir($dir, 0775, true);
     }
-    file_put_contents($dir . '/last_sync.txt', date('Y-m-d H:i:s'));
+    @file_put_contents($dir . '/last_sync.txt', $nowStr);
+
+    // Sync to sibling domain cache directories if running in multi-domain environment
+    $sibling1 = dirname(__DIR__, 2) . '/metal-calendar/cache';
+    if (is_dir($sibling1)) {
+        @file_put_contents($sibling1 . '/last_sync.txt', $nowStr);
+    }
+
+    $sibling2 = dirname(__DIR__, 2) . '/nyctos-gig-grid/cache';
+    if (is_dir($sibling2)) {
+        @file_put_contents($sibling2 . '/last_sync.txt', $nowStr);
+    }
 }
 
 function backfillMissingSetlists(EventAggregator $aggregator) {

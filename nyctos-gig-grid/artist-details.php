@@ -4,9 +4,8 @@
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/aggregator.php';
-
-use PHPMailer\PHPMailer\Exception;
+require_once __DIR__ . '/actions/common.php';
+require_once __DIR__ . '/services/ArtistDetailsService.php';
 
 header('Content-Type: application/json');
 applyApiResponseHeaders();

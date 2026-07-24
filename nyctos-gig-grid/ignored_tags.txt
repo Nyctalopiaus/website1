@@ -1,0 +1,3 @@
+# Excluded genre tags (one per line).
+bookmark
+my top songs

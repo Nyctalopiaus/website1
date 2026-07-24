@@ -1,9 +1,9 @@
-import { setupGlobalErrorLogging, getVenueData, getGenreBucketData } from './utils.js?v=9';
-import { getInterestedIds, saveInterestedIds } from './store.js?v=9';
-import { initEmailModal, initFeatureModal, initVenueModal, initSetlistModal } from './modals.js?v=9';
-import { initArtistInsights, initAudioPreview } from './media.js?v=9';
-import { initFilters } from './filters.js?v=9';
-import { loadWeatherForecasts } from './weather.js?v=9';
+import { setupGlobalErrorLogging, getVenueData, getGenreBucketData } from './utils.js?v=53';
+import { getInterestedIds, saveInterestedIds, getIgnoredEventIds, saveIgnoredEventIds } from './store.js?v=53';
+import { initEmailModal, initFeatureModal, initVenueModal, initSetlistModal, initContactModal } from './modals.js?v=53';
+import { initArtistInsights, initAudioPreview, initArtistLinksDropdown } from './media.js?v=53';
+import { initFilters } from './filters.js?v=53';
+import { loadWeatherForecasts } from './weather.js?v=53';
 
 setupGlobalErrorLogging();
 
@@ -66,13 +66,17 @@ document.addEventListener('DOMContentLoaded', () => {
   initFeatureModal();
   initVenueModal(venueData);
   initSetlistModal();
+  initContactModal();
   initArtistInsights();
   initAudioPreview();
+  initArtistLinksDropdown();
   initFilters({
     venueData,
     genreBuckets,
     getInterestedIds,
-    saveInterestedIds
+    saveInterestedIds,
+    getIgnoredEventIds,
+    saveIgnoredEventIds
   });
   loadWeatherForecasts();
 });

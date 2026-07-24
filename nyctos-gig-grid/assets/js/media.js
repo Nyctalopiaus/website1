@@ -14,28 +14,41 @@ export function initArtistInsights() {
     const drawer = card.querySelector('.insights-drawer');
     if (!wrapper || !drawer) return;
 
-    if (wrapper.classList.contains('open')) {
+    const currentArtist = wrapper.getAttribute('data-artist');
+
+    // Toggle close if clicking same active artist
+    if (wrapper.classList.contains('open') && currentArtist === artistName) {
       wrapper.classList.remove('open');
       btn.classList.remove('active');
       return;
     }
 
+    // Close all open insight drawers across page
     document.querySelectorAll('.insights-drawer-wrapper.open').forEach(openWrapper => {
       openWrapper.classList.remove('open');
-      const otherCard = openWrapper.closest('.event-card');
-      const otherBtn = otherCard ? otherCard.querySelector('.btn-insights') : null;
-      if (otherBtn) otherBtn.classList.remove('active');
     });
+    document.querySelectorAll('.btn-insights.active').forEach(b => b.classList.remove('active'));
 
+    // Close all audio drawers across page
     document.querySelectorAll('.audio-drawer').forEach(drawerEl => {
       drawerEl.style.display = 'none';
-      const otherCard = drawerEl.closest('.event-card');
-      const listenBtn = otherCard ? otherCard.querySelector('.btn-listen:not(.btn-insights)') : null;
-      if (listenBtn) listenBtn.classList.remove('active');
+      const localAudio = drawerEl.querySelector('audio');
+      if (localAudio) localAudio.pause();
     });
+    document.querySelectorAll('.btn-listen.active').forEach(b => b.classList.remove('active'));
+
+    // Close all open popovers across page
+    document.querySelectorAll('.links-popover').forEach(p => { p.style.display = 'none'; });
+    document.querySelectorAll('.btn-links-toggle.active').forEach(b => b.classList.remove('active'));
 
     btn.classList.add('active');
     wrapper.classList.add('open');
+
+    // Reset content if switching to a different artist
+    if (currentArtist !== artistName) {
+      wrapper.setAttribute('data-artist', artistName);
+      wrapper.removeAttribute('data-loaded');
+    }
 
     if (wrapper.getAttribute('data-loaded') === 'true') {
       return;
@@ -71,12 +84,18 @@ export function initArtistInsights() {
           });
         }
 
+        const bioText = (details.bio_summary || '').trim();
+        const isRawLinkOnly = bioText.startsWith('&lt;a href') || bioText.startsWith('<a href') || bioText.replace(/<[^>]*>/g, '').trim() === '';
+        const displayBio = (isRawLinkOnly || !bioText)
+          ? `No bio summary available for ${escapeHtml(artistName)} yet.`
+          : bioText;
+
         drawer.innerHTML = `
-          <div class="insights-bio">${escapeHtml(details.bio_summary || '')}</div>
+          <div class="insights-bio">${displayBio}</div>
           ${tagsHtml ? `<div class="insights-tags">${tagsHtml}</div>` : ''}
         `;
       } else {
-        drawer.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; font-style: italic; padding: 0.5rem 0;">No biographical insights available for this artist.</div>';
+        drawer.innerHTML = `<div style="color: var(--text-muted); font-size: 0.85rem; font-style: italic; padding: 0.5rem 0;">No bio summary available for ${escapeHtml(artistName)} yet.</div>`;
       }
       wrapper.setAttribute('data-loaded', 'true');
     } catch (error) {
@@ -97,7 +116,10 @@ export function initAudioPreview() {
     const drawer = card ? card.querySelector('.audio-drawer') : null;
     if (!card || !drawer) return;
 
-    if (drawer.style.display === 'block') {
+    const currentArtist = drawer.getAttribute('data-artist');
+
+    // Toggle close if clicking same active artist
+    if (drawer.style.display === 'block' && currentArtist === artist) {
       drawer.style.display = 'none';
       btn.classList.remove('active');
       const localAudio = drawer.querySelector('audio');
@@ -108,28 +130,43 @@ export function initAudioPreview() {
       return;
     }
 
+    // Close all other audio drawers across document
     document.querySelectorAll('.audio-drawer').forEach(otherDrawer => {
-      if (otherDrawer !== drawer) {
-        otherDrawer.style.display = 'none';
-        const otherAudio = otherDrawer.querySelector('audio');
-        if (otherAudio) otherAudio.pause();
-        otherDrawer.querySelectorAll('.btn-play-preview').forEach(playBtn => {
-          playBtn.textContent = ICONS.play;
-        });
-      }
+      otherDrawer.style.display = 'none';
+      const otherAudio = otherDrawer.querySelector('audio');
+      if (otherAudio) otherAudio.pause();
+      otherDrawer.querySelectorAll('.btn-play-preview').forEach(playBtn => {
+        playBtn.textContent = ICONS.play;
+      });
     });
-    document.querySelectorAll('.btn-listen').forEach(otherBtn => {
-      if (otherBtn !== btn) otherBtn.classList.remove('active');
+    document.querySelectorAll('.btn-listen.active').forEach(otherBtn => {
+      otherBtn.classList.remove('active');
     });
+
+    // Close all insights drawers across document
+    document.querySelectorAll('.insights-drawer-wrapper.open').forEach(openWrapper => {
+      openWrapper.classList.remove('open');
+    });
+    document.querySelectorAll('.btn-insights.active').forEach(b => b.classList.remove('active'));
+
+    // Close all open popovers across page
+    document.querySelectorAll('.links-popover').forEach(p => { p.style.display = 'none'; });
+    document.querySelectorAll('.btn-links-toggle.active').forEach(b => b.classList.remove('active'));
 
     drawer.style.display = 'block';
     btn.classList.add('active');
+
+    // Reset content if switching to a different artist
+    if (currentArtist !== artist) {
+      drawer.setAttribute('data-artist', artist);
+      drawer.removeAttribute('data-loaded');
+    }
 
     if (drawer.getAttribute('data-loaded') === 'true') {
       return;
     }
 
-    drawer.innerHTML = `<div class="audio-loading">${ICONS.headphones} Searching tracks on iTunes...</div>`;
+    drawer.innerHTML = `<div class="audio-loading">${ICONS.headphones} Searching tracks for ${escapeHtml(artist)}...</div>`;
 
     try {
       const parts = artist.split(/(\s+and\s+|\s*&\s*|\s*\/\s*|\s*,\s*)/i);
@@ -139,7 +176,7 @@ export function initAudioPreview() {
       const data = await response.json();
 
       if (!data.results || data.results.length === 0) {
-        drawer.innerHTML = '<div class="audio-empty">No previews found for this artist.</div>';
+        drawer.innerHTML = `<div class="audio-empty">No previews found for ${escapeHtml(artist)}.</div>`;
         return;
       }
 
@@ -224,4 +261,61 @@ export function initAudioPreview() {
       }
     }
   }, true);
+}
+
+export function initArtistLinksDropdown() {
+  const closeAllPopovers = () => {
+    document.querySelectorAll('.links-popover').forEach(p => {
+      p.style.display = 'none';
+      p.classList.remove('open');
+    });
+    document.querySelectorAll('.btn-links-toggle').forEach(b => {
+      b.classList.remove('active');
+    });
+  };
+
+  // Main delegated click listener for toggles, links, and click-outside
+  document.addEventListener('click', event => {
+    const toggleBtn = event.target.closest('.btn-links-toggle');
+
+    if (toggleBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      const dropdown = toggleBtn.closest('.artist-links-dropdown');
+      if (!dropdown) return;
+      const popover = dropdown.querySelector('.links-popover');
+      if (!popover) return;
+
+      const isCurrentlyOpen = popover.style.display === 'block' || popover.classList.contains('open');
+
+      // Close all open popovers across all cards first
+      closeAllPopovers();
+
+      // Toggle open if it wasn't open previously
+      if (!isCurrentlyOpen) {
+        popover.style.display = 'block';
+        popover.classList.add('open');
+        toggleBtn.classList.add('active');
+      }
+      return;
+    }
+
+    // If clicking a streaming link item inside popover
+    if (event.target.closest('.link-item')) {
+      closeAllPopovers();
+      return;
+    }
+
+    // If clicking anywhere outside any artist-links-dropdown
+    if (!event.target.closest('.artist-links-dropdown')) {
+      closeAllPopovers();
+    }
+  });
+
+  // Close all open popovers on ESC key
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      closeAllPopovers();
+    }
+  });
 }

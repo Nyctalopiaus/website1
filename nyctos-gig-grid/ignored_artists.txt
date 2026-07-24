@@ -1,6 +1,0 @@
-# Add one artist per line to block them from this site.
-# Matching is case-insensitive and punctuation-insensitive.
-# Examples:
-# Falling In Reverse
-# Motionless in White
-HILARY DUFF

@@ -69,7 +69,7 @@ if (!defined('TICKETMASTER_API_KEY')) {
     define('TICKETMASTER_API_KEY', cfgEnv('TICKETMASTER_API_KEY', ''));
 }
 if (!defined('BANDSINTOWN_APP_ID')) {
-    define('BANDSINTOWN_APP_ID', cfgEnv('BANDSINTOWN_APP_ID', 'metal_calendar'));
+    define('BANDSINTOWN_APP_ID', cfgEnv('BANDSINTOWN_APP_ID', 'js_nyctos_gig_grid'));
 }
 
 // Optional: Paste your free Scrape.do token below to bypass Cloudflare/WAF blocks on venue sites.

@@ -3,21 +3,36 @@
  * Aggregator Module - sync runner and action router.
  */
 require_once __DIR__ . '/config.php';
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/db/connection.php';
+require_once __DIR__ . '/actions/common.php';
 require_once __DIR__ . '/services/VenueScraper.php';
 require_once __DIR__ . '/services/EventAggregator.php';
 require_once __DIR__ . '/services/ArtistDetailsService.php';
 require_once __DIR__ . '/services/SetlistService.php';
 require_once __DIR__ . '/services/SyncService.php';
-require_once __DIR__ . '/actions/common.php';
 require_once __DIR__ . '/actions/sync.php';
 require_once __DIR__ . '/actions/logbook.php';
 require_once __DIR__ . '/actions/setlist.php';
 require_once __DIR__ . '/actions/log-js-error.php';
 
-applyApiResponseHeaders();
+set_time_limit(300);
 
-set_time_limit(180);
+$isCli = (php_sapi_name() === 'cli' || empty($_SERVER['REMOTE_ADDR']));
+$argvList = $_SERVER['argv'] ?? $argv ?? [];
+$cliSync = false;
+foreach ($argvList as $arg) {
+    if (strpos($arg, 'cli-sync') !== false) {
+        $cliSync = true;
+        break;
+    }
+}
+
+if ($cliSync) {
+    handleSyncRequest(true);
+    exit;
+}
+
+applyApiResponseHeaders();
 
 function getAggregatorActionTokenFromRequest() {
     $headerToken = $_SERVER['HTTP_X_ACTION_TOKEN'] ?? '';
@@ -47,17 +62,6 @@ function requireAggregatorTokenIfConfigured() {
     if ($provided === '' || !hash_equals(AGGREGATOR_ACTION_TOKEN, $provided)) {
         denyAggregatorAccess('Unauthorized action token.');
     }
-}
-
-$isCli = (php_sapi_name() === 'cli');
-$cliSync = false;
-if (isset($argv) && in_array('--cli-sync', $argv)) {
-    $cliSync = true;
-    $isCli = true;
-}
-
-if ($cliSync) {
-    handleSyncRequest($isCli);
 }
 
 $isWebSyncAttempt = isset($_GET['sync']) || (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'POST' && (($_GET['action'] ?? '') === 'sync'));
@@ -103,10 +107,12 @@ if ($action === 'remove_from_logbook' && isset($_POST['event_id'])) {
     handleRemoveFromLogbook();
 }
 
-if ($action === 'get_setlist' && (isset($_GET['event_id']) || isset($_POST['event_id']))) {
+if ($action === 'get_setlist' && isset($_GET['event_id'])) {
     $retryAfter = 0;
-    if (isRateLimited('get-setlist', 20, 300, $retryAfter)) {
+    if (isRateLimited('get-setlist', 60, 600, $retryAfter)) {
         jsonRateLimitResponse('Setlist lookups are rate limited.', $retryAfter);
     }
     handleGetSetlist();
 }
+
+jsonErrorResponse('Invalid action specified.');

@@ -17,11 +17,15 @@ function fetchArtistDetails($artistName) {
     if ($cached !== false) {
         $lastUpdated = strtotime($cached['last_updated']);
         if ((time() - $lastUpdated) < $cacheTTL) {
-            if ($cached['bio_summary'] === 'NONE') {
-                return null;
+            $cachedBio = trim($cached['bio_summary']);
+            if ($cachedBio === 'NONE' || empty($cachedBio) || strpos($cachedBio, '<a href') === 0 || trim(strip_tags($cachedBio)) === '') {
+                return [
+                    'bio_summary' => "No bio summary available for " . htmlspecialchars($artistName) . " yet.",
+                    'top_tags' => array_filter(array_map('trim', explode(',', $cached['top_tags'])))
+                ];
             }
             return [
-                'bio_summary' => $cached['bio_summary'],
+                'bio_summary' => $cachedBio,
                 'top_tags' => array_filter(array_map('trim', explode(',', $cached['top_tags'])))
             ];
         }
@@ -46,7 +50,13 @@ function fetchArtistDetails($artistName) {
             if (isset($data['artist'])) {
                 $artistData = $data['artist'];
                 if (isset($artistData['bio']['summary'])) {
-                    $bio = trim($artistData['bio']['summary']);
+                    $rawBio = trim($artistData['bio']['summary']);
+                    // Strip Last.fm "Read more on Last.fm" anchor tags
+                    $cleanBio = trim(preg_replace('/<a\s+href="[^"]*">Read more on Last\.fm<\/a>\.?/i', '', $rawBio));
+                    $plainBio = trim(strip_tags($cleanBio));
+                    if (!empty($plainBio) && strtolower($plainBio) !== 'read more on last.fm') {
+                        $bio = $cleanBio;
+                    }
                 }
                 if (isset($artistData['tags']['tag']) && is_array($artistData['tags']['tag'])) {
                     foreach ($artistData['tags']['tag'] as $t) {
@@ -188,7 +198,10 @@ function fetchArtistDetails($artistName) {
             $stmtSave = $db->prepare("INSERT OR REPLACE INTO artist_details_cache (artist_name, bio_summary, top_tags, last_updated) VALUES (:name, 'NONE', '', CURRENT_TIMESTAMP)");
             $stmtSave->execute([':name' => $artistName]);
         } catch (Exception $e) {}
-        return null;
+        return [
+            'bio_summary' => "No bio summary available for " . htmlspecialchars($artistName) . " yet.",
+            'top_tags' => $tags
+        ];
     }
     
     // Fallback tags from events metadata

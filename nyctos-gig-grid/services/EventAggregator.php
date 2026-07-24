@@ -1,26 +1,33 @@
 <?php
 
 /** Event aggregation service */
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../db/connection.php';
+require_once __DIR__ . '/../db/schema.php';
+require_once __DIR__ . '/../actions/common.php';
 require_once __DIR__ . '/../genre_buckets.php';
-require_once __DIR__ . '/../ignored_artists.php';
 require_once __DIR__ . '/../genre_overrides.php';
+require_once __DIR__ . '/../ignored_tags.php';
 
 class EventAggregator {
     private $db;
     private $logs = [];
-    private $ignoredArtists = [];
     private $genreOverrides = [];
     private $venuesByMarket = [];
 
     public function __construct() {
         $this->db = getDbConnection();
-        $this->ignoredArtists = getIgnoredArtistsNormalized();
+        ensureDatabaseSchema($this->db);
         $this->genreOverrides = getGenreOverridesNormalized();
         $this->loadVenueWhitelist();
     }
 
     public function log($msg) {
-        $this->logs[] = "[" . date('H:i:s') . "] " . $msg;
+        $formatted = "[" . date('H:i:s') . "] " . $msg;
+        $this->logs[] = $formatted;
+        if (php_sapi_name() === 'cli' || empty($_SERVER['REMOTE_ADDR'])) {
+            echo $formatted . "\n";
+        }
     }
 
     public function getLogs() {
@@ -28,39 +35,18 @@ class EventAggregator {
     }
 
     public function isIgnoredArtistName($artistName) {
-        return isArtistIgnored($artistName, $this->ignoredArtists);
+        return false;
     }
 
     public function purgeIgnoredEvents() {
-        if (empty($this->ignoredArtists)) {
-            return 0;
-        }
-
-        $removed = 0;
-        $stmtSelect = $this->db->query("SELECT event_id, artist_name FROM events");
-        $stmtDelete = $this->db->prepare("DELETE FROM events WHERE event_id = :id");
-
-        foreach ($stmtSelect->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            if (!$this->isIgnoredArtistName($row['artist_name'] ?? '')) {
-                continue;
-            }
-
-            $stmtDelete->execute([':id' => $row['event_id']]);
-            $removed++;
-        }
-
-        if ($removed > 0) {
-            $this->log("[IGNORE] Removed {$removed} stored events that match ignored artists.");
-        }
-
-        return $removed;
+        return 0;
     }
 
     /**
      * Checks if an artist exists in our local metal lookup list. Support co-headlining splits.
      */
     public function isMetalArtist($artistName) {
-        $parts = preg_split('/(\s+and\s+|\s*&\s*|\s*\/\s*|\s*,\s*)/i', $artistName);
+        $parts = $this->splitPerformerNames($artistName);
         foreach ($parts as $part) {
             $part = trim($part);
             if (empty($part)) continue;
@@ -74,7 +60,7 @@ class EventAggregator {
     }
 
     public function fetchArtistGenreMetadata($artistName) {
-        $parts = preg_split('/(\s+and\s+|\s*&\s*|\s*\/\s*|\s*,\s*)/i', $artistName);
+        $parts = $this->splitPerformerNames($artistName);
         $allMetal = false;
         
         foreach ($parts as $part) {
@@ -184,7 +170,7 @@ class EventAggregator {
             $signals[] = strtolower($eventTags);
         }
 
-        $parts = preg_split('/(\s+and\s+|\s*&\s*|\s*\/\s*|\s*,\s*)/i', $artistName);
+        $parts = $this->splitPerformerNames($artistName);
         foreach ($parts as $part) {
             $part = trim($part);
             if ($part === '') {
@@ -220,32 +206,14 @@ class EventAggregator {
         $tags = array_filter(array_map('trim', $parts));
 
         $buckets = getGenreBucketConfig();
-        $extremeTags = $buckets['extreme']['tags'] ?? [];
-        $punkTags = $buckets['punk']['tags'] ?? [];
-        $indieTags = $buckets['indie']['tags'] ?? [];
-        $metalTags = $buckets['metal']['tags'] ?? [];
-
-        foreach ($tags as $tag) {
-            if (in_array($tag, $extremeTags)) {
-                return 'extreme';
+        foreach ($buckets as $bKey => $bConfig) {
+            if ($bKey === 'all' || empty($bConfig['tags'])) {
+                continue;
             }
-        }
-
-        foreach ($tags as $tag) {
-            if (in_array($tag, $punkTags)) {
-                return 'punk';
-            }
-        }
-
-        foreach ($tags as $tag) {
-            if (in_array($tag, $indieTags)) {
-                return 'indie';
-            }
-        }
-
-        foreach ($tags as $tag) {
-            if (in_array($tag, $metalTags)) {
-                return 'metal';
+            foreach ($tags as $tag) {
+                if (in_array($tag, $bConfig['tags'], true)) {
+                    return $bKey;
+                }
             }
         }
 
@@ -368,6 +336,102 @@ class EventAggregator {
         return $clean;
     }
 
+    /**
+     * Split a multi-performer label into stable performer tokens.
+     */
+    private function splitPerformerNames($artistName) {
+        $input = trim((string)$artistName);
+        if ($input === '') {
+            return [];
+        }
+
+        $parts = preg_split('/\s+(?:and|with)\s+|\s+w\/\s+|\s*&\s*|\s*,\s*|\s+\+\s+/i', $input);
+        $names = [];
+        foreach ($parts as $part) {
+            $clean = trim((string)$part);
+            if ($clean === '') {
+                continue;
+            }
+            if (!in_array($clean, $names, true)) {
+                $names[] = $clean;
+            }
+        }
+
+        return !empty($names) ? $names : [$input];
+    }
+
+    /**
+     * Preserve all known performers by unioning two performer strings.
+     */
+    private function mergePerformerNames($existingArtist, $incomingArtist) {
+        $existingParts = $this->splitPerformerNames($existingArtist);
+        $incomingParts = $this->splitPerformerNames($incomingArtist);
+
+        if (empty($existingParts)) {
+            return trim((string)$incomingArtist);
+        }
+        if (empty($incomingParts)) {
+            return trim((string)$existingArtist);
+        }
+
+        $merged = [];
+        foreach (array_merge($existingParts, $incomingParts) as $name) {
+            if (!in_array($name, $merged, true)) {
+                $merged[] = $name;
+            }
+        }
+
+        return implode(' & ', $merged);
+    }
+
+    private function normalizeTicketStatusCode($statusCode) {
+        $normalized = strtolower(trim((string)$statusCode));
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    private function availabilitySeverity($statusCode) {
+        $code = $this->normalizeTicketStatusCode($statusCode);
+        $weights = [
+            'cancelled' => 5,
+            'postponed' => 4,
+            'rescheduled' => 3,
+            'offsale' => 2,
+            'onsale' => 1
+        ];
+
+        return $weights[$code] ?? 0;
+    }
+
+    private function deriveAvailabilityTagFromStatus($statusCode) {
+        $code = $this->normalizeTicketStatusCode($statusCode);
+        if ($code === null) {
+            return null;
+        }
+
+        $labels = [
+            'cancelled' => 'Cancelled',
+            'postponed' => 'Postponed',
+            'rescheduled' => 'Rescheduled',
+            'offsale' => 'Off Sale'
+        ];
+
+        return $labels[$code] ?? null;
+    }
+
+    private function mergeTicketStatusCode($existingStatus, $incomingStatus) {
+        $existing = $this->normalizeTicketStatusCode($existingStatus);
+        $incoming = $this->normalizeTicketStatusCode($incomingStatus);
+
+        if ($incoming === null) {
+            return $existing;
+        }
+        if ($existing === null) {
+            return $incoming;
+        }
+
+        return $this->availabilitySeverity($incoming) >= $this->availabilitySeverity($existing) ? $incoming : $existing;
+    }
+
     private function loadVenueWhitelist() {
         $this->venuesByMarket = [];
 
@@ -416,13 +480,86 @@ class EventAggregator {
         }
     }
 
+    public function isEventInMarketRegion($market, $city = '', $region = '', $country = '') {
+        $marketNorm = $this->normalizeMarketKey($market);
+        $cityNorm = strtolower(trim((string)$city));
+        $regionNorm = strtolower(trim((string)$region));
+        $countryNorm = strtolower(trim((string)$country));
+
+        // 1. Country validation
+        if ($countryNorm !== '') {
+            if ($marketNorm === 'front-range' || $marketNorm === 'socal') {
+                if (!in_array($countryNorm, ['united states', 'us', 'usa'], true)) {
+                    return false;
+                }
+            } elseif ($marketNorm === 'scotland') {
+                if (!in_array($countryNorm, ['united kingdom', 'uk', 'gb', 'scotland', 'great britain'], true)) {
+                    return false;
+                }
+            }
+        }
+
+        // 2. Region / State validation
+        if ($marketNorm === 'front-range') {
+            if ($regionNorm !== '' && !in_array($regionNorm, ['co', 'colorado', 'co.'], true)) {
+                return false;
+            }
+        } elseif ($marketNorm === 'socal') {
+            if ($regionNorm !== '' && !in_array($regionNorm, ['ca', 'california', 'ca.'], true)) {
+                return false;
+            }
+        }
+
+        // 3. Strict City / Sub-region validation for each market
+        if ($cityNorm !== '') {
+            if ($marketNorm === 'scotland') {
+                $allowedScotlandCities = [
+                    'glasgow', 'glasgow scotland', 'edinburgh', 'edinburgh scotland',
+                    'dundee', 'aberdeen', 'stirling', 'perth', 'falkirk', 'paisley', 'inverness'
+                ];
+                if (!in_array($cityNorm, $allowedScotlandCities, true)) {
+                    return false;
+                }
+            } elseif ($marketNorm === 'socal') {
+                $allowedSocalCities = [
+                    'los angeles', 'la', 'inglewood', 'hollywood', 'west hollywood',
+                    'anaheim', 'santa ana', 'orange', 'fullerton', 'costa mesa', 'irvine', 'pomona', 'garden grove',
+                    'san diego', 'chula vista', 'la mesa', 'el cajon', 'oceanside', 'solana beach', 'solana beach ca'
+                ];
+                if (!in_array($cityNorm, $allowedSocalCities, true)) {
+                    return false;
+                }
+            } elseif ($marketNorm === 'front-range') {
+                $allowedFrontRangeCities = [
+                    'colorado springs', 'pueblo', 'castle rock',
+                    'denver', 'boulder', 'golden', 'morrison', 'englewood', 'littleton', 'arvada', 'westminster', 'thornton', 'lakewood', 'greenwood village',
+                    'fort collins', 'greeley', 'loveland', 'longmont', 'bellvue'
+                ];
+                if (!in_array($cityNorm, $allowedFrontRangeCities, true)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     /**
      * Returns matched venue + market context or null.
      */
-    public function resolveTargetVenue($venueName, $marketHint = null) {
+    public function resolveTargetVenue($venueName, $marketHint = null, $locationHint = null) {
         $cleanVenue = strtolower(trim((string)$venueName));
         if ($cleanVenue === '') {
             return null;
+        }
+
+        if (is_array($locationHint)) {
+            $city = $locationHint['city'] ?? '';
+            $region = $locationHint['region'] ?? '';
+            $country = $locationHint['country'] ?? '';
+            if ($marketHint !== null && !$this->isEventInMarketRegion($marketHint, $city, $region, $country)) {
+                return null;
+            }
         }
 
         if (empty($this->venuesByMarket)) {
@@ -448,10 +585,22 @@ class EventAggregator {
 
                 if ($cleanVenue === $candidate) {
                     $score = 1000 + strlen($candidate);
-                } elseif (strpos($cleanVenue, $candidate) !== false || strpos($candidate, $cleanVenue) !== false) {
-                    $score = 800 + min(strlen($candidate), strlen($cleanVenue));
-                } elseif ($cleanSimple !== '' && $candidateSimple !== '' && ($cleanSimple === $candidateSimple || strpos($cleanSimple, $candidateSimple) !== false || strpos($candidateSimple, $cleanSimple) !== false)) {
-                    $score = 600 + min(strlen($candidateSimple), strlen($cleanSimple));
+                } elseif (strlen($candidate) >= 6 && (strpos($cleanVenue, $candidate) !== false || strpos($candidate, $cleanVenue) !== false)) {
+                    $lenDiff = abs(strlen($cleanVenue) - strlen($candidate));
+                    if ($lenDiff <= 10) {
+                        $score = 800 + min(strlen($candidate), strlen($cleanVenue)) - $lenDiff;
+                    }
+                } elseif ($cleanSimple !== '' && $candidateSimple !== '') {
+                    if ($cleanSimple === $candidateSimple) {
+                        $score = 700 + strlen($candidateSimple);
+                    } elseif (strlen($candidateSimple) >= 6 && strlen($cleanSimple) >= 6) {
+                        if (strpos($cleanSimple, $candidateSimple) !== false || strpos($candidateSimple, $cleanSimple) !== false) {
+                            $lenDiff = abs(strlen($cleanSimple) - strlen($candidateSimple));
+                            if ($lenDiff <= 8) {
+                                $score = 600 + min(strlen($candidateSimple), strlen($cleanSimple)) - $lenDiff;
+                            }
+                        }
+                    }
                 }
 
                 if ($score > $bestScore) {
@@ -479,7 +628,10 @@ class EventAggregator {
      */
     public function generateDedupeKey($artistName, $venueName, $startTimeStr, $marketHint = null) {
         $date = date('Y-m-d', strtotime($startTimeStr));
-        $cleanArtist = preg_replace('/[^a-z0-9]/', '', strtolower((string)$artistName));
+        // Isolate primary headliner so events from different feeds (single vs multi-artist) produce identical deduplication keys
+        $parts = $this->splitPerformerNames($artistName);
+        $primaryArtist = trim($parts[0] ?? $artistName);
+        $cleanArtist = preg_replace('/[^a-z0-9]/', '', strtolower($primaryArtist));
 
         $resolvedVenue = $this->resolveTargetVenue($venueName, $marketHint);
         $venueForKey = $resolvedVenue ? $resolvedVenue['venue_name'] : $venueName;
@@ -510,7 +662,7 @@ class EventAggregator {
                     . "&latlong=" . urlencode($profile['ticketmaster_latlong'])
                     . "&radius=" . urlencode((string)$profile['ticketmaster_radius'])
                     . "&unit=" . urlencode($profile['ticketmaster_unit'])
-                    . "&classificationName=music&genreId=KnvZfZ7vAvt,KnvZfZ7vAAE,KnvZfZ7vAeA&size=150&page=" . $page;
+                    . "&classificationName=music&size=200&page=" . $page;
 
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL, $url);
@@ -533,7 +685,12 @@ class EventAggregator {
 
                 foreach ($data['_embedded']['events'] as $event) {
                     $rawVenueName = $event['_embedded']['venues'][0]['name'] ?? 'Unknown Venue';
-                    $resolvedVenue = $this->resolveTargetVenue($rawVenueName, $marketKey);
+                    $locationHint = [
+                        'city' => $event['_embedded']['venues'][0]['city']['name'] ?? '',
+                        'region' => $event['_embedded']['venues'][0]['state']['stateCode'] ?? '',
+                        'country' => $event['_embedded']['venues'][0]['country']['name'] ?? ($event['_embedded']['venues'][0]['country']['countryCode'] ?? '')
+                    ];
+                    $resolvedVenue = $this->resolveTargetVenue($rawVenueName, $marketKey, $locationHint);
                     if ($resolvedVenue === null) {
                         continue;
                     }
@@ -542,7 +699,37 @@ class EventAggregator {
                     $market = $resolvedVenue['market'];
                     $city = $event['_embedded']['venues'][0]['city']['name'] ?? '';
 
-                    $artistName = $event['_embedded']['attractions'][0]['name'] ?? $event['name'];
+                    // Preserve full co-headliners/openers if multiple attractions exist or if title includes "w/" / "with"
+                    $attractions = $event['_embedded']['attractions'] ?? [];
+                    $attNames = [];
+                    foreach ($attractions as $att) {
+                        $attName = trim((string)($att['name'] ?? ''));
+                        if ($attName === '' || $this->isIgnoredArtistName($attName)) {
+                            continue;
+                        }
+                        if (!in_array($attName, $attNames, true)) {
+                            $attNames[] = $attName;
+                        }
+                    }
+
+                    $artistName = !empty($attNames)
+                        ? implode(' & ', $attNames)
+                        : (($attractions[0]['name'] ?? '') !== '' ? trim((string)$attractions[0]['name']) : (string)$event['name']);
+
+                    if (preg_match('/\b(w\/|with)\b/i', (string)$event['name'])) {
+                        $nameDerived = $this->splitPerformerNames((string)$event['name']);
+                        if (!empty($nameDerived)) {
+                            foreach ($nameDerived as $candidate) {
+                                if ($candidate !== '' && !$this->isIgnoredArtistName($candidate) && !in_array($candidate, $attNames, true)) {
+                                    $attNames[] = $candidate;
+                                }
+                            }
+                            if (!empty($attNames)) {
+                                $artistName = implode(' & ', $attNames);
+                            }
+                        }
+                    }
+
                     if ($this->isIgnoredArtistName($artistName)) {
                         $this->log("[IGNORE] Skipped blocked artist '{$artistName}' from Ticketmaster.");
                         continue;
@@ -551,6 +738,9 @@ class EventAggregator {
                     $startTime = $event['dates']['start']['dateTime'] ?? (($event['dates']['start']['localDate'] ?? '') . 'T19:00:00Z');
                     $startTimeSql = date('Y-m-d H:i:s', strtotime($startTime));
                     $ticketUrl = $event['url'] ?? null;
+                    $ticketStatusCode = $this->normalizeTicketStatusCode($event['dates']['status']['code'] ?? null);
+                    $availabilityTag = $this->deriveAvailabilityTagFromStatus($ticketStatusCode);
+                    $soldOutFlag = ($ticketStatusCode === 'offsale') ? 1 : 0;
 
                     $isMetal = $this->isMetalArtist($artistName);
                     if (!$isMetal) {
@@ -593,6 +783,9 @@ class EventAggregator {
                         'tags' => $subGenre,
                         'price_min' => $priceMin,
                         'price_max' => $priceMax,
+                        'ticket_status_code' => $ticketStatusCode,
+                        'availability_tag' => $availabilityTag,
+                        'sold_out_flag' => $soldOutFlag,
                         'market' => $market
                     ]);
                     $marketIngested++;
@@ -649,14 +842,37 @@ class EventAggregator {
 
             foreach ($events as $event) {
                 $rawVenueName = $event['venue']['name'] ?? 'Unknown Venue';
-                $resolvedVenue = $this->resolveTargetVenue($rawVenueName, $marketKey);
+                $locationHint = [
+                    'city' => $event['venue']['city'] ?? '',
+                    'region' => $event['venue']['region'] ?? '',
+                    'country' => $event['venue']['country'] ?? ''
+                ];
+                $resolvedVenue = $this->resolveTargetVenue($rawVenueName, $marketKey, $locationHint);
                 if ($resolvedVenue === null) {
                     continue;
                 }
 
                 $venueName = $resolvedVenue['venue_name'];
                 $market = $resolvedVenue['market'];
-                $artistName = $event['artist']['name'] ?? ($event['lineup'][0] ?? 'Unknown Artist');
+                
+                $lineup = $event['lineup'] ?? [];
+                if (!empty($lineup) && is_array($lineup)) {
+                    $validArtists = [];
+                    foreach ($lineup as $act) {
+                        $actTrim = trim($act);
+                        if (!empty($actTrim) && !$this->isIgnoredArtistName($actTrim)) {
+                            $validArtists[] = $actTrim;
+                        }
+                    }
+                    if (!empty($validArtists)) {
+                        $artistName = implode(' & ', array_unique($validArtists));
+                    } else {
+                        $artistName = $event['artist']['name'] ?? ($event['lineup'][0] ?? 'Unknown Artist');
+                    }
+                } else {
+                    $artistName = $event['artist']['name'] ?? 'Unknown Artist';
+                }
+
                 if ($this->isIgnoredArtistName($artistName)) {
                     $this->log("[IGNORE] Skipped blocked artist '{$artistName}' from Bandsintown.");
                     continue;
@@ -750,28 +966,55 @@ class EventAggregator {
 
             foreach ($events as $event) {
                 $rawVenueName = $event['venue']['name'] ?? 'Unknown Venue';
-                $resolvedVenue = $this->resolveTargetVenue($rawVenueName, $marketHint);
+                $locationHint = [
+                    'city' => $event['venue']['city'] ?? '',
+                    'region' => $event['venue']['region'] ?? '',
+                    'country' => $event['venue']['country'] ?? ''
+                ];
+                $resolvedVenue = $this->resolveTargetVenue($rawVenueName, $marketHint, $locationHint);
                 if ($resolvedVenue === null) {
                     continue;
                 }
 
                 $venueName = $resolvedVenue['venue_name'];
                 $market = $resolvedVenue['market'];
-                $city = $event['venue']['city'] ?? '';
-                $startTime = $event['datetime'];
-                $startTimeSql = date('Y-m-d H:i:s', strtotime($startTime));
+                $lineup = $event['lineup'] ?? [];
+                $artistName = $artist;
+                if (!empty($lineup) && is_array($lineup)) {
+                    $validArtists = [];
+                    foreach ($lineup as $act) {
+                        $actTrim = trim($act);
+                        if (!empty($actTrim) && !$this->isIgnoredArtistName($actTrim)) {
+                            $validArtists[] = $actTrim;
+                        }
+                    }
+                    if (!empty($validArtists)) {
+                        $artistName = implode(' & ', array_unique($validArtists));
+                    }
+                }
 
-                if ($this->isIgnoredArtistName($artist)) {
-                    $this->log("[IGNORE] Skipped blocked artist '{$artist}' from Bandsintown fallback.");
+                if ($this->isIgnoredArtistName($artistName)) {
+                    $this->log("[IGNORE] Skipped blocked artist '{$artistName}' from Bandsintown fallback.");
                     continue;
                 }
 
+                $startTime = $event['datetime'] ?? null;
+                if (empty($startTime)) {
+                    continue;
+                }
+                $parsedTimestamp = strtotime($startTime);
+                if ($parsedTimestamp === false) {
+                    continue;
+                }
+                $startTimeSql = date('Y-m-d H:i:s', $parsedTimestamp);
+
                 $ticketUrl = $event['url'] ?? $event['offers'][0]['url'] ?? null;
                 $status = 'Approved';
+                $city = !empty($event['venue']['city']) ? $event['venue']['city'] : ($locationHint['city'] ?? 'Denver');
 
                 $this->saveEvent([
-                    'event_id' => $this->generateDedupeKey($artist, $venueName, $startTimeSql, $market),
-                    'artist_name' => $artist,
+                    'event_id' => $this->generateDedupeKey($artistName, $venueName, $startTimeSql, $market),
+                    'artist_name' => $artistName,
                     'venue_name' => $venueName,
                     'city_name' => $city,
                     'start_time' => $startTimeSql,
@@ -933,10 +1176,20 @@ class EventAggregator {
             $incomingMarket = $resolvedVenue['market'] ?? 'front-range';
         }
 
+        $event['city_name'] = !empty(trim((string)($event['city_name'] ?? ''))) ? trim((string)$event['city_name']) : 'Denver';
+
         // Fallback to venue price estimates if price_min is missing or null
         $priceMin = isset($event['price_min']) ? $this->normalizePriceValue($event['price_min']) : null;
         $priceMax = isset($event['price_max']) ? $this->normalizePriceValue($event['price_max']) : null;
         $incomingLowTicketFlag = $this->extractLowTicketFlag($event, 0);
+        $incomingTicketStatusCode = $this->normalizeTicketStatusCode($event['ticket_status_code'] ?? null);
+        $incomingAvailabilityTag = trim((string)($event['availability_tag'] ?? ''));
+        if ($incomingAvailabilityTag === '') {
+            $incomingAvailabilityTag = $this->deriveAvailabilityTagFromStatus($incomingTicketStatusCode);
+        }
+        $incomingSoldOutFlag = isset($event['sold_out_flag'])
+            ? ((int)$event['sold_out_flag'] > 0 ? 1 : 0)
+            : (($incomingTicketStatusCode === 'offsale') ? 1 : 0);
         
         if ($priceMin === null) {
             $estimated = $this->estimatePriceRange($event['venue_name']);
@@ -954,7 +1207,7 @@ class EventAggregator {
             $tags[] = $event['tags'];
         }
         
-        $parts = preg_split('/(\s+and\s+|\s*&\s*|\s*\/\s*|\s*,\s*)/i', $event['artist_name']);
+        $parts = $this->splitPerformerNames($event['artist_name']);
         foreach ($parts as $part) {
             $part = trim($part);
             if (empty($part)) continue;
@@ -980,11 +1233,28 @@ class EventAggregator {
         $existing = $stmt->fetch();
 
         if ($existing) {
-            $mergedGenre = $genre;
-            $existingGenre = strtolower(trim((string)($existing['genre'] ?? '')));
-            if ($this->isCatchAllGenre($genre) && !$this->isCatchAllGenre($existingGenre)) {
-                // Prevent regressions when a later source lacks enough metadata and falls back to catch-all.
-                $mergedGenre = $existingGenre;
+            $existingLocked = (int)($existing['genre_locked'] ?? 0);
+            $existingGenreSource = strtolower(trim((string)($existing['genre_source'] ?? '')));
+
+            if ($existingLocked === 1 || $existingGenreSource === 'manual') {
+                $mergedGenre = $existing['genre'];
+                $mergedTags = $existing['tags'];
+                $mergedGenreSource = 'manual';
+                $mergedGenreLocked = 1;
+            } elseif ($existingGenreSource === 'lastfm') {
+                $mergedGenre = $existing['genre'];
+                $mergedTags = $existing['tags'];
+                $mergedGenreSource = 'lastfm';
+                $mergedGenreLocked = 0;
+            } else {
+                $mergedGenre = $genre;
+                $existingGenre = strtolower(trim((string)($existing['genre'] ?? '')));
+                if ($this->isCatchAllGenre($genre) && !$this->isCatchAllGenre($existingGenre)) {
+                    $mergedGenre = $existingGenre;
+                }
+                $mergedTags = !empty($existing['tags']) ? $existing['tags'] : $tagsStr;
+                $mergedGenreSource = strtolower($event['source'] ?? 'ticketmaster');
+                $mergedGenreLocked = 0;
             }
 
             // Deduplication merge logic:
@@ -1000,12 +1270,11 @@ class EventAggregator {
                 $sources[] = $event['source'];
             }
             $mergedSource = implode(',', $sources);
-            
-            // 4. Merge tags (if existing is empty, use new ones; else merge)
-            $mergedTags = $existing['tags'];
-            if (empty($mergedTags)) {
-                $mergedTags = $tagsStr;
-            }
+
+            // 4. Merge artist name: union performer lists so support acts are retained across sources.
+            $existingArtist = $existing['artist_name'];
+            $incomingArtist = $event['artist_name'];
+            $mergedArtist = $this->mergePerformerNames($existingArtist, $incomingArtist);
 
             // 5. Merge prices
             $existingPriceMin = $this->normalizePriceValue($existing['price_min'] ?? null);
@@ -1044,6 +1313,20 @@ class EventAggregator {
             $lowTicketFlag = $this->extractLowTicketFlag($event, (int)($existing['low_ticket_flag'] ?? 0));
             $existingMarket = $this->normalizeMarketKey($existing['market'] ?? null) ?? 'front-range';
             $mergedMarket = $incomingMarket ?: $existingMarket;
+            $existingTicketStatusCode = $this->normalizeTicketStatusCode($existing['ticket_status_code'] ?? null);
+            $mergedTicketStatusCode = $this->mergeTicketStatusCode($existingTicketStatusCode, $incomingTicketStatusCode);
+            $mergedAvailabilityTag = null;
+            if ($this->availabilitySeverity($incomingTicketStatusCode) >= $this->availabilitySeverity($existingTicketStatusCode)) {
+                $mergedAvailabilityTag = $incomingAvailabilityTag;
+            }
+            if ($mergedAvailabilityTag === null || trim((string)$mergedAvailabilityTag) === '') {
+                $mergedAvailabilityTag = trim((string)($existing['availability_tag'] ?? ''));
+            }
+            if ($mergedAvailabilityTag === '') {
+                $mergedAvailabilityTag = $this->deriveAvailabilityTagFromStatus($mergedTicketStatusCode);
+            }
+            $existingSoldOutFlag = (int)($existing['sold_out_flag'] ?? 0);
+            $mergedSoldOutFlag = ($mergedTicketStatusCode === 'offsale' || $incomingSoldOutFlag === 1 || $existingSoldOutFlag === 1) ? 1 : 0;
             
             $stmtUpdate = $this->db->prepare("UPDATE events SET 
                 artist_name = :artist,
@@ -1056,17 +1339,22 @@ class EventAggregator {
                 source = :source,
                 genre = :genre,
                 tags = :tags,
+                genre_source = :genre_source,
+                genre_locked = :genre_locked,
                 price_min = :price_min,
                 price_max = :price_max,
                 price_last_changed_at = :price_last_changed_at,
                 price_dropped_flag = :price_dropped_flag,
                 price_drop_amount = :price_drop_amount,
                 price_drop_detected_at = :price_drop_detected_at,
-                low_ticket_flag = :low_ticket_flag
+                low_ticket_flag = :low_ticket_flag,
+                ticket_status_code = :ticket_status_code,
+                availability_tag = :availability_tag,
+                sold_out_flag = :sold_out_flag
                 WHERE event_id = :id");
                 
             $stmtUpdate->execute([
-                ':artist' => $event['artist_name'],
+                ':artist' => $mergedArtist,
                 ':venue' => $event['venue_name'],
                 ':city' => $event['city_name'],
                 ':market' => $mergedMarket,
@@ -1076,6 +1364,8 @@ class EventAggregator {
                 ':source' => $mergedSource,
                 ':genre' => $mergedGenre,
                 ':tags' => $mergedTags,
+                ':genre_source' => $mergedGenreSource,
+                ':genre_locked' => $mergedGenreLocked,
                 ':price_min' => $mergedPriceMin,
                 ':price_max' => $mergedPriceMax,
                 ':price_last_changed_at' => $priceLastChangedAt,
@@ -1083,6 +1373,9 @@ class EventAggregator {
                 ':price_drop_amount' => $priceDropAmount,
                 ':price_drop_detected_at' => $priceDropDetectedAt,
                 ':low_ticket_flag' => $lowTicketFlag,
+                ':ticket_status_code' => $mergedTicketStatusCode,
+                ':availability_tag' => $mergedAvailabilityTag,
+                ':sold_out_flag' => $mergedSoldOutFlag,
                 ':id' => $event['event_id']
             ]);
 
@@ -1098,12 +1391,16 @@ class EventAggregator {
             }
         } else {
             // New entry insert
+            $isManualOverride = (resolveArtistGenreOverride($event['artist_name'], $this->genreOverrides) !== null);
+            $initialGenreSource = $isManualOverride ? 'manual' : strtolower($event['source'] ?? 'ticketmaster');
+            $initialGenreLocked = $isManualOverride ? 1 : 0;
+
             $stmtInsert = $this->db->prepare("INSERT INTO events (
-                event_id, artist_name, venue_name, city_name, market, start_time, ticket_url, status, source, genre, tags, price_min, price_max,
-                price_last_changed_at, price_dropped_flag, price_drop_amount, price_drop_detected_at, low_ticket_flag
+                event_id, artist_name, venue_name, city_name, market, start_time, ticket_url, status, source, genre, tags, genre_source, genre_locked, price_min, price_max,
+                price_last_changed_at, price_dropped_flag, price_drop_amount, price_drop_detected_at, low_ticket_flag, ticket_status_code, availability_tag, sold_out_flag
             ) VALUES (
-                :id, :artist, :venue, :city, :market, :start, :url, :status, :source, :genre, :tags, :price_min, :price_max,
-                :price_last_changed_at, :price_dropped_flag, :price_drop_amount, :price_drop_detected_at, :low_ticket_flag
+                :id, :artist, :venue, :city, :market, :start, :url, :status, :source, :genre, :tags, :genre_source, :genre_locked, :price_min, :price_max,
+                :price_last_changed_at, :price_dropped_flag, :price_drop_amount, :price_drop_detected_at, :low_ticket_flag, :ticket_status_code, :availability_tag, :sold_out_flag
             )");
             
             $initialChangedAt = ($priceMin !== null || $priceMax !== null) ? date('Y-m-d H:i:s') : null;
@@ -1119,13 +1416,18 @@ class EventAggregator {
                 ':source' => $event['source'],
                 ':genre' => $genre,
                 ':tags' => $tagsStr,
+                ':genre_source' => $initialGenreSource,
+                ':genre_locked' => $initialGenreLocked,
                 ':price_min' => $priceMin,
                 ':price_max' => $priceMax,
                 ':price_last_changed_at' => $initialChangedAt,
                 ':price_dropped_flag' => 0,
                 ':price_drop_amount' => null,
                 ':price_drop_detected_at' => null,
-                ':low_ticket_flag' => $incomingLowTicketFlag
+                ':low_ticket_flag' => $incomingLowTicketFlag,
+                ':ticket_status_code' => $incomingTicketStatusCode,
+                ':availability_tag' => ($incomingAvailabilityTag !== '' ? $incomingAvailabilityTag : $this->deriveAvailabilityTagFromStatus($incomingTicketStatusCode)),
+                ':sold_out_flag' => $incomingSoldOutFlag
             ]);
 
             $this->recordPriceSnapshot(

@@ -199,8 +199,9 @@ export function initSetlistModal() {
     const dateStr = btn.getAttribute('data-date');
     const venue = btn.getAttribute('data-venue');
     const city = btn.getAttribute('data-city');
+    const isSharedLineup = /,|\s&\s|\swith\s|\sw\/\s/i.test(artist || '');
 
-    setlistTitle.textContent = `${artist} Setlist`;
+    setlistTitle.textContent = isSharedLineup ? 'Shared Lineup Setlist' : `${artist} Setlist`;
     const dateObj = new Date(dateStr);
     const formattedDate = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     setlistMeta.textContent = `${venue} // ${city}, CO // ${formattedDate}`;
@@ -215,36 +216,194 @@ export function initSetlistModal() {
       }
 
       const data = await response.json();
-      if (data.status === 'success' && data.songs && data.songs.length > 0) {
-        let songsHtml = '';
-        let listOpen = false;
-
-        data.songs.forEach(song => {
-          if (song.includes('Expected Tour Setlist')) {
-            if (listOpen) {
-              songsHtml += '</ol>';
-              listOpen = false;
-            }
-            songsHtml += `<div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); color: #fcd34d; padding: 0.65rem 0.85rem; border-radius: 6px; font-size: 0.8rem; margin-bottom: 1.25rem; font-weight: 600; text-align: center; line-height: 1.4;">${escapeHtml(song)}</div>`;
-          } else {
-            if (!listOpen) {
-              songsHtml += '<ol style="margin: 0; padding-left: 1.5rem; color: var(--text-bright); font-size: 0.95rem; line-height: 1.8;">';
-              listOpen = true;
-            }
-            songsHtml += `<li style="margin-bottom: 0.4rem; font-family: monospace;">${escapeHtml(song)}</li>`;
-          }
-        });
-
-        if (listOpen) {
-          songsHtml += '</ol>';
+      if (data.status === 'success') {
+        if (Array.isArray(data.acts) && data.acts.length > 1) {
+          setlistTitle.textContent = 'Shared Lineup Setlist';
         }
-        setlistSongsContainer.innerHTML = songsHtml;
+        if (data.acts && data.acts.length > 0) {
+          const gridClass = data.acts.length > 1 ? 'setlist-acts-grid setlist-acts-grid--two-column' : 'setlist-acts-grid';
+          let html = `<div class="${gridClass}">`;
+          data.acts.forEach(act => {
+            html += `<div class="setlist-act-card">
+              <h3 class="setlist-act-title">
+                🎤 ${escapeHtml(act.artist)}
+              </h3>`;
+            
+            if (act.songs && act.songs.length > 0) {
+              let listOpen = false;
+              act.songs.forEach(song => {
+                if (song.includes('Expected Tour Setlist')) {
+                  if (listOpen) {
+                    html += '</ol>';
+                    listOpen = false;
+                  }
+                  html += `<div class="setlist-tour-note">${escapeHtml(song)}</div>`;
+                } else {
+                  if (!listOpen) {
+                    html += '<ol class="setlist-song-list">';
+                    listOpen = true;
+                  }
+                  html += `<li>${escapeHtml(song)}</li>`;
+                }
+              });
+              if (listOpen) {
+                html += '</ol>';
+              }
+            } else {
+              html += '<p class="setlist-empty-state">No setlist data available for this artist yet.</p>';
+            }
+            html += '</div>';
+          });
+          html += '</div>';
+          setlistSongsContainer.innerHTML = html;
+        } else if (data.songs && data.songs.length > 0) {
+          let songsHtml = `<div class="setlist-act-card"><h3 class="setlist-act-title">🎤 ${escapeHtml(artist)}</h3>`;
+          let listOpen = false;
+
+          data.songs.forEach(song => {
+            if (song.includes('Expected Tour Setlist')) {
+              if (listOpen) {
+                songsHtml += '</ol>';
+                listOpen = false;
+              }
+              songsHtml += `<div class="setlist-tour-note">${escapeHtml(song)}</div>`;
+            } else {
+              if (!listOpen) {
+                songsHtml += '<ol class="setlist-song-list">';
+                listOpen = true;
+              }
+              songsHtml += `<li>${escapeHtml(song)}</li>`;
+            }
+          });
+
+          if (listOpen) {
+            songsHtml += '</ol>';
+          }
+          songsHtml += '</div>';
+          setlistSongsContainer.innerHTML = songsHtml;
+        } else {
+          setlistSongsContainer.innerHTML = `<div class="setlist-empty-state">${ICONS.warning} No setlist has been uploaded for this show yet.</div>`;
+        }
       } else {
-        setlistSongsContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 2rem 0; font-style: italic;">${ICONS.warning} No setlist has been uploaded for this show yet.</div>`;
+        setlistSongsContainer.innerHTML = `<div class="setlist-empty-state">${ICONS.warning} No setlist has been uploaded for this show yet.</div>`;
       }
     } catch (error) {
       console.error('Failed to fetch setlist', error);
-      setlistSongsContainer.innerHTML = '<div style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 2rem 0;">Error loading setlist.</div>';
+      setlistSongsContainer.innerHTML = '<div class="setlist-empty-state">Error loading setlist.</div>';
     }
   });
+}
+
+export function initContactModal() {
+  const contactModal = document.getElementById('contact-modal');
+  if (!contactModal) return;
+
+  const openBtn = document.getElementById('btn-open-contact');
+  const closeBtn = document.getElementById('btn-close-contact');
+  const submitBtn = document.getElementById('btn-submit-contact');
+  const messageInput = document.getElementById('contact-message');
+  const emailInput = document.getElementById('contact-email');
+  const subjectSelect = document.getElementById('contact-subject');
+  const charCounter = document.getElementById('contact-char-count');
+  const statusMsg = document.getElementById('contact-status-msg');
+
+  if (openBtn) {
+    openBtn.addEventListener('click', () => {
+      contactModal.style.display = 'flex';
+      if (statusMsg) statusMsg.style.display = 'none';
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      contactModal.style.display = 'none';
+    });
+  }
+
+  contactModal.addEventListener('click', event => {
+    if (event.target === contactModal) {
+      contactModal.style.display = 'none';
+    }
+  });
+
+  if (messageInput && charCounter) {
+    messageInput.addEventListener('input', () => {
+      const len = messageInput.value.length;
+      charCounter.textContent = `${len} / 500`;
+      if (len >= 500) {
+        charCounter.style.color = 'var(--accent-crimson)';
+      } else {
+        charCounter.style.color = 'var(--text-muted)';
+      }
+    });
+  }
+
+  if (submitBtn) {
+    submitBtn.addEventListener('click', async () => {
+      const message = (messageInput?.value || '').trim();
+      const subject = subjectSelect?.value || 'General Feedback';
+      const email = (emailInput?.value || '').trim();
+
+      if (!message) {
+        if (statusMsg) {
+          statusMsg.style.display = 'block';
+          statusMsg.style.background = 'rgba(239, 68, 68, 0.15)';
+          statusMsg.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+          statusMsg.style.color = '#fecdd3';
+          statusMsg.textContent = 'Please type a message before sending.';
+        }
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+
+      try {
+        const formData = new FormData();
+        formData.append('subject_category', subject);
+        formData.append('user_email', email);
+        formData.append('message', message);
+
+        const response = await fetch('actions/contact.php', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (statusMsg) {
+          statusMsg.style.display = 'block';
+          if (data.status === 'success') {
+            statusMsg.style.background = 'rgba(16, 185, 129, 0.15)';
+            statusMsg.style.border = '1px solid rgba(16, 185, 129, 0.4)';
+            statusMsg.style.color = '#a7f3d0';
+            statusMsg.textContent = data.message || 'Thank you! Your message has been sent to Nycto.';
+            if (messageInput) messageInput.value = '';
+            if (emailInput) emailInput.value = '';
+            if (charCounter) charCounter.textContent = '0 / 500';
+            window.setTimeout(() => {
+              contactModal.style.display = 'none';
+            }, 2000);
+          } else {
+            statusMsg.style.background = 'rgba(239, 68, 68, 0.15)';
+            statusMsg.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+            statusMsg.style.color = '#fecdd3';
+            statusMsg.textContent = data.message || 'Failed to send message.';
+          }
+        }
+      } catch (err) {
+        console.error('Contact submit error:', err);
+        if (statusMsg) {
+          statusMsg.style.display = 'block';
+          statusMsg.style.background = 'rgba(239, 68, 68, 0.15)';
+          statusMsg.style.border = '1px solid rgba(239, 68, 68, 0.4)';
+          statusMsg.style.color = '#fecdd3';
+          statusMsg.textContent = 'Unable to send message right now.';
+        }
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Message 🚀';
+      }
+    });
+  }
 }

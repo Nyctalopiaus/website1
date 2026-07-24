@@ -25,7 +25,10 @@ function ensureDatabaseSchema(PDO $db) {
         price_dropped_flag INTEGER NOT NULL DEFAULT 0,
         price_drop_amount REAL,
         price_drop_detected_at DATETIME,
-        low_ticket_flag INTEGER NOT NULL DEFAULT 0
+        low_ticket_flag INTEGER NOT NULL DEFAULT 0,
+        ticket_status_code TEXT,
+        availability_tag TEXT,
+        sold_out_flag INTEGER NOT NULL DEFAULT 0
     )");
 
     foreach ([
@@ -38,7 +41,12 @@ function ensureDatabaseSchema(PDO $db) {
         "ALTER TABLE events ADD COLUMN price_drop_amount REAL",
         "ALTER TABLE events ADD COLUMN price_drop_detected_at DATETIME",
         "ALTER TABLE events ADD COLUMN low_ticket_flag INTEGER NOT NULL DEFAULT 0",
-        "ALTER TABLE events ADD COLUMN market TEXT NOT NULL DEFAULT 'front-range'"
+        "ALTER TABLE events ADD COLUMN market TEXT NOT NULL DEFAULT 'front-range'",
+        "ALTER TABLE events ADD COLUMN genre_source TEXT DEFAULT 'ticketmaster'",
+        "ALTER TABLE events ADD COLUMN genre_locked INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE events ADD COLUMN ticket_status_code TEXT",
+        "ALTER TABLE events ADD COLUMN availability_tag TEXT",
+        "ALTER TABLE events ADD COLUMN sold_out_flag INTEGER NOT NULL DEFAULT 0"
     ] as $sql) {
         try {
             @$db->exec($sql);
@@ -49,6 +57,8 @@ function ensureDatabaseSchema(PDO $db) {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_events_time ON events(start_time)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_events_status ON events(status)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_events_market_time ON events(market, start_time)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_events_genre_locked ON events(genre_locked)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_events_genre_source ON events(genre_source)");
 
     $db->exec("CREATE TABLE IF NOT EXISTS event_price_history (
         history_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,6 +93,7 @@ function ensureDatabaseSchema(PDO $db) {
 
     try {
         @$db->exec("ALTER TABLE artist_genre_cache ADD COLUMN tags TEXT");
+        @$db->exec("ALTER TABLE artist_genre_cache ADD COLUMN source TEXT DEFAULT 'musicbrainz'");
     } catch (PDOException $e) {
     }
 
