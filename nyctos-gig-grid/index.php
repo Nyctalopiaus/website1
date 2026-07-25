@@ -67,6 +67,32 @@ $marketLinks = [
     'scotland' => buildMarketLink('scotland')
 ];
 
+$marketDisplayLabels = [
+    'front-range' => '🏔️ Colorado',
+    'socal' => '🌴 California',
+    'scotland' => '🏴 Scotland',
+];
+
+$marketCardCounts = array_fill_keys($allowedMarkets, 0);
+$marketCountsStmt = $db->query(
+    "
+    SELECT COALESCE(NULLIF(TRIM(market), ''), 'front-range') AS market_key,
+           COUNT(DISTINCT LOWER(TRIM(venue_name)) || '|' || date(start_time)) AS grouped_card_count
+    FROM events
+    WHERE status = 'Approved'
+    GROUP BY market_key
+    "
+);
+if ($marketCountsStmt !== false) {
+    foreach ($marketCountsStmt->fetchAll(PDO::FETCH_ASSOC) as $countRow) {
+        $marketKey = strtolower(trim((string)($countRow['market_key'] ?? 'front-range')));
+        if (!array_key_exists($marketKey, $marketCardCounts)) {
+            continue;
+        }
+        $marketCardCounts[$marketKey] = (int)($countRow['grouped_card_count'] ?? 0);
+    }
+}
+
 // Fetch unique months containing upcoming events in the SQLite database.
 $monthsStmt = $db->prepare("
     SELECT DISTINCT strftime('%Y-%m', start_time) AS event_month 
@@ -156,7 +182,10 @@ if (file_exists($lastSyncFile)) {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><?php echo htmlspecialchars($activeMarketConfig['title']); ?> // Live Show Intelligence</title>
-    <link rel="stylesheet" href="styles.css?v=20" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css?v=21" />
 </head>
 <body data-market="<?php echo htmlspecialchars($activeMarket); ?>">
 
@@ -407,9 +436,9 @@ if (file_exists($lastSyncFile)) {
                 <div class="filter-group market-filter-group" style="display: flex; align-items: center; gap: 0.75rem; width: 100%; justify-content: flex-start;">
                     <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-medium);">Market:</span>
                     <nav class="header-market-switcher" aria-label="Market selector">
-                        <a href="<?php echo htmlspecialchars($marketLinks['front-range']); ?>" class="header-market-link <?php echo $activeMarket === 'front-range' ? 'active' : ''; ?>" <?php echo $activeMarket === 'front-range' ? 'aria-current="page"' : ''; ?>>🏔️ Colorado</a>
-                        <a href="<?php echo htmlspecialchars($marketLinks['socal']); ?>" class="header-market-link <?php echo $activeMarket === 'socal' ? 'active' : ''; ?>" <?php echo $activeMarket === 'socal' ? 'aria-current="page"' : ''; ?>>🌴 California</a>
-                        <a href="<?php echo htmlspecialchars($marketLinks['scotland']); ?>" class="header-market-link <?php echo $activeMarket === 'scotland' ? 'active' : ''; ?>" <?php echo $activeMarket === 'scotland' ? 'aria-current="page"' : ''; ?>>🏴 Scotland</a>
+                        <a href="<?php echo htmlspecialchars($marketLinks['front-range']); ?>" class="header-market-link <?php echo $activeMarket === 'front-range' ? 'active' : ''; ?>" <?php echo $activeMarket === 'front-range' ? 'aria-current="page"' : ''; ?>><?php echo htmlspecialchars($marketDisplayLabels['front-range'] . ' (' . $marketCardCounts['front-range'] . ')'); ?></a>
+                        <a href="<?php echo htmlspecialchars($marketLinks['socal']); ?>" class="header-market-link <?php echo $activeMarket === 'socal' ? 'active' : ''; ?>" <?php echo $activeMarket === 'socal' ? 'aria-current="page"' : ''; ?>><?php echo htmlspecialchars($marketDisplayLabels['socal'] . ' (' . $marketCardCounts['socal'] . ')'); ?></a>
+                        <a href="<?php echo htmlspecialchars($marketLinks['scotland']); ?>" class="header-market-link <?php echo $activeMarket === 'scotland' ? 'active' : ''; ?>" <?php echo $activeMarket === 'scotland' ? 'aria-current="page"' : ''; ?>><?php echo htmlspecialchars($marketDisplayLabels['scotland'] . ' (' . $marketCardCounts['scotland'] . ')'); ?></a>
                     </nav>
                 </div>
                 
@@ -901,11 +930,11 @@ if (file_exists($lastSyncFile)) {
         </section>
     </main>
 
-    <footer style="text-align: center; padding: 2rem 1rem; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 3rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
-        <button type="button" id="btn-open-contact" style="background: transparent; border: none; color: var(--accent-crimson); font-size: 0.8rem; cursor: pointer; text-decoration: none; font-family: inherit; font-weight: 600; transition: color 0.2s;">
-            📧 <span style="text-decoration: underline; text-underline-offset: 3px;">Contact Nycto</span>
+    <footer class="site-footer">
+        <button type="button" id="btn-open-contact" class="site-footer-contact-btn">
+            📧 <span>Contact Nycto</span>
         </button>
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">
+        <p class="site-footer-copy">
             <?php echo htmlspecialchars($activeMarketConfig['title']); ?> &copy; <?php echo date('Y'); ?>.
         </p>
     </footer>

@@ -69,6 +69,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const formAddQuestion = document.getElementById('form-add-question');
   const flashcardStatus = document.getElementById('flashcard-form-status');
   const questionStatus = document.getElementById('question-form-status');
+  const btnResetLocalData = document.getElementById('btn-reset-local-data');
+  const localResetStatus = document.getElementById('local-reset-status');
 
   // State Variables
   let questions = [];
@@ -80,12 +82,22 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentQuizIndex = 0;
   let filteredCards = [];
 
-  // Quiz answered states for current session
+  // Quiz answered states persisted locally
   let quizAnsweredStates = {}; // question_id -> selected_option
 
-  // Local Performance Stats
-  const STORAGE_PERF_KEY = 'cism_performance_v1';
-  let currentUser = localStorage.getItem('cism_user') || 'Nycto';
+  // Local Storage Keys
+  const STORAGE_KEYS = {
+    perf: 'cism_performance_v2',
+    questions: 'cism_questions_v1',
+    flashcards: 'cism_flashcards_v1',
+    bookmarks: 'cism_bookmarks_v1',
+    attempts: 'cism_attempts_v1',
+    quizAnswered: 'cism_quiz_answer_state_v1',
+    seedInitialized: 'cism_seed_initialized_v1'
+  };
+
+  const LEGACY_STORAGE_KEYS = ['cism_performance_v1', 'cism_user'];
+
   let perfData = {
     answered: 0,
     correct: 0,
@@ -97,22 +109,102 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Migration of legacy performance data
-  const legacyPerf = localStorage.getItem(STORAGE_PERF_KEY);
-  if (legacyPerf) {
-    localStorage.setItem(`${STORAGE_PERF_KEY}_Nycto`, legacyPerf);
-    localStorage.removeItem(STORAGE_PERF_KEY);
+  // Migration of legacy performance data key.
+  const legacyPerf = localStorage.getItem('cism_performance_v1');
+  if (legacyPerf && !localStorage.getItem(STORAGE_KEYS.perf)) {
+    localStorage.setItem(STORAGE_KEYS.perf, legacyPerf);
+    localStorage.removeItem('cism_performance_v1');
+  }
+
+  const loadJson = (key, fallback) => {
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) {
+        return fallback;
+      }
+      const parsed = JSON.parse(raw);
+      return parsed ?? fallback;
+    } catch (e) {
+      console.error(`[SYSTEM] Failed to parse local storage key '${key}':`, e);
+      return fallback;
+    }
+  };
+
+  const saveJson = (key, value) => {
+    localStorage.setItem(key, JSON.stringify(value));
+  };
+
+  const ensureNumericIds = items => {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    return items.map((item, idx) => {
+      const candidate = Number(item?.id);
+      const id = Number.isFinite(candidate) && candidate > 0 ? candidate : idx + 1;
+      return { ...item, id };
+    });
+  };
+
+  const nextLocalId = items => {
+    if (!Array.isArray(items) || items.length === 0) {
+      return 1;
+    }
+    return items.reduce((maxId, item) => {
+      const value = Number(item?.id);
+      return Number.isFinite(value) && value > maxId ? value : maxId;
+    }, 0) + 1;
+  };
+
+  async function ensureSeedData() {
+    const alreadyInitialized = localStorage.getItem(STORAGE_KEYS.seedInitialized) === '1';
+    const existingQuestions = ensureNumericIds(loadJson(STORAGE_KEYS.questions, []));
+    const existingFlashcards = ensureNumericIds(loadJson(STORAGE_KEYS.flashcards, []));
+
+    if (existingQuestions.length > 0 || existingFlashcards.length > 0) {
+      if (existingQuestions.length > 0) {
+        saveJson(STORAGE_KEYS.questions, existingQuestions);
+      }
+      if (existingFlashcards.length > 0) {
+        saveJson(STORAGE_KEYS.flashcards, existingFlashcards);
+      }
+      return;
+    }
+
+    if (alreadyInitialized) {
+      return;
+    }
+
+    try {
+      const response = await fetch('../backend/cism_seed.json', { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Seed fetch failed with HTTP ${response.status}`);
+      }
+
+      const seedData = await response.json();
+      const seededQuestions = ensureNumericIds(seedData?.questions ?? []);
+      const seededFlashcards = ensureNumericIds(seedData?.flashcards ?? []);
+
+      saveJson(STORAGE_KEYS.questions, seededQuestions);
+      saveJson(STORAGE_KEYS.flashcards, seededFlashcards);
+      saveJson(STORAGE_KEYS.bookmarks, []);
+      saveJson(STORAGE_KEYS.attempts, []);
+      saveJson(STORAGE_KEYS.quizAnswered, {});
+      localStorage.setItem(STORAGE_KEYS.seedInitialized, '1');
+    } catch (e) {
+      console.warn('[SYSTEM] Seed file unavailable. Starting with empty local datasets.', e);
+      saveJson(STORAGE_KEYS.questions, []);
+      saveJson(STORAGE_KEYS.flashcards, []);
+      saveJson(STORAGE_KEYS.bookmarks, []);
+      saveJson(STORAGE_KEYS.attempts, []);
+      saveJson(STORAGE_KEYS.quizAnswered, {});
+      localStorage.setItem(STORAGE_KEYS.seedInitialized, '1');
+    }
   }
 
   function loadUserStats() {
-    const savedPerf = localStorage.getItem(`${STORAGE_PERF_KEY}_${currentUser}`);
+    const savedPerf = loadJson(STORAGE_KEYS.perf, null);
     if (savedPerf) {
-      try {
-        perfData = JSON.parse(savedPerf);
-      } catch (e) {
-        console.error('[SYSTEM] Failed to load local stats:', e);
-        resetPerfData();
-      }
+      perfData = savedPerf;
     } else {
       resetPerfData();
     }
@@ -132,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function saveUserStats() {
-    localStorage.setItem(`${STORAGE_PERF_KEY}_${currentUser}`, JSON.stringify(perfData));
+    saveJson(STORAGE_KEYS.perf, perfData);
   }
 
   // Mock Exam Variables
@@ -149,12 +241,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // INITIALIZATION & TAB SWITCHING
   // ==========================================
-  
-  // Header clock ticker
-  setInterval(() => {
-    const d = new Date();
-    document.getElementById('system-time').textContent = d.toTimeString().split(' ')[0] + ' // ONLINE';
-  }, 1000);
 
   tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -189,50 +275,25 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Bind Operator Profile Selection dropdown
-  const operatorSelector = document.getElementById('operator-selector');
-  if (operatorSelector) {
-    operatorSelector.value = currentUser;
-    operatorSelector.addEventListener('change', (e) => {
-      currentUser = e.target.value;
-      localStorage.setItem('cism_user', currentUser);
-      loadUserStats();
-      loadData();
-    });
-  }
-
   // Initial stats load
   loadUserStats();
 
   // ==========================================
-  // API FETCH & ENGINE ACTIONS
+  // Local Data Loaders
   // ==========================================
   
   async function loadData() {
-    try {
-      // 1. Fetch questions
-      const qRes = await fetch('/api/cism/questions');
-      if (qRes.ok) questions = await qRes.json();
+    await ensureSeedData();
 
-      // 2. Fetch flashcards
-      const fRes = await fetch('/api/cism/flashcards');
-      if (fRes.ok) flashcards = await fRes.json();
+    questions = ensureNumericIds(loadJson(STORAGE_KEYS.questions, []));
+    flashcards = ensureNumericIds(loadJson(STORAGE_KEYS.flashcards, []));
+    bookmarks = loadJson(STORAGE_KEYS.bookmarks, []);
+    attempts = loadJson(STORAGE_KEYS.attempts, []);
+    quizAnsweredStates = loadJson(STORAGE_KEYS.quizAnswered, {});
 
-      // 3. Fetch bookmarks scoped to current user
-      const bRes = await fetch(`/api/cism/bookmarks?user=${encodeURIComponent(currentUser)}`);
-      if (bRes.ok) bookmarks = await bRes.json();
-
-      // 4. Fetch attempts scoped to current user
-      const aRes = await fetch(`/api/cism/attempts?user=${encodeURIComponent(currentUser)}`);
-      if (aRes.ok) attempts = await aRes.json();
-
-      // Setup and render
-      initFlashcards();
-      initQuiz();
-      updateDashboardStats();
-    } catch (e) {
-      console.error('[SYSTEM] Database fetch error:', e);
-    }
+    initFlashcards();
+    initQuiz();
+    updateDashboardStats();
   }
 
   function updateDashboardStats() {
@@ -358,37 +419,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Bookmark Toggle
-    btnQuizBookmark.addEventListener('click', async () => {
+    btnQuizBookmark.addEventListener('click', () => {
       if (questions.length === 0) return;
       const q = questions[currentQuizIndex];
       const isBookmarked = isItemBookmarked('question', q.id);
 
-      try {
-        const res = await fetch('/api/cism/bookmarks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            item_type: 'question',
-            item_id: q.id,
-            bookmarked: !isBookmarked,
-            user: currentUser
-          })
-        });
-
-        if (res.ok) {
-          const result = await res.json();
-          if (result.bookmarked) {
-            bookmarks.push({ item_type: 'question', item_id: q.id });
-            btnQuizBookmark.classList.add('active');
-          } else {
-            bookmarks = bookmarks.filter(b => !(b.item_type === 'question' && b.item_id === q.id));
-            btnQuizBookmark.classList.remove('active');
-          }
-          updateDashboardStats();
-        }
-      } catch (e) {
-        console.error('[ERROR] Failed to toggle bookmark:', e);
+      if (!isBookmarked) {
+        bookmarks.push({ item_type: 'question', item_id: q.id });
+        btnQuizBookmark.classList.add('active');
+      } else {
+        bookmarks = bookmarks.filter(b => !(b.item_type === 'question' && b.item_id === q.id));
+        btnQuizBookmark.classList.remove('active');
       }
+
+      saveJson(STORAGE_KEYS.bookmarks, bookmarks);
+      updateDashboardStats();
     });
   }
 
@@ -477,6 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function handleQuizSelection(questionObj, selectedOption) {
     // Record selection state
     quizAnsweredStates[questionObj.id] = selectedOption;
+    saveJson(STORAGE_KEYS.quizAnswered, quizAnsweredStates);
 
     const isCorrect = selectedOption === questionObj.correct_option;
 
@@ -639,38 +685,22 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Mock flagging toggle
-  btnMockFlag.addEventListener('click', async () => {
+  btnMockFlag.addEventListener('click', () => {
     const q = mockQuestions[mockCurrentIndex];
     const isBookmarked = isItemBookmarked('question', q.id);
 
-    try {
-      const res = await fetch('/api/cism/bookmarks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          item_type: 'question',
-          item_id: q.id,
-          bookmarked: !isBookmarked,
-          user: currentUser
-        })
-      });
-
-      if (res.ok) {
-        const result = await res.json();
-        if (result.bookmarked) {
-          bookmarks.push({ item_type: 'question', item_id: q.id });
-        } else {
-          bookmarks = bookmarks.filter(b => !(b.item_type === 'question' && b.item_id === q.id));
-        }
-        renderMockQuestion();
-        updateDashboardStats();
-      }
-    } catch (e) {
-      console.error('[ERROR] Failed to flag mock question:', e);
+    if (!isBookmarked) {
+      bookmarks.push({ item_type: 'question', item_id: q.id });
+    } else {
+      bookmarks = bookmarks.filter(b => !(b.item_type === 'question' && b.item_id === q.id));
     }
+
+    saveJson(STORAGE_KEYS.bookmarks, bookmarks);
+    renderMockQuestion();
+    updateDashboardStats();
   });
 
-  async function submitMockExam() {
+  function submitMockExam() {
     mockActive.style.display = 'none';
 
     // Calculate score
@@ -685,26 +715,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const scorePct = totalCount > 0 ? (correctCount / totalCount) * 100 : 0;
     const passed = scorePct >= 70; // 70% threshold
 
-    // Save attempt to database via API
-    try {
-      const res = await fetch('/api/cism/attempts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          score: scorePct,
-          correct_count: correctCount,
-          total_count: totalCount,
-          duration_seconds: mockSecondsElapsed,
-          user: currentUser
-        })
-      });
-      if (res.ok) {
-        const savedAttempt = await res.json();
-        attempts.unshift(savedAttempt); // add to top
-      }
-    } catch (e) {
-      console.error('[ERROR] Failed to save exam score:', e);
-    }
+    const savedAttempt = {
+      id: nextLocalId(attempts),
+      score: scorePct,
+      correct_count: correctCount,
+      total_count: totalCount,
+      duration_seconds: mockSecondsElapsed,
+      created_at: new Date().toISOString()
+    };
+    attempts.unshift(savedAttempt);
+    saveJson(STORAGE_KEYS.attempts, attempts);
 
     // Render results
     resultsPctEl.textContent = `${Math.round(scorePct)}%`;
@@ -736,7 +756,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   
   // Custom Flashcard commit
-  formAddFlashcard.addEventListener('submit', async (e) => {
+  formAddFlashcard.addEventListener('submit', (e) => {
     e.preventDefault();
     flashcardStatus.textContent = '';
 
@@ -744,35 +764,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const definition = formAddFlashcard.querySelector('[name="definition"]').value.trim();
     const domain = parseInt(formAddFlashcard.querySelector('[name="domain"]').value);
 
-    try {
-      const res = await fetch('/api/cism/flashcards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ term, definition, domain })
-      });
+    const savedCard = {
+      id: nextLocalId(flashcards),
+      term,
+      definition,
+      domain
+    };
 
-      if (res.ok) {
-        const savedCard = await res.json();
-        flashcards.push(savedCard);
-        
-        flashcardStatus.className = 'form-status success';
-        flashcardStatus.textContent = '✅ Flashcard committed to database!';
-        
-        // Reset form
-        formAddFlashcard.reset();
-        filterFlashcards();
-        updateDashboardStats();
-      } else {
-        throw new Error('Failed to save');
-      }
-    } catch (err) {
-      flashcardStatus.className = 'form-status error';
-      flashcardStatus.textContent = '❌ Failed to write card to server.';
-    }
+    flashcards.push(savedCard);
+    saveJson(STORAGE_KEYS.flashcards, flashcards);
+
+    flashcardStatus.className = 'form-status success';
+    flashcardStatus.textContent = '✅ Flashcard saved locally.';
+
+    formAddFlashcard.reset();
+    filterFlashcards();
+    updateDashboardStats();
   });
 
   // Custom Question commit
-  formAddQuestion.addEventListener('submit', async (e) => {
+  formAddQuestion.addEventListener('submit', (e) => {
     e.preventDefault();
     questionStatus.textContent = '';
 
@@ -785,35 +796,48 @@ document.addEventListener('DOMContentLoaded', () => {
     const domain = parseInt(formAddQuestion.querySelector('[name="domain"]').value);
     const explanation = formAddQuestion.querySelector('[name="explanation"]').value.trim();
 
-    try {
-      const res = await fetch('/api/cism/questions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question, option_a, option_b, option_c, option_d,
-          correct_option, explanation, domain
-        })
-      });
+    const savedQ = {
+      id: nextLocalId(questions),
+      question,
+      option_a,
+      option_b,
+      option_c,
+      option_d,
+      correct_option,
+      explanation,
+      domain
+    };
+    questions.push(savedQ);
+    saveJson(STORAGE_KEYS.questions, questions);
 
-      if (res.ok) {
-        const savedQ = await res.json();
-        questions.push(savedQ);
+    questionStatus.className = 'form-status success';
+    questionStatus.textContent = '✅ Question saved locally.';
 
-        questionStatus.className = 'form-status success';
-        questionStatus.textContent = '✅ Question committed to database!';
-
-        // Reset form
-        formAddQuestion.reset();
-        initQuiz();
-        updateDashboardStats();
-      } else {
-        throw new Error('Failed to save');
-      }
-    } catch (err) {
-      questionStatus.className = 'form-status error';
-      questionStatus.textContent = '❌ Failed to write question to server.';
-    }
+    formAddQuestion.reset();
+    renderQuizQuestion();
+    updateDashboardStats();
   });
+
+  if (btnResetLocalData) {
+    btnResetLocalData.addEventListener('click', () => {
+      const proceed = confirm('This will erase all local CISM progress, bookmarks, attempts, quiz history, and custom deck entries for this browser. Continue?');
+      if (!proceed) {
+        return;
+      }
+
+      Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+      LEGACY_STORAGE_KEYS.forEach(key => localStorage.removeItem(key));
+
+      if (localResetStatus) {
+        localResetStatus.className = 'form-status success';
+        localResetStatus.textContent = 'Local CISM data reset complete. Reloading...';
+      }
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 250);
+    });
+  }
 
   // Load database content on boot
   loadData();

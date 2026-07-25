@@ -73,6 +73,8 @@ function handleSyncRequest(bool $isCli = false) {
             $aggregator->log('[MAINTENANCE ERROR] DB maintenance warning: ' . $e->getMessage());
         }
 
+        $aggregator->log('[SYNC COMPLETE] Sync completed successfully.');
+
         if ($isCli) {
             syncCliLog('[CLI SYNC] Aggregator process completed successfully!', true);
             syncCliLog("Ticketmaster events: $tmCount", true);
@@ -82,6 +84,7 @@ function handleSyncRequest(bool $isCli = false) {
             syncCliLog("[LAST.FM NORMALIZER] Normalized $lastFmNormalizedCount artist genres.", true);
             syncCliLog("[SETLIST SYNC] Checked and cached $setlistFetched past setlists.", true);
             syncCliLog("[MAINTENANCE] Purged {$maintenance['events_purged']} events older than {$retentionDays} days and removed {$maintenance['orphan_setlists_removed']} orphaned setlists.", true);
+            syncCliLog('[CLI SYNC] Sync completed successfully.', true);
             exit;
         }
 

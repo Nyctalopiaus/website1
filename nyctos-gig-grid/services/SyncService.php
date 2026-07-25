@@ -43,9 +43,8 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
             if (!$isMetal) {
                 $isMetal = $aggregator->fetchArtistGenreMetadata($event['artist_name']);
                 if ($isMetal) {
-                    $aggregator->log("[ENRICHMENT] Auto-approving band '{$event['artist_name']}' via MusicBrainz genre match.");
-                    $stmtSeed = $db->prepare("INSERT OR IGNORE INTO metal_artists (artist_name) VALUES (:name)");
-                    $stmtSeed->execute([':name' => $event['artist_name']]);
+                    $approvedNames = $aggregator->seedApprovedArtistNames($event['artist_name']);
+                    $aggregator->log("[ENRICHMENT] Auto-approving performer(s) '" . implode("', '", $approvedNames) . "' via MusicBrainz genre match.");
                 }
             }
 

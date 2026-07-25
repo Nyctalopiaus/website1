@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="styles.css?v=5" />
 </head>
 <body>
   <div class="glow-bg"></div>
@@ -18,10 +18,6 @@
       <a href="../" class="btn-back">← Back to Lab</a>
       <span class="logo-text">CISM // SECURITY COMMANDER</span>
     </div>
-    <div class="system-status">
-      <span class="status-indicator"></span>
-      <span class="status-text font-mono" id="system-time">ONLINE</span>
-    </div>
   </header>
 
   <main class="container">
@@ -29,11 +25,8 @@
     <section class="dashboard-panel">
       <div class="stats-overview">
         <div class="stat-card operator-card">
-          <span class="stat-label">Active Operator</span>
-          <select id="operator-selector" class="operator-select font-mono">
-            <option value="Nycto">Nycto</option>
-            <option value="Roland">Roland</option>
-          </select>
+          <span class="stat-label">Profile Scope</span>
+          <span class="operator-value font-mono">Local Browser Storage</span>
         </div>
         <div class="stat-card">
           <span class="stat-label">Total Answered</span>
@@ -681,10 +674,17 @@
     </div>
   </main>
 
+  <section class="global-reset-wrap" aria-label="Local data controls">
+    <div class="global-reset-inner">
+      <button type="button" class="btn-curate btn-curate-danger" id="btn-reset-local-data">Reset All Local CISM Data</button>
+      <div class="form-status" id="local-reset-status"></div>
+    </div>
+  </section>
+
   <footer class="main-footer">
-    <p>&copy; 2026 CISM Commander Console. Connected to SQLite Database.</p>
+    <p>&copy; 2026 Nycto. Nycto's CISM Practice Trainer. All information is AI sourced.</p>
   </footer>
 
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

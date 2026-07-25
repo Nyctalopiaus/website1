@@ -34,12 +34,54 @@ class EventAggregator {
         return $this->logs;
     }
 
+    public function seedApprovedArtistNames($artistName) {
+        $names = $this->splitPerformerNames($artistName);
+        if (empty($names)) {
+            $fallback = trim((string)$artistName);
+            $names = $fallback !== '' ? [$fallback] : [];
+        }
+
+        if (empty($names)) {
+            return [];
+        }
+
+        $stmtSeed = $this->db->prepare("INSERT OR IGNORE INTO metal_artists (artist_name) VALUES (:name)");
+        foreach ($names as $name) {
+            $stmtSeed->execute([':name' => $name]);
+        }
+
+        return $names;
+    }
+
     public function isIgnoredArtistName($artistName) {
-        return false;
+        require_once __DIR__ . '/../ignored_artists.php';
+        return isArtistIgnored($artistName);
     }
 
     public function purgeIgnoredEvents() {
-        return 0;
+        require_once __DIR__ . '/../ignored_artists.php';
+        $ignored = getIgnoredArtistsNormalized();
+        if (empty($ignored)) {
+            return 0;
+        }
+
+        $purgedCount = 0;
+        $stmt = $this->db->query("SELECT event_id, artist_name FROM events");
+        $events = $stmt->fetchAll();
+
+        foreach ($events as $e) {
+            if (isArtistIgnored($e['artist_name'], $ignored)) {
+                $del = $this->db->prepare("DELETE FROM events WHERE event_id = :id");
+                $del->execute([':id' => $e['event_id']]);
+                $purgedCount++;
+            }
+        }
+
+        if ($purgedCount > 0) {
+            $this->log("[PURGE] Deleted {$purgedCount} ignored events from database.");
+        }
+
+        return $purgedCount;
     }
 
     /**
@@ -773,9 +815,8 @@ class EventAggregator {
                     if (!$isMetal) {
                         $isMetal = $this->fetchArtistGenreMetadata($artistName);
                         if ($isMetal) {
-                            $this->log("[ENRICHMENT] Auto-approving band '{$artistName}' via MusicBrainz genre match.");
-                            $stmtSeed = $this->db->prepare("INSERT OR IGNORE INTO metal_artists (artist_name) VALUES (:name)");
-                            $stmtSeed->execute([':name' => $artistName]);
+                            $approvedNames = $this->seedApprovedArtistNames($artistName);
+                            $this->log("[ENRICHMENT] Auto-approving performer(s) '" . implode("', '", $approvedNames) . "' via MusicBrainz genre match.");
                         }
                     }
                     $status = 'Approved';
@@ -911,9 +952,8 @@ class EventAggregator {
                 if (!$isMetal) {
                     $isMetal = $this->fetchArtistGenreMetadata($artistName);
                     if ($isMetal) {
-                        $this->log("[ENRICHMENT] Auto-approving band '{$artistName}' via MusicBrainz genre match.");
-                        $stmtSeed = $this->db->prepare("INSERT OR IGNORE INTO metal_artists (artist_name) VALUES (:name)");
-                        $stmtSeed->execute([':name' => $artistName]);
+                        $approvedNames = $this->seedApprovedArtistNames($artistName);
+                        $this->log("[ENRICHMENT] Auto-approving performer(s) '" . implode("', '", $approvedNames) . "' via MusicBrainz genre match.");
                     }
                 }
                 $status = 'Approved';

@@ -1,0 +1,11 @@
+# Ignored Artists / Non-Music Events List
+# Add any artist or event name below (one per line).
+# Lines starting with # are comments.
+
+Day Out with Thomas
+Thomas & Friends
+Disney on Ice
+Paw Patrol Live
+Kidz Bop
+Peppa Pig Live
+Disney Worlds Collide
