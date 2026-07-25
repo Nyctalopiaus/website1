@@ -156,7 +156,7 @@ if (file_exists($lastSyncFile)) {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><?php echo htmlspecialchars($activeMarketConfig['title']); ?> // Live Show Intelligence</title>
-    <link rel="stylesheet" href="styles.css?v=15" />
+    <link rel="stylesheet" href="styles.css?v=20" />
 </head>
 <body data-market="<?php echo htmlspecialchars($activeMarket); ?>">
 
@@ -488,9 +488,9 @@ if (file_exists($lastSyncFile)) {
             </div>
 
             <!-- Month Selection Dropdown -->
-            <section class="month-select-section" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; background: transparent; padding: 0; margin-bottom: 0.5rem; border-bottom: none; position: relative; z-index: 100; overflow: visible;">
-                <div class="filter-group" style="display: flex; align-items: center; gap: 0.75rem; width: 100%; max-width: 320px;">
-                    <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-medium); white-space: nowrap;">📅 Select Month:</span>
+            <section class="month-select-section month-select-row">
+                <div class="filter-group month-select-controls">
+                    <span class="month-select-label">📅 Select Month:</span>
                     <select id="month-dropdown-select" style="background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); color: white; padding: 0.55rem 1rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; width: 100%; outline: none; font-family: inherit; font-weight: 600; transition: border-color 0.2s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
                         <?php if (empty($activeMonths)): ?>
                             <option value="empty-view">No Shows Found</option>
@@ -564,10 +564,6 @@ if (file_exists($lastSyncFile)) {
                 <!-- Approved Month Event Listings (Default strict mode applies to this calendar container) -->
                 <?php foreach ($activeMonths as $index => $month): ?>
                     <div id="month-<?php echo $month; ?>" class="calendar-view strict-mode <?php echo $index === 0 ? 'active' : ''; ?>">
-                        <div class="month-view-header">
-                            <h2>📅 <?php echo htmlspecialchars(formatMonthName($month)); ?></h2>
-                        </div>
-                        
                         <?php 
                         // Group events by venue + date for co-headliners/lineups
                         $groupedEvents = [];

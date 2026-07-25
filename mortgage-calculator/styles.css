@@ -1124,7 +1124,148 @@ input[type="number"]:focus {
 }
 
 @media (max-width: 768px) {
-  /* burndown-chart-grid is already single column — no override needed */
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  body {
+    background-attachment: scroll;
+  }
+
+  .glow-bg {
+    width: 140vw;
+    max-width: 700px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .header {
+    padding: 1.25rem 1rem 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .header-nav {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+  }
+
+  .header h1 {
+    font-size: 1.2rem;
+    line-height: 1.3;
+  }
+
+  .container {
+    padding: 0 1rem 2.75rem;
+  }
+
+  .grid-2-col,
+  .dual-input {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-card,
+  .term-card,
+  .burndown-chart-card {
+    padding: 1.1rem;
+  }
+
+  .term-badge {
+    top: 1rem;
+    right: 1rem;
+  }
+
+  .payment-value {
+    font-size: 1.65rem;
+  }
+
+  .chart-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .burndown-legend {
+    gap: 0.5rem 0.8rem;
+    font-size: 0.72rem;
+  }
+
+  .main-footer {
+    padding: 2rem 1rem;
+  }
+
+  .amort-container {
+    padding: 1.25rem 1rem 2.75rem;
+  }
+
+  .amort-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .amort-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .amort-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .amort-table {
+    min-width: 900px;
+  }
+
+  .header > div[style*="display: flex; gap: 1rem;"] {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem !important;
+  }
+
+  .header > div[style*="display: flex; gap: 1rem;"] .btn-rates-toggle {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .btn-back {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.7rem;
+  }
+
+  .header h1 {
+    font-size: 1.05rem;
+  }
+
+  .detail-row {
+    font-size: 0.78rem;
+    gap: 0.5rem;
+  }
+
+  .legend-item {
+    font-size: 0.8rem;
+  }
+
+  .svg-wrapper {
+    width: 168px;
+    height: 168px;
+  }
+
+  .svg-wrapper svg {
+    width: 168px;
+    height: 168px;
+  }
+
+  .chart-total-text {
+    font-size: 1.2rem;
+  }
+
+  .chart-sub-text {
+    font-size: 0.64rem;
+  }
 }
 
 /* Tooltip Utility */

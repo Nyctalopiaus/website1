@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=7" />
+  <link rel="stylesheet" href="styles.css?v=8" />
 </head>
 <body>
   <div class="mesh-glow nebula-1"></div>
@@ -21,12 +21,12 @@
       <span class="logo-icon">⚡</span>
       <h1>Security Engineering & Personal Lab</h1>
     </div>
-    <div class="contact-links" style="margin-top: 1rem; display: flex; gap: 1rem; align-items: center;">
-      <span style="color: var(--text-muted); font-size: 0.85rem;">Connect with me:</span>
-      <a href="https://www.linkedin.com/in/jhankins/" target="_blank" style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem; font-weight: 600;">
+    <div class="contact-links">
+      <span class="contact-label">Connect with me:</span>
+      <a href="https://www.linkedin.com/in/jhankins/" target="_blank" class="contact-link-linkedin">
         LinkedIn
       </a>
-      <span style="color: var(--text-muted); font-size: 0.85rem;">(Preferred for contact)</span>
+      <span class="contact-note">(Preferred for contact)</span>
     </div>
     <div class="system-status" aria-label="System diagnostics status">
       <span class="status-indicator"></span>
@@ -36,9 +36,9 @@
 
 <!-- About Me Section -->
     <section class="container about-me-section">
-      <div class="panel-card" style="padding: 2.5rem;">
+      <div class="panel-card about-card">
         <h2 class="font-display" style="font-size: 2rem; margin-bottom: 1.5rem; color: var(--text-bright);">Nycto</h2>
-        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; align-items: center;">
+        <div class="about-me-grid">
           <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-medium);">
             <p style="margin-bottom: 1rem;">
               <strong>Cybersecurity Engineer | Threat Hunting & Response</strong>
@@ -47,7 +47,7 @@
               With over 25 years of experience in IT and security, I serve as a Cybersecurity Engineering Lead specializing in threat detection, infrastructure defense, and cross-departmental operational coordination. I focus on bridging the gap between complex security signals and actionable defense strategies, leading teams to build robust monitoring frameworks that provide scalable, enterprise-wide security solutions.
             </p>
           </div>
-          <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 12px;">
+          <div class="about-quote-card">
             <p style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">
               "Building tools to automate logistics, financial modeling, and security training. This lab is where I operationalize my curiosity."
             </p>
@@ -59,8 +59,8 @@
     <div class="section-divider" aria-hidden="true"></div>
 
 <!-- Four-Column 2x2 Balanced Grid -->
-<section class="container skills-section" style="margin-top: 2rem; margin-bottom: 4rem;">
-  <div class="projects-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
+<section class="container skills-section">
+  <div class="projects-grid skills-grid">
     
     <!-- 1. Infrastructure & Identity -->
     <article class="panel-card" style="padding: 1.5rem;">
