@@ -106,6 +106,17 @@ export function initArtistInsights() {
 }
 
 export function initAudioPreview() {
+  const normalizeArtistName = value => (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
+  const artistMatchesResult = (artistName, trackArtistName) => {
+    const requested = normalizeArtistName(artistName);
+    const candidate = normalizeArtistName(trackArtistName);
+    if (!requested || !candidate) return false;
+    return candidate === requested || candidate.includes(requested) || requested.includes(candidate);
+  };
+
   document.addEventListener('click', async event => {
     const btn = event.target.closest('.btn-listen');
     if (!btn) return;
@@ -176,30 +187,40 @@ export function initAudioPreview() {
       const data = await response.json();
 
       if (!data.results || data.results.length === 0) {
-        drawer.innerHTML = `<div class="audio-empty">No previews found for ${escapeHtml(artist)}.</div>`;
+        drawer.innerHTML = `<div class="audio-empty">No reliable previews found for ${escapeHtml(artist)}.</div>`;
+        return;
+      }
+
+      const previewTracks = data.results.filter(track => {
+        const previewUrl = track.previewUrl || '';
+        const trackArtistName = track.artistName || '';
+        return previewUrl && artistMatchesResult(primaryArtist, trackArtistName);
+      });
+
+      if (previewTracks.length === 0) {
+        drawer.innerHTML = `<div class="audio-empty">No reliable previews found for ${escapeHtml(artist)}.</div>`;
         return;
       }
 
       let html = '<div class="audio-tracks-list">';
-      data.results.forEach(track => {
+      previewTracks.forEach(track => {
         const trackName = escapeHtml(track.trackName || 'Unknown Track');
         const collectionName = escapeHtml(track.collectionName || 'Single');
         const artwork = track.artworkUrl60 || 'https://via.placeholder.com/60';
         const previewUrl = track.previewUrl || '';
 
-        if (previewUrl) {
-          html += `
-            <div class="audio-track-item">
-              <img src="${artwork}" alt="Artwork" class="audio-artwork">
-              <div class="audio-track-info">
-                <div class="audio-track-name">${trackName}</div>
-                <div class="audio-collection-name">${collectionName}</div>
-              </div>
-              <button type="button" class="btn-play-preview" data-url="${previewUrl}">${ICONS.play}</button>
+        html += `
+          <div class="audio-track-item">
+            <img src="${artwork}" alt="Artwork" class="audio-artwork">
+            <div class="audio-track-info">
+              <div class="audio-track-name">${trackName}</div>
+              <div class="audio-collection-name">${collectionName}</div>
             </div>
-          `;
-        }
+            <button type="button" class="btn-play-preview" data-url="${previewUrl}">${ICONS.play}</button>
+          </div>
+        `;
       });
+
       html += '</div><audio class="card-audio-player" style="display: none;"></audio>';
 
       drawer.innerHTML = html;

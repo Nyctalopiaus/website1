@@ -52,18 +52,20 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   const regionCitiesByMarket = {
     'front-range': {
       springs: ['colorado springs', 'pueblo', 'castle rock'],
-      denver: ['denver', 'boulder', 'golden', 'morrison', 'englewood', 'littleton', 'arvada', 'westminster', 'thornton'],
-      north: ['fort collins', 'greeley', 'loveland', 'longmont', 'bellvue']
+      denver: ['denver', 'boulder', 'golden', 'morrison', 'englewood', 'littleton', 'arvada', 'westminster', 'thornton', 'lakewood', 'greenwood village'],
+      north: ['fort collins', 'greeley', 'loveland', 'longmont', 'bellvue'],
+      west: ['grand junction', 'fruita', 'palisade', 'montrose', 'telluride', 'aspen', 'steamboat springs', 'glenwood springs']
     },
     socal: {
-      la: ['los angeles', 'la', 'inglewood', 'hollywood'],
+      norcal: ['san francisco', 'oakland', 'berkeley', 'san jose', 'mountain view', 'napa', 'roseville', 'wheatland', 'lincoln', 'sacramento', 'concord'],
+      la: ['los angeles', 'la', 'inglewood', 'hollywood', 'west hollywood', 'pasadena', 'pomona'],
       oc: ['anaheim', 'santa ana', 'orange', 'fullerton', 'costa mesa', 'irvine'],
-      sd: ['san diego', 'chula vista', 'la mesa', 'el cajon', 'oceanside']
+      sd: ['san diego', 'chula vista', 'la mesa', 'el cajon', 'oceanside', 'solana beach']
     },
     scotland: {
       glasgow: ['glasgow', 'glasgow scotland'],
       edinburgh: ['edinburgh', 'edinburgh scotland'],
-      other: ['dundee', 'aberdeen', 'stirling', 'perth', 'falkirk', 'paisley', 'inverness']
+      other: ['dundee', 'aberdeen', 'stirling', 'perth', 'falkirk', 'paisley', 'inverness', 'kinross', 'dunfermline', 'bathgate']
     }
   };
   const regionCities = regionCitiesByMarket[activeMarket] || regionCitiesByMarket['front-range'];
@@ -350,15 +352,11 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
         }
 
         if (show && activeGenre !== 'all') {
-          const genre = (card.getAttribute('data-genre') || 'metal').toLowerCase();
+          const genre = (card.getAttribute('data-genre') || 'all').toLowerCase();
           const tagsStr = (card.getAttribute('data-tags') || '').toLowerCase();
           const cardTags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
           const renderedTags = Array.from(card.querySelectorAll('.tag-pill')).map(pill => pill.textContent.toLowerCase().trim());
           const allCardTags = [...new Set([...cardTags, ...renderedTags])];
-
-          const punkTags = genreBuckets.punk?.tags || [];
-          const indieTags = genreBuckets.indie?.tags || [];
-          const metalTags = genreBuckets.metal?.tags || [];
 
           const hasTagInList = (cardTagsList, bucketList) => {
             return cardTagsList.some(tag => bucketList.includes(tag));
@@ -370,21 +368,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
             return hasTagInList(allCardTags, bTags);
           };
 
-          let hasAnyBucketMatch = false;
-          Object.keys(genreBuckets).forEach(bKey => {
-            if (bKey !== 'all') {
-              if (checkBucketMatch(bKey)) {
-                hasAnyBucketMatch = true;
-              }
-            }
-          });
-
-          const matchGenre = () => {
-            if (activeGenre === 'metal') {
-              return checkBucketMatch('metal') || !hasAnyBucketMatch;
-            }
-            return checkBucketMatch(activeGenre);
-          };
+          const matchGenre = () => checkBucketMatch(activeGenre);
 
           if (!matchGenre()) {
             show = false;

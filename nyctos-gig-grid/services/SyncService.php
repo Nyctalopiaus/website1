@@ -76,21 +76,40 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
 
 function persistLastSyncTimestamp() {
     $nowStr = date('Y-m-d H:i:s');
-    $dir = __DIR__ . '/../cache';
-    if (!is_dir($dir)) {
-        @mkdir($dir, 0775, true);
-    }
-    @file_put_contents($dir . '/last_sync.txt', $nowStr);
+    $targets = [];
 
-    // Sync to sibling domain cache directories if running in multi-domain environment
-    $sibling1 = dirname(__DIR__, 2) . '/metal-calendar/cache';
-    if (is_dir($sibling1)) {
-        @file_put_contents($sibling1 . '/last_sync.txt', $nowStr);
+    // Primary app cache directory.
+    $targets[] = __DIR__ . '/../cache';
+
+    // Sync to sibling domain cache directories if running in multi-domain environment.
+    $targets[] = dirname(__DIR__, 2) . '/metal-calendar/cache';
+    $targets[] = dirname(__DIR__, 2) . '/nyctos-gig-grid/cache';
+
+    $writeCount = 0;
+    foreach (array_unique($targets) as $dir) {
+        if (!is_dir($dir)) {
+            // Only auto-create directories under this project root.
+            if (strpos($dir, realpath(__DIR__ . '/..')) === 0) {
+                if (!mkdir($dir, 0775, true) && !is_dir($dir)) {
+                    error_log('[SYNC TIMESTAMP] Failed to create cache directory: ' . $dir);
+                    continue;
+                }
+            } else {
+                continue;
+            }
+        }
+
+        $path = rtrim($dir, '/\\') . '/last_sync.txt';
+        $written = file_put_contents($path, $nowStr, LOCK_EX);
+        if ($written === false) {
+            error_log('[SYNC TIMESTAMP] Failed to write last_sync.txt at: ' . $path);
+            continue;
+        }
+        $writeCount++;
     }
 
-    $sibling2 = dirname(__DIR__, 2) . '/nyctos-gig-grid/cache';
-    if (is_dir($sibling2)) {
-        @file_put_contents($sibling2 . '/last_sync.txt', $nowStr);
+    if ($writeCount === 0) {
+        error_log('[SYNC TIMESTAMP] No last_sync.txt locations were updated.');
     }
 }
 
@@ -127,4 +146,36 @@ function backfillMissingSetlists(EventAggregator $aggregator) {
     }
 
     return $setlistFetched;
+}
+
+function runDatabaseMaintenance(EventAggregator $aggregator, int $retentionDays = 4): array {
+    $result = [
+        'events_purged' => 0,
+        'orphan_setlists_removed' => 0,
+    ];
+
+    try {
+        $db = getDbConnection();
+        $db->beginTransaction();
+
+        $purgeStmt = $db->prepare("DELETE FROM events WHERE start_time < datetime('now', :window)");
+        $purgeStmt->execute([':window' => '-' . max(1, $retentionDays) . ' days']);
+        $result['events_purged'] = (int)$purgeStmt->rowCount();
+
+        // event_setlists has no FK; remove orphan rows explicitly after event purge.
+        $orphanStmt = $db->exec("DELETE FROM event_setlists WHERE event_id NOT IN (SELECT event_id FROM events)");
+        $result['orphan_setlists_removed'] = (int)$orphanStmt;
+
+        $db->commit();
+
+        $aggregator->log("[MAINTENANCE] Purged {$result['events_purged']} events older than {$retentionDays} days.");
+        $aggregator->log("[MAINTENANCE] Removed {$result['orphan_setlists_removed']} orphaned setlist cache rows.");
+    } catch (Throwable $e) {
+        if (isset($db) && $db->inTransaction()) {
+            $db->rollBack();
+        }
+        $aggregator->log('[MAINTENANCE ERROR] Event retention cleanup failed: ' . $e->getMessage());
+    }
+
+    return $result;
 }

@@ -11,7 +11,6 @@ require_once __DIR__ . '/services/ArtistDetailsService.php';
 require_once __DIR__ . '/services/SetlistService.php';
 require_once __DIR__ . '/services/SyncService.php';
 require_once __DIR__ . '/actions/sync.php';
-require_once __DIR__ . '/actions/logbook.php';
 require_once __DIR__ . '/actions/setlist.php';
 require_once __DIR__ . '/actions/log-js-error.php';
 
@@ -87,24 +86,6 @@ if ($action === 'log_js_error') {
         jsonRateLimitResponse('JavaScript error reporting is rate limited.', $retryAfter);
     }
     handleLogJsError();
-}
-
-if ($action === 'add_to_logbook' && isset($_POST['event_id'])) {
-    requireAggregatorTokenIfConfigured();
-    $retryAfter = 0;
-    if (isRateLimited('logbook-add', 15, 600, $retryAfter)) {
-        jsonRateLimitResponse('Logbook updates are rate limited.', $retryAfter);
-    }
-    handleAddToLogbook();
-}
-
-if ($action === 'remove_from_logbook' && isset($_POST['event_id'])) {
-    requireAggregatorTokenIfConfigured();
-    $retryAfter = 0;
-    if (isRateLimited('logbook-remove', 15, 600, $retryAfter)) {
-        jsonRateLimitResponse('Logbook updates are rate limited.', $retryAfter);
-    }
-    handleRemoveFromLogbook();
 }
 
 if ($action === 'get_setlist' && isset($_GET['event_id'])) {

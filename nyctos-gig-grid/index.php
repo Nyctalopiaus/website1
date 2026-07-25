@@ -14,6 +14,9 @@ if (!headers_sent()) {
     header('X-Frame-Options: SAMEORIGIN');
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: 0');
 }
 
 $db = getDbConnection();
@@ -137,10 +140,13 @@ function getEventDateDetails($dateTimeStr) {
 $lastSyncFile = __DIR__ . '/cache/last_sync.txt';
 $lastSyncText = 'Never';
 if (file_exists($lastSyncFile)) {
-    $lastSyncTime = file_get_contents($lastSyncFile);
+    $lastSyncTime = trim((string) file_get_contents($lastSyncFile));
     $timestamp = strtotime($lastSyncTime);
-    if ($timestamp) {
-        $lastSyncText = date('M j, g:i A', $timestamp);
+    if ($timestamp === false) {
+        $timestamp = @filemtime($lastSyncFile);
+    }
+    if ($timestamp !== false) {
+        $lastSyncText = date('M j, g:i A', (int) $timestamp);
     }
 }
 ?>
@@ -401,8 +407,8 @@ if (file_exists($lastSyncFile)) {
                 <div class="filter-group market-filter-group" style="display: flex; align-items: center; gap: 0.75rem; width: 100%; justify-content: flex-start;">
                     <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-medium);">Market:</span>
                     <nav class="header-market-switcher" aria-label="Market selector">
-                        <a href="<?php echo htmlspecialchars($marketLinks['front-range']); ?>" class="header-market-link <?php echo $activeMarket === 'front-range' ? 'active' : ''; ?>" <?php echo $activeMarket === 'front-range' ? 'aria-current="page"' : ''; ?>>🏔️ Colorado (Front Range)</a>
-                        <a href="<?php echo htmlspecialchars($marketLinks['socal']); ?>" class="header-market-link <?php echo $activeMarket === 'socal' ? 'active' : ''; ?>" <?php echo $activeMarket === 'socal' ? 'aria-current="page"' : ''; ?>>🌴 Southern California (LA - San Diego)</a>
+                        <a href="<?php echo htmlspecialchars($marketLinks['front-range']); ?>" class="header-market-link <?php echo $activeMarket === 'front-range' ? 'active' : ''; ?>" <?php echo $activeMarket === 'front-range' ? 'aria-current="page"' : ''; ?>>🏔️ Colorado</a>
+                        <a href="<?php echo htmlspecialchars($marketLinks['socal']); ?>" class="header-market-link <?php echo $activeMarket === 'socal' ? 'active' : ''; ?>" <?php echo $activeMarket === 'socal' ? 'aria-current="page"' : ''; ?>>🌴 California</a>
                         <a href="<?php echo htmlspecialchars($marketLinks['scotland']); ?>" class="header-market-link <?php echo $activeMarket === 'scotland' ? 'active' : ''; ?>" <?php echo $activeMarket === 'scotland' ? 'aria-current="page"' : ''; ?>>🏴 Scotland</a>
                     </nav>
                 </div>
@@ -413,10 +419,12 @@ if (file_exists($lastSyncFile)) {
                     <div style="display: flex; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid var(--card-border); overflow: hidden;">
                         <button class="region-btn active" data-region="all" style="background: transparent; color: var(--text-muted); border: none; padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">All</button>
                         <?php if ($activeMarket === 'front-range'): ?>
-                            <button class="region-btn" data-region="springs" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Springs</button>
-                            <button class="region-btn" data-region="denver" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Denver/Boulder</button>
-                            <button class="region-btn" data-region="north" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Ft Collins</button>
+                            <button class="region-btn" data-region="denver" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Denver / Boulder</button>
+                            <button class="region-btn" data-region="springs" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Springs / Pueblo</button>
+                            <button class="region-btn" data-region="north" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Ft Collins / North</button>
+                            <button class="region-btn" data-region="west" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">West Slope / Grand Junction</button>
                         <?php elseif ($activeMarket === 'socal'): ?>
+                            <button class="region-btn" data-region="norcal" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">NorCal / Bay Area</button>
                             <button class="region-btn" data-region="la" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Los Angeles</button>
                             <button class="region-btn" data-region="oc" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Orange County</button>
                             <button class="region-btn" data-region="sd" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">San Diego</button>
@@ -622,7 +630,7 @@ if (file_exists($lastSyncFile)) {
                             }
                             $groupEventIdsStr = implode(',', array_column($group['events'], 'event_id'));
                         ?>
-                            <article class="event-card" data-status="Approved" data-event-ids="<?php echo htmlspecialchars($groupEventIdsStr); ?>" data-city="<?php echo htmlspecialchars(strtolower($event['city_name'])); ?>" data-venue="<?php echo htmlspecialchars(strtolower($event['venue_name'])); ?>" data-genre="<?php echo htmlspecialchars(strtolower($event['genre'] ?? 'metal')); ?>" data-tags="<?php echo htmlspecialchars(strtolower($combinedTagsStr)); ?>" data-search="<?php echo htmlspecialchars($searchBlob); ?>" id="card-<?php echo $event['event_id']; ?>">
+                            <article class="event-card" data-status="Approved" data-event-ids="<?php echo htmlspecialchars($groupEventIdsStr); ?>" data-city="<?php echo htmlspecialchars(strtolower($event['city_name'])); ?>" data-venue="<?php echo htmlspecialchars(strtolower($event['venue_name'])); ?>" data-genre="<?php echo htmlspecialchars(strtolower($event['genre'] ?? 'all')); ?>" data-tags="<?php echo htmlspecialchars(strtolower($combinedTagsStr)); ?>" data-search="<?php echo htmlspecialchars($searchBlob); ?>" id="card-<?php echo $event['event_id']; ?>">
                                 <!-- Left Stub -->
                                 <div class="date-stub">
                                     <div class="date-block-vertical">
@@ -908,6 +916,6 @@ if (file_exists($lastSyncFile)) {
 
     <script id="venue-data" type="application/json"><?php echo json_encode($venuesList, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
     <script id="genre-buckets-data" type="application/json"><?php echo json_encode($genreBuckets, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
-    <script type="module" src="assets/js/app.js?v=53"></script>
+    <script type="module" src="assets/js/app.js?v=55"></script>
 </body>
 </html>

@@ -23,7 +23,7 @@ class EventAggregator {
     }
 
     public function log($msg) {
-        $formatted = "[" . date('H:i:s') . "] " . $msg;
+        $formatted = "[" . date('Y-m-d H:i:s') . "] " . $msg;
         $this->logs[] = $formatted;
         if (php_sapi_name() === 'cli' || empty($_SERVER['REMOTE_ADDR'])) {
             echo $formatted . "\n";
@@ -217,7 +217,7 @@ class EventAggregator {
             }
         }
 
-        return 'metal';
+        return 'all';
     }
 
     private function logUnknownTags($tagsStr) {
@@ -270,7 +270,7 @@ class EventAggregator {
 
     private function isCatchAllGenre($genre) {
         $normalized = strtolower(trim((string)$genre));
-        return $normalized === 'metal' || $normalized === 'rock' || $normalized === '';
+        return $normalized === 'all' || $normalized === 'uncategorized' || $normalized === '';
     }
 
     private function normalizeMarketKey($market) {
@@ -299,27 +299,38 @@ class EventAggregator {
         return [
             [
                 'market' => 'front-range',
-                'ticketmaster_latlong' => '39.7392,-104.9903',
-                'ticketmaster_radius' => 100,
-                'ticketmaster_unit' => 'miles',
-                'bandsintown_location' => 'Denver,CO',
-                'bandsintown_radius' => 100
+                'stateCode' => 'CO',
+                'points' => [
+                    ['latlong' => '39.7392,-104.9903', 'radius' => 120, 'unit' => 'miles'],
+                    ['latlong' => '38.8339,-104.8214', 'radius' => 90, 'unit' => 'miles'],
+                    ['latlong' => '39.0639,-108.5506', 'radius' => 100, 'unit' => 'miles'],
+                    ['latlong' => '40.5853,-105.0844', 'radius' => 80, 'unit' => 'miles']
+                ],
+                'bandsintown_locations' => ['Denver,CO', 'Colorado Springs,CO', 'Fort Collins,CO', 'Grand Junction,CO']
             ],
             [
                 'market' => 'socal',
-                'ticketmaster_latlong' => '34.0522,-118.2437',
-                'ticketmaster_radius' => 140,
-                'ticketmaster_unit' => 'miles',
-                'bandsintown_location' => 'Los Angeles,CA',
-                'bandsintown_radius' => 140
+                'stateCode' => 'CA',
+                'points' => [
+                    ['latlong' => '34.0522,-118.2437', 'radius' => 120, 'unit' => 'miles'],
+                    ['latlong' => '37.7749,-122.4194', 'radius' => 120, 'unit' => 'miles'],
+                    ['latlong' => '32.7157,-117.1611', 'radius' => 80, 'unit' => 'miles'],
+                    ['latlong' => '38.5816,-121.4944', 'radius' => 100, 'unit' => 'miles'],
+                    ['latlong' => '35.2828,-120.6596', 'radius' => 90, 'unit' => 'miles'],
+                    ['latlong' => '40.5865,-122.3917', 'radius' => 100, 'unit' => 'miles']
+                ],
+                'bandsintown_locations' => ['Los Angeles,CA', 'San Francisco,CA', 'San Diego,CA', 'Sacramento,CA', 'San Luis Obispo,CA', 'Redding,CA']
             ],
             [
                 'market' => 'scotland',
-                'ticketmaster_latlong' => '55.8642,-4.2518',
-                'ticketmaster_radius' => 140,
-                'ticketmaster_unit' => 'miles',
-                'bandsintown_location' => 'Glasgow,Scotland',
-                'bandsintown_radius' => 140
+                'marketId' => '207',
+                'points' => [
+                    ['latlong' => '55.8642,-4.2518', 'radius' => 120, 'unit' => 'miles'],
+                    ['latlong' => '55.9533,-3.1883', 'radius' => 100, 'unit' => 'miles'],
+                    ['latlong' => '57.1497,-2.0943', 'radius' => 90, 'unit' => 'miles'],
+                    ['latlong' => '57.4778,-4.2247', 'radius' => 100, 'unit' => 'miles']
+                ],
+                'bandsintown_locations' => ['Glasgow,Scotland', 'Edinburgh,Scotland', 'Aberdeen,Scotland', 'Inverness,Scotland']
             ]
         ];
     }
@@ -482,18 +493,17 @@ class EventAggregator {
 
     public function isEventInMarketRegion($market, $city = '', $region = '', $country = '') {
         $marketNorm = $this->normalizeMarketKey($market);
-        $cityNorm = strtolower(trim((string)$city));
         $regionNorm = strtolower(trim((string)$region));
         $countryNorm = strtolower(trim((string)$country));
 
         // 1. Country validation
         if ($countryNorm !== '') {
             if ($marketNorm === 'front-range' || $marketNorm === 'socal') {
-                if (!in_array($countryNorm, ['united states', 'us', 'usa'], true)) {
+                if (!in_array($countryNorm, ['united states', 'us', 'usa', 'united states of america'], true)) {
                     return false;
                 }
             } elseif ($marketNorm === 'scotland') {
-                if (!in_array($countryNorm, ['united kingdom', 'uk', 'gb', 'scotland', 'great britain'], true)) {
+                if (!in_array($countryNorm, ['united kingdom', 'uk', 'gb', 'scotland', 'great britain', 'england', 'wales'], true)) {
                     return false;
                 }
             }
@@ -507,37 +517,6 @@ class EventAggregator {
         } elseif ($marketNorm === 'socal') {
             if ($regionNorm !== '' && !in_array($regionNorm, ['ca', 'california', 'ca.'], true)) {
                 return false;
-            }
-        }
-
-        // 3. Strict City / Sub-region validation for each market
-        if ($cityNorm !== '') {
-            if ($marketNorm === 'scotland') {
-                $allowedScotlandCities = [
-                    'glasgow', 'glasgow scotland', 'edinburgh', 'edinburgh scotland',
-                    'dundee', 'aberdeen', 'stirling', 'perth', 'falkirk', 'paisley', 'inverness'
-                ];
-                if (!in_array($cityNorm, $allowedScotlandCities, true)) {
-                    return false;
-                }
-            } elseif ($marketNorm === 'socal') {
-                $allowedSocalCities = [
-                    'los angeles', 'la', 'inglewood', 'hollywood', 'west hollywood',
-                    'anaheim', 'santa ana', 'orange', 'fullerton', 'costa mesa', 'irvine', 'pomona', 'garden grove',
-                    'san diego', 'chula vista', 'la mesa', 'el cajon', 'oceanside', 'solana beach', 'solana beach ca'
-                ];
-                if (!in_array($cityNorm, $allowedSocalCities, true)) {
-                    return false;
-                }
-            } elseif ($marketNorm === 'front-range') {
-                $allowedFrontRangeCities = [
-                    'colorado springs', 'pueblo', 'castle rock',
-                    'denver', 'boulder', 'golden', 'morrison', 'englewood', 'littleton', 'arvada', 'westminster', 'thornton', 'lakewood', 'greenwood village',
-                    'fort collins', 'greeley', 'loveland', 'longmont', 'bellvue'
-                ];
-                if (!in_array($cityNorm, $allowedFrontRangeCities, true)) {
-                    return false;
-                }
             }
         }
 
@@ -613,6 +592,42 @@ class EventAggregator {
             }
         }
 
+        if ($best === null && is_array($locationHint)) {
+            $city = trim($locationHint['city'] ?? '');
+            $region = strtoupper(trim($locationHint['region'] ?? ''));
+            $country = strtoupper(trim($locationHint['country'] ?? ''));
+
+            $targetMarket = null;
+            if ($region === 'CO' || strtolower($region) === 'colorado') {
+                $targetMarket = 'front-range';
+            } elseif ($region === 'CA' || strtolower($region) === 'california') {
+                $targetMarket = 'socal';
+            } elseif (in_array($country, ['GB', 'UK', 'SCOTLAND', 'GREAT BRITAIN', 'UNITED KINGDOM'], true) || in_array(strtolower($region), ['scotland'], true)) {
+                $targetMarket = 'scotland';
+            }
+
+            if ($targetMarket !== null) {
+                try {
+                    $vKey = preg_replace('/[^a-z0-9]/', '', strtolower($venueName));
+                    $mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' . urlencode($venueName . ' ' . $city);
+                    $stmtInsert = $this->db->prepare("INSERT OR IGNORE INTO venues (venue_key, venue_name, address, city, maps_url, market) VALUES (:key, :name, :address, :city, :maps_url, :market)");
+                    $stmtInsert->execute([
+                        ':key' => $vKey,
+                        ':name' => $venueName,
+                        ':address' => !empty($city) ? $city : 'Address N/A',
+                        ':city' => !empty($city) ? $city : 'Unknown',
+                        ':maps_url' => $mapsUrl,
+                        ':market' => $targetMarket
+                    ]);
+                } catch (Exception $e) {}
+
+                $best = [
+                    'market' => $targetMarket,
+                    'venue_name' => $venueName
+                ];
+            }
+        }
+
         return $best;
     }
 
@@ -653,16 +668,28 @@ class EventAggregator {
             $marketIngested = 0;
             $this->log("[TICKETMASTER] Querying market '{$marketKey}'...");
 
-            for ($page = 0; $page < 3; $page++) {
-                if ($page > 0) {
-                    usleep(250000);
+            $queries = [];
+            if (!empty($profile['stateCode'])) {
+                $queries[] = 'stateCode=' . urlencode($profile['stateCode']);
+            }
+            if (!empty($profile['marketId'])) {
+                $queries[] = 'marketId=' . urlencode($profile['marketId']);
+            }
+            if (!empty($profile['points'])) {
+                foreach ($profile['points'] as $pt) {
+                    $queries[] = 'latlong=' . urlencode($pt['latlong']) . '&radius=' . urlencode((string)$pt['radius']) . '&unit=' . urlencode($pt['unit'] ?? 'miles');
                 }
+            }
 
-                $url = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" . urlencode($apiKey)
-                    . "&latlong=" . urlencode($profile['ticketmaster_latlong'])
-                    . "&radius=" . urlencode((string)$profile['ticketmaster_radius'])
-                    . "&unit=" . urlencode($profile['ticketmaster_unit'])
-                    . "&classificationName=music&size=200&page=" . $page;
+            foreach ($queries as $qParam) {
+                for ($page = 0; $page < 5; $page++) {
+                    if ($page > 0) {
+                        usleep(200000);
+                    }
+
+                    $url = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" . urlencode($apiKey)
+                        . "&" . $qParam
+                        . "&classificationName=music&size=200&page=" . $page;
 
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL, $url);
@@ -792,6 +819,7 @@ class EventAggregator {
                     $totalIngested++;
                 }
             }
+        }
 
             $this->log("[TICKETMASTER] Processed {$marketIngested} events for {$marketKey}.");
         }
@@ -811,36 +839,32 @@ class EventAggregator {
         foreach ($this->getMarketIngestionProfiles() as $profile) {
             $marketKey = $profile['market'];
             $marketEventsCount = 0;
+            $locations = $profile['bandsintown_locations'] ?? [$profile['bandsintown_location'] ?? 'Denver,CO'];
 
-            $url = "https://rest.bandsintown.com/events/search?location=" . urlencode($profile['bandsintown_location'])
-                . "&radius=" . urlencode((string)$profile['bandsintown_radius'])
-                . "&date=upcoming&app_id=" . urlencode($appId);
+            foreach ($locations as $loc) {
+                $url = "https://rest.bandsintown.com/events/search?location=" . urlencode($loc)
+                    . "&radius=100"
+                    . "&date=upcoming&app_id=" . urlencode($appId);
 
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'FrontRangeMetalPassport/2.0');
-            curl_setopt($ch, CURLOPT_TIMEOUT, 12);
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_USERAGENT, 'FrontRangeMetalPassport/2.0');
+                curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
 
-            if ($httpCode !== 200) {
-                $this->log("[WARN] Bandsintown location search returned HTTP {$httpCode} for {$marketKey}. Falling back to artist-registry search...");
-                $fallbackCount = $this->fetchBandsintownFallback($marketKey);
-                $totalEventsCount += $fallbackCount;
-                continue;
-            }
+                if ($httpCode !== 200 || empty($response)) {
+                    continue;
+                }
 
-            $events = json_decode($response, true);
-            if (!is_array($events)) {
-                $this->log("[WARN] Bandsintown response invalid for {$marketKey}. Falling back to artist-registry search...");
-                $fallbackCount = $this->fetchBandsintownFallback($marketKey);
-                $totalEventsCount += $fallbackCount;
-                continue;
-            }
+                $events = json_decode($response, true);
+                if (!is_array($events)) {
+                    continue;
+                }
 
-            foreach ($events as $event) {
+                foreach ($events as $event) {
                 $rawVenueName = $event['venue']['name'] ?? 'Unknown Venue';
                 $locationHint = [
                     'city' => $event['venue']['city'] ?? '',
@@ -908,6 +932,7 @@ class EventAggregator {
                 $marketEventsCount++;
                 $totalEventsCount++;
             }
+        }
 
             $this->log("[BANDSINTOWN] Processed {$marketEventsCount} events for {$marketKey} via location search.");
         }

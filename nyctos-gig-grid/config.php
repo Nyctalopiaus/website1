@@ -218,6 +218,11 @@ if (!defined('AGGREGATOR_ACTION_TOKEN')) {
     define('AGGREGATOR_ACTION_TOKEN', cfgEnv('AGGREGATOR_ACTION_TOKEN', ''));
 }
 
+if (!defined('EVENT_RETENTION_DAYS')) {
+    $retentionRaw = (int)cfgEnv('EVENT_RETENTION_DAYS', '4');
+    define('EVENT_RETENTION_DAYS', max(1, $retentionRaw));
+}
+
 if (!function_exists('getMarketLocationSuffix')) {
     function getMarketLocationSuffix($market) {
         $normalized = strtolower(trim((string)$market));

@@ -17,8 +17,9 @@ function ensureDatabaseSchema(PDO $db) {
         ticket_url TEXT,
         status TEXT NOT NULL DEFAULT 'Approved',
         source TEXT NOT NULL,
-        genre TEXT NOT NULL DEFAULT 'Metal',
+        genre TEXT NOT NULL DEFAULT 'all',
         tags TEXT,
+        lastfm_normalized_at DATETIME,
         price_min REAL,
         price_max REAL,
         price_last_changed_at DATETIME,
@@ -32,7 +33,7 @@ function ensureDatabaseSchema(PDO $db) {
     )");
 
     foreach ([
-        "ALTER TABLE events ADD COLUMN genre TEXT NOT NULL DEFAULT 'Metal'",
+        "ALTER TABLE events ADD COLUMN genre TEXT NOT NULL DEFAULT 'all'",
         "ALTER TABLE events ADD COLUMN tags TEXT",
         "ALTER TABLE events ADD COLUMN price_min REAL",
         "ALTER TABLE events ADD COLUMN price_max REAL",
@@ -44,6 +45,7 @@ function ensureDatabaseSchema(PDO $db) {
         "ALTER TABLE events ADD COLUMN market TEXT NOT NULL DEFAULT 'front-range'",
         "ALTER TABLE events ADD COLUMN genre_source TEXT DEFAULT 'ticketmaster'",
         "ALTER TABLE events ADD COLUMN genre_locked INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE events ADD COLUMN lastfm_normalized_at DATETIME",
         "ALTER TABLE events ADD COLUMN ticket_status_code TEXT",
         "ALTER TABLE events ADD COLUMN availability_tag TEXT",
         "ALTER TABLE events ADD COLUMN sold_out_flag INTEGER NOT NULL DEFAULT 0"
@@ -59,6 +61,12 @@ function ensureDatabaseSchema(PDO $db) {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_events_market_time ON events(market, start_time)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_events_genre_locked ON events(genre_locked)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_events_genre_source ON events(genre_source)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_events_lastfm_normalized_at ON events(lastfm_normalized_at)");
+
+    // Backfill marker for pre-existing Last.fm-normalized rows.
+    $db->exec("UPDATE events
+        SET lastfm_normalized_at = COALESCE(lastfm_normalized_at, CURRENT_TIMESTAMP)
+        WHERE LOWER(COALESCE(genre_source, '')) = 'lastfm'");
 
     $db->exec("CREATE TABLE IF NOT EXISTS event_price_history (
         history_id INTEGER PRIMARY KEY AUTOINCREMENT,
