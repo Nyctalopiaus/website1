@@ -1,16 +1,44 @@
+const INTERESTED_KEYS = ['nycto_interested_shows', 'gig_grid_interested_shows'];
+const LEGACY_INTERESTED_KEY = 'metal_interested_shows';
+
 export function getInterestedIds() {
-  try {
-    const raw = localStorage.getItem('metal_interested_shows');
-    return raw ? JSON.parse(raw) : [];
-  } catch (error) {
-    console.error('Failed to parse interested shows', error);
-    return [];
+  for (const key of INTERESTED_KEYS) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to parse interested shows for key ${key}`, error);
+    }
   }
+
+  // One-time legacy migration path from pre-rename key.
+  try {
+    const legacyRaw = localStorage.getItem(LEGACY_INTERESTED_KEY);
+    if (legacyRaw) {
+      const parsedLegacy = JSON.parse(legacyRaw);
+      if (Array.isArray(parsedLegacy)) {
+        const uniqueIds = Array.from(new Set(parsedLegacy.map(id => String(id))));
+        localStorage.setItem('nycto_interested_shows', JSON.stringify(uniqueIds));
+        localStorage.removeItem(LEGACY_INTERESTED_KEY);
+        return uniqueIds;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to migrate legacy interested shows', error);
+  }
+
+  return [];
 }
 
 export function saveInterestedIds(ids) {
   try {
-    localStorage.setItem('metal_interested_shows', JSON.stringify(ids));
+    const uniqueIds = Array.from(new Set((ids || []).map(id => String(id))));
+    localStorage.setItem('nycto_interested_shows', JSON.stringify(uniqueIds));
   } catch (error) {
     console.error('Failed to save interested shows', error);
   }

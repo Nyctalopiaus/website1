@@ -1,423 +1,885 @@
+/* app.js - Main Application Controller & UI Renderer */
 document.addEventListener('DOMContentLoaded', () => {
-  // DOM Elements
-  const weightTrails = document.getElementById('weight-trails');
-  const weightRetail = document.getElementById('weight-retail');
-  const weightFitness = document.getElementById('weight-fitness');
-  const weightCulinary = document.getElementById('weight-culinary');
-  const transitRadius = document.getElementById('transit-radius');
+  'use strict';
 
-  const valWTrails = document.getElementById('val-w-trails');
-  const valWRetail = document.getElementById('val-w-retail');
-  const valWFitness = document.getElementById('val-w-fitness');
-  const valWCulinary = document.getElementById('val-w-culinary');
-  const valTransitRadius = document.getElementById('val-transit-radius');
+  const APP_VERSION = '11.7-smart-cache-skip-including-distance';
+  const STORAGE_KEY = 'relocation_assessment_prefs_v117';
 
-  const topNeighborhoodName = document.getElementById('top-neighborhood-name');
-  const topNeighborhoodScore = document.getElementById('top-neighborhood-score');
-  const scoreboardList = document.getElementById('scoreboard-list');
-  const matrixTbody = document.getElementById('matrix-tbody');
-  const radarSvg = document.getElementById('radar-svg');
-  const scannerGrid = document.getElementById('scanner-grid');
-  const hdrGpsCoords = document.getElementById('hdr-gps-coords');
+  const geocoder = window.RelocationGeocoder;
+  const spatial = window.RelocationSpatial;
+  const scoring = window.RelocationScoring;
 
-  // =========================================================================
-  // MOCK NEIGHBORHOOD GIS DATASET
-  // =========================================================================
-  const neighborhoods = [
-    {
-      name: "Greenwood Heights",
-      lat: 45.1022,
-      lon: -122.3491,
-      // Raw metrics:
-      trailMiles: 12.4,        // Continuous bike/running trails
-      groceryDist: 1.6,        // Miles to closest grocery infrastructure
-      gymCount: 2,             // Active athletic facilities inside boundaries
-      culinaryIndex: 0.15      // Variety index (0-1) for specialized dining
+  const CATEGORY_META = scoring.CATEGORY_META;
+  const CATEGORY_ORDER = scoring.CATEGORY_ORDER;
+
+  const state = {
+    loading: false,
+    compareEnabled: false,
+    autocompleteActiveIndex: -1,
+    searchCandidates: [],
+    locationQuery: '',
+    locationDisplay: '',
+    locationCenter: null,
+    lastSavedQuery: '',
+    cuisineTags: ['mexican', 'italian', 'sushi', 'thai'],
+    categoryPrefs: {
+      grocery: true,
+      fitness: true,
+      trails: true,
+      cuisine: true,
+      gas: true,
+      parks: true,
+      pharmacy: true
     },
-    {
-      name: "Metro Core",
-      lat: 45.1154,
-      lon: -122.3610,
-      trailMiles: 0.2,
-      groceryDist: 0.1,
-      gymCount: 14,
-      culinaryIndex: 0.95
+    sources: {
+      primary: null,
+      compare: null
     },
-    {
-      name: "East River Valley",
-      lat: 45.0945,
-      lon: -122.3211,
-      trailMiles: 7.8,
-      groceryDist: 0.6,
-      gymCount: 5,
-      culinaryIndex: 0.45
+    assessments: {
+      primary: null,
+      compare: null
     },
-    {
-      name: "North End Hub",
-      lat: 45.1321,
-      lon: -122.3780,
-      trailMiles: 1.5,
-      groceryDist: 0.3,
-      gymCount: 9,
-      culinaryIndex: 0.68
+    maps: {
+      primary: null,
+      compare: null
     },
-    {
-      name: "Soho Ridge",
-      lat: 45.0812,
-      lon: -122.3921,
-      trailMiles: 0.8,
-      groceryDist: 2.2,
-      gymCount: 1,
-      culinaryIndex: 0.85
+    layerGroups: {
+      primary: null,
+      compare: null
     }
-  ];
+  };
 
-  // =========================================================================
-  // CALCULATIONS & SCORING SYSTEM (GIS DECISION MATRIX)
-  // =========================================================================
-  
-  /**
-   * Normalization helper: Maps a raw value to a 0.0 to 1.0 scale.
-   * higherValuesAreBetter: true for positive attributes, false for costs (distance).
-   */
-  function normalize(value, min, max, higherValuesAreBetter = true) {
-    if (max === min) return 1.0;
-    const norm = (value - min) / (max - min);
-    return higherValuesAreBetter ? norm : 1.0 - norm;
+  const reads = {
+    locationForm: document.getElementById('location-search-form'),
+    locationInput: document.getElementById('location-search-input'),
+    compareInput: document.getElementById('location-compare-input'),
+    btnSearch: document.getElementById('btn-main-action'),
+    btnClearSearch: document.getElementById('btn-clear-search'),
+    compareToggle: document.getElementById('compare-toggle'),
+    compareGroup: document.getElementById('compare-input-row'),
+    btnUseCurrent: document.getElementById('btn-use-current'),
+    btnExportReport: document.getElementById('btn-export-report'),
+    autocompleteList: document.getElementById('autocomplete-list'),
+
+    primaryStatusPill: document.getElementById('primary-status-pill'),
+    primaryStatusText: document.getElementById('primary-status-text'),
+    compareStatusPill: document.getElementById('compare-status-pill'),
+    compareStatusText: document.getElementById('compare-status-text'),
+
+    telemetryText: document.getElementById('scanner-status'),
+    scannerGrid: document.getElementById('scanner-grid'),
+
+    hdrPrimaryName: document.getElementById('top-neighborhood-name'),
+    hdrPrimaryScore: document.getElementById('top-neighborhood-score'),
+    compareScoreCard: document.getElementById('compare-score-card'),
+    hdrCompareName: document.getElementById('compare-neighborhood-name'),
+    hdrCompareScore: document.getElementById('compare-neighborhood-score'),
+    hdrCompareSummary: document.getElementById('match-score-explain'),
+
+    scoreboardList: document.getElementById('scoreboard-list'),
+    matrixHeadRow: document.getElementById('matrix-head-row'),
+    matrixTbody: document.getElementById('matrix-tbody'),
+
+    routePreviewMap: document.getElementById('route-preview-map'),
+    routePreviewMapCompare: document.getElementById('route-preview-map-compare'),
+    compareMapCard: document.getElementById('compare-map-card'),
+    primaryMapFooter: document.getElementById('route-preview-meta'),
+    compareMapFooter: document.getElementById('route-preview-meta-compare'),
+
+    prefGrocery: document.getElementById('pref-grocery'),
+    prefFitness: document.getElementById('pref-fitness'),
+    prefTrails: document.getElementById('pref-trails'),
+    prefCuisine: document.getElementById('pref-cuisine'),
+    prefGas: document.getElementById('pref-gas'),
+    prefParks: document.getElementById('pref-parks'),
+    prefPharmacy: document.getElementById('pref-pharmacy'),
+
+    cuisineInput: document.getElementById('cuisine-tags-input'),
+    cuisineActiveDisplay: document.getElementById('cuisine-tags-active'),
+    btnApplyCuisines: document.getElementById('btn-apply-cuisines')
+  };
+
+  const controls = {
+    transitRadius: document.getElementById('transit-radius'),
+    readoutTransitMinutes: document.getElementById('val-transit-radius')
+  };
+
+  function nowStamp() {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
-  /**
-   * Computes compatibility index for all neighborhoods.
-   * Applies user weighting coefficients and dynamic distance decay penalties.
-   */
-  function calculateScores() {
-    const wTrails = parseFloat(weightTrails.value);
-    const wRetail = parseFloat(weightRetail.value);
-    const wFitness = parseFloat(weightFitness.value);
-    const wCulinary = parseFloat(weightCulinary.value);
-    const maxRadiusMins = parseInt(transitRadius.value);
+  function telemetry(message, level = 'info', addToLog = true) {
+    if (reads.telemetryText) {
+      reads.telemetryText.textContent = message;
+    }
+    if (addToLog && reads.scannerGrid) {
+      const item = document.createElement('div');
+      item.className = `scanner-item item-${level}`;
+      item.textContent = `[${nowStamp()}] ${message}`;
+      reads.scannerGrid.prepend(item);
+      while (reads.scannerGrid.children.length > 25) {
+        reads.scannerGrid.removeChild(reads.scannerGrid.lastChild);
+      }
+    }
+  }
 
-    // Sum weights to normalize final scores
-    const sumWeights = (wTrails + wRetail + wFitness + wCulinary) || 1.0;
+  function updateSearchButtonText() {
+    if (!reads.btnSearch) return;
+    if (state.loading) {
+      reads.btnSearch.textContent = state.compareEnabled ? 'Comparing...' : 'Searching...';
+    } else {
+      reads.btnSearch.textContent = state.compareEnabled ? 'Compare' : 'Search';
+    }
+  }
 
-    // Find min and max bounds for normalization
-    const trailMilesArr = neighborhoods.map(n => n.trailMiles);
-    const groceryDistArr = neighborhoods.map(n => n.groceryDist);
-    const gymCountArr = neighborhoods.map(n => n.gymCount);
-    const culinaryIndexArr = neighborhoods.map(n => n.culinaryIndex);
+  function setLoading(isLoading, statusText = '') {
+    state.loading = isLoading;
+    if (reads.btnSearch) reads.btnSearch.disabled = isLoading;
+    updateSearchButtonText();
+    if (isLoading && statusText) telemetry(statusText, 'info', false);
+  }
 
-    const minTrails = Math.min(...trailMilesArr), maxTrails = Math.max(...trailMilesArr);
-    const minGrocery = Math.min(...groceryDistArr), maxGrocery = Math.max(...groceryDistArr);
-    const minGyms = Math.min(...gymCountArr), maxGyms = Math.max(...gymCountArr);
-    const minCulinary = Math.min(...culinaryIndexArr), maxCulinary = Math.max(...culinaryIndexArr);
+  function setStatusPill(pillEl, textEl, text, stateType = 'ready') {
+    if (pillEl) {
+      pillEl.className = `status-pill status-${stateType}`;
+    }
+    if (textEl) {
+      textEl.textContent = text;
+    }
+  }
 
-    // Calculate score details for each neighborhood
-    const scoredList = neighborhoods.map(n => {
-      // 1. Normalize raw values (0.0 to 1.0)
-      const nTrails = normalize(n.trailMiles, minTrails, maxTrails, true);
-      const nRetail = normalize(n.groceryDist, minGrocery, maxGrocery, false); // Closer is better
-      const nFitness = normalize(n.gymCount, minGyms, maxGyms, true);
-      const nCulinary = normalize(n.culinaryIndex, minCulinary, maxCulinary, true);
+  function setPrimaryStatus(text, stateType = 'ready') {
+    setStatusPill(reads.primaryStatusPill, reads.primaryStatusText, text, stateType);
+  }
 
-      // 2. Apply custom weightings
-      const weightedSum = 
-        (nTrails * wTrails) + 
-        (nRetail * wRetail) + 
-        (nFitness * wFitness) + 
-        (nCulinary * wCulinary);
+  function setCompareStatus(text, stateType = 'ready') {
+    setStatusPill(reads.compareStatusPill, reads.compareStatusText, text, stateType);
+  }
 
-      let baseScore = (weightedSum / sumWeights) * 100;
+  function refreshSliderReadouts() {
+    const minutes = parseInt(controls.transitRadius?.value || '10', 10);
+    const radiusMeters = spatial.radiusMetersFromMinutes(minutes);
+    const miles = (radiusMeters / 1609.344).toFixed(1);
 
-      // 3. Transit Radius Decay Penalty
-      // Assume walking/cycling average velocity: 8 minutes per mile.
-      const groceryTransitTime = n.groceryDist * 8; 
-      let decayPenalty = 0;
+    if (controls.readoutTransitMinutes) {
+      controls.readoutTransitMinutes.textContent = `${minutes} min (${miles} mi)`;
+    }
+  }
 
-      // If travel time exceeds max radius, apply a decay penalty
-      if (groceryTransitTime > maxRadiusMins) {
-        // Linear decay factor: penalize proportional to the excess time
-        const excessTime = groceryTransitTime - maxRadiusMins;
-        decayPenalty = Math.min(excessTime * 6, 40); // cap penalty at 40%
-        baseScore = Math.max(0, baseScore - decayPenalty);
+  function getCategoryPrefs() {
+    return {
+      grocery: !!reads.prefGrocery?.checked,
+      fitness: !!reads.prefFitness?.checked,
+      trails: !!reads.prefTrails?.checked,
+      cuisine: !!reads.prefCuisine?.checked,
+      gas: !!reads.prefGas?.checked,
+      parks: !!reads.prefParks?.checked,
+      pharmacy: !!reads.prefPharmacy?.checked
+    };
+  }
+
+  function setCategoryPrefs(prefs) {
+    state.categoryPrefs = { ...state.categoryPrefs, ...prefs };
+    if (reads.prefGrocery) reads.prefGrocery.checked = !!state.categoryPrefs.grocery;
+    if (reads.prefFitness) reads.prefFitness.checked = !!state.categoryPrefs.fitness;
+    if (reads.prefTrails) reads.prefTrails.checked = !!state.categoryPrefs.trails;
+    if (reads.prefCuisine) reads.prefCuisine.checked = !!state.categoryPrefs.cuisine;
+    if (reads.prefGas) reads.prefGas.checked = !!state.categoryPrefs.gas;
+    if (reads.prefParks) reads.prefParks.checked = !!state.categoryPrefs.parks;
+    if (reads.prefPharmacy) reads.prefPharmacy.checked = !!state.categoryPrefs.pharmacy;
+  }
+
+  function selectedCategoryKeys() {
+    return CATEGORY_ORDER.filter((key) => !!state.categoryPrefs[key]);
+  }
+
+  function renderCuisineDisplay() {
+    if (!reads.cuisineActiveDisplay) return;
+    reads.cuisineActiveDisplay.textContent = state.cuisineTags.join(', ');
+  }
+
+  function updateUseLastSearchState() {
+    if (!reads.btnUseCurrent) return;
+    const hasValue = !!state.lastSavedQuery;
+    reads.btnUseCurrent.disabled = !hasValue;
+    reads.btnUseCurrent.title = hasValue ? 'Use your most recent successful search' : 'No previous search is available yet';
+  }
+
+  function hideAutocompleteList() {
+    if (!reads.autocompleteList) return;
+    reads.autocompleteList.hidden = true;
+    reads.autocompleteList.innerHTML = '';
+    state.autocompleteActiveIndex = -1;
+  }
+
+  function showAutocompleteList(candidates, onSelect) {
+    if (!reads.autocompleteList) return;
+    reads.autocompleteList.innerHTML = '';
+    reads.autocompleteList.setAttribute('role', 'listbox');
+    reads.autocompleteList.setAttribute('aria-label', 'Address suggestions');
+    state.autocompleteActiveIndex = -1;
+
+    candidates.forEach((cand, idx) => {
+      const li = document.createElement('li');
+      li.className = 'autocomplete-item';
+      li.setAttribute('role', 'option');
+      li.setAttribute('id', `autocomplete-option-${idx}`);
+      li.tabIndex = -1;
+      li.innerHTML = `<strong>${cand.displayName}</strong>`;
+      li.addEventListener('click', () => {
+        onSelect(cand);
+        hideAutocompleteList();
+      });
+      reads.autocompleteList.appendChild(li);
+    });
+
+    reads.autocompleteList.hidden = false;
+  }
+
+  function renderScoreHeader() {
+    const primary = state.assessments.primary;
+    const compare = state.assessments.compare;
+
+    if (reads.hdrPrimaryName) {
+      reads.hdrPrimaryName.textContent = primary ? primary.displayName : 'Waiting for search...';
+    }
+    if (reads.hdrPrimaryScore) {
+      reads.hdrPrimaryScore.textContent = primary ? String(primary.score) : '--';
+    }
+
+    if (reads.compareScoreCard) {
+      reads.compareScoreCard.hidden = !(state.compareEnabled);
+    }
+
+    if (reads.hdrCompareName) {
+      reads.hdrCompareName.textContent = compare ? compare.displayName : 'Waiting for compare...';
+    }
+    if (reads.hdrCompareScore) {
+      reads.hdrCompareScore.textContent = compare ? String(compare.score) : '--';
+    }
+
+    if (reads.hdrCompareSummary) {
+      if (!primary || !compare || !state.compareEnabled) {
+        reads.hdrCompareSummary.textContent = 'Select preferences and run a search to see what this location matches well.';
+      } else if (primary.score === compare.score) {
+        reads.hdrCompareSummary.textContent = 'Both locations match equally well.';
+      } else if (primary.score > compare.score) {
+        reads.hdrCompareSummary.textContent = `Primary location leads by ${primary.score - compare.score} points.`;
+      } else {
+        reads.hdrCompareSummary.textContent = `Compare location leads by ${compare.score - primary.score} points.`;
+      }
+    }
+  }
+
+  function renderScoreboardList() {
+    if (!reads.scoreboardList) return;
+    reads.scoreboardList.innerHTML = '';
+
+    const primary = state.assessments.primary;
+    const compare = state.assessments.compare;
+    const isCompare = state.compareEnabled && compare;
+
+    CATEGORY_ORDER.forEach((key) => {
+      if (!state.categoryPrefs[key]) return;
+
+      const meta = CATEGORY_META[key];
+      const pCount = primary?.counts[key] ?? 0;
+      const cCount = compare?.counts[key] ?? 0;
+      const pPlaces = primary?.markers[key] || [];
+      const cPlaces = compare?.markers[key] || [];
+
+      const details = document.createElement('details');
+      details.className = 'scoreboard-accordion';
+
+      const summary = document.createElement('summary');
+
+      const title = document.createElement('span');
+      title.className = 'scoreboard-title';
+      title.textContent = isCompare ? `${meta.label} (Primary / Compare)` : `${meta.label} (Target: ${meta.target})`;
+
+      const valWrap = document.createElement('span');
+      valWrap.className = 'scoreboard-val';
+
+      const countText = document.createTextNode(
+        isCompare
+          ? (key === 'trails' ? `${pCount} mi / ${cCount} mi ` : `${pCount} / ${cCount} `)
+          : (key === 'trails' ? `${pCount} mi ` : `${pCount} `)
+      );
+      valWrap.appendChild(countText);
+
+      const chevron = document.createElement('span');
+      chevron.className = 'accordion-chevron';
+      chevron.textContent = '▼';
+      valWrap.appendChild(chevron);
+
+      summary.appendChild(title);
+      summary.appendChild(valWrap);
+      details.appendChild(summary);
+
+      const placeList = document.createElement('ul');
+      placeList.className = 'place-detail-list';
+
+      if (isCompare) {
+        const pHeader = document.createElement('div');
+        pHeader.className = 'place-detail-section-header';
+        pHeader.textContent = `PRIMARY LOCATION PLACES (${pPlaces.length})`;
+        placeList.appendChild(pHeader);
+
+        if (pPlaces.length === 0) {
+          const emptyLi = document.createElement('li');
+          emptyLi.className = 'place-detail-item';
+          emptyLi.innerHTML = '<em>No places detected in radius</em>';
+          placeList.appendChild(emptyLi);
+        } else {
+          pPlaces.slice(0, 15).forEach((pt) => {
+            const li = document.createElement('li');
+            li.className = 'place-detail-item';
+            li.textContent = pt.name || 'Nearby point';
+            placeList.appendChild(li);
+          });
+        }
+
+        const cHeader = document.createElement('div');
+        cHeader.className = 'place-detail-section-header';
+        cHeader.textContent = `COMPARE LOCATION PLACES (${cPlaces.length})`;
+        placeList.appendChild(cHeader);
+
+        if (cPlaces.length === 0) {
+          const emptyLi = document.createElement('li');
+          emptyLi.className = 'place-detail-item';
+          emptyLi.innerHTML = '<em>No places detected in radius</em>';
+          placeList.appendChild(emptyLi);
+        } else {
+          cPlaces.slice(0, 15).forEach((pt) => {
+            const li = document.createElement('li');
+            li.className = 'place-detail-item';
+            li.textContent = pt.name || 'Nearby point';
+            placeList.appendChild(li);
+          });
+        }
+      } else {
+        const pHeader = document.createElement('div');
+        pHeader.className = 'place-detail-section-header';
+        pHeader.textContent = `DETECTED PLACES (${pPlaces.length})`;
+        placeList.appendChild(pHeader);
+
+        if (pPlaces.length === 0) {
+          const emptyLi = document.createElement('li');
+          emptyLi.className = 'place-detail-item';
+          emptyLi.innerHTML = '<em>No places detected in radius</em>';
+          placeList.appendChild(emptyLi);
+        } else {
+          pPlaces.slice(0, 15).forEach((pt) => {
+            const li = document.createElement('li');
+            li.className = 'place-detail-item';
+            li.textContent = pt.name || 'Nearby point';
+            placeList.appendChild(li);
+          });
+        }
       }
 
-      return {
-        ...n,
-        normalized: {
-          trails: nTrails,
-          retail: nRetail,
-          fitness: nFitness,
-          culinary: nCulinary
-        },
-        transitTime: groceryTransitTime,
-        decayPenalty: Math.round(decayPenalty),
-        finalScore: Math.round(baseScore)
-      };
+      details.appendChild(placeList);
+      reads.scoreboardList.appendChild(details);
     });
-
-    // Sort by compatibility score descending
-    scoredList.sort((a, b) => b.finalScore - a.finalScore);
-
-    return scoredList;
   }
 
-  // =========================================================================
-  // TELEMETRY RADAR PLOT DRAWER (SVG VECTOR SHAPE SHIFTER)
-  // =========================================================================
+  function renderMatrixRow(label, assessment, keys) {
+    const tr = document.createElement('tr');
+    const tdLabel = document.createElement('td');
+    tdLabel.innerHTML = `<strong>${label}</strong><br><small>${assessment?.displayName || '--'}</small>`;
+    tr.appendChild(tdLabel);
 
-  function drawRadarChart(topNeighborhood) {
-    radarSvg.innerHTML = ''; // Clear previous elements
-    if (!topNeighborhood) return;
+    const tdScore = document.createElement('td');
+    tdScore.innerHTML = `<strong>${assessment?.score ?? '--'}</strong>`;
+    tr.appendChild(tdScore);
 
-    const size = 300;
-    const center = size / 2;
-    const maxRadius = 100;
+    keys.forEach((key) => {
+      const td = document.createElement('td');
+      const count = assessment?.counts[key] ?? '--';
+      td.textContent = key === 'trails' ? `${count} mi` : count;
+      tr.appendChild(td);
+    });
 
-    // Angles for 4 axes: Trails (0), Grocery (90), Fitness (180), Culinary (270)
-    // Angles converted to radians
-    const axes = [
-      { name: "TRAILS", angle: 0 },
-      { name: "GROCERY", angle: Math.PI / 2 },
-      { name: "FITNESS", angle: Math.PI },
-      { name: "CULINARY", angle: (3 * Math.PI) / 2 }
-    ];
+    return tr;
+  }
 
-    // Normalized values cache
-    const values = [
-      topNeighborhood.normalized.trails,
-      topNeighborhood.normalized.retail,
-      topNeighborhood.normalized.fitness,
-      topNeighborhood.normalized.culinary
-    ];
+  function renderMatrix() {
+    if (!reads.matrixHeadRow || !reads.matrixTbody) return;
 
-    // Draw grid rings (4 circles)
-    for (let r = 1; r <= 4; r++) {
-      const ringRadius = (r / 4) * maxRadius;
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', center);
-      circle.setAttribute('cy', center);
-      circle.setAttribute('r', ringRadius);
-      circle.setAttribute('class', 'radar-grid-line');
-      radarSvg.appendChild(circle);
+    reads.matrixHeadRow.innerHTML = '';
+    reads.matrixTbody.innerHTML = '';
+
+    const primary = state.assessments.primary;
+    const compare = state.assessments.compare;
+
+    const thLoc = document.createElement('th');
+    thLoc.textContent = 'Location';
+    reads.matrixHeadRow.appendChild(thLoc);
+
+    const thScore = document.createElement('th');
+    thScore.textContent = 'Score';
+    reads.matrixHeadRow.appendChild(thScore);
+
+    const categoryKeys = selectedCategoryKeys();
+    categoryKeys.forEach((key) => {
+      const th = document.createElement('th');
+      th.textContent = CATEGORY_META[key].label;
+      reads.matrixHeadRow.appendChild(th);
+    });
+
+    reads.matrixTbody.appendChild(renderMatrixRow('Primary', primary, categoryKeys));
+
+    if (state.compareEnabled && compare) {
+      reads.matrixTbody.appendChild(renderMatrixRow('Compare', compare, categoryKeys));
+    }
+  }
+
+  function ensureMap(slot) {
+    const el = slot === 'primary' ? reads.routePreviewMap : reads.routePreviewMapCompare;
+    if (!el || typeof window.L === 'undefined') return null;
+
+    if (state.maps[slot]) return state.maps[slot];
+
+    const map = window.L.map(el, {
+      zoomControl: true,
+      attributionControl: false
+    });
+
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    const group = window.L.layerGroup().addTo(map);
+    state.maps[slot] = map;
+    state.layerGroups[slot] = group;
+    return map;
+  }
+
+  function renderMapForAssessment(slot, assessment) {
+    const map = ensureMap(slot);
+    const footerEl = slot === 'primary' ? reads.primaryMapFooter : reads.compareMapFooter;
+    if (!map || !state.layerGroups[slot]) return;
+
+    const group = state.layerGroups[slot];
+    group.clearLayers();
+
+    if (!assessment || !assessment.center) {
+      map.setView([39.8283, -98.5795], 4);
+      if (footerEl) footerEl.textContent = 'Enter an address to view live map features';
+      return;
     }
 
-    // Draw axes lines and labels
-    axes.forEach((axis, idx) => {
-      const cos = Math.cos(axis.angle);
-      const sin = Math.sin(axis.angle);
+    const { center, radiusMeters, radiusMinutes, markers, counts, sourceLabel } = assessment;
 
-      const targetX = center + cos * maxRadius;
-      const targetY = center + sin * maxRadius;
+    map.setView([center.lat, center.lon], 13);
+    window.L.circle([center.lat, center.lon], {
+      radius: radiusMeters,
+      color: '#38bdf8',
+      fillColor: '#0284c7',
+      fillOpacity: 0.1,
+      weight: 2
+    }).addTo(group);
 
-      // Axis line
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', center);
-      line.setAttribute('y1', center);
-      line.setAttribute('x2', targetX);
-      line.setAttribute('y2', targetY);
-      line.setAttribute('class', 'radar-axis-line');
-      radarSvg.appendChild(line);
+    const centerMarker = window.L.circleMarker([center.lat, center.lon], {
+      radius: 8,
+      color: '#ffffff',
+      fillColor: '#0ea5e9',
+      fillOpacity: 1,
+      weight: 3
+    }).addTo(group);
+    centerMarker.bindPopup(`<strong>${assessment.displayName}</strong><br>Search center`);
 
-      // Axis Label
-      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      const offsetFactor = 1.2; // Push text outside bounds
-      text.setAttribute('x', center + cos * maxRadius * offsetFactor);
-      text.setAttribute('y', center + sin * maxRadius * offsetFactor + 3);
-      text.setAttribute('class', 'radar-axis-label font-mono');
-      text.textContent = axis.name;
-      radarSvg.appendChild(text);
+    CATEGORY_ORDER.forEach((key) => {
+      if (!state.categoryPrefs[key]) return;
+      const list = markers[key] || [];
+      const meta = CATEGORY_META[key];
+
+      list.forEach((pt) => {
+        const m = window.L.circleMarker([pt.lat, pt.lon], {
+          radius: 5,
+          color: '#ffffff',
+          fillColor: meta.color,
+          fillOpacity: 0.9,
+          weight: 1.5
+        }).addTo(group);
+        m.bindPopup(`<strong>${meta.label}: ${pt.name || 'Nearby point'}</strong>`);
+      });
     });
 
-    // Plot footprint points & polygon area path
-    const points = axes.map((axis, idx) => {
-      const val = values[idx];
-      const distance = val * maxRadius;
-      const x = center + Math.cos(axis.angle) * distance;
-      const y = center + Math.sin(axis.angle) * distance;
-      return { x, y };
-    });
+    if (footerEl) {
+      footerEl.textContent = `${sourceLabel || 'Live view'} | Radius: ${radiusMinutes} min | Grocery: ${counts.grocery} | Fitness: ${counts.fitness} | Trails: ${counts.trails} mi | Cuisine: ${counts.cuisine} | Parks: ${counts.parks}`;
+    }
 
-    const pointsStr = points.map(p => `${p.x},${p.y}`).join(' ');
-
-    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    polygon.setAttribute('points', pointsStr);
-    polygon.setAttribute('class', 'radar-area-path');
-    radarSvg.appendChild(polygon);
-
-    // Draw small highlight dots at vertices
-    points.forEach(p => {
-      const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      dot.setAttribute('cx', p.x);
-      dot.setAttribute('cy', p.y);
-      dot.setAttribute('r', 4);
-      dot.setAttribute('fill', 'var(--accent-green)');
-      radarSvg.appendChild(dot);
-    });
+    setTimeout(() => map.invalidateSize(), 150);
   }
-
-  // =========================================================================
-  // REAL-TIME RENDERING (INTERFACE BINDINGS)
-  // =========================================================================
 
   function renderDashboard() {
-    // 1. Recalculate
-    const scoredList = calculateScores();
-    const topMatch = scoredList[0];
+    const primary = state.assessments.primary;
+    const compare = state.assessments.compare;
 
-    // 2. Render Top Match Card
-    topNeighborhoodName.textContent = topMatch.name;
-    topNeighborhoodScore.textContent = topMatch.finalScore;
-    hdrGpsCoords.textContent = `SATFEED // LAT: ${topMatch.lat.toFixed(4)} // LON: ${topMatch.lon.toFixed(4)}`;
+    renderScoreHeader();
+    renderScoreboardList();
+    renderMatrix();
+    renderMapForAssessment('primary', primary);
 
-    // 3. Draw Radar Chart
-    drawRadarChart(topMatch);
+    if (reads.compareMapCard) {
+      reads.compareMapCard.hidden = !(state.compareEnabled);
+    }
 
-    // 4. Render Scoreboard
-    scoreboardList.innerHTML = '';
-    scoredList.forEach((n, idx) => {
-      const item = document.createElement('div');
-      item.className = `scoreboard-item ${idx === 0 ? 'rank-1' : ''}`;
-      
-      const details = document.createElement('div');
-      details.className = 'rank-details';
-      
-      const name = document.createElement('span');
-      name.className = 'rank-name';
-      name.textContent = `${idx + 1}. ${n.name}`;
-      
-      details.appendChild(name);
-
-      const score = document.createElement('span');
-      score.className = 'rank-score';
-      score.textContent = `${n.finalScore}%`;
-
-      item.appendChild(details);
-      item.appendChild(score);
-      scoreboardList.appendChild(item);
-    });
-
-    // 5. Render Infrastructure Table Matrix
-    matrixTbody.innerHTML = '';
-    const maxRadiusMins = parseInt(transitRadius.value);
-
-    scoredList.forEach(n => {
-      const row = document.createElement('tr');
-
-      // Neighborhood name
-      const tdName = document.createElement('td');
-      tdName.textContent = n.name;
-      row.appendChild(tdName);
-
-      // Grocery distance
-      const tdGrocery = document.createElement('td');
-      tdGrocery.textContent = `${n.groceryDist} miles (${Math.round(n.transitTime)} min)`;
-      // Highlight warning if travel time exceeds acceptable travel offset limit
-      if (n.transitTime > maxRadiusMins) {
-        tdGrocery.className = 'td-error';
-      }
-      row.appendChild(tdGrocery);
-
-      // Gym count
-      const tdGym = document.createElement('td');
-      tdGym.textContent = `${n.gymCount} gyms`;
-      // Warn if fitness facilities are sparse
-      if (n.gymCount < 2) {
-        tdGym.className = 'td-warning';
-      }
-      row.appendChild(tdGym);
-
-      // Trail miles
-      const tdTrails = document.createElement('td');
-      tdTrails.textContent = `${n.trailMiles} miles`;
-      // Warn if trail connectivity is low
-      if (n.trailMiles < 1.0) {
-        tdTrails.className = 'td-warning';
-      }
-      row.appendChild(tdTrails);
-
-      // Culinary variety index
-      const tdCulinary = document.createElement('td');
-      tdCulinary.textContent = `${Math.round(n.culinaryIndex * 100)}% density`;
-      if (n.culinaryIndex < 0.2) {
-        tdCulinary.className = 'td-warning';
-      }
-      row.appendChild(tdCulinary);
-
-      // Transit decay penalty
-      const tdDecay = document.createElement('td');
-      tdDecay.textContent = n.decayPenalty > 0 ? `-${n.decayPenalty}%` : '0%';
-      if (n.decayPenalty > 0) {
-        tdDecay.className = 'text-orange';
-      }
-      row.appendChild(tdDecay);
-
-      matrixTbody.appendChild(row);
-    });
+    if (state.compareEnabled) {
+      renderMapForAssessment('compare', compare);
+    }
   }
 
-  // =========================================================================
-  // SIMULATED GPS SCANNER DISPLAY LOGGER
-  // =========================================================================
+  function recomputeAssessmentsFromSources() {
+    const radiusMinutes = parseInt(controls.transitRadius?.value || '10', 10);
+    for (const slot of ['primary', 'compare']) {
+      const source = state.sources[slot];
+      if (!source) continue;
+      state.assessments[slot] = scoring.buildAssessment(slot, source.query, source.candidate, source.parsed, {
+        radiusMinutes,
+        categoryPrefs: state.categoryPrefs
+      });
+    }
+    renderDashboard();
+    savePrefs();
+  }
 
-  function initScannerLoop() {
-    let scanCount = 0;
-    setInterval(() => {
-      scanCount++;
-      const row = document.createElement('div');
-      row.className = 'scanner-row';
+  async function runAssessmentForCandidate(slot, query, candidate) {
+    const shortLabel = geocoder.getShortAddressLabel(candidate?.displayName, query);
 
-      const timeSpan = document.createElement('span');
-      timeSpan.textContent = `[${new Date().toTimeString().split(' ')[0]}]`;
+    if (slot === 'primary') {
+      setPrimaryStatus(`Searching: ${shortLabel}...`, 'searching');
+    } else {
+      setCompareStatus(`Searching: ${shortLabel}...`, 'searching');
+    }
 
-      const neighborhood = neighborhoods[Math.floor(Math.random() * neighborhoods.length)];
-      // Introduce minor random variance to coordinate scan line to simulate real-time mapping sweeps
-      const varLat = neighborhood.lat + (Math.random() - 0.5) * 0.005;
-      const varLon = neighborhood.lon + (Math.random() - 0.5) * 0.005;
+    setLoading(true, `Analyzing ${shortLabel}...`);
 
-      const coordSpan = document.createElement('span');
-      coordSpan.className = 'scan-coord';
-      coordSpan.textContent = `COORD: ${varLat.toFixed(4)}, ${varLon.toFixed(4)}`;
+    try {
+      if (slot === 'primary') {
+        state.locationQuery = query;
+        state.lastSavedQuery = query;
+        state.locationDisplay = candidate.displayName;
+        state.locationCenter = candidate.center;
+        updateUseLastSearchState();
+      }
 
-      const statusSpan = document.createElement('span');
-      if (Math.random() > 0.4) {
-        statusSpan.className = 'text-green';
-        statusSpan.textContent = 'LOCK // OK';
+      telemetry(`Analyzing ${shortLabel}...`, 'info');
+      telemetry('Gathering nearby places for your selected priorities...', 'info', false);
+
+      const selectedKeys = selectedCategoryKeys();
+      const radiusMinutes = parseInt(controls.transitRadius?.value || '10', 10);
+      const queryRadiusMeters = spatial.radiusMetersFromMinutes(radiusMinutes) + 700;
+      const overpassQuery = spatial.buildOverpassQuery(candidate.center, queryRadiusMeters, selectedKeys, state.cuisineTags);
+
+      let parsed = null;
+      let sourceLabel = 'Live view';
+
+      try {
+        const overpassData = await spatial.runOverpassQuery(overpassQuery);
+        parsed = spatial.parseOverpassData(overpassData);
+      } catch (_overpassError) {
+        telemetry('Primary map server busy. Trying alternate live server...', 'warn', false);
+        parsed = await spatial.fetchLiveFallbackData(candidate.center, queryRadiusMeters, selectedKeys, state.cuisineTags);
+        sourceLabel = 'Live view (alternate server)';
+      }
+
+      if (!parsed || (!spatial.hasAnyDataPoints(parsed) && sourceLabel.includes('alternate'))) {
+        throw new Error('Live map servers are busy or rate-limited. Click Search to retry.');
+      }
+
+      state.sources[slot] = { query, candidate, parsed, queriedRadiusMinutes: radiusMinutes };
+      const assessment = scoring.buildAssessment(slot, query, candidate, parsed, {
+        isEstimated: false,
+        sourceLabel,
+        radiusMinutes,
+        categoryPrefs: state.categoryPrefs
+      });
+      state.assessments[slot] = assessment;
+
+      if (slot === 'primary') {
+        setPrimaryStatus(`Primary Address: ${shortLabel}`, 'success');
       } else {
-        statusSpan.className = 'scan-pulse';
-        statusSpan.textContent = 'SWEEPING...';
+        setCompareStatus(`Compare Address: ${shortLabel}`, 'success');
       }
 
-      row.appendChild(timeSpan);
-      row.appendChild(coordSpan);
-      row.appendChild(statusSpan);
-
-      scannerGrid.appendChild(row);
-
-      // Clip grid rows length to prevent overflows
-      if (scannerGrid.children.length > 8) {
-        scannerGrid.removeChild(scannerGrid.firstChild);
-      }
-    }, 1200);
-  }
-
-  // =========================================================================
-  // EVENT LISTENERS & BOOT
-  // =========================================================================
-
-  function bindInputSlider(slider, readout, suffix = '') {
-    slider.addEventListener('input', () => {
-      readout.textContent = slider.value + suffix;
+      telemetry(`${slot === 'primary' ? 'Primary' : 'Compare'} location ready.`, 'info');
       renderDashboard();
-    });
+      savePrefs();
+    } catch (error) {
+      if (slot === 'compare') {
+        state.sources.compare = null;
+        state.assessments.compare = null;
+        setCompareStatus(`Compare: ${shortLabel} — Search failed`, 'error');
+        telemetry('Compare failed: live map data is unavailable right now.', 'error');
+      } else {
+        state.sources.primary = null;
+        state.assessments.primary = null;
+        setPrimaryStatus(`Primary: ${shortLabel} — Search failed`, 'error');
+        telemetry('Search failed: live map data is unavailable right now.', 'error');
+      }
+      renderDashboard();
+      savePrefs();
+    } finally {
+      setLoading(false);
+    }
   }
 
-  bindInputSlider(weightTrails, valWTrails);
-  bindInputSlider(weightRetail, valWRetail);
-  bindInputSlider(weightFitness, valWFitness);
-  bindInputSlider(weightCulinary, valWCulinary);
-  bindInputSlider(transitRadius, valTransitRadius, ' min');
+  async function executeSearch(rawQuery, slot = 'primary') {
+    if (state.loading) {
+      telemetry('A search is already running. Please wait a moment.', 'warn', false);
+      return;
+    }
 
-  // Boot UI
-  renderDashboard();
-  initScannerLoop();
+    const query = String(rawQuery || '').trim();
+    if (!query) {
+      telemetry(`Enter a search location first.`, 'warn');
+      return;
+    }
+
+    // Check if we already have valid cached live map source for this exact query, slot AND transit radius
+    const currentRadiusMinutes = parseInt(controls.transitRadius?.value || '10', 10);
+    const cachedSource = state.sources[slot];
+
+    if (cachedSource && cachedSource.query && cachedSource.parsed && spatial.hasAnyDataPoints(cachedSource.parsed)) {
+      const qLower = query.toLowerCase().trim();
+      const cQueryLower = String(cachedSource.query || '').toLowerCase().trim();
+      const cDisplayLower = String(cachedSource.candidate?.displayName || '').toLowerCase().trim();
+      const sameAddress = (qLower === cQueryLower || qLower === cDisplayLower || cDisplayLower.includes(qLower) || qLower.includes(cQueryLower));
+      const sameRadius = (cachedSource.queriedRadiusMinutes === currentRadiusMinutes);
+
+      if (sameAddress && sameRadius) {
+        telemetry(`Reusing active live map data for ${slot}...`, 'info', false);
+        const assessment = scoring.buildAssessment(slot, cachedSource.query, cachedSource.candidate, cachedSource.parsed, {
+          isEstimated: false,
+          sourceLabel: 'Live view (active)',
+          radiusMinutes: currentRadiusMinutes,
+          categoryPrefs: state.categoryPrefs
+        });
+        state.assessments[slot] = assessment;
+        const shortLabel = geocoder.getShortAddressLabel(cachedSource.candidate?.displayName, query);
+        if (slot === 'primary') {
+          setPrimaryStatus(`Primary Address: ${shortLabel}`, 'success');
+        } else {
+          setCompareStatus(`Compare Address: ${shortLabel}`, 'success');
+        }
+        renderDashboard();
+        savePrefs();
+        return;
+      }
+    }
+
+    const shortQuery = geocoder.getShortAddressLabel(null, query);
+    if (slot === 'primary') {
+      setPrimaryStatus(`Searching: ${shortQuery}...`, 'searching');
+    } else {
+      setCompareStatus(`Searching: ${shortQuery}...`, 'searching');
+    }
+
+    setLoading(true, `Searching ${query}...`);
+    try {
+      if (slot === 'primary' && reads.scannerGrid) {
+        reads.scannerGrid.innerHTML = '';
+      }
+
+      telemetry(`Resolving ${slot === 'primary' ? 'primary' : 'compare'} location...`, 'info', false);
+      const candidates = await geocoder.fetchGeocodeCandidates(query);
+
+      if (slot === 'primary') {
+        state.searchCandidates = candidates;
+        hideAutocompleteList();
+      }
+
+      const selected = candidates[0];
+      await runAssessmentForCandidate(slot, query, selected);
+    } catch (error) {
+      if (slot === 'primary') {
+        setPrimaryStatus(`Primary: ${shortQuery} — Search failed`, 'error');
+      } else {
+        setCompareStatus(`Compare: ${shortQuery} — Search failed`, 'error');
+      }
+      telemetry('Search could not be completed right now. Please try again.', 'error');
+      setLoading(false);
+    }
+  }
+
+  function loadPrefs() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+
+      if (data.categoryPrefs) setCategoryPrefs(data.categoryPrefs);
+      if (Array.isArray(data.cuisineTags) && data.cuisineTags.length) {
+        state.cuisineTags = data.cuisineTags;
+      }
+      if (data.transitMinutes && controls.transitRadius) {
+        controls.transitRadius.value = String(data.transitMinutes);
+      }
+      if (typeof data.compareEnabled === 'boolean') {
+        state.compareEnabled = data.compareEnabled;
+      }
+      if (data.lastSavedQuery) {
+        state.lastSavedQuery = data.lastSavedQuery;
+      }
+    } catch (_err) {}
+  }
+
+  function savePrefs() {
+    try {
+      const data = {
+        app_version: APP_VERSION,
+        categoryPrefs: state.categoryPrefs,
+        cuisineTags: state.cuisineTags,
+        transitMinutes: parseInt(controls.transitRadius?.value || '10', 10),
+        compareEnabled: state.compareEnabled,
+        lastSavedQuery: state.lastSavedQuery
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (_err) {}
+  }
+
+  function initUI() {
+    loadPrefs();
+    refreshSliderReadouts();
+    renderCuisineDisplay();
+    updateUseLastSearchState();
+
+    if (reads.compareToggle) {
+      reads.compareToggle.checked = state.compareEnabled;
+      if (reads.compareGroup) reads.compareGroup.hidden = !state.compareEnabled;
+      if (reads.compareStatusPill) reads.compareStatusPill.hidden = !state.compareEnabled;
+      updateSearchButtonText();
+
+      reads.compareToggle.addEventListener('change', () => {
+        state.compareEnabled = !!reads.compareToggle.checked;
+        if (reads.compareGroup) reads.compareGroup.hidden = !state.compareEnabled;
+        if (reads.compareStatusPill) reads.compareStatusPill.hidden = !state.compareEnabled;
+        updateSearchButtonText();
+
+        if (!state.compareEnabled) {
+          state.sources.compare = null;
+          state.assessments.compare = null;
+          setCompareStatus('Compare Mode Disabled', 'idle');
+        } else {
+          setCompareStatus('Ready for second street address search', 'ready');
+        }
+        renderDashboard();
+        savePrefs();
+      });
+    }
+
+    if (reads.btnClearSearch) {
+      reads.btnClearSearch.addEventListener('click', () => {
+        if (reads.locationInput) reads.locationInput.value = '';
+        if (reads.compareInput) reads.compareInput.value = '';
+        state.sources.primary = null;
+        state.sources.compare = null;
+        state.assessments.primary = null;
+        state.assessments.compare = null;
+        setPrimaryStatus('Ready for primary street address search', 'ready');
+        setCompareStatus('Ready for second street address search', 'ready');
+        renderDashboard();
+      });
+    }
+
+    if (reads.btnUseCurrent) {
+      reads.btnUseCurrent.addEventListener('click', () => {
+        if (!state.lastSavedQuery) return;
+        if (reads.locationInput) reads.locationInput.value = state.lastSavedQuery;
+        executeSearch(state.lastSavedQuery, 'primary');
+      });
+    }
+
+    if (controls.transitRadius) {
+      controls.transitRadius.addEventListener('input', () => {
+        refreshSliderReadouts();
+        recomputeAssessmentsFromSources();
+      });
+    }
+
+    [
+      reads.prefGrocery,
+      reads.prefFitness,
+      reads.prefTrails,
+      reads.prefCuisine,
+      reads.prefGas,
+      reads.prefParks,
+      reads.prefPharmacy
+    ].forEach((el) => {
+      if (!el) return;
+      el.addEventListener('change', () => {
+        state.categoryPrefs = getCategoryPrefs();
+        recomputeAssessmentsFromSources();
+      });
+    });
+
+    if (reads.cuisineInput) {
+      const addCuisines = () => {
+        const val = (reads.cuisineInput.value || '').trim();
+        if (val) {
+          const tags = val.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+          tags.forEach((tag) => {
+            if (!state.cuisineTags.includes(tag)) state.cuisineTags.push(tag);
+          });
+          reads.cuisineInput.value = '';
+          renderCuisineDisplay();
+          recomputeAssessmentsFromSources();
+        }
+      };
+
+      reads.cuisineInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addCuisines();
+        }
+      });
+
+      if (reads.btnApplyCuisines) {
+        reads.btnApplyCuisines.addEventListener('click', () => {
+          addCuisines();
+        });
+      }
+    }
+
+    if (reads.locationForm) {
+      reads.locationForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const primaryQuery = (reads.locationInput?.value || '').trim();
+        if (!primaryQuery) {
+          telemetry('Enter a primary street address first.', 'warn');
+          return;
+        }
+
+        if (state.compareEnabled) {
+          const compareQuery = (reads.compareInput?.value || '').trim();
+          if (!compareQuery) {
+            telemetry('Enter a second street address to compare.', 'warn');
+            return;
+          }
+          await executeSearch(primaryQuery, 'primary');
+          await new Promise((resolve) => setTimeout(resolve, 400));
+          await executeSearch(compareQuery, 'compare');
+        } else {
+          await executeSearch(primaryQuery, 'primary');
+        }
+      });
+    }
+
+    // Standalone Autocomplete module initialization
+    if (window.RelocationAutocomplete) {
+      window.RelocationAutocomplete.attachAutocomplete(reads.locationInput, reads.autocompleteList, {
+        fetchFn: (val) => geocoder.fetchGeocodeCandidates(val, { limit: 5 })
+      });
+      window.RelocationAutocomplete.attachAutocomplete(reads.compareInput, null, {
+        fetchFn: (val) => geocoder.fetchGeocodeCandidates(val, { limit: 5 })
+      });
+    }
+
+    telemetry(`Relocation Analytics v${APP_VERSION} initialized. Ready for street address.`, 'info');
+    renderDashboard();
+  }
+
+  initUI();
 });

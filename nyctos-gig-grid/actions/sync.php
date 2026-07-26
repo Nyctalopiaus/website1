@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../services/EventAggregator.php';
+require_once __DIR__ . '/../services/SyncReportService.php';
 
 function syncCliLog(string $message, bool $isCli = false): void {
     if (!$isCli) {
@@ -10,6 +11,8 @@ function syncCliLog(string $message, bool $isCli = false): void {
 }
 
 function handleSyncRequest(bool $isCli = false) {
+    $syncStartedAt = microtime(true);
+
     if (!$isCli) {
         header('Content-Type: application/json');
     } else {
@@ -65,12 +68,39 @@ function handleSyncRequest(bool $isCli = false) {
             'events_purged' => 0,
             'orphan_setlists_removed' => 0,
         ];
+        $retentionDays = defined('EVENT_RETENTION_DAYS') ? (int)EVENT_RETENTION_DAYS : 4;
         try {
-            $retentionDays = defined('EVENT_RETENTION_DAYS') ? (int)EVENT_RETENTION_DAYS : 4;
             $aggregator->log('[DEBUG] Running DB maintenance...');
             $maintenance = runDatabaseMaintenance($aggregator, $retentionDays);
         } catch (Throwable $e) {
             $aggregator->log('[MAINTENANCE ERROR] DB maintenance warning: ' . $e->getMessage());
+        }
+
+        $runtimeSeconds = microtime(true) - $syncStartedAt;
+        $reportData = $aggregator->getRunReportData([
+            'runtime_seconds' => $runtimeSeconds,
+            'success' => true,
+        ]);
+
+        $configuredMarkets = $aggregator->getConfiguredMarkets();
+        if (!empty($configuredMarkets)) {
+            $reportData['execution']['markets_processed'] = $configuredMarkets;
+            $reportData['execution']['markets_processed_count'] = count($configuredMarkets);
+        }
+
+        $aggregator->log(sprintf(
+            '[SYNC REPORT] Runtime=%s | Markets=%d | Status=%s',
+            formatSyncRuntime((float)$reportData['execution']['runtime_seconds']),
+            (int)$reportData['execution']['markets_processed_count'],
+            !empty($reportData['execution']['success']) ? 'SUCCESS' : 'FAILED'
+        ));
+
+        $emailSent = sendSyncReportEmail($reportData, function($msg) use ($aggregator) {
+            $aggregator->log($msg);
+        });
+
+        if ($emailSent) {
+            $aggregator->log('[SYNC REPORT] Post-run report email sent successfully.');
         }
 
         $aggregator->log('[SYNC COMPLETE] Sync completed successfully.');
@@ -98,11 +128,43 @@ function handleSyncRequest(bool $isCli = false) {
             'setlists_cached' => $setlistFetched,
             'events_purged' => $maintenance['events_purged'],
             'orphan_setlists_removed' => $maintenance['orphan_setlists_removed'],
+            'sync_report' => $reportData,
             'logs' => $aggregator->getLogs()
         ]);
     } catch (Throwable $t) {
         $msg = "[FATAL EXCEPTION IN SYNC] " . $t->getMessage() . " in " . $t->getFile() . ":" . $t->getLine();
         syncCliLog($msg, $isCli);
+
+        $fallbackReport = [
+            'execution' => [
+                'started_at' => date('c', (int)$syncStartedAt),
+                'ended_at' => date('c'),
+                'runtime_seconds' => microtime(true) - $syncStartedAt,
+                'markets_processed' => [],
+                'markets_processed_count' => 0,
+                'success' => false,
+            ],
+            'ingestion' => [],
+            'enrichment' => [
+                'musicbrainz_auto_approved_count' => 0,
+                'musicbrainz_auto_approved_artists' => [],
+                'genre_bucket_distribution' => [],
+                'unknown_tags_write_count' => 0,
+                'unknown_tags_written' => [],
+            ],
+            'errors' => [
+                'http_non_200' => [],
+                'connection_failures' => [],
+                'scraper_dropouts' => [],
+                'warnings' => [],
+                'fatal' => [$msg],
+            ],
+        ];
+
+        sendSyncReportEmail($fallbackReport, function($line) use ($isCli) {
+            syncCliLog($line, $isCli);
+        });
+
         if ($isCli) {
             syncCliLog($t->getTraceAsString(), true);
         }

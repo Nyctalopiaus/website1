@@ -19,3 +19,10 @@ define('SMTP_ENCRYPTION', '');
 // Security hardening toggles
 define('ALLOW_WEB_SYNC', false); // Keep false in production; use CLI cron.
 define('AGGREGATOR_ACTION_TOKEN', 'replace_with_long_random_token');
+
+// Daily/cron sync report email settings
+define('SYNC_REPORT_EMAIL_ENABLED', true);
+define('SYNC_REPORT_EMAIL_TO', 'you@example.com');
+define('SYNC_REPORT_EMAIL_FROM', 'ConcertPassport@nycto.ninja');
+define('SYNC_REPORT_EMAIL_FROM_NAME', "Nycto's Gig Grid");
+define('SYNC_REPORT_EMAIL_SUBJECT_PREFIX', '[Nycto Sync]');

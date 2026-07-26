@@ -16,7 +16,7 @@ function applyApiResponseHeaders() {
 function fetchHttpResource($url, array $options = []) {
     $timeout = (int)($options['timeout'] ?? 6);
     $headers = $options['headers'] ?? [];
-    $userAgent = (string)($options['user_agent'] ?? 'MetalConcertCalendar/1.0');
+    $userAgent = (string)($options['user_agent'] ?? 'NyctosGigGrid/1.0');
     $followRedirects = array_key_exists('follow_redirects', $options) ? (bool)$options['follow_redirects'] : true;
 
     if (function_exists('curl_init')) {

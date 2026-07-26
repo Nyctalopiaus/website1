@@ -56,7 +56,7 @@ function fetchSetlistFromSetlistFm($artist, $date, $city) {
 
     $result = fetchHttpResource($url, [
         'timeout' => 12,
-        'user_agent' => 'MetalConcertCalendar/1.0',
+        'user_agent' => 'NyctosGigGrid/1.0',
         'headers' => [
             'Accept: application/json',
             'x-api-key: ' . $apiKey
@@ -83,7 +83,7 @@ function fetchSetlistFromSetlistFm($artist, $date, $city) {
 
         $fallbackResult = fetchHttpResource($url, [
             'timeout' => 12,
-            'user_agent' => 'MetalConcertCalendar/1.0',
+            'user_agent' => 'NyctosGigGrid/1.0',
             'headers' => [
                 'Accept: application/json',
                 'x-api-key: ' . $apiKey

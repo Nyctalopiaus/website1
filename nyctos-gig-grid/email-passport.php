@@ -1,6 +1,6 @@
 <?php
 /**
- * Email Show List Endpoint - Stateless mail client using PHPMailer
+ * Email Interested Shows Endpoint - Stateless mail client using PHPMailer
  */
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
@@ -61,7 +61,7 @@ try {
     $events = $stmt->fetchAll();
 } catch (Exception $e) {
     logServerException('email-passport-db-query', $e);
-    echo json_encode(['status' => 'error', 'message' => 'Unable to prepare your show list right now.']);
+    echo json_encode(['status' => 'error', 'message' => 'Unable to prepare your interested shows right now.']);
     exit;
 }
 
@@ -84,7 +84,7 @@ $emailBody = '<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Your Nycto\'s Gig Grid Show List</title>
+    <title>Your Nycto\'s Gig Grid Interested Shows</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #111215; font-family: \'Outfit\', -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; color: #e2e8f0; -webkit-font-smoothing: antialiased;">
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #111215; padding: 40px 20px;">
@@ -99,8 +99,8 @@ $emailBody = '<!DOCTYPE html>
                     </tr>
                     <tr>
                         <td style="padding: 40px 40px 20px 40px;">
-                            <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin-top: 0; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Your Show List</h1>
-                            <p style="font-size: 14px; color: #94a3b8; line-height: 1.6; margin-bottom: 30px;">Here is the custom list of upcoming rock and metal shows you saved. Get ready to hit the pit!</p>';
+                            <h1 style="font-size: 24px; font-weight: 700; color: #ffffff; margin-top: 0; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em;">Your Interested Shows</h1>
+                            <p style="font-size: 14px; color: #94a3b8; line-height: 1.6; margin-bottom: 30px;">Here is your custom list of upcoming live shows you saved. Have a great time out there.</p>';
 
 foreach ($events as $e) {
     $dateInfo = getEmailDateDetails($e['start_time']);
@@ -194,11 +194,11 @@ try {
     $mail->setFrom('ConcertPassport@nycto.ninja', "Nycto's Gig Grid");
     $mail->addAddress($email);
     $mail->isHTML(true);
-    $mail->Subject = "Your Nycto's Gig Grid Show List";
+    $mail->Subject = "Your Nycto's Gig Grid Interested Shows";
     $mail->Body = $emailBody;
 
     $mail->send();
-    echo json_encode(['status' => 'success', 'message' => 'Show list emailed successfully! Check your inbox (and spam folder).']);
+    echo json_encode(['status' => 'success', 'message' => 'Interested shows emailed successfully! Check your inbox (and spam folder).']);
 } catch (Exception $e) {
     logServerException('email-passport-mail', $e);
     error_log('[email-passport] Mailer error: ' . $mail->ErrorInfo);

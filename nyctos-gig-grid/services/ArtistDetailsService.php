@@ -41,7 +41,7 @@ function fetchArtistDetails($artistName) {
 
         $result = fetchHttpResource($url, [
             'timeout' => 6,
-            'user_agent' => 'MetalConcertCalendar/1.0 (contact@nycto.ninja)'
+            'user_agent' => 'NyctosGigGrid/1.0 (contact@nycto.ninja)'
         ]);
 
         if ($result['status'] === 200 && !empty($result['body'])) {
@@ -76,7 +76,7 @@ function fetchArtistDetails($artistName) {
 
         $searchResult = fetchHttpResource($searchUrl, [
             'timeout' => 6,
-            'user_agent' => 'MetalPassport/1.0 (contact@nycto.ninja)'
+            'user_agent' => 'NyctosGigGrid/1.0 (contact@nycto.ninja)'
         ]);
 
         if ($searchResult['status'] === 200 && !empty($searchResult['body'])) {
@@ -143,7 +143,7 @@ function fetchArtistDetails($artistName) {
 
                 $summaryResult = fetchHttpResource($summaryUrl, [
                     'timeout' => 6,
-                    'user_agent' => 'MetalPassport/1.0 (contact@nycto.ninja)'
+                    'user_agent' => 'NyctosGigGrid/1.0 (contact@nycto.ninja)'
                 ]);
 
                 if ($summaryResult['status'] === 200 && !empty($summaryResult['body'])) {

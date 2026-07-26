@@ -1,6 +1,6 @@
 <?php
 /**
- * Configuration Settings for Metal Concert Calendar
+ * Configuration Settings for Nycto's Gig Grid
  */
 
 $localConfigPath = __DIR__ . '/config.local.php';
@@ -8,12 +8,12 @@ if (file_exists($localConfigPath)) {
     require_once $localConfigPath;
 }
 
-$envFilePath = getenv('METAL_CALENDAR_ENV_FILE');
+$envFilePath = getenv('NYCTOS_GIG_GRID_ENV_FILE');
 if ($envFilePath === false || trim($envFilePath) === '') {
     $envFilePath = '/home/nyctltlc/api.env';
 }
 
-$GLOBALS['METAL_CALENDAR_FILE_ENV'] = [];
+$GLOBALS['NYCTOS_GIG_GRID_FILE_ENV'] = [];
 if (is_readable($envFilePath)) {
     $lines = file($envFilePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     if (is_array($lines)) {
@@ -40,7 +40,7 @@ if (is_readable($envFilePath)) {
                 $value = substr($value, 1, strlen($value) - 2);
             }
 
-            $GLOBALS['METAL_CALENDAR_FILE_ENV'][$key] = $value;
+            $GLOBALS['NYCTOS_GIG_GRID_FILE_ENV'][$key] = $value;
         }
     }
 }
@@ -52,7 +52,7 @@ if (!function_exists('cfgEnv')) {
             return $value;
         }
 
-        $fileEnv = $GLOBALS['METAL_CALENDAR_FILE_ENV'] ?? [];
+        $fileEnv = $GLOBALS['NYCTOS_GIG_GRID_FILE_ENV'] ?? [];
         if (isset($fileEnv[$name]) && $fileEnv[$name] !== '') {
             return $fileEnv[$name];
         }
@@ -221,6 +221,27 @@ if (!defined('AGGREGATOR_ACTION_TOKEN')) {
 if (!defined('EVENT_RETENTION_DAYS')) {
     $retentionRaw = (int)cfgEnv('EVENT_RETENTION_DAYS', '4');
     define('EVENT_RETENTION_DAYS', max(1, $retentionRaw));
+}
+
+if (!defined('SYNC_REPORT_EMAIL_TO')) {
+    define('SYNC_REPORT_EMAIL_TO', cfgEnv('SYNC_REPORT_EMAIL_TO', ''));
+}
+
+if (!defined('SYNC_REPORT_EMAIL_FROM')) {
+    define('SYNC_REPORT_EMAIL_FROM', cfgEnv('SYNC_REPORT_EMAIL_FROM', SMTP_USERNAME));
+}
+
+if (!defined('SYNC_REPORT_EMAIL_FROM_NAME')) {
+    define('SYNC_REPORT_EMAIL_FROM_NAME', cfgEnv('SYNC_REPORT_EMAIL_FROM_NAME', "Nycto's Gig Grid"));
+}
+
+if (!defined('SYNC_REPORT_EMAIL_SUBJECT_PREFIX')) {
+    define('SYNC_REPORT_EMAIL_SUBJECT_PREFIX', cfgEnv('SYNC_REPORT_EMAIL_SUBJECT_PREFIX', '[Nycto Sync]'));
+}
+
+if (!defined('SYNC_REPORT_EMAIL_ENABLED')) {
+    $reportEnabledRaw = strtolower(trim((string)cfgEnv('SYNC_REPORT_EMAIL_ENABLED', SYNC_REPORT_EMAIL_TO !== '' ? '1' : '0')));
+    define('SYNC_REPORT_EMAIL_ENABLED', in_array($reportEnabledRaw, ['1', 'true', 'yes', 'on'], true));
 }
 
 if (!function_exists('getMarketLocationSuffix')) {

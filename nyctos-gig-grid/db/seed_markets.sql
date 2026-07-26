@@ -1,4 +1,4 @@
--- Multi-market venue seed for Southern California and Scotland
+-- Multi-market venue seed for California and Scotland
 -- Safe to run multiple times (INSERT OR IGNORE by venue_key)
 
 BEGIN TRANSACTION;

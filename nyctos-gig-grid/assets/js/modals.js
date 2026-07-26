@@ -20,14 +20,14 @@ export function initEmailModal(getInterestedIds) {
   const openEmailModal = () => {
     const interestedIds = getInterestedIds();
     if (interestedIds.length === 0) {
-      alert('Your Interested Shows list is empty. Please star some concerts first before emailing your show list!');
+      alert('Your Interested Shows list is empty. Please star some concerts first before emailing your interested shows.');
       return;
     }
 
     emailError.style.display = 'none';
     emailSuccess.style.display = 'none';
     emailForm.reset();
-    resetSubmitButton(`${ICONS.email} Send Show List`);
+    resetSubmitButton(`${ICONS.email} Send Interested Shows`);
     emailModal.style.display = 'flex';
   };
 
@@ -75,7 +75,7 @@ export function initEmailModal(getInterestedIds) {
       if (!response.ok) {
         emailError.textContent = 'Server responded with an error. Please try again.';
         emailError.style.display = 'block';
-        resetSubmitButton(`${ICONS.email} Send Show List`);
+        resetSubmitButton(`${ICONS.email} Send Interested Shows`);
         return;
       }
 
@@ -89,13 +89,13 @@ export function initEmailModal(getInterestedIds) {
       } else {
         emailError.textContent = data.message;
         emailError.style.display = 'block';
-        resetSubmitButton(`${ICONS.email} Send Show List`);
+        resetSubmitButton(`${ICONS.email} Send Interested Shows`);
       }
     } catch (error) {
       console.error('Email dispatch request error', error);
       emailError.textContent = 'Failed to connect to the mail dispatcher. Try again.';
       emailError.style.display = 'block';
-      resetSubmitButton(`${ICONS.email} Send Show List`);
+      resetSubmitButton(`${ICONS.email} Send Interested Shows`);
     }
   });
 }
@@ -147,9 +147,17 @@ export function initVenueModal(venueData) {
       venueModalAddress.textContent = details.address;
       venueModalMaps.href = details.maps_url;
     } else {
+      const market = document.body?.dataset?.market || 'front-range';
+      let regionLabel = 'Colorado';
+      if (market === 'socal') {
+        regionLabel = 'California';
+      } else if (market === 'scotland') {
+        regionLabel = 'Scotland';
+      }
+
       venueModalName.textContent = venueName;
-      venueModalAddress.textContent = 'Colorado Front Range Venue';
-      venueModalMaps.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(venueName + ' Colorado');
+      venueModalAddress.textContent = `${regionLabel} Venue`;
+      venueModalMaps.href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(`${venueName} ${regionLabel}`);
     }
 
     venueModal.style.display = 'flex';

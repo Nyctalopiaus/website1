@@ -4,7 +4,19 @@
 class VenueScraper {
     private $logs = [];
 
-    public function scrape($url, $selector) {
+    public function scrape($url, $selector, $aggregator = null) {
+        if (strpos($url, 'etix.com/ticket/o/6122') !== false || strpos($url, 'cervantes') !== false) {
+            $this->logs[] = "[REDIRECT] eTix outlet page requires cookie session. Routing to Cervantes Masterpiece & Other Side live calendar...";
+            $url = 'https://cervantesmasterpiece.com/events/';
+        }
+        if (strpos($url, 'hi-dive.com') !== false) {
+            $this->logs[] = "[REDIRECT] Hi-Dive embeds dynamic Dice JS widget. Routing to live venue calendar...";
+            $url = 'https://do303.com/venues/hi-dive';
+        }
+        if (strpos($url, 'skylarklounge.com') !== false) {
+            $this->logs[] = "[REDIRECT] Skylark Lounge static site contains legacy archive. Routing to live Do303 venue calendar...";
+            $url = 'https://do303.com/venues/the-skylark-lounge';
+        }
         $this->logs[] = "Initializing scraping process for URL: " . $url;
         
         $ch = curl_init();
@@ -16,6 +28,7 @@ class VenueScraper {
         
         $html = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
 
         // If direct fetch is blocked (403, 405, 503, 0) and we have a proxy token:
@@ -30,11 +43,20 @@ class VenueScraper {
             curl_setopt($ch, CURLOPT_TIMEOUT, 30);
             $html = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
             curl_close($ch);
         }
 
         if (empty($html) || $httpCode !== 200) {
             $this->logs[] = "[WARN] Failed to load HTML from " . $url . " (HTTP " . $httpCode . "). Using simulation fallback.";
+            if ($aggregator !== null) {
+                if ($httpCode !== 200 && $httpCode > 0) {
+                    $aggregator->recordHttpNon200('VenueScraper', null, $httpCode, "URL: {$url}");
+                }
+                if ($html === false || $httpCode === 0 || !empty($curlError)) {
+                    $aggregator->recordConnectionFailure('VenueScraper', null, "URL: {$url} {$curlError}");
+                }
+            }
             return $this->getSimulationEvents($url);
         }
 
@@ -45,6 +67,35 @@ class VenueScraper {
         @$dom->loadHTML($html);
         $xpath = new DOMXPath($dom);
         
+        // Dedicated parser for Do303 venue feeds (Hi-Dive, Skylark Lounge)
+        if (strpos($url, 'do303.com') !== false) {
+            preg_match_all('/<a[^>]+href="(\/events\/(20\d\d)\/(\d+)\/(\d+)[^"]*)"[^>]*>(.*?)<\/a>/s', $html, $matches, PREG_SET_ORDER);
+            $events = [];
+            foreach ($matches as $m) {
+                $eventPath = $m[1];
+                $year = $m[2];
+                $month = str_pad($m[3], 2, '0', STR_PAD_LEFT);
+                $day = str_pad($m[4], 2, '0', STR_PAD_LEFT);
+                $cleanTitle = trim(strip_tags(html_entity_decode($m[5])));
+                
+                if (!empty($cleanTitle) && strlen($cleanTitle) > 2 && preg_match('/[a-zA-Z]/', $cleanTitle) && strpos($cleanTitle, '2026') !== 0 && !preg_match('/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/i', $cleanTitle)) {
+                    $startIso = "{$year}-{$month}-{$day} 19:00:00";
+                    $events[] = [
+                        'artist_name' => $cleanTitle,
+                        'venue_name' => $this->getVenueNameFromUrl($url),
+                        'city_name' => 'Denver',
+                        'start_time' => $startIso,
+                        'ticket_url' => 'https://do303.com' . $eventPath,
+                        'source' => 'VenueScraper'
+                    ];
+                }
+            }
+            if (!empty($events)) {
+                $this->logs[] = "[DO303] Extracted " . count($events) . " live events for " . $this->getVenueNameFromUrl($url);
+                return $events;
+            }
+        }
+
         // Find elements matching selector
         $elements = $xpath->query($selector);
         $events = [];
@@ -76,9 +127,16 @@ class VenueScraper {
                 
                 if (!empty($artistName)) {
                     $timeSql = !empty($startTime) ? date('Y-m-d H:i:s', strtotime($startTime)) : date('Y-m-d H:i:s', strtotime('+3 weeks'));
+                    $resolvedVenueName = $this->getVenueNameFromUrl($ticketUrl);
+                    if ($resolvedVenueName === 'Unknown Venue' || $resolvedVenueName === 'Cervantes\' Other Side') {
+                        $testFallback = $this->getVenueNameFromUrl($url);
+                        if ($testFallback !== 'Unknown Venue') {
+                            $resolvedVenueName = $testFallback;
+                        }
+                    }
                     $events[] = [
                         'artist_name' => $artistName,
-                        'venue_name' => $this->getVenueNameFromUrl($url),
+                        'venue_name' => $resolvedVenueName,
                         'city_name' => 'Denver',
                         'start_time' => $timeSql,
                         'ticket_url' => $ticketUrl,
@@ -97,6 +155,14 @@ class VenueScraper {
     }
 
     private function getVenueNameFromUrl($url) {
+        if (strpos($url, 'larimerlounge') !== false) return 'Larimer Lounge';
+        if (strpos($url, 'cervantesother-side') !== false) return 'Cervantes\' Other Side';
+        if (strpos($url, 'cervantesmasterpiece-ballroom') !== false) return 'Cervantes\' Masterpiece Ballroom';
+        if (strpos($url, 'cervantesand-the-other-side-dual-venue') !== false) return 'Cervantes\' and The Other Side - DUAL VENUE';
+        if (strpos($url, 'cervantes') !== false || strpos($url, '6122') !== false) return 'Cervantes\' Other Side';
+        if (strpos($url, 'hi-dive') !== false) return 'Hi-Dive';
+        if (strpos($url, 'skylarklounge') !== false) return 'The Skylark Lounge';
+        if (strpos($url, 'globehall') !== false) return 'Globe Hall';
         if (strpos($url, 'blacksheeprocks') !== false) return 'The Black Sheep';
         if (strpos($url, 'bluebirdtheater') !== false) return 'Bluebird Theater';
         if (strpos($url, 'ogdentheatre') !== false) return 'Ogden Theatre';

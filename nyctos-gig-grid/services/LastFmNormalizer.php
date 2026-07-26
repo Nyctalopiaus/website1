@@ -138,14 +138,14 @@ class LastFmNormalizer {
         $data = json_decode($response, true);
         $tagsList = $this->extractTopTagsFromLastFmResponse(is_array($data) ? $data : []);
         if (empty($tagsList)) {
-            $cacheSave = $this->db->prepare("INSERT OR REPLACE INTO artist_genre_cache (artist_name, is_metal, tags, checked_at) VALUES (:artist, 0, '', CURRENT_TIMESTAMP)");
-            $cacheSave->execute([':artist' => $artistName]);
+            $cacheSaveEmpty = $this->db->prepare("INSERT OR REPLACE INTO artist_genre_cache (artist_name, is_metal, tags, checked_at) VALUES (:artist, 0, '', CURRENT_TIMESTAMP)");
+            $cacheSaveEmpty->execute([':artist' => $artistName]);
             return '';
         }
 
         $tagsStr = implode(', ', $tagsList);
-        $cacheSave = $this->db->prepare("INSERT OR REPLACE INTO artist_genre_cache (artist_name, is_metal, tags, checked_at) VALUES (:artist, 1, :tags, CURRENT_TIMESTAMP)");
-        $cacheSave->execute([':artist' => $artistName, ':tags' => $tagsStr]);
+        $cacheSaveTags = $this->db->prepare("INSERT OR REPLACE INTO artist_genre_cache (artist_name, is_metal, tags, checked_at) VALUES (:artist, 1, :tags, CURRENT_TIMESTAMP)");
+        $cacheSaveTags->execute([':artist' => $artistName, ':tags' => $tagsStr]);
         return $tagsStr;
     }
 
@@ -200,6 +200,18 @@ class LastFmNormalizer {
         $normalizedCount = 0;
         $apiKey = LASTFM_API_KEY;
 
+        // Prepare statements once outside the loop to prevent handle corruption
+        $updateOverrideStmt = $this->db->prepare("UPDATE events SET genre = :genre, genre_source = 'manual', genre_locked = 1 WHERE LOWER(artist_name) = LOWER(:artist)");
+        $updateLockedStmt   = $this->db->prepare("UPDATE events SET genre_source = 'manual', genre_locked = 1 WHERE LOWER(artist_name) = LOWER(:artist) AND genre_locked = 1");
+        $checkLockStmt     = $this->db->prepare("SELECT COUNT(*) FROM events WHERE LOWER(artist_name) = LOWER(:artist) AND genre_locked = 1");
+        $cacheHitStmt       = $this->db->prepare("SELECT tags, checked_at FROM artist_genre_cache WHERE LOWER(artist_name) = LOWER(:artist)");
+        $updateLineupStmt   = $this->db->prepare("UPDATE events SET genre = :genre, tags = :tags, genre_source = 'lastfm', lastfm_normalized_at = CURRENT_TIMESTAMP WHERE LOWER(artist_name) = LOWER(:artist) AND genre_locked = 0");
+        $updateCacheHitStmt = $this->db->prepare("UPDATE events SET genre = :genre, tags = COALESCE(NULLIF(tags, ''), :tags), genre_source = 'lastfm', lastfm_normalized_at = CURRENT_TIMESTAMP WHERE LOWER(artist_name) = LOWER(:artist) AND genre_locked = 0");
+        $cacheSaveEmptyStmt = $this->db->prepare("INSERT OR REPLACE INTO artist_genre_cache (artist_name, is_metal, tags, checked_at) VALUES (:artist, 0, '', CURRENT_TIMESTAMP)");
+        $cacheSaveTagsStmt  = $this->db->prepare("INSERT OR REPLACE INTO artist_genre_cache (artist_name, is_metal, tags, checked_at) VALUES (:artist, 1, :tags, CURRENT_TIMESTAMP)");
+        $oldGenreStmt       = $this->db->prepare("SELECT genre, source FROM events WHERE LOWER(artist_name) = LOWER(:artist) LIMIT 1");
+        $updateNormalStmt   = $this->db->prepare("UPDATE events SET genre = :genre, tags = :tags, genre_source = 'lastfm', lastfm_normalized_at = CURRENT_TIMESTAMP WHERE LOWER(artist_name) = LOWER(:artist) AND genre_locked = 0");
+
         foreach ($artists as $artistName) {
             $artistName = trim((string)$artistName);
             if ($artistName === '') {
@@ -210,18 +222,15 @@ class LastFmNormalizer {
             $overrideGenre = resolveArtistGenreOverride($artistName, $this->genreOverrides);
             if ($overrideGenre !== null) {
                 $this->log("[OVERRIDE PROTECTED] Artist '{$artistName}' locked to '{$overrideGenre}' (manual override). Skipping API.");
-                $updateStmt = $this->db->prepare("UPDATE events SET genre = :genre, genre_source = 'manual', genre_locked = 1 WHERE LOWER(artist_name) = LOWER(:artist)");
-                $updateStmt->execute([':genre' => $overrideGenre, ':artist' => $artistName]);
+                $updateOverrideStmt->execute([':genre' => $overrideGenre, ':artist' => $artistName]);
                 continue;
             }
 
             // Check if any event for this artist is explicitly genre_locked = 1
-            $checkLockStmt = $this->db->prepare("SELECT COUNT(*) FROM events WHERE LOWER(artist_name) = LOWER(:artist) AND genre_locked = 1");
             $checkLockStmt->execute([':artist' => $artistName]);
             if ((int)$checkLockStmt->fetchColumn() > 0) {
                 $this->log("[OVERRIDE PROTECTED] Artist '{$artistName}' has locked events (genre_locked = 1). Skipping API.");
-                $updateStmt = $this->db->prepare("UPDATE events SET genre_source = 'manual', genre_locked = 1 WHERE LOWER(artist_name) = LOWER(:artist) AND genre_locked = 1");
-                $updateStmt->execute([':artist' => $artistName]);
+                $updateLockedStmt->execute([':artist' => $artistName]);
                 continue;
             }
 
@@ -252,8 +261,7 @@ class LastFmNormalizer {
                     if (!empty($collectedTags)) {
                         $lineupTagsStr = implode(', ', array_slice($collectedTags, 0, 6));
                         $lineupBucket = $this->mapTagsToBucket($lineupTagsStr);
-                        $updateStmt = $this->db->prepare("UPDATE events SET genre = :genre, tags = :tags, genre_source = 'lastfm', lastfm_normalized_at = CURRENT_TIMESTAMP WHERE LOWER(artist_name) = LOWER(:artist) AND genre_locked = 0");
-                        $updateStmt->execute([':genre' => $lineupBucket, ':tags' => $lineupTagsStr, ':artist' => $artistName]);
+                        $updateLineupStmt->execute([':genre' => $lineupBucket, ':tags' => $lineupTagsStr, ':artist' => $artistName]);
                         $this->log("[LINEUP NORMALIZATION] '{$artistName}' mapped via component artists -> '{$lineupBucket}' [Tags: {$lineupTagsStr}]");
                         $normalizedCount++;
                         continue;
@@ -265,17 +273,15 @@ class LastFmNormalizer {
             }
 
             // 2. Local Database & Cache Check First
-            $cacheStmt = $this->db->prepare("SELECT tags, checked_at FROM artist_genre_cache WHERE LOWER(artist_name) = LOWER(:artist)");
-            $cacheStmt->execute([':artist' => $artistName]);
-            $cacheRow = $cacheStmt->fetch(PDO::FETCH_ASSOC);
+            $cacheHitStmt->execute([':artist' => $artistName]);
+            $cacheRow = $cacheHitStmt->fetch(PDO::FETCH_ASSOC);
 
             if (!empty($cacheRow) && !empty($cacheRow['tags'])) {
                 $cachedTags = $cacheRow['tags'];
                 $newBucket = $this->mapTagsToBucket($cachedTags);
                 
                 // Update events from local cache
-                $updateStmt = $this->db->prepare("UPDATE events SET genre = :genre, tags = COALESCE(NULLIF(tags, ''), :tags), genre_source = 'lastfm', lastfm_normalized_at = CURRENT_TIMESTAMP WHERE LOWER(artist_name) = LOWER(:artist) AND genre_locked = 0");
-                $updateStmt->execute([':genre' => $newBucket, ':tags' => $cachedTags, ':artist' => $artistName]);
+                $updateCacheHitStmt->execute([':genre' => $newBucket, ':tags' => $cachedTags, ':artist' => $artistName]);
 
                 $this->log("[LOCAL CACHE HIT] Artist '{$artistName}' mapped via cached tags ('{$cachedTags}') -> '{$newBucket}'. Bypassing API.");
                 $normalizedCount++;

@@ -17,7 +17,10 @@ function loadScrapedEventsForTarget(array $target, string $cacheDir, EventAggreg
         return json_decode(file_get_contents($cacheFile), true) ?: [];
     }
 
-    $scrapedEvents = $scraper->scrape($target['venue_url'], $target['selector']);
+    $scrapedEvents = $scraper->scrape($target['venue_url'], $target['selector'], $aggregator);
+    foreach ($scraper->getLogs() as $logMsg) {
+        $aggregator->log("[SCRAPER] " . $logMsg);
+    }
     if (!empty($scrapedEvents)) {
         file_put_contents($cacheFile, json_encode($scrapedEvents));
     }
@@ -44,6 +47,7 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
                 $isMetal = $aggregator->fetchArtistGenreMetadata($event['artist_name']);
                 if ($isMetal) {
                     $approvedNames = $aggregator->seedApprovedArtistNames($event['artist_name']);
+                    $aggregator->recordAutoApprovedArtists($approvedNames);
                     $aggregator->log("[ENRICHMENT] Auto-approving performer(s) '" . implode("', '", $approvedNames) . "' via MusicBrainz genre match.");
                 }
             }
@@ -67,6 +71,10 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
 
         foreach ($scraper->getLogs() as $log) {
             $aggregator->log('[SCRAPER] ' . $log);
+            $logLower = strtolower((string)$log);
+            if (strpos($logLower, '[warn]') !== false || strpos($logLower, 'fallback') !== false || strpos($logLower, 'failed') !== false) {
+                $aggregator->recordScraperDropout($log);
+            }
         }
     }
 
@@ -157,9 +165,27 @@ function runDatabaseMaintenance(EventAggregator $aggregator, int $retentionDays 
         $db = getDbConnection();
         $db->beginTransaction();
 
-        $purgeStmt = $db->prepare("DELETE FROM events WHERE start_time < datetime('now', :window)");
-        $purgeStmt->execute([':window' => '-' . max(1, $retentionDays) . ' days']);
+        $cutoffDate = date('Y-m-d H:i:s', strtotime('-' . max(1, $retentionDays) . ' days'));
+
+        $soonOldRows = $db->prepare("SELECT source, COALESCE(NULLIF(TRIM(market), ''), 'front-range') AS market_key, COUNT(*) AS cnt FROM events WHERE start_time < :cutoff GROUP BY source, market_key");
+        $soonOldRows->execute([':cutoff' => $cutoffDate]);
+        $purgeBreakdown = $soonOldRows->fetchAll(PDO::FETCH_ASSOC);
+
+        $purgeStmt = $db->prepare("DELETE FROM events WHERE start_time < :cutoff");
+        $purgeStmt->execute([':cutoff' => $cutoffDate]);
         $result['events_purged'] = (int)$purgeStmt->rowCount();
+
+        foreach ($purgeBreakdown as $row) {
+            $rawSources = array_filter(array_map('trim', explode(',', (string)($row['source'] ?? 'unknown'))));
+            if (empty($rawSources)) {
+                $rawSources = ['unknown'];
+            }
+            $marketKey = (string)($row['market_key'] ?? 'front-range');
+            $count = (int)($row['cnt'] ?? 0);
+            foreach ($rawSources as $sourceName) {
+                $aggregator->recordPurgedCount($sourceName, $marketKey, $count);
+            }
+        }
 
         // event_setlists has no FK; remove orphan rows explicitly after event purge.
         $orphanStmt = $db->exec("DELETE FROM event_setlists WHERE event_id NOT IN (SELECT event_id FROM events)");

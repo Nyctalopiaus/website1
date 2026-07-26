@@ -59,3 +59,20 @@ IndexIgnore .htaccess .index.css backend
   Header set Referrer-Policy "strict-origin-when-cross-origin"
   Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
 </IfModule>
+
+# 7. Block Direct Access to Database, Log, and Config Files
+<FilesMatch "\.(db|sqlite|sqlite3|log|sql|env|py|sh)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# 8. Anti-Scraping: Block Automated Scraping Bots & User-Agents
+<IfModule mod_rewrite.c>
+  RewriteCond %{HTTP_USER_AGENT} (python-requests|curl|wget|scrapy|libwww-perl|go-http-client|bytespider|gptbot|claudebot|ccbot|ahrefsbot|semrushbot) [NC]
+  RewriteRule ^ - [F,L]
+</IfModule>

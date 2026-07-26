@@ -2,174 +2,215 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-      <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.open-meteo.com https://unpkg.com https://widgets.mortgagenewsdaily.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://*.basemaps.cartocdn.com; connect-src 'self' https://api.open-meteo.com https://nominatim.openstreetmap.org https://widgets.mortgagenewsdaily.com https://router.project-osrm.org;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://api.open-meteo.com https://unpkg.com https://widgets.mortgagenewsdaily.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://*.basemaps.cartocdn.com; connect-src 'self' https://unpkg.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org https://photon.komoot.io https://widgets.mortgagenewsdaily.com https://router.project-osrm.org https://overpass-api.de https://overpass.kumi.systems https://overpass.private.coffee https://maps.mail.ru https://overpass.osm.ch; object-src 'none'; base-uri 'self'; form-action 'self';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Relocation Accessibility & Trail-Proximity Scorer // GIS Console</title>
+  <title>Relocation Analytics Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=4" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css?v=117" />
 </head>
 <body>
-  <div class="crt-overlay"></div>
-  <div class="scanlines"></div>
 
   <header class="header">
     <div class="logo">
       <a href="../" class="btn-back">← BACK TO LAB</a>
-      <span class="logo-text font-mono">ACCESSIBILITY // SCANNER // V2.8</span>
-    </div>
-    <!-- Simulated GPS Locking status info -->
-    <div class="gps-telemetry font-mono">
-      <span class="pulse-indicator"></span>
-      <span class="gps-coords" id="hdr-gps-coords">LOCATING SAT FEED...</span>
+      <span class="logo-text">Relocation Analytics Dashboard</span>
     </div>
   </header>
 
   <main class="container">
     <div class="dashboard-grid">
-      
-      <!-- Collapsible Instructions Panel -->
-      <section class="panel-card instructions-card">
-        <details open>
-          <summary class="font-mono text-green" style="cursor: pointer; outline: none; font-weight: 700; list-style: none;">[SYS_HELP] ACCESS_OPERATING_INSTRUCTIONS() <span class="summary-arrow"></span></summary>
-          <div class="instructions-content font-mono" style="margin-top: 1rem; font-size: 0.8rem; line-height: 1.6; color: var(--text-muted);">
-            <p style="margin-bottom: 0.5rem;">1. <strong>Adjust Priority Weights</strong>: Drag coefficients (0.0 to 1.0) to set personal preferences for cycling trails, groceries, gym access, and dining density.</p>
-            <p style="margin-bottom: 0.5rem;">2. <strong>Desired Transit Threshold</strong>: Set the max travel offset limit (2-20 mins). If travel to essential retail (grocery) exceeds this target, distance-decay penalties trigger.</p>
-            <p style="margin-bottom: 0.5rem;">3. <strong>Review Suitability Footprint</strong>: Check the multi-axis SVG Radar plot to assess the suitability footprint of your top matched neighborhood.</p>
-            <p>4. <strong>Analyze Infrastructure Table</strong>: Real-time table outlines metrics, highlighting <span class="badge badge-warn">WARNINGS</span> for low values and <span class="badge badge-error">CRITICAL</span> states if limits are violated.</p>
-          </div>
-        </details>
-      </section>
 
-      <!-- Panel 1: Weights and Control Sliders -->
-      <section class="panel-card controls-panel">
-        <div class="panel-header">
-          <span class="panel-icon">🔧</span>
-          <h2>Weighting Parameters</h2>
+      <!-- Start With A Street Address & Preferences Hero -->
+      <section class="search-hero panel-card">
+        <div class="search-hero-header">
+          <div class="search-hero-copy">
+            <h1>Start With A Street Address</h1>
+            <p>Define what matters most to you, set your transit radius, and evaluate any location in real time.</p>
+          </div>
+          <button id="btn-clear-search" type="button" class="btn-clear-search">Clear Search</button>
         </div>
 
-        <div class="input-group">
-          <div class="slider-header font-mono">
-            <span>Cycling & Trail Networks</span>
-            <span id="val-w-trails" class="slider-val text-green">0.7</span>
-          </div>
-          <input id="weight-trails" type="range" min="0" max="1" step="0.1" value="0.7" class="terminal-slider" />
-          <span class="slider-desc">Weighting coefficient for continuous cycling pathways & raw trail mileage.</span>
-        </div>
+        <div class="search-console">
+          <form id="location-search-form" class="search-form" autocomplete="off">
+            <label for="location-search-input" class="sr-only">Search home or apartment street address</label>
+            <div class="search-input-wrap">
+              <input id="location-search-input" class="search-input" type="text" placeholder="Try: 1313 Disneyland Dr, Anaheim, CA 92802" autocomplete="off" />
+              <div id="autocomplete-list" class="autocomplete-list" hidden></div>
+            </div>
+            <button id="btn-main-action" type="submit" class="search-btn">Search</button>
+          </form>
 
-        <div class="input-group">
-          <div class="slider-header font-mono">
-            <span>Essential Retail (Grocery)</span>
-            <span id="val-w-retail" class="slider-val text-green">0.6</span>
+          <div class="compare-toggle-row">
+            <label class="compare-toggle-label" for="compare-toggle">
+              <input id="compare-toggle" type="checkbox" />
+              Compare with a second location
+            </label>
           </div>
-          <input id="weight-retail" type="range" min="0" max="1" step="0.1" value="0.6" class="terminal-slider" />
-          <span class="slider-desc">Weighting coefficient for daily food access infrastructure proximity.</span>
-        </div>
-
-        <div class="input-group">
-          <div class="slider-header font-mono">
-            <span>Fitness & Athletics</span>
-            <span id="val-w-fitness" class="slider-val text-green">0.4</span>
+          <div id="compare-input-row" class="compare-input-row" hidden>
+            <div class="search-input-wrap">
+              <input id="location-compare-input" class="search-input" type="text" placeholder="Second address to compare (e.g. 5578 S Telluride St, Centennial, CO)" autocomplete="off" />
+            </div>
           </div>
-          <input id="weight-fitness" type="range" min="0" max="1" step="0.1" value="0.4" class="terminal-slider" />
-          <span class="slider-desc">Weighting coefficient for active gym counts and training facilities.</span>
-        </div>
 
-        <div class="input-group">
-          <div class="slider-header font-mono">
-            <span>Culinary Diversity Index</span>
-            <span id="val-w-culinary" class="slider-val text-green">0.5</span>
+          <!-- Embedded Preferences Section -->
+          <div class="embedded-preferences-wrap border-top-divider">
+            <div class="preferences-grid">
+              <div class="input-group">
+                <div class="slider-header">
+                  <span>What should count toward your score?</span>
+                </div>
+                <div class="pref-check-grid" id="pref-check-grid">
+                  <label class="pref-check"><input id="pref-trails" type="checkbox" checked /> Cycling &amp; Trail Networks</label>
+                  <label class="pref-check"><input id="pref-grocery" type="checkbox" checked /> Grocery Stores</label>
+                  <label class="pref-check"><input id="pref-fitness" type="checkbox" checked /> Fitness &amp; Athletics</label>
+                  <label class="pref-check"><input id="pref-cuisine" type="checkbox" checked /> Cuisine Matches</label>
+                  <label class="pref-check"><input id="pref-gas" type="checkbox" /> Gas Stations</label>
+                  <label class="pref-check"><input id="pref-parks" type="checkbox" /> Parks</label>
+                  <label class="pref-check"><input id="pref-pharmacy" type="checkbox" /> Pharmacies</label>
+                </div>
+                <span class="slider-desc">Only selected categories contribute to your location match score.</span>
+              </div>
+
+              <div class="preferences-subcol">
+                <div class="input-group">
+                  <div class="slider-header">
+                    <span>Maximum Desired Transit Radius</span>
+                    <span id="val-transit-radius" class="slider-val text-orange">10 min</span>
+                  </div>
+                  <input id="transit-radius" type="range" min="2" max="30" step="1" value="10" class="terminal-slider slider-orange" />
+                  <span class="slider-desc">All counts and score logic use this universal radius.</span>
+                </div>
+
+                <div class="input-group border-top-divider">
+                  <div class="slider-header">
+                    <span>Cuisine Filters</span>
+                    <span id="cuisine-tags-active" class="slider-val">thai, vietnamese</span>
+                  </div>
+                  <div class="cuisine-input-row">
+                    <input id="cuisine-tags-input" class="cuisine-tags-input" type="text" placeholder="thai, vietnamese, korean, indian" />
+                    <button id="btn-apply-cuisines" type="button" class="ghost-btn">Update</button>
+                  </div>
+                  <span class="slider-desc">Use comma-separated cuisines to personalize dining relevance.</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <input id="weight-culinary" type="range" min="0" max="1" step="0.1" value="0.5" class="terminal-slider" />
-          <span class="slider-desc">Weighting coefficient for high-variety dining (e.g. Thai & Vietnamese density).</span>
-        </div>
 
-        <div class="input-group border-top-divider">
-          <div class="slider-header font-mono">
-            <span>Maximum Desired Transit Radius</span>
-            <span id="val-transit-radius" class="slider-val text-orange">10 min</span>
+          <div class="search-actions border-top-divider">
+            <button id="btn-use-current" type="button" class="ghost-btn">Use Last Search</button>
+            <button id="btn-export-report" type="button" class="ghost-btn">Export Report</button>
           </div>
-          <input id="transit-radius" type="range" min="2" max="20" step="1" value="10" class="terminal-slider slider-orange" />
-          <span class="slider-desc">Maximum acceptable travel offset. Penalizes neighborhood scores dynamically.</span>
-        </div>
-      </section>
 
-      <!-- Panel 2: Telemetry Display (Radar Chart & Top Neighborhood) -->
-      <section class="panel-card stats-panel">
-        <div class="panel-header">
-          <span class="panel-icon">🛰️</span>
-          <h2>Spatial Footprint Profile</h2>
-        </div>
-
-        <div class="radar-container">
-          <div class="radar-chart-wrapper">
-            <svg id="radar-svg" viewBox="0 0 300 300" preserveAspectRatio="none">
-              <!-- Render dynamic radar graph vectors -->
-            </svg>
-          </div>
-          
-          <div class="top-neighborhood-card font-mono">
-            <span class="card-label">TOP COMPATIBILITY MATCH:</span>
-            <h3 id="top-neighborhood-name">LOADING MATCH...</h3>
-            <div class="card-score-box">
-              <span id="top-neighborhood-score" class="score-val">00</span>
-              <span class="score-label">MATCH INDEX</span>
+          <div id="location-status-container" class="location-status-container">
+            <div id="primary-status-pill" class="status-pill status-ready">
+              <span class="status-pulse"></span>
+              <span id="primary-status-text" class="status-text">Ready for primary street address search</span>
+            </div>
+            <div id="compare-status-pill" class="status-pill status-ready" hidden>
+              <span class="status-pulse"></span>
+              <span id="compare-status-text" class="status-text">Ready for second street address search</span>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Panel 3: Coordinate scanning matrix -->
-      <section class="panel-card scanner-panel">
-        <div class="panel-header">
-          <span class="panel-icon">💻</span>
-          <h2>Telemetry Scanner Monitor</h2>
-        </div>
-        <div class="scanner-wrapper font-mono">
-          <div class="scanner-matrix-grid" id="scanner-grid">
-            <!-- Simulated coordinate list -->
+      <!-- Side-by-Side Results Row: Map (Left) & Match Score (Right) -->
+      <div class="results-hero-grid">
+        <!-- Map Panel (Left Column) -->
+        <section class="panel-card route-panel">
+          <div class="panel-header">
+            <span class="panel-icon">🗺️</span>
+            <h2>What&apos;s Around You Map</h2>
           </div>
-        </div>
-      </section>
+          <div class="map-grid" id="around-map-grid">
+            <div class="route-preview-wrap">
+              <div id="route-preview-map" aria-label="primary location map preview"></div>
+              <div id="route-preview-empty" class="route-preview-empty">Search a location to map nearby places that match your preferences.</div>
+              <div id="route-preview-meta" class="route-preview-meta"></div>
+            </div>
+            <div id="compare-map-card" class="route-preview-wrap" hidden>
+              <div id="route-preview-map-compare" aria-label="compare location map preview"></div>
+              <div id="route-preview-empty-compare" class="route-preview-empty">Run compare to render the second map.</div>
+              <div id="route-preview-meta-compare" class="route-preview-meta"></div>
+            </div>
+          </div>
+        </section>
 
-      <!-- Panel 4: Neighborhood Scoreboard -->
-      <section class="panel-card scoreboard-panel">
-        <div class="panel-header">
-          <span class="panel-icon">🏆</span>
-          <h2>Neighborhood Compatibility Ranks</h2>
-        </div>
-        <div class="scoreboard-list font-mono" id="scoreboard-list">
-          <!-- Dynamic listing of neighborhoods and index values -->
-        </div>
-      </section>
+        <!-- Match Score Panel (Right Column) -->
+        <section class="panel-card stats-panel">
+          <div class="panel-header">
+            <span class="panel-icon">🎯</span>
+            <h2>Location Match Score</h2>
+          </div>
 
-      <!-- Panel 5: Infrastructure breakdown matrix -->
+          <div id="match-score-summary" class="match-score-summary">
+            <div class="top-neighborhood-card">
+              <span class="card-label">PRIMARY LOCATION</span>
+              <h3 id="top-neighborhood-name">Waiting for search...</h3>
+              <div class="card-score-box">
+                <span id="top-neighborhood-score" class="score-val">--</span>
+                <span class="score-label">Match Score</span>
+              </div>
+            </div>
+
+            <div id="compare-score-card" class="top-neighborhood-card" hidden>
+              <span class="card-label">COMPARE LOCATION</span>
+              <h3 id="compare-neighborhood-name">Waiting for compare...</h3>
+              <div class="card-score-box">
+                <span id="compare-neighborhood-score" class="score-val">--</span>
+                <span class="score-label">Match Score</span>
+              </div>
+            </div>
+          </div>
+          <div id="match-score-explain" class="match-score-explain">Select preferences and run a search to see what this location matches well.</div>
+
+          <div class="scoreboard-inline-wrap">
+            <div class="scoreboard-inline-header">Selected Category Snapshot</div>
+            <div class="scoreboard-list scoreboard-inline" id="scoreboard-list">
+              <!-- Dynamic location summary rows -->
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Category Count Matrix -->
       <section class="panel-card matrix-panel">
         <div class="panel-header">
           <span class="panel-icon">📋</span>
-          <h2>Infrastructure Breakdown Matrix</h2>
+          <h2>Category Count Matrix</h2>
         </div>
-        <div class="table-wrapper font-mono">
+        <div class="table-wrapper">
           <table class="matrix-table" id="matrix-table">
             <thead>
-              <tr>
-                <th>Neighborhood</th>
-                <th>Grocery Dist</th>
-                <th>Gym Count</th>
-                <th>Trail Miles</th>
-                <th>Culinary Index</th>
-                <th>Decay Penalty</th>
+              <tr id="matrix-head-row">
+                <th>Location</th>
+                <th>Score</th>
               </tr>
             </thead>
             <tbody id="matrix-tbody">
-              <!-- Real-time grid parameters inserted dynamically -->
+              <!-- Dynamic matrix rows inserted here -->
             </tbody>
           </table>
         </div>
-        <div class="matrix-legend font-mono">
-          <span class="legend-item"><span class="badge badge-error">CRITICAL</span> Radius limit violation</span>
-          <span class="legend-item"><span class="badge badge-warn">WARNING</span> Vector metric below safety threshold</span>
+        <div class="matrix-legend">
+          <span class="legend-item"><span class="badge badge-detected">Selected</span> Only categories you selected are shown and scored</span>
+        </div>
+      </section>
+
+      <!-- Live Activity Feed (Bottom - Currently Hidden) -->
+      <section class="panel-card scanner-panel" hidden style="display: none;">
+        <div class="panel-header">
+          <span class="panel-icon">💻</span>
+          <h2>Live Activity Feed</h2>
+        </div>
+        <div class="scanner-wrapper">
+          <div id="scanner-status" class="scanner-status">Idle. Waiting for your search.</div>
+          <div class="scanner-matrix-grid" id="scanner-grid">
+            <!-- Activity events are inserted dynamically -->
+          </div>
         </div>
       </section>
 
@@ -177,9 +218,15 @@
   </main>
 
   <footer class="main-footer">
-    <p class="font-mono">&copy; 2026 ACCESSIBILITY SPATIAL DECODER. ALL MAP DATUMS GEODETICALLY LOCKED.</p>
+    <p>&copy; 2026 Relocation Analytics Dashboard</p>
   </footer>
 
-  <script src="app.js?v=1"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="keywords.js?v=117"></script>
+  <script src="geocoder.js?v=117"></script>
+  <script src="autocomplete.js?v=117"></script>
+  <script src="spatial.js?v=117"></script>
+  <script src="scoring.js?v=117"></script>
+  <script src="app.js?v=117"></script>
 </body>
 </html>

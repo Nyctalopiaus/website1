@@ -24,7 +24,15 @@ $genreBuckets = getGenreBucketConfig();
 $ignoredTags = getIgnoredTagsNormalized();
 
 $allowedMarkets = ['front-range', 'socal', 'scotland'];
-$requestedMarket = strtolower(trim((string)($_GET['market'] ?? $_COOKIE['market'] ?? 'front-range')));
+$marketAliases = [
+    'california' => 'socal',
+    'southern-california' => 'socal',
+    'southern california' => 'socal',
+    'ca' => 'socal',
+    'frontrange' => 'front-range'
+];
+$requestedMarketRaw = strtolower(trim((string)($_GET['market'] ?? $_COOKIE['market'] ?? 'front-range')));
+$requestedMarket = $marketAliases[$requestedMarketRaw] ?? $requestedMarketRaw;
 if (!in_array($requestedMarket, $allowedMarkets, true)) {
     $requestedMarket = 'front-range';
 }
@@ -38,19 +46,19 @@ $marketConfig = [
         'title' => "Nycto's Gig Grid - Front Range Live Music Grid",
         'region_name' => 'Front Range Live Gig Grid',
         'logo_text' => "Nycto's Gig Grid",
-        'intro' => 'Your direct link to live music events between Colorado Springs and Fort Collins. Real-time aggregation across all genres.'
+        'intro' => 'Everything you usually have to hunt down, lineup, venue, setlist, and your plan, all in one place.'
     ],
     'socal' => [
-        'title' => "Nycto's Gig Grid - SoCal Live Music Grid",
-        'region_name' => 'SoCal Live Gig Grid',
+        'title' => "Nycto's Gig Grid - California Live Music Grid",
+        'region_name' => 'California Live Gig Grid',
         'logo_text' => "Nycto's Gig Grid",
-        'intro' => 'Your direct link to live music events from Los Angeles to San Diego. Real-time aggregation across all genres.'
+        'intro' => 'Everything you usually have to hunt down, lineup, venue, setlist, and your plan, all in one place.'
     ],
     'scotland' => [
         'title' => "Nycto's Gig Grid - Scotland Live Music Grid",
         'region_name' => 'Scotland Live Gig Grid',
         'logo_text' => "Nycto's Gig Grid",
-        'intro' => 'Your direct link to live music events across Glasgow, Edinburgh, and the Scottish central belt. Real-time aggregation across all genres.'
+        'intro' => 'Everything you usually have to hunt down, lineup, venue, setlist, and your plan, all in one place.'
     ]
 ];
 $activeMarketConfig = $marketConfig[$activeMarket] ?? $marketConfig['front-range'];
@@ -192,26 +200,26 @@ if (file_exists($lastSyncFile)) {
     <!-- Dynamic Ingestion Loading Screen -->
     <div id="sync-overlay" class="sync-overlay">
         <span class="loader"></span>
-        <h3 style="margin-top: 1.5rem; font-family: var(--font-header); font-size: 2.2rem; letter-spacing: 0.05em; text-transform: uppercase;">Syncing Stage Data...</h3>
-        <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.9rem;">Fetching raw schedules from Ticketmaster & Bandsintown APIs...</p>
+        <h3 class="sync-overlay-title">Syncing Stage Data...</h3>
+        <p class="sync-overlay-subtitle">Fetching raw schedules from Ticketmaster & Bandsintown APIs...</p>
         <div id="sync-logs" class="sync-logs"></div>
-        <button id="btn-close-sync" class="btn-action" style="margin-top: 1.5rem; display: none;">Close &amp; Refresh</button>
+        <button id="btn-close-sync" class="btn-action sync-close-button">Close &amp; Refresh</button>
     </div>
 
     <!-- Venue Information Popup Modal -->
-    <div id="venue-modal" class="sync-overlay" style="display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.85);">
-        <div class="modal-content" style="background: #14161a; border: 1px solid var(--card-border); max-width: 440px; width: 90%; padding: 2rem; border-radius: var(--border-radius); box-shadow: 0 20px 50px rgba(0,0,0,0.9); position: relative;">
-            <button id="btn-close-venue" style="position: absolute; top: 1rem; right: 1.25rem; background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; transition: color 0.2s; outline: none;">&times;</button>
+    <div id="venue-modal" class="sync-overlay modal-overlay">
+        <div class="modal-content modal-card modal-card-venue">
+            <button id="btn-close-venue" class="modal-close-button" type="button">&times;</button>
             
-            <h2 id="venue-modal-name" style="font-family: var(--font-header); font-size: 2rem; color: var(--text-bright); text-transform: uppercase; margin-bottom: 1.25rem; border-bottom: 2px solid var(--accent-crimson); padding-bottom: 0.5rem; letter-spacing: 0.02em;">Venue Name</h2>
+            <h2 id="venue-modal-name" class="modal-title modal-title-venue">Venue Name</h2>
             
-            <div style="margin-bottom: 1.25rem;">
-                <label style="display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 0.35rem; letter-spacing: 0.05em;">📍 Address / Location:</label>
-                <div id="venue-modal-address" style="color: var(--text-bright); font-size: 0.95rem; font-weight: 500; line-height: 1.4;">Address</div>
+            <div class="modal-field">
+                <label class="modal-label">📍 Address / Location:</label>
+                <div id="venue-modal-address" class="modal-field-value">Address</div>
             </div>
             
-            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
-                <a id="venue-modal-maps" href="#" target="_blank" class="btn-tickets" style="margin-top: 0; padding: 0.55rem 1.5rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+            <div class="modal-actions modal-actions-right modal-actions-spacious">
+                <a id="venue-modal-maps" href="#" target="_blank" class="btn-tickets btn-tickets-compact">
                     🗺️ Google Maps (New Tab)
                 </a>
             </div>
@@ -220,52 +228,52 @@ if (file_exists($lastSyncFile)) {
 
 
     <!-- Setlist.fm Popup Modal -->
-    <div id="setlist-modal" class="sync-overlay" style="display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.85);">
-        <div class="modal-content" style="background: #14161a; border: 1px solid var(--card-border); width: min(96vw, 1120px); max-width: 1120px; padding: 2rem; border-radius: var(--border-radius); box-shadow: 0 20px 50px rgba(0,0,0,0.9); position: relative; overflow-x: hidden;">
-            <button id="btn-close-setlist" style="position: absolute; top: 1rem; right: 1.25rem; background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; transition: color 0.2s; outline: none;">&times;</button>
+    <div id="setlist-modal" class="sync-overlay modal-overlay">
+        <div class="modal-content modal-card modal-card-setlist">
+            <button id="btn-close-setlist" class="modal-close-button" type="button">&times;</button>
             
-            <h2 id="setlist-modal-title" style="font-family: var(--font-header); font-size: 2.4rem; color: var(--text-bright); text-transform: uppercase; margin-bottom: 0.35rem; border-bottom: 2px solid var(--accent-crimson); padding-bottom: 0.5rem; letter-spacing: 0.03em; text-shadow: 0 2px 10px rgba(0,0,0,0.5);">Concert Setlist</h2>
-            <div id="setlist-modal-meta" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.25rem; font-weight: 600;">Artist // Date // Venue</div>
+            <h2 id="setlist-modal-title" class="modal-title modal-title-setlist">Concert Setlist</h2>
+            <div id="setlist-modal-meta" class="setlist-modal-meta">Artist // Date // Venue</div>
             
             <div id="setlist-songs-container">
                 <!-- Songs will be populated here -->
             </div>
             
-            <div style="font-size: 0.7rem; color: var(--text-muted); text-align: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem; margin-top: 1rem;">
-                Provided by <a href="https://www.setlist.fm" target="_blank" style="color: var(--text-bright); text-decoration: underline;">setlist.fm</a>
+            <div class="setlist-modal-footnote">
+                Provided by <a href="https://www.setlist.fm" target="_blank" class="setlist-source-link">setlist.fm</a>
             </div>
         </div>
     </div>
 
-    <!-- Email Show List Modal -->
-    <div id="email-modal" class="sync-overlay" style="display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.85);">
-        <div class="modal-content" style="background: #14161a; border: 1px solid var(--card-border); max-width: 460px; width: 90%; padding: 2rem; border-radius: var(--border-radius); box-shadow: 0 20px 50px rgba(0,0,0,0.9); position: relative;">
-            <button id="btn-close-email" style="position: absolute; top: 1rem; right: 1.25rem; background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; transition: color 0.2s; outline: none;">&times;</button>
+    <!-- Email Interested Shows Modal -->
+    <div id="email-modal" class="sync-overlay modal-overlay">
+        <div class="modal-content modal-card modal-card-email">
+            <button id="btn-close-email" class="modal-close-button" type="button">&times;</button>
             
-            <h2 style="font-family: var(--font-header); font-size: 1.8rem; color: var(--text-bright); text-transform: uppercase; margin-bottom: 1.25rem; border-bottom: 2px solid var(--accent-crimson); padding-bottom: 0.5rem; letter-spacing: 0.02em;">Email Show List</h2>
+            <h2 class="modal-title">Email Interested Shows</h2>
             
             <!-- Explicit Modal Privacy Notice -->
-            <div style="background: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.45;">
-                <span style="font-size: 1rem; line-height: 1;">🔒</span>
+            <div class="modal-privacy-notice">
+                <span class="modal-privacy-icon">🔒</span>
                 <div>
-                    <strong style="color: #ffd6d6; text-shadow: 0 1px 2px rgba(0,0,0,0.65); font-family: var(--font-header); letter-spacing: 0.02em; display: block; margin-bottom: 0.15rem; text-transform: uppercase; font-size: 0.75rem;">100% Private & Dispatch-Only</strong>
+                    <strong class="modal-privacy-heading">100% Private & Dispatch-Only</strong>
                     Your email address is used for this one-time dispatch only. It is not stored in our database, nor will it ever be shared or used for marketing.
                 </div>
             </div>
             
-            <div id="email-error" style="display: none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; padding: 0.65rem; border-radius: 4px; font-size: 0.8rem; margin-bottom: 1.25rem; text-align: center;"></div>
-            <div id="email-success" style="display: none; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); color: #a7f3d0; padding: 0.65rem; border-radius: 4px; font-size: 0.8rem; margin-bottom: 1.25rem; text-align: center;"></div>
+            <div id="email-error" class="modal-alert modal-alert-error"></div>
+            <div id="email-success" class="modal-alert modal-alert-success"></div>
             
             <form id="email-form">
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 700;">Your Email Address</label>
-                    <input type="email" id="email-input-field" required placeholder="name@domain.com" style="background: rgba(0,0,0,0.4); border: 1px solid var(--card-border); color: white; padding: 0.65rem 0.85rem; border-radius: 4px; width: 100%; font-size: 0.9rem; outline: none; box-sizing: border-box;" />
+                <div class="form-field-lg">
+                    <label class="form-label-upper">Your Email Address</label>
+                    <input type="email" id="email-input-field" class="form-input-dark" required placeholder="name@domain.com" />
                 </div>
                 
-                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                    <button type="button" id="btn-cancel-email" class="btn-tickets secondary" style="margin-top: 0; padding: 0.5rem 1.25rem; border-radius: 4px;">Cancel</button>
-                    <button type="submit" id="btn-submit-email" class="btn-tickets" style="margin-top: 0; padding: 0.5rem 1.5rem; border-radius: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 0.5rem;">
-                        ✉️ Send Show List
+                <div class="modal-actions modal-actions-right">
+                    <button type="button" id="btn-cancel-email" class="btn-tickets secondary btn-tickets-compact">Cancel</button>
+                    <button type="submit" id="btn-submit-email" class="btn-tickets btn-tickets-compact btn-tickets-highlight">
+                        ✉️ Send Interested Shows
                     </button>
                 </div>
             </form>
@@ -273,19 +281,19 @@ if (file_exists($lastSyncFile)) {
     </div>
 
     <!-- Contact Nycto Modal Window -->
-    <div id="contact-modal" class="sync-overlay" style="display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.85);">
-        <div class="modal-content" style="background: #14161a; border: 1px solid var(--card-border); max-width: 480px; width: 90%; padding: 2rem; border-radius: var(--border-radius); box-shadow: 0 20px 50px rgba(0,0,0,0.9); position: relative;">
-            <button id="btn-close-contact" type="button" style="position: absolute; top: 1rem; right: 1.25rem; background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; transition: color 0.2s; outline: none;">&times;</button>
+    <div id="contact-modal" class="sync-overlay modal-overlay">
+        <div class="modal-content modal-card modal-card-contact">
+            <button id="btn-close-contact" type="button" class="modal-close-button">&times;</button>
             
-            <h2 style="font-family: var(--font-header); font-size: 1.8rem; color: var(--text-bright); text-transform: uppercase; margin-bottom: 0.35rem; border-bottom: 2px solid var(--accent-crimson); padding-bottom: 0.5rem; letter-spacing: 0.02em; display: flex; align-items: center; gap: 0.5rem;">
+            <h2 class="modal-title modal-title-with-icon">
                 <span>📧</span> Contact Nycto
             </h2>
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">Got feedback, a missing venue, or site suggestion? Drop a message below!</p>
+            <p class="modal-subtext">Got feedback, a missing venue, or site suggestion? Drop a message below!</p>
             
             <form id="contact-form" onsubmit="return false;">
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--text-medium); font-weight: 700; margin-bottom: 0.35rem; letter-spacing: 0.05em;">Topic / What is this about?</label>
-                    <select id="contact-subject" class="filter-select" style="width: 100%; font-weight: 600;">
+                <div class="form-field-md">
+                    <label class="form-label-upper form-label-tight">Topic / What is this about?</label>
+                    <select id="contact-subject" class="filter-select form-select-full">
                         <option value="Site Functionality / Feature Request">💡 Site Functionality / Feature Request</option>
                         <option value="Missing Band / Artist">🎸 Missing Band / Artist</option>
                         <option value="Missing Venue">📍 Missing Venue</option>
@@ -294,23 +302,23 @@ if (file_exists($lastSyncFile)) {
                     </select>
                 </div>
                 
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--text-medium); font-weight: 700; margin-bottom: 0.35rem; letter-spacing: 0.05em;">Your Email (Optional, if you'd like a reply)</label>
-                    <input type="email" id="contact-email" placeholder="name@example.com" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--card-border); color: white; padding: 0.6rem 0.85rem; border-radius: 6px; font-size: 0.85rem; outline: none; font-family: inherit;" />
+                <div class="form-field-md">
+                    <label class="form-label-upper form-label-tight">Your Email (Optional, if you'd like a reply)</label>
+                    <input type="email" id="contact-email" class="form-input-dark form-input-md" placeholder="name@example.com" />
                 </div>
                 
-                <div style="margin-bottom: 1.25rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-                        <label style="font-size: 0.7rem; text-transform: uppercase; color: var(--text-medium); font-weight: 700; letter-spacing: 0.05em;">Message</label>
-                        <span id="contact-char-count" style="font-size: 0.7rem; color: var(--text-muted);">0 / 500</span>
+                <div class="form-field-stack">
+                    <div class="form-field-head">
+                        <label class="form-label-upper form-label-tight">Message</label>
+                        <span id="contact-char-count" class="contact-char-count">0 / 500</span>
                     </div>
-                    <textarea id="contact-message" maxlength="500" rows="4" placeholder="Type your message here..." style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--card-border); color: white; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; outline: none; font-family: inherit; resize: vertical; min-height: 90px;"></textarea>
+                    <textarea id="contact-message" maxlength="500" rows="4" class="form-textarea-dark" placeholder="Type your message here..."></textarea>
                 </div>
                 
-                <div id="contact-status-msg" style="display: none; font-size: 0.8rem; padding: 0.6rem; border-radius: 6px; margin-bottom: 1rem;"></div>
+                <div id="contact-status-msg" class="contact-status-msg"></div>
                 
-                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                    <button type="button" id="btn-submit-contact" class="btn-tickets" style="margin-top: 0; padding: 0.6rem 1.5rem; border-radius: 6px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; cursor: pointer;">
+                <div class="modal-actions modal-actions-right">
+                    <button type="button" id="btn-submit-contact" class="btn-tickets btn-tickets-compact btn-tickets-highlight btn-submit-contact">
                         Send Message 🚀
                     </button>
                 </div>
@@ -319,12 +327,12 @@ if (file_exists($lastSyncFile)) {
     </div>
 
     <!-- Feature Overview Modal -->
-    <div id="features-modal" class="sync-overlay" style="display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.85);">
+    <div id="features-modal" class="sync-overlay modal-overlay">
         <div class="modal-content feature-modal-content">
             <button id="btn-close-features" class="modal-close-button" aria-label="Close feature overview">&times;</button>
 
             <h2 class="feature-modal-title">What Nycto's Gig Grid Can Do</h2>
-            <p class="feature-modal-intro">A fast, heavy-music calendar built to help you find shows, compare options, and move from discovery to planning without jumping between five tabs.</p>
+            <p class="feature-modal-intro">A fast, live-music calendar built to help you find shows, compare options, and move from discovery to planning without jumping between five tabs.</p>
 
             <ul class="feature-modal-list">
                 <li><strong>Regional filtering:</strong> switch markets, filter by sub-region, venue, and genre buckets.</li>
@@ -351,7 +359,7 @@ if (file_exists($lastSyncFile)) {
         </div>
         <div class="controls-group">
             <span class="sync-status">
-                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+                <span class="sync-status-dot"></span>
                 Last Sync: <?php echo htmlspecialchars($lastSyncText); ?>
             </span>
         </div>
@@ -365,16 +373,22 @@ if (file_exists($lastSyncFile)) {
                 <span class="intro-title-region"><?php echo htmlspecialchars($activeMarketConfig['region_name']); ?></span>
             </h1>
             <p><?php echo htmlspecialchars($activeMarketConfig['intro']); ?></p>
+            <div class="quick-start-strip" aria-label="Quick start">
+                <span class="quick-start-label">Quick Start</span>
+                <span class="quick-start-step">1) Pick a market</span>
+                <span class="quick-start-step">2) Search or filter</span>
+                <span class="quick-start-step">3) Star and email interested shows</span>
+            </div>
         </section>
 
         <!-- Sticky Controls Container -->
         <div class="sticky-controls-wrapper">
             <!-- Privacy & Trust Header Banner -->
-            <div class="privacy-banner-container" style="background: rgba(239, 68, 68, 0.04); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 0.75rem; padding: 0.85rem 1.25rem; margin-bottom: 1.25rem; display: flex; align-items: flex-start; gap: 0.85rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
-                <span class="privacy-banner-icon" style="font-size: 1.15rem; line-height: 1.2;">🔒</span>
+            <div class="privacy-banner-container">
+                <span class="privacy-banner-icon">🔒</span>
                 <div class="privacy-banner-copy">
-                    <strong style="color: #ffd6d6; text-shadow: 0 1px 2px rgba(0,0,0,0.65); font-family: var(--font-header); letter-spacing: 0.02em; display: block; margin-bottom: 0.2rem; text-transform: uppercase; font-size: 0.85rem;">100% Private & Dispatch-Only</strong>
-                    Your data is processed locally to you. If you choose to email your show list, your email address is used for this one-time dispatch only. It is not stored in our database, nor will it ever be shared or used for future marketing.
+                    <strong class="privacy-banner-heading">100% Private & Dispatch-Only</strong>
+                    Your data is processed locally to you. If you choose to email your interested shows, your email address is used for this one-time dispatch only. It is not stored in our database, nor will it ever be shared or used for future marketing.
                 </div>
                 <button type="button" id="btn-open-features" class="privacy-feature-button" title="View site features">
                     <span class="privacy-feature-button-icon">◌</span>
@@ -382,59 +396,24 @@ if (file_exists($lastSyncFile)) {
                 </button>
             </div>
 
+            <div id="live-filter-summary" class="live-filter-summary" role="status" aria-live="polite">
+                <span class="summary-chip summary-chip-market" id="summary-market">Market: <?php echo htmlspecialchars($marketDisplayLabels[$activeMarket] ?? 'Colorado'); ?></span>
+                <span class="summary-chip" id="summary-results">Visible shows: 0</span>
+                <span class="summary-chip" id="summary-filters">Filters: default</span>
+            </div>
+
             <!-- Dynamic On-Page Search Bar -->
-            <style>
-                #artist-search-input:focus {
-                    border-color: var(--accent-crimson) !important;
-                    box-shadow: 0 0 12px rgba(225, 29, 72, 0.45), 0 4px 15px rgba(0,0,0,0.5) !important;
-                    background: rgba(0,0,0,0.55) !important;
-                }
-
-                .search-input-wrap {
-                    position: relative;
-                }
-
-                #artist-search-input {
-                    padding-right: 2.5rem !important;
-                }
-
-                #btn-clear-search {
-                    position: absolute;
-                    right: 0.7rem;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    width: 1.5rem;
-                    height: 1.5rem;
-                    border: 1px solid rgba(255, 255, 255, 0.14);
-                    border-radius: 999px;
-                    background: rgba(255, 255, 255, 0.06);
-                    color: var(--text-medium);
-                    display: none;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 0.95rem;
-                    line-height: 1;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                }
-
-                #btn-clear-search:hover {
-                    color: var(--text-bright);
-                    border-color: rgba(255, 255, 255, 0.3);
-                    background: rgba(255, 255, 255, 0.14);
-                }
-            </style>
-            <div class="search-container" style="margin-bottom: 1.25rem; width: 100%;">
+            <div class="search-container">
                 <div class="search-input-wrap">
-                    <input type="text" id="artist-search-input" placeholder="🔍 Search band, venue, or subgenre tag (e.g. Gojira, Red Rocks, Deathcore)..." style="background: rgba(0,0,0,0.35); border: 1px solid var(--card-border); color: white; padding: 0.85rem 1.25rem; border-radius: 8px; width: 100%; font-size: 1rem; outline: none; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-family: inherit;" />
+                    <input type="text" id="artist-search-input" placeholder="🔍 Search band, venue, or subgenre tag (e.g. Gojira, Red Rocks, Deathcore)..." />
                     <button type="button" id="btn-clear-search" aria-label="Clear search" title="Clear search">&times;</button>
                 </div>
             </div>
 
             <!-- Filter & Control Panel -->
-            <div class="filter-panel" style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1.25rem 1.5rem; border-radius: var(--border-radius); margin-bottom: 1.25rem; display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: center; justify-content: space-between;">
-                <div class="filter-group market-filter-group" style="display: flex; align-items: center; gap: 0.75rem; width: 100%; justify-content: flex-start;">
-                    <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-medium);">Market:</span>
+            <div class="filter-panel">
+                <div class="filter-group market-filter-group">
+                    <span class="filter-label">Market:</span>
                     <nav class="header-market-switcher" aria-label="Market selector">
                         <a href="<?php echo htmlspecialchars($marketLinks['front-range']); ?>" class="header-market-link <?php echo $activeMarket === 'front-range' ? 'active' : ''; ?>" <?php echo $activeMarket === 'front-range' ? 'aria-current="page"' : ''; ?>><?php echo htmlspecialchars($marketDisplayLabels['front-range'] . ' (' . $marketCardCounts['front-range'] . ')'); ?></a>
                         <a href="<?php echo htmlspecialchars($marketLinks['socal']); ?>" class="header-market-link <?php echo $activeMarket === 'socal' ? 'active' : ''; ?>" <?php echo $activeMarket === 'socal' ? 'aria-current="page"' : ''; ?>><?php echo htmlspecialchars($marketDisplayLabels['socal'] . ' (' . $marketCardCounts['socal'] . ')'); ?></a>
@@ -443,42 +422,42 @@ if (file_exists($lastSyncFile)) {
                 </div>
                 
                 <!-- 1. Region Toggle Button Group -->
-                <div class="filter-group" style="display: flex; align-items: center; gap: 0.5rem;">
-                    <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-medium);">Region:</span>
-                    <div style="display: flex; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid var(--card-border); overflow: hidden;">
-                        <button class="region-btn active" data-region="all" style="background: transparent; color: var(--text-muted); border: none; padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">All</button>
+                <div class="filter-group">
+                    <span class="filter-label">Region:</span>
+                    <div class="region-controls">
+                        <button class="region-btn active" data-region="all">All</button>
                         <?php if ($activeMarket === 'front-range'): ?>
-                            <button class="region-btn" data-region="denver" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Denver / Boulder</button>
-                            <button class="region-btn" data-region="springs" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Springs / Pueblo</button>
-                            <button class="region-btn" data-region="north" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Ft Collins / North</button>
-                            <button class="region-btn" data-region="west" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">West Slope / Grand Junction</button>
+                            <button class="region-btn" data-region="denver">Denver / Boulder</button>
+                            <button class="region-btn" data-region="springs">Springs / Pueblo</button>
+                            <button class="region-btn" data-region="north">Ft Collins / North</button>
+                            <button class="region-btn" data-region="west">West Slope / Grand Junction</button>
                         <?php elseif ($activeMarket === 'socal'): ?>
-                            <button class="region-btn" data-region="norcal" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">NorCal / Bay Area</button>
-                            <button class="region-btn" data-region="la" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Los Angeles</button>
-                            <button class="region-btn" data-region="oc" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Orange County</button>
-                            <button class="region-btn" data-region="sd" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">San Diego</button>
+                            <button class="region-btn" data-region="norcal">NorCal / Bay Area</button>
+                            <button class="region-btn" data-region="la">Los Angeles</button>
+                            <button class="region-btn" data-region="oc">Orange County</button>
+                            <button class="region-btn" data-region="sd">San Diego</button>
                         <?php elseif ($activeMarket === 'scotland'): ?>
-                            <button class="region-btn" data-region="glasgow" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Glasgow</button>
-                            <button class="region-btn" data-region="edinburgh" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Edinburgh</button>
-                            <button class="region-btn" data-region="other" style="background: transparent; color: var(--text-muted); border: none; border-left: 1px solid var(--card-border); padding: 0.45rem 1rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Other</button>
+                            <button class="region-btn" data-region="glasgow">Glasgow</button>
+                            <button class="region-btn" data-region="edinburgh">Edinburgh</button>
+                            <button class="region-btn" data-region="other">Other</button>
                         <?php endif; ?>
                     </div>
                 </div>
 
                 <!-- 2. Venue Multi-Select Dropdown -->
-                <div class="filter-group" style="display: flex; align-items: center; gap: 0.75rem; position: relative;">
-                    <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-medium);">Venues:</span>
-                    <div class="dropdown-wrapper" style="position: relative;">
-                        <button id="venue-dropdown-toggle" style="background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); color: var(--text-medium); padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.8rem; cursor: pointer; min-width: 160px; text-align: left; display: flex; justify-content: space-between; align-items: center;">
+                <div class="filter-group filter-group-inline filter-group-venues">
+                    <span class="filter-label">Venues:</span>
+                    <div class="dropdown-wrapper">
+                        <button id="venue-dropdown-toggle">
                             <span id="venue-selected-count">All Venues</span>
-                            <span style="font-size: 0.6rem; margin-left: 0.5rem;">▼</span>
+                            <span class="dropdown-caret-sm">▼</span>
                         </button>
-                        <div id="venue-dropdown-menu" style="display: none; position: absolute; top: 100%; left: 0; background: #14161a; border: 1px solid var(--card-border); border-radius: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.85); z-index: 130; padding: 0.5rem; max-height: 280px; overflow-y: auto; min-width: 240px; margin-top: 4px;">
-                            <div class="venue-dropdown-header" style="padding-bottom: 0.45rem; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 0.45rem; display: flex; flex-direction: column; gap: 0.4rem;">
-                                <input type="text" id="venue-search-input" placeholder="🔍 Search venues..." style="background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.14); color: #ffffff; padding: 0.35rem 0.65rem; border-radius: 4px; font-size: 0.75rem; width: 100%; outline: none;" />
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 0.1rem;">
-                                    <button type="button" id="btn-venue-select-all" style="background: transparent; border: none; color: #fecdd3; font-size: 0.72rem; font-weight: 700; cursor: pointer; padding: 0.1rem 0.3rem; border-radius: 3px; transition: background 0.15s;">Select All</button>
-                                    <button type="button" id="btn-venue-clear-all" style="background: transparent; border: none; color: #94a3b8; font-size: 0.72rem; font-weight: 700; cursor: pointer; padding: 0.1rem 0.3rem; border-radius: 3px; transition: background 0.15s;">Clear All</button>
+                        <div id="venue-dropdown-menu">
+                            <div class="venue-dropdown-header">
+                                <input type="text" id="venue-search-input" placeholder="🔍 Search venues..." />
+                                <div class="venue-dropdown-actions">
+                                    <button type="button" id="btn-venue-select-all">Select All</button>
+                                    <button type="button" id="btn-venue-clear-all">Clear All</button>
                                 </div>
                             </div>
                             <div id="venue-checkboxes-list">
@@ -488,9 +467,9 @@ if (file_exists($lastSyncFile)) {
                 </div>
 
                 <!-- 3. Genre Filter Dropdown -->
-                <div class="filter-group genre-filter-group" style="display: flex; align-items: center; gap: 0.75rem; position: relative;">
-                    <span style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-medium);">Genre:</span>
-                    <select id="genre-select" style="background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); color: white; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.8rem; cursor: pointer; outline: none; font-family: inherit; font-weight: 600; min-width: 150px; transition: border-color 0.2s ease;">
+                <div class="filter-group filter-group-inline genre-filter-group">
+                    <span class="filter-label">Genre:</span>
+                    <select id="genre-select">
                         <?php foreach ($genreBuckets as $bucketKey => $bucket): ?>
                             <option value="<?php echo htmlspecialchars($bucketKey); ?>"><?php echo htmlspecialchars($bucket['label']); ?></option>
                         <?php endforeach; ?>
@@ -520,7 +499,7 @@ if (file_exists($lastSyncFile)) {
             <section class="month-select-section month-select-row">
                 <div class="filter-group month-select-controls">
                     <span class="month-select-label">📅 Select Month:</span>
-                    <select id="month-dropdown-select" style="background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); color: white; padding: 0.55rem 1rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; width: 100%; outline: none; font-family: inherit; font-weight: 600; transition: border-color 0.2s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+                    <select id="month-dropdown-select">
                         <?php if (empty($activeMonths)): ?>
                             <option value="empty-view">No Shows Found</option>
                         <?php else: ?>
@@ -537,7 +516,7 @@ if (file_exists($lastSyncFile)) {
                     </select>
                 </div>
                 
-                <button type="button" id="btn-reset-ignored" class="btn-premium-filter btn-premium-filter--secondary" style="display: inline-flex; white-space: nowrap; flex: 0 0 auto; width: auto; max-width: fit-content; padding: 0.45rem 1rem; min-height: 36px;">
+                <button type="button" id="btn-reset-ignored" class="btn-premium-filter btn-premium-filter--secondary btn-reset-ignored">
                     <span class="btn-premium-filter-icon">🔄</span>
                     <span class="btn-premium-filter-label" id="reset-ignored-label">Reset Ignored (0)</span>
                 </button>
@@ -550,19 +529,20 @@ if (file_exists($lastSyncFile)) {
                 <div id="empty-view" class="calendar-view active">
                     <div class="no-events">
                         <div class="no-events-icon">🤘</div>
-                        <h3 style="color: var(--text-bright); font-family: var(--font-header); font-size: 1.8rem; margin-bottom: 0.5rem;">The Stage is Dark</h3>
-                        <p style="color: var(--text-muted); max-width: 400px; margin: 0 auto; font-size: 0.9rem;">No upcoming concerts are loaded. Click the "Sync Live Gigs" button in the corner to trigger the aggregator script.</p>
+                        <h3 class="no-events-title">The Stage is Dark</h3>
+                        <p class="no-events-copy">No upcoming shows are loaded. Click the "Sync Live Gigs" button in the corner to trigger the aggregator script.</p>
                     </div>
                 </div>
             <?php else: ?>
                 <?php 
                 // Helper to split multi-artist names
                 function splitArtistListNames($artistNameStr) {
+                    $junkPatterns = '/(club level|vip package|suite level|parking pass|fast pass|official platinum|lexus club)/i';
                     $parts = preg_split('/\s*(&|w\/|with|,)\s*/i', (string)$artistNameStr);
                     $artists = [];
                     foreach ($parts as $p) {
                         $clean = trim($p);
-                        if ($clean !== '' && !in_array($clean, $artists, true)) {
+                        if ($clean !== '' && !preg_match($junkPatterns, $clean) && !in_array($clean, $artists, true)) {
                             $artists[] = $clean;
                         }
                     }
@@ -684,14 +664,14 @@ if (file_exists($lastSyncFile)) {
                                                             <button type="button" class="btn-listen" data-artist="<?php echo htmlspecialchars($artName); ?>">
                                                                 🎧 Listen
                                                             </button>
-                                                            <button type="button" class="btn-insights" data-artist="<?php echo htmlspecialchars($artName); ?>" style="display: inline-flex; align-items: center; gap: 0.25rem;">
+                                                            <button type="button" class="btn-insights" data-artist="<?php echo htmlspecialchars($artName); ?>">
                                                                 ℹ️ Artist Bio
                                                             </button>
                                                             <div class="artist-links-dropdown">
                                                                 <button type="button" class="btn-links-toggle" data-artist="<?php echo htmlspecialchars($artName); ?>">
                                                                     🌐 Links <span class="dropdown-caret">▼</span>
                                                                 </button>
-                                                                <div class="links-popover" style="display: none;">
+                                                                <div class="links-popover">
                                                                     <a href="https://open.spotify.com/search/<?php echo rawurlencode($artName); ?>" target="_blank" rel="noopener noreferrer" class="link-item spotify">
                                                                         <span class="link-icon">🟢</span> Spotify
                                                                     </a>
@@ -718,14 +698,14 @@ if (file_exists($lastSyncFile)) {
                                                             <button type="button" class="btn-listen" data-artist="<?php echo htmlspecialchars($artName); ?>">
                                                                 🎧 Listen
                                                             </button>
-                                                            <button type="button" class="btn-insights" data-artist="<?php echo htmlspecialchars($artName); ?>" style="display: inline-flex; align-items: center; gap: 0.25rem;">
+                                                            <button type="button" class="btn-insights" data-artist="<?php echo htmlspecialchars($artName); ?>">
                                                                 ℹ️ Artist Bio
                                                             </button>
                                                             <div class="artist-links-dropdown">
                                                                 <button type="button" class="btn-links-toggle" data-artist="<?php echo htmlspecialchars($artName); ?>">
                                                                     🌐 Links <span class="dropdown-caret">▼</span>
                                                                 </button>
-                                                                <div class="links-popover" style="display: none;">
+                                                                <div class="links-popover">
                                                                     <a href="https://open.spotify.com/search/<?php echo rawurlencode($artName); ?>" target="_blank" rel="noopener noreferrer" class="link-item spotify">
                                                                         <span class="link-icon">🟢</span> Spotify
                                                                     </a>
@@ -757,14 +737,14 @@ if (file_exists($lastSyncFile)) {
                                                     <button type="button" class="btn-listen" data-artist="<?php echo htmlspecialchars($singleArt); ?>">
                                                         🎧 Listen
                                                     </button>
-                                                    <button type="button" class="btn-insights" data-artist="<?php echo htmlspecialchars($singleArt); ?>" style="display: inline-flex; align-items: center; gap: 0.25rem;">
+                                                    <button type="button" class="btn-insights" data-artist="<?php echo htmlspecialchars($singleArt); ?>">
                                                         ℹ️ Artist Bio
                                                     </button>
                                                     <div class="artist-links-dropdown">
                                                         <button type="button" class="btn-links-toggle" data-artist="<?php echo htmlspecialchars($singleArt); ?>">
                                                             🌐 Links <span class="dropdown-caret">▼</span>
                                                         </button>
-                                                        <div class="links-popover" style="display: none;">
+                                                        <div class="links-popover">
                                                             <a href="https://open.spotify.com/search/<?php echo rawurlencode($singleArt); ?>" target="_blank" rel="noopener noreferrer" class="link-item spotify">
                                                                 <span class="link-icon">🟢</span> Spotify
                                                             </a>
@@ -786,15 +766,15 @@ if (file_exists($lastSyncFile)) {
                                             </div>
                                         </div>
                                     <?php endif; ?>
-                                     <div class="tags-row" style="margin-top: 0.15rem; margin-bottom: 0.65rem;">
+                                     <div class="tags-row tags-row-spaced">
                                          <?php if ($isCoheadliner): ?>
-                                             <span class="badge-price-alert alert-drop" style="background: rgba(225, 29, 72, 0.25); border: 1px solid var(--accent-crimson); color: #fecdd3;" title="Multiple bands performing on the same stage tonight!">
+                                             <span class="badge-price-alert alert-drop badge-shared-lineup" title="Multiple bands performing on the same stage tonight!">
                                                  🔥 Shared Lineup (<?php echo count($group['artists']); ?> Bands)
                                              </span>
                                          <?php endif; ?>
 
                                          <?php if ($isMultiDayResidency): ?>
-                                             <span class="badge-price-alert alert-drop" style="background: rgba(245, 158, 11, 0.22); border: 1px solid #f59e0b; color: #fde68a;" title="This artist is performing multiple nights at this venue!">
+                                             <span class="badge-price-alert alert-drop badge-multi-day" title="This artist is performing multiple nights at this venue!">
                                                  🗓️ Multi-Day Event! (<?php echo $residencyNightCount; ?> Nights)
                                              </span>
                                          <?php endif; ?>
@@ -859,15 +839,15 @@ if (file_exists($lastSyncFile)) {
                                     <div class="venue-row">
                                         <span>📍</span>
                                         <strong class="clickable-venue" data-venue-name="<?php echo htmlspecialchars($event['venue_name']); ?>"><?php echo htmlspecialchars($event['venue_name']); ?></strong> 
-                                        <span style="color: var(--text-muted);">// <?php echo htmlspecialchars(formatMarketLocation($event['city_name'] ?? '', $event['market'] ?? $activeMarket)); ?></span>
+                                        <span class="venue-location-text">// <?php echo htmlspecialchars(formatMarketLocation($event['city_name'] ?? '', $event['market'] ?? $activeMarket)); ?></span>
                                     </div>
-                                    <div class="time-row" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                    <div class="time-row time-row-wrap">
                                         <span>⏱️</span>
                                         <span>Show starts at <?php echo $dateInfo['time']; ?></span>
                                         <span class="weather-container" data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>" data-start="<?php echo htmlspecialchars($event['start_time']); ?>"></span>
                                     </div>
                                     <?php if (!empty($group['tags'])): ?>
-                                        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.5rem; font-style: italic;">
+                                        <div class="subgenre-source-note">
                                             *Subgenre tags auto-imported from Last.fm / Ticketmaster / Bandsintown
                                         </div>
                                     <?php endif; ?>
@@ -912,7 +892,7 @@ if (file_exists($lastSyncFile)) {
                                       </div>
                                 </div>
                                 <!-- Audio Preview Drawer -->
-                                <div class="audio-drawer" style="display: none;"></div>
+                                <div class="audio-drawer"></div>
                                 
                                 <!-- Artist Insights Drawer -->
                                 <div class="insights-drawer-wrapper">

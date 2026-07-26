@@ -28,7 +28,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   const genreHelpTitle = document.getElementById('genre-help-title');
   const genreHelpText = document.getElementById('genre-help-text');
 
-  let activeRegion = 'all';
+  let activeRegions = new Set(['all']);
   let activeGenre = 'all';
   let filterInterestedOnly = false;
   let lastActiveMonthView = (monthSelect && monthSelect.value !== 'interested-view') ? monthSelect.value : null;
@@ -36,6 +36,9 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
 
   const btnResetIgnored = document.getElementById('btn-reset-ignored');
   const resetIgnoredLabel = document.getElementById('reset-ignored-label');
+  const summaryMarket = document.getElementById('summary-market');
+  const summaryResults = document.getElementById('summary-results');
+  const summaryFilters = document.getElementById('summary-filters');
 
   function updateResetIgnoredButton() {
     const ignoredIds = getIgnoredEventIds ? getIgnoredEventIds() : [];
@@ -69,6 +72,39 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     }
   };
   const regionCities = regionCitiesByMarket[activeMarket] || regionCitiesByMarket['front-range'];
+
+  function getMarketLabel(marketKey) {
+    if (marketKey === 'socal') return 'California';
+    if (marketKey === 'scotland') return 'Scotland';
+    return 'Colorado';
+  }
+
+  function updateLiveFilterSummary(visibleCount, selectedVenueCount, totalVenueCount, searchQuery) {
+    if (summaryMarket) {
+      summaryMarket.textContent = `Market: ${getMarketLabel(activeMarket)}`;
+    }
+
+    if (summaryResults) {
+      summaryResults.textContent = `Visible shows: ${visibleCount}`;
+    }
+
+    if (summaryFilters) {
+      const parts = [];
+      if (!activeRegions.has('all')) {
+        const labels = Array.from(activeRegions).map(r => r.toUpperCase());
+        parts.push(`Regions (${labels.join(', ')})`);
+      }
+      if (activeGenre !== 'all') {
+        const selectedGenreLabel = genreBuckets[activeGenre]?.label || activeGenre;
+        parts.push(`Genre ${selectedGenreLabel}`);
+      }
+      if (selectedVenueCount !== totalVenueCount) parts.push(`Venues ${selectedVenueCount}/${totalVenueCount}`);
+      if (filterInterestedOnly) parts.push('Interested only');
+      if (searchQuery) parts.push(`Search "${searchQuery}"`);
+
+      summaryFilters.textContent = `Filters: ${parts.length ? parts.join(' • ') : 'default'}`;
+    }
+  }
 
   const venuesSet = new Set();
   cards.forEach(card => {
@@ -253,7 +289,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
         <div class="no-events" style="text-align: center; padding: 4rem 1rem; color: var(--text-muted);">
           <span style="font-size: 3rem; display: block; margin-bottom: 1rem; filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.4));">${ICONS.star}</span>
           <h3 style="color: var(--text-bright); font-family: var(--font-header); font-size: 1.8rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">No Interested Shows</h3>
-          <p style="font-size: 0.9rem; max-width: 400px; margin: 0 auto; line-height: 1.6;">Click the star icon on any concert card to save it here and keep track of your schedule.</p>
+          <p style="font-size: 0.9rem; max-width: 400px; margin: 0 auto; line-height: 1.6;">Click the star icon on any show card to save it here and keep track of your schedule.</p>
         </div>
       `;
     }
@@ -302,6 +338,8 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       else selectedCountSpan.textContent = `${checkedVenues.length} Selected`;
     }
 
+    let activeViewVisibleCount = 0;
+
     views.forEach(view => {
       let visibleCount = 0;
       let visibleIndexInView = 0;
@@ -325,10 +363,17 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
         }
 
         if (show && view.id !== 'interested-view') {
-          if (show && activeRegion !== 'all') {
-            const targetCities = (regionCities[activeRegion] || []).map(normalizeLocationToken);
+          if (show && !activeRegions.has('all')) {
+            let matchesAnyRegion = false;
             const normalizedCardCity = normalizeLocationToken(cardCity);
-            if (!containsAnyKeyword(normalizedCardCity, targetCities)) show = false;
+            for (const rKey of activeRegions) {
+              const targetCities = (regionCities[rKey] || []).map(normalizeLocationToken);
+              if (containsAnyKeyword(normalizedCardCity, targetCities)) {
+                matchesAnyRegion = true;
+                break;
+              }
+            }
+            if (!matchesAnyRegion) show = false;
           }
           if (show && !checkedVenues.includes(cardVenue)) show = false;
         }
@@ -423,9 +468,15 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       } else if (emptyStateEl) {
         emptyStateEl.style.display = 'none';
       }
+
+      if (isActiveView) {
+        activeViewVisibleCount = visibleCount;
+      }
     });
 
-    if (searchQuery !== '' && !filterInterestedOnly) {
+    updateLiveFilterSummary(activeViewVisibleCount, checkedVenues.length, totalCount, searchQuery);
+
+    if (!filterInterestedOnly && (searchQuery !== '' || activeGenre !== 'all' || !activeRegions.has('all'))) {
       autoSwitchToFirstMatchingMonth();
     }
   }
@@ -466,7 +517,8 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       genreSelect.value = 'all';
       genreSelect.dispatchEvent(new Event('change'));
     }
-    activeRegion = 'all';
+    activeRegions.clear();
+    activeRegions.add('all');
     document.querySelectorAll('.region-btn').forEach(b => {
       b.classList.toggle('active', b.getAttribute('data-region') === 'all');
     });
@@ -548,9 +600,37 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
 
   document.querySelectorAll('.region-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.region-btn').forEach(button => button.classList.remove('active'));
-      btn.classList.add('active');
-      activeRegion = btn.getAttribute('data-region');
+      const regionVal = btn.getAttribute('data-region');
+
+      if (regionVal === 'all') {
+        activeRegions.clear();
+        activeRegions.add('all');
+        document.querySelectorAll('.region-btn').forEach(b => {
+          b.classList.toggle('active', b.getAttribute('data-region') === 'all');
+        });
+      } else {
+        activeRegions.delete('all');
+        const allBtn = document.querySelector('.region-btn[data-region="all"]');
+        if (allBtn) allBtn.classList.remove('active');
+
+        if (activeRegions.has(regionVal)) {
+          activeRegions.delete(regionVal);
+          btn.classList.remove('active');
+        } else {
+          activeRegions.add(regionVal);
+          btn.classList.add('active');
+        }
+
+        const specificBtns = Array.from(document.querySelectorAll('.region-btn[data-region]:not([data-region="all"])'));
+        if (activeRegions.size === 0 || activeRegions.size === specificBtns.length) {
+          activeRegions.clear();
+          activeRegions.add('all');
+          document.querySelectorAll('.region-btn').forEach(b => {
+            b.classList.toggle('active', b.getAttribute('data-region') === 'all');
+          });
+        }
+      }
+
       applyFilters();
     });
   });
@@ -760,19 +840,6 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
 
   function updateMarketLinksWithSearch() {
     const query = artistSearchInput ? artistSearchInput.value.trim() : '';
-    const marketLinks = document.querySelectorAll('.header-market-link');
-    
-    marketLinks.forEach(link => {
-      try {
-        const url = new URL(link.href, window.location.origin);
-        if (query) {
-          url.searchParams.set('q', query);
-        } else {
-          url.searchParams.delete('q');
-        }
-        link.href = url.pathname + url.search;
-      } catch (e) {}
-    });
 
     const currentUrl = new URL(window.location.href);
     if (query) {

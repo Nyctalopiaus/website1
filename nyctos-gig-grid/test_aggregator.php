@@ -21,7 +21,7 @@ initDatabase();
 $db = getDbConnection();
 
 echo "==========================================\n";
-echo "METAL CONCERT CALENDAR TESTS\n";
+echo "NYCTO'S GIG GRID AGGREGATOR TESTS\n";
 echo "==========================================\n";
 
 // Test 1: Seed verification

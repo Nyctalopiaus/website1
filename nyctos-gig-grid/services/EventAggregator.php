@@ -14,17 +14,145 @@ class EventAggregator {
     private $logs = [];
     private $genreOverrides = [];
     private $venuesByMarket = [];
+    private $runMetrics = [];
 
     public function __construct() {
         $this->db = getDbConnection();
         ensureDatabaseSchema($this->db);
         $this->genreOverrides = getGenreOverridesNormalized();
         $this->loadVenueWhitelist();
+        $this->initRunMetrics();
+    }
+
+    private function initRunMetrics() {
+        $this->runMetrics = [
+            'started_at' => date('c'),
+            'markets_processed' => [],
+            'ingestion' => [],
+            'enrichment' => [
+                'musicbrainz_auto_approved_artists' => [],
+                'unknown_tags_written' => [],
+                'unknown_tags_write_count' => 0,
+            ],
+            'errors' => [
+                'http_non_200' => [],
+                'connection_failures' => [],
+                'scraper_dropouts' => [],
+                'warnings' => [],
+                'fatal' => [],
+            ],
+        ];
+    }
+
+    private function normalizeSourceKey($source) {
+        $clean = trim((string)$source);
+        return $clean !== '' ? $clean : 'unknown';
+    }
+
+    private function ensureIngestionBucket($source, $market) {
+        $sourceKey = $this->normalizeSourceKey($source);
+        $marketKey = $this->normalizeMarketKey($market) ?? 'front-range';
+
+        if (!isset($this->runMetrics['ingestion'][$sourceKey])) {
+            $this->runMetrics['ingestion'][$sourceKey] = [];
+        }
+        if (!isset($this->runMetrics['ingestion'][$sourceKey][$marketKey])) {
+            $this->runMetrics['ingestion'][$sourceKey][$marketKey] = [
+                'added' => 0,
+                'updated' => 0,
+                'purged' => 0,
+            ];
+        }
+
+        $this->runMetrics['markets_processed'][$marketKey] = true;
+        return [$sourceKey, $marketKey];
+    }
+
+    private function bumpIngestionCount($source, $market, $field, $delta = 1) {
+        if (!in_array($field, ['added', 'updated', 'purged'], true)) {
+            return;
+        }
+
+        list($sourceKey, $marketKey) = $this->ensureIngestionBucket($source, $market);
+        $this->runMetrics['ingestion'][$sourceKey][$marketKey][$field] += (int)$delta;
+    }
+
+    public function recordPurgedCount($source, $market, $delta = 1) {
+        $this->bumpIngestionCount($source, $market, 'purged', $delta);
+    }
+
+    public function recordAutoApprovedArtists(array $names) {
+        foreach ($names as $name) {
+            $clean = trim((string)$name);
+            if ($clean === '') {
+                continue;
+            }
+            $this->runMetrics['enrichment']['musicbrainz_auto_approved_artists'][strtolower($clean)] = $clean;
+        }
+    }
+
+    private function appendUniqueError(&$bucket, $entry) {
+        if (empty($entry)) {
+            return;
+        }
+        if (!in_array($entry, $bucket, true)) {
+            $bucket[] = $entry;
+        }
+    }
+
+    public function recordHttpNon200($source, $market, $httpCode, $context) {
+        $entry = sprintf('%s | market=%s | http=%s | %s', $this->normalizeSourceKey($source), $this->normalizeMarketKey($market) ?? 'unknown', (string)$httpCode, trim((string)$context));
+        $this->appendUniqueError($this->runMetrics['errors']['http_non_200'], $entry);
+    }
+
+    public function recordConnectionFailure($source, $market, $context) {
+        $entry = sprintf('%s | market=%s | %s', $this->normalizeSourceKey($source), $this->normalizeMarketKey($market) ?? 'unknown', trim((string)$context));
+        $this->appendUniqueError($this->runMetrics['errors']['connection_failures'], $entry);
+    }
+
+    public function recordScraperDropout($context) {
+        $this->appendUniqueError($this->runMetrics['errors']['scraper_dropouts'], trim((string)$context));
+    }
+
+    private function parseLogForErrorBuckets($msg) {
+        $text = trim((string)$msg);
+        if ($text === '') {
+            return;
+        }
+
+        $lower = strtolower($text);
+
+        if (strpos($lower, '[fatal') !== false) {
+            $this->appendUniqueError($this->runMetrics['errors']['fatal'], $text);
+        }
+
+        if (strpos($lower, '[warn') !== false || strpos($lower, '[error') !== false) {
+            $this->appendUniqueError($this->runMetrics['errors']['warnings'], $text);
+        }
+
+        if ((strpos($lower, 'http code') !== false || preg_match('/\bhttp\s+\d{3}\b/i', $text)) &&
+            strpos($lower, 'http 200') === false &&
+            strpos($lower, 'http code 200') === false) {
+            $this->appendUniqueError($this->runMetrics['errors']['http_non_200'], $text);
+        }
+
+        if (strpos($lower, 'failed connection handle') !== false ||
+            strpos($lower, 'curl error') !== false ||
+            strpos($lower, 'request failed') !== false ||
+            strpos($lower, 'failed to load html') !== false) {
+            $this->appendUniqueError($this->runMetrics['errors']['connection_failures'], $text);
+        }
+
+        if (strpos($lower, '[scraper]') !== false &&
+            (strpos($lower, 'fallback') !== false || strpos($lower, 'failed') !== false || strpos($lower, 'dropout') !== false)) {
+            $this->appendUniqueError($this->runMetrics['errors']['scraper_dropouts'], $text);
+        }
     }
 
     public function log($msg) {
         $formatted = "[" . date('Y-m-d H:i:s') . "] " . $msg;
         $this->logs[] = $formatted;
+        $this->parseLogForErrorBuckets($msg);
         if (php_sapi_name() === 'cli' || empty($_SERVER['REMOTE_ADDR'])) {
             echo $formatted . "\n";
         }
@@ -32,6 +160,46 @@ class EventAggregator {
 
     public function getLogs() {
         return $this->logs;
+    }
+
+    public function buildGenreBucketDistribution() {
+        $rows = $this->db->query("SELECT market, genre, COUNT(*) AS count_total FROM events GROUP BY market, genre ORDER BY market ASC, count_total DESC")->fetchAll(PDO::FETCH_ASSOC);
+        $dist = [];
+        foreach ($rows as $row) {
+            $market = $this->normalizeMarketKey($row['market'] ?? null) ?? 'front-range';
+            if (!isset($dist[$market])) {
+                $dist[$market] = [];
+            }
+            $dist[$market][(string)$row['genre']] = (int)$row['count_total'];
+        }
+        return $dist;
+    }
+
+    public function getRunReportData(array $context = []) {
+        $runtimeSeconds = (float)($context['runtime_seconds'] ?? 0.0);
+        $success = (bool)($context['success'] ?? false);
+        $marketsProcessed = array_keys($this->runMetrics['markets_processed']);
+        sort($marketsProcessed);
+
+        return [
+            'execution' => [
+                'started_at' => $this->runMetrics['started_at'],
+                'ended_at' => date('c'),
+                'runtime_seconds' => $runtimeSeconds,
+                'markets_processed' => $marketsProcessed,
+                'markets_processed_count' => count($marketsProcessed),
+                'success' => $success,
+            ],
+            'ingestion' => $this->runMetrics['ingestion'],
+            'enrichment' => [
+                'musicbrainz_auto_approved_count' => count($this->runMetrics['enrichment']['musicbrainz_auto_approved_artists']),
+                'musicbrainz_auto_approved_artists' => array_values($this->runMetrics['enrichment']['musicbrainz_auto_approved_artists']),
+                'genre_bucket_distribution' => $this->buildGenreBucketDistribution(),
+                'unknown_tags_write_count' => (int)$this->runMetrics['enrichment']['unknown_tags_write_count'],
+                'unknown_tags_written' => array_values($this->runMetrics['enrichment']['unknown_tags_written']),
+            ],
+            'errors' => $this->runMetrics['errors'],
+        ];
     }
 
     public function seedApprovedArtistNames($artistName) {
@@ -66,11 +234,20 @@ class EventAggregator {
         }
 
         $purgedCount = 0;
-        $stmt = $this->db->query("SELECT event_id, artist_name FROM events");
+        $stmt = $this->db->query("SELECT event_id, artist_name, source, market FROM events");
         $events = $stmt->fetchAll();
 
         foreach ($events as $e) {
             if (isArtistIgnored($e['artist_name'], $ignored)) {
+                $market = $this->normalizeMarketKey($e['market'] ?? null) ?? 'front-range';
+                $sources = array_filter(array_map('trim', explode(',', (string)($e['source'] ?? 'unknown'))));
+                if (empty($sources)) {
+                    $sources = ['unknown'];
+                }
+                foreach ($sources as $sourceName) {
+                    $this->recordPurgedCount($sourceName, $market, 1);
+                }
+
                 $del = $this->db->prepare("DELETE FROM events WHERE event_id = :id");
                 $del->execute([':id' => $e['event_id']]);
                 $purgedCount++;
@@ -85,7 +262,7 @@ class EventAggregator {
     }
 
     /**
-     * Checks if an artist exists in our local metal lookup list. Support co-headlining splits.
+     * Checks if an artist exists in our local approved-artist lookup list. Supports co-headlining splits.
      */
     public function isMetalArtist($artistName) {
         $parts = $this->splitPerformerNames($artistName);
@@ -127,13 +304,20 @@ class EventAggregator {
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'FrontRangeMetalPassport/2.0 ( contact@nycto.ninja )');
+            curl_setopt($ch, CURLOPT_USERAGENT, 'NyctosGigGrid/2.0 ( contact@nycto.ninja )');
             curl_setopt($ch, CURLOPT_TIMEOUT, 5);
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
             curl_close($ch);
 
+            if ($response === false || $httpCode === 0) {
+                $this->recordConnectionFailure('MusicBrainz', 'all', "artist='{$part}' {$curlError}");
+                continue;
+            }
+
             if ($httpCode !== 200) {
+                $this->recordHttpNon200('MusicBrainz', 'all', $httpCode, "artist='{$part}'");
                 continue;
             }
 
@@ -306,6 +490,8 @@ class EventAggregator {
             if (!isset($existing[$normalizedPart])) {
                 $existing[$normalizedPart] = true;
                 file_put_contents($logPath, $part . "\n", FILE_APPEND | LOCK_EX);
+                $this->runMetrics['enrichment']['unknown_tags_write_count'] += 1;
+                $this->runMetrics['enrichment']['unknown_tags_written'][$normalizedPart] = $part;
             }
         }
     }
@@ -327,6 +513,8 @@ class EventAggregator {
             'colorado' => 'front-range',
             'co' => 'front-range',
             'socal' => 'socal',
+            'california' => 'socal',
+            'ca' => 'socal',
             'southern-california' => 'socal',
             'southern california' => 'socal',
             'la' => 'socal',
@@ -375,6 +563,19 @@ class EventAggregator {
                 'bandsintown_locations' => ['Glasgow,Scotland', 'Edinburgh,Scotland', 'Aberdeen,Scotland', 'Inverness,Scotland']
             ]
         ];
+    }
+
+    public function getConfiguredMarkets() {
+        $keys = [];
+        foreach ($this->getMarketIngestionProfiles() as $profile) {
+            $market = $this->normalizeMarketKey($profile['market'] ?? null);
+            if ($market !== null) {
+                $keys[$market] = true;
+            }
+        }
+        $markets = array_keys($keys);
+        sort($markets);
+        return $markets;
     }
 
     private function simplifyVenueName($venueName) {
@@ -448,8 +649,8 @@ class EventAggregator {
             'cancelled' => 5,
             'postponed' => 4,
             'rescheduled' => 3,
-            'offsale' => 2,
-            'onsale' => 1
+            'onsale' => 2,
+            'offsale' => 1
         ];
 
         return $weights[$code] ?? 0;
@@ -457,7 +658,7 @@ class EventAggregator {
 
     private function deriveAvailabilityTagFromStatus($statusCode) {
         $code = $this->normalizeTicketStatusCode($statusCode);
-        if ($code === null) {
+        if ($code === null || $code === 'onsale') {
             return null;
         }
 
@@ -480,6 +681,14 @@ class EventAggregator {
         }
         if ($existing === null) {
             return $incoming;
+        }
+
+        // Active onsale takes priority over offsale to prevent false offsale badges
+        if (($existing === 'onsale' || $incoming === 'onsale') && 
+            $existing !== 'cancelled' && $incoming !== 'cancelled' &&
+            $existing !== 'postponed' && $incoming !== 'postponed' &&
+            $existing !== 'rescheduled' && $incoming !== 'rescheduled') {
+            return 'onsale';
         }
 
         return $this->availabilitySeverity($incoming) >= $this->availabilitySeverity($existing) ? $incoming : $existing;
@@ -551,13 +760,22 @@ class EventAggregator {
             }
         }
 
-        // 2. Region / State validation
+        $cityNorm = strtolower(trim((string)$city));
+
+        // 2. Region / State & City validation
         if ($marketNorm === 'front-range') {
             if ($regionNorm !== '' && !in_array($regionNorm, ['co', 'colorado', 'co.'], true)) {
                 return false;
             }
         } elseif ($marketNorm === 'socal') {
             if ($regionNorm !== '' && !in_array($regionNorm, ['ca', 'california', 'ca.'], true)) {
+                return false;
+            }
+        } elseif ($marketNorm === 'scotland') {
+            if ($regionNorm !== '' && in_array($regionNorm, ['co', 'colorado', 'ca', 'california', 'wa', 'washington', 'or', 'oregon', 'tx', 'texas', 'mo', 'missouri', 'ne', 'nebraska', 'il', 'illinois', 'ny', 'new york'], true)) {
+                return false;
+            }
+            if (preg_match('/\b(seattle|denver|omaha|kansas city|kansas|nashville|chicago|los angeles|san francisco|austin|portland|dallas|houston|atlanta|miami)\b/i', $cityNorm)) {
                 return false;
             }
         }
@@ -731,19 +949,31 @@ class EventAggregator {
 
                     $url = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" . urlencode($apiKey)
                         . "&" . $qParam
-                        . "&classificationName=music&size=200&page=" . $page;
+                        . "&classificationName=music&size=100&page=" . $page;
 
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL, $url);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_USERAGENT, 'MetalCalendarAggregator/1.0');
-                curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+                if (defined('CURLOPT_ENCODING')) {
+                    curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate');
+                }
+                curl_setopt($ch, CURLOPT_USERAGENT, 'NyctosGigGridAggregator/1.0');
+                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+                curl_setopt($ch, CURLOPT_TIMEOUT, 30);
                 $response = curl_exec($ch);
                 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlError = curl_error($ch);
                 curl_close($ch);
+
+                if ($response === false || $httpCode === 0) {
+                    $this->log("[ERROR] Ticketmaster failed connection handle on page {$page} for {$marketKey}: {$curlError}");
+                    $this->recordConnectionFailure('Ticketmaster', $marketKey, "page={$page} {$curlError}");
+                    continue;
+                }
 
                 if ($httpCode !== 200) {
                     $this->log("[ERROR] Ticketmaster API query returned HTTP code {$httpCode} on page {$page} for {$marketKey}");
+                    $this->recordHttpNon200('Ticketmaster', $marketKey, $httpCode, "page={$page}");
                     continue;
                 }
 
@@ -816,6 +1046,7 @@ class EventAggregator {
                         $isMetal = $this->fetchArtistGenreMetadata($artistName);
                         if ($isMetal) {
                             $approvedNames = $this->seedApprovedArtistNames($artistName);
+                            $this->recordAutoApprovedArtists($approvedNames);
                             $this->log("[ENRICHMENT] Auto-approving performer(s) '" . implode("', '", $approvedNames) . "' via MusicBrainz genre match.");
                         }
                     }
@@ -873,112 +1104,8 @@ class EventAggregator {
      * 2. Ingestion: Bandsintown API (Discovery-First Geographic Search)
      */
     public function fetchBandsintown() {
-        $this->log("Starting discovery-first Bandsintown API query by location...");
-        $appId = BANDSINTOWN_APP_ID;
-        $totalEventsCount = 0;
-
-        foreach ($this->getMarketIngestionProfiles() as $profile) {
-            $marketKey = $profile['market'];
-            $marketEventsCount = 0;
-            $locations = $profile['bandsintown_locations'] ?? [$profile['bandsintown_location'] ?? 'Denver,CO'];
-
-            foreach ($locations as $loc) {
-                $url = "https://rest.bandsintown.com/events/search?location=" . urlencode($loc)
-                    . "&radius=100"
-                    . "&date=upcoming&app_id=" . urlencode($appId);
-
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $url);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_USERAGENT, 'FrontRangeMetalPassport/2.0');
-                curl_setopt($ch, CURLOPT_TIMEOUT, 12);
-                $response = curl_exec($ch);
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-
-                if ($httpCode !== 200 || empty($response)) {
-                    continue;
-                }
-
-                $events = json_decode($response, true);
-                if (!is_array($events)) {
-                    continue;
-                }
-
-                foreach ($events as $event) {
-                $rawVenueName = $event['venue']['name'] ?? 'Unknown Venue';
-                $locationHint = [
-                    'city' => $event['venue']['city'] ?? '',
-                    'region' => $event['venue']['region'] ?? '',
-                    'country' => $event['venue']['country'] ?? ''
-                ];
-                $resolvedVenue = $this->resolveTargetVenue($rawVenueName, $marketKey, $locationHint);
-                if ($resolvedVenue === null) {
-                    continue;
-                }
-
-                $venueName = $resolvedVenue['venue_name'];
-                $market = $resolvedVenue['market'];
-                
-                $lineup = $event['lineup'] ?? [];
-                if (!empty($lineup) && is_array($lineup)) {
-                    $validArtists = [];
-                    foreach ($lineup as $act) {
-                        $actTrim = trim($act);
-                        if (!empty($actTrim) && !$this->isIgnoredArtistName($actTrim)) {
-                            $validArtists[] = $actTrim;
-                        }
-                    }
-                    if (!empty($validArtists)) {
-                        $artistName = implode(' & ', array_unique($validArtists));
-                    } else {
-                        $artistName = $event['artist']['name'] ?? ($event['lineup'][0] ?? 'Unknown Artist');
-                    }
-                } else {
-                    $artistName = $event['artist']['name'] ?? 'Unknown Artist';
-                }
-
-                if ($this->isIgnoredArtistName($artistName)) {
-                    $this->log("[IGNORE] Skipped blocked artist '{$artistName}' from Bandsintown.");
-                    continue;
-                }
-
-                $city = $event['venue']['city'] ?? '';
-                $startTime = $event['datetime'];
-                $startTimeSql = date('Y-m-d H:i:s', strtotime($startTime));
-                $ticketUrl = $event['url'] ?? $event['offers'][0]['url'] ?? null;
-
-                $isMetal = $this->isMetalArtist($artistName);
-                if (!$isMetal) {
-                    $isMetal = $this->fetchArtistGenreMetadata($artistName);
-                    if ($isMetal) {
-                        $approvedNames = $this->seedApprovedArtistNames($artistName);
-                        $this->log("[ENRICHMENT] Auto-approving performer(s) '" . implode("', '", $approvedNames) . "' via MusicBrainz genre match.");
-                    }
-                }
-                $status = 'Approved';
-
-                $this->saveEvent([
-                    'event_id' => $this->generateDedupeKey($artistName, $venueName, $startTimeSql, $market),
-                    'artist_name' => $artistName,
-                    'venue_name' => $venueName,
-                    'city_name' => $city,
-                    'start_time' => $startTimeSql,
-                    'ticket_url' => $ticketUrl,
-                    'status' => $status,
-                    'source' => 'Bandsintown',
-                    'market' => $market
-                ]);
-                $marketEventsCount++;
-                $totalEventsCount++;
-            }
-        }
-
-            $this->log("[BANDSINTOWN] Processed {$marketEventsCount} events for {$marketKey} via location search.");
-        }
-
-        $this->log("Processed {$totalEventsCount} music events from Bandsintown location search.");
-        return $totalEventsCount;
+        $this->log("[BANDSINTOWN] Public location search endpoint is deprecated by provider (HTTP 403). Routing seamlessly to registered artist ingestion pipeline...");
+        return $this->fetchBandsintownFallback();
     }
 
     /**
@@ -990,110 +1117,123 @@ class EventAggregator {
 
         $artists = $this->db->query("SELECT artist_name FROM metal_artists")->fetchAll(PDO::FETCH_COLUMN);
         $appId = BANDSINTOWN_APP_ID;
+        $totalIngestedCount = 0;
 
-        $mh = curl_multi_init();
-        $handles = [];
+        // Batch into chunks of 35 parallel handles to prevent socket exhaustion & rate limiting
+        $artistChunks = array_chunk($artists, 35);
 
-        foreach ($artists as $artist) {
-            $url = "https://rest.bandsintown.com/artists/" . rawurlencode($artist) . "/events?app_id=" . urlencode($appId);
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'FrontRangeMetalPassport/2.0');
-            curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+        foreach ($artistChunks as $chunkIndex => $chunk) {
+            $mh = curl_multi_init();
+            $handles = [];
 
-            curl_multi_add_handle($mh, $ch);
-            $handles[$artist] = $ch;
-        }
+            foreach ($chunk as $artist) {
+                $url = "https://rest.bandsintown.com/artists/" . rawurlencode($artist) . "/events?app_id=" . urlencode($appId);
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_USERAGENT, 'NyctosGigGrid/2.0');
+                curl_setopt($ch, CURLOPT_TIMEOUT, 8);
 
-        $running = null;
-        do {
-            curl_multi_exec($mh, $running);
-            curl_multi_select($mh);
-        } while ($running > 0);
-
-        $eventsCount = 0;
-
-        foreach ($handles as $artist => $ch) {
-            $response = curl_multi_getcontent($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_multi_remove_handle($mh, $ch);
-            curl_close($ch);
-
-            if ($httpCode !== 200 || empty($response)) {
-                continue;
+                curl_multi_add_handle($mh, $ch);
+                $handles[$artist] = $ch;
             }
 
-            $events = json_decode($response, true);
-            if (!is_array($events)) {
-                continue;
-            }
+            $running = null;
+            do {
+                curl_multi_exec($mh, $running);
+                curl_multi_select($mh, 0.1);
+            } while ($running > 0);
 
-            foreach ($events as $event) {
-                $rawVenueName = $event['venue']['name'] ?? 'Unknown Venue';
-                $locationHint = [
-                    'city' => $event['venue']['city'] ?? '',
-                    'region' => $event['venue']['region'] ?? '',
-                    'country' => $event['venue']['country'] ?? ''
-                ];
-                $resolvedVenue = $this->resolveTargetVenue($rawVenueName, $marketHint, $locationHint);
-                if ($resolvedVenue === null) {
+            foreach ($handles as $artist => $ch) {
+                $response = curl_multi_getcontent($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlError = curl_error($ch);
+                curl_multi_remove_handle($mh, $ch);
+                curl_close($ch);
+
+                if ($httpCode !== 200 || empty($response)) {
+                    if ($response === false || $httpCode === 0) {
+                        $this->recordConnectionFailure('Bandsintown', $marketHint, "fallback artist='{$artist}' {$curlError}");
+                    } else {
+                        $this->recordHttpNon200('Bandsintown', $marketHint, $httpCode, "fallback artist='{$artist}'");
+                    }
                     continue;
                 }
 
-                $venueName = $resolvedVenue['venue_name'];
-                $market = $resolvedVenue['market'];
-                $lineup = $event['lineup'] ?? [];
-                $artistName = $artist;
-                if (!empty($lineup) && is_array($lineup)) {
-                    $validArtists = [];
-                    foreach ($lineup as $act) {
-                        $actTrim = trim($act);
-                        if (!empty($actTrim) && !$this->isIgnoredArtistName($actTrim)) {
-                            $validArtists[] = $actTrim;
+                $events = json_decode($response, true);
+                if (!is_array($events)) {
+                    continue;
+                }
+
+                foreach ($events as $event) {
+                    $rawVenueName = $event['venue']['name'] ?? 'Unknown Venue';
+                    $locationHint = [
+                        'city' => $event['venue']['city'] ?? '',
+                        'region' => $event['venue']['region'] ?? '',
+                        'country' => $event['venue']['country'] ?? ''
+                    ];
+                    $resolvedVenue = $this->resolveTargetVenue($rawVenueName, $marketHint, $locationHint);
+                    if ($resolvedVenue === null) {
+                        continue;
+                    }
+
+                    $venueName = $resolvedVenue['venue_name'];
+                    $market = $resolvedVenue['market'];
+                    $lineup = $event['lineup'] ?? [];
+                    $artistName = $artist;
+                    if (!empty($lineup) && is_array($lineup)) {
+                        $validArtists = [];
+                        foreach ($lineup as $act) {
+                            $actTrim = trim($act);
+                            if (!empty($actTrim) && !$this->isIgnoredArtistName($actTrim)) {
+                                $validArtists[] = $actTrim;
+                            }
+                        }
+                        if (!empty($validArtists)) {
+                            $artistName = implode(' & ', array_unique($validArtists));
                         }
                     }
-                    if (!empty($validArtists)) {
-                        $artistName = implode(' & ', array_unique($validArtists));
+
+                    if ($this->isIgnoredArtistName($artistName)) {
+                        $this->log("[IGNORE] Skipped blocked artist '{$artistName}' from Bandsintown fallback.");
+                        continue;
                     }
-                }
 
-                if ($this->isIgnoredArtistName($artistName)) {
-                    $this->log("[IGNORE] Skipped blocked artist '{$artistName}' from Bandsintown fallback.");
-                    continue;
-                }
+                    $startTime = $event['datetime'] ?? null;
+                    if (empty($startTime)) {
+                        continue;
+                    }
+                    $parsedTimestamp = strtotime($startTime);
+                    if ($parsedTimestamp === false) {
+                        continue;
+                    }
+                    $startTimeSql = date('Y-m-d H:i:s', $parsedTimestamp);
 
-                $startTime = $event['datetime'] ?? null;
-                if (empty($startTime)) {
-                    continue;
-                }
-                $parsedTimestamp = strtotime($startTime);
-                if ($parsedTimestamp === false) {
-                    continue;
-                }
-                $startTimeSql = date('Y-m-d H:i:s', $parsedTimestamp);
+                    $ticketUrl = $event['url'] ?? $event['offers'][0]['url'] ?? null;
+                    $status = 'Approved';
+                    $city = !empty($event['venue']['city']) ? $event['venue']['city'] : ($locationHint['city'] ?? 'Denver');
 
-                $ticketUrl = $event['url'] ?? $event['offers'][0]['url'] ?? null;
-                $status = 'Approved';
-                $city = !empty($event['venue']['city']) ? $event['venue']['city'] : ($locationHint['city'] ?? 'Denver');
-
-                $this->saveEvent([
-                    'event_id' => $this->generateDedupeKey($artistName, $venueName, $startTimeSql, $market),
-                    'artist_name' => $artistName,
-                    'venue_name' => $venueName,
-                    'city_name' => $city,
-                    'start_time' => $startTimeSql,
-                    'ticket_url' => $ticketUrl,
-                    'status' => $status,
-                    'source' => 'Bandsintown',
-                    'market' => $market
-                ]);
-                $eventsCount++;
+                    $this->saveEvent([
+                        'event_id' => $this->generateDedupeKey($artistName, $venueName, $startTimeSql, $market),
+                        'artist_name' => $artistName,
+                        'venue_name' => $venueName,
+                        'city_name' => $city,
+                        'start_time' => $startTimeSql,
+                        'ticket_url' => $ticketUrl,
+                        'status' => $status,
+                        'source' => 'Bandsintown',
+                        'market' => $market
+                    ]);
+                    $totalIngestedCount++;
+                }
             }
+
+            curl_multi_close($mh);
+            usleep(50000); // 50ms pause between chunks to respect rate limits
         }
-        curl_multi_close($mh);
-        $this->log("Processed {$eventsCount} events via concurrent Bandsintown fallback search for {$marketLabel}.");
-        return $eventsCount;
+
+        $this->log("Processed {$totalIngestedCount} events via concurrent Bandsintown fallback search for {$marketLabel}.");
+        return $totalIngestedCount;
     }
 
     private function estimatePriceRange($venueName) {
@@ -1418,7 +1558,7 @@ class EventAggregator {
                 sold_out_flag = :sold_out_flag
                 WHERE event_id = :id");
                 
-            $stmtUpdate->execute([
+            executeWithRetry($stmtUpdate, [
                 ':artist' => $mergedArtist,
                 ':venue' => $event['venue_name'],
                 ':city' => $event['city_name'],
@@ -1454,6 +1594,8 @@ class EventAggregator {
                     $dropDetected
                 );
             }
+
+            $this->bumpIngestionCount($event['source'] ?? 'unknown', $mergedMarket, 'updated', 1);
         } else {
             // New entry insert
             $isManualOverride = (resolveArtistGenreOverride($event['artist_name'], $this->genreOverrides) !== null);
@@ -1469,7 +1611,7 @@ class EventAggregator {
             )");
             
             $initialChangedAt = ($priceMin !== null || $priceMax !== null) ? date('Y-m-d H:i:s') : null;
-            $stmtInsert->execute([
+            executeWithRetry($stmtInsert, [
                 ':id' => $event['event_id'],
                 ':artist' => $event['artist_name'],
                 ':venue' => $event['venue_name'],
@@ -1503,6 +1645,8 @@ class EventAggregator {
                 0.0,
                 false
             );
+
+            $this->bumpIngestionCount($event['source'] ?? 'unknown', $incomingMarket, 'added', 1);
         }
 
         return true;
