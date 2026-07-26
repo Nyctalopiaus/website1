@@ -15,6 +15,10 @@ class EventAggregator {
     private $genreOverrides = [];
     private $venuesByMarket = [];
     private $runMetrics = [];
+    private $stmtSaveSelect = null;
+    private $stmtSaveUpdate = null;
+    private $stmtSaveInsert = null;
+    private $stmtPriceSnapshot = null;
 
     public function __construct() {
         $this->db = getDbConnection();
@@ -29,6 +33,7 @@ class EventAggregator {
             'started_at' => date('c'),
             'markets_processed' => [],
             'ingestion' => [],
+            'sources' => [],
             'enrichment' => [
                 'musicbrainz_auto_approved_artists' => [],
                 'unknown_tags_written' => [],
@@ -41,6 +46,26 @@ class EventAggregator {
                 'warnings' => [],
                 'fatal' => [],
             ],
+        ];
+    }
+
+    public function recordSourceRun($sourceName, $status = 'SUCCESS', $details = '', $type = 'Venue Scraper', $market = 'front-range') {
+        $cleanName = trim((string)$sourceName);
+        if ($cleanName === '') {
+            return;
+        }
+
+        if (!isset($this->runMetrics['sources'])) {
+            $this->runMetrics['sources'] = [];
+        }
+
+        $this->runMetrics['sources'][$cleanName] = [
+            'name' => $cleanName,
+            'type' => $type,
+            'status' => strtoupper(trim((string)$status)),
+            'details' => trim((string)$details),
+            'market' => $market,
+            'timestamp' => date('Y-m-d H:i:s'),
         ];
     }
 
@@ -191,6 +216,7 @@ class EventAggregator {
                 'success' => $success,
             ],
             'ingestion' => $this->runMetrics['ingestion'],
+            'sources' => $this->runMetrics['sources'] ?? [],
             'enrichment' => [
                 'musicbrainz_auto_approved_count' => count($this->runMetrics['enrichment']['musicbrainz_auto_approved_artists']),
                 'musicbrainz_auto_approved_artists' => array_values($this->runMetrics['enrichment']['musicbrainz_auto_approved_artists']),
@@ -1097,6 +1123,7 @@ class EventAggregator {
         }
 
         $this->log("Processed {$totalIngested} music events from Ticketmaster.");
+        $this->recordSourceRun('Ticketmaster', 'SUCCESS', "API query completed ({$totalIngested} events processed)", 'API', 'all');
         return $totalIngested;
     }
 
@@ -1233,6 +1260,7 @@ class EventAggregator {
         }
 
         $this->log("Processed {$totalIngestedCount} events via concurrent Bandsintown fallback search for {$marketLabel}.");
+        $this->recordSourceRun('Bandsintown', 'SUCCESS', "API query completed ({$totalIngestedCount} events processed)", 'API', 'all');
         return $totalIngestedCount;
     }
 
@@ -1350,13 +1378,15 @@ class EventAggregator {
             return;
         }
 
-        $stmtHistory = $this->db->prepare("INSERT INTO event_price_history (
-            event_id, observed_price_min, observed_price_max, price_source, drop_amount, drop_detected
-        ) VALUES (
-            :event_id, :price_min, :price_max, :price_source, :drop_amount, :drop_detected
-        )");
+        if ($this->stmtPriceSnapshot === null) {
+            $this->stmtPriceSnapshot = $this->db->prepare("INSERT INTO event_price_history (
+                event_id, observed_price_min, observed_price_max, price_source, drop_amount, drop_detected
+            ) VALUES (
+                :event_id, :price_min, :price_max, :price_source, :drop_amount, :drop_detected
+            )");
+        }
 
-        $stmtHistory->execute([
+        executeWithRetry($this->stmtPriceSnapshot, [
             ':event_id' => $eventId,
             ':price_min' => $priceMin,
             ':price_max' => $priceMax,
@@ -1417,8 +1447,9 @@ class EventAggregator {
             $part = trim($part);
             if (empty($part)) continue;
             $stmtCache = $this->db->prepare("SELECT tags FROM artist_genre_cache WHERE LOWER(artist_name) = LOWER(:name)");
-            $stmtCache->execute([':name' => strtolower($part)]);
+            executeWithRetry($stmtCache, [':name' => strtolower($part)]);
             $cachedTags = $stmtCache->fetchColumn();
+            $stmtCache->closeCursor();
             if (!empty($cachedTags)) {
                 $cTags = explode(',', $cachedTags);
                 foreach ($cTags as $ct) {
@@ -1433,9 +1464,12 @@ class EventAggregator {
         $tagsStr = !empty($tags) ? implode(', ', $tags) : null;
 
         // Check if event already exists
-        $stmt = $this->db->prepare("SELECT * FROM events WHERE event_id = :id");
-        $stmt->execute([':id' => $event['event_id']]);
-        $existing = $stmt->fetch();
+        if ($this->stmtSaveSelect === null) {
+            $this->stmtSaveSelect = $this->db->prepare("SELECT * FROM events WHERE event_id = :id");
+        }
+        executeWithRetry($this->stmtSaveSelect, [':id' => $event['event_id']]);
+        $existing = $this->stmtSaveSelect->fetch();
+        $this->stmtSaveSelect->closeCursor();
 
         if ($existing) {
             $existingLocked = (int)($existing['genre_locked'] ?? 0);
@@ -1533,32 +1567,34 @@ class EventAggregator {
             $existingSoldOutFlag = (int)($existing['sold_out_flag'] ?? 0);
             $mergedSoldOutFlag = ($mergedTicketStatusCode === 'offsale' || $incomingSoldOutFlag === 1 || $existingSoldOutFlag === 1) ? 1 : 0;
             
-            $stmtUpdate = $this->db->prepare("UPDATE events SET 
-                artist_name = :artist,
-                venue_name = :venue,
-                city_name = :city,
-                market = :market,
-                start_time = :start,
-                ticket_url = :url,
-                status = :status,
-                source = :source,
-                genre = :genre,
-                tags = :tags,
-                genre_source = :genre_source,
-                genre_locked = :genre_locked,
-                price_min = :price_min,
-                price_max = :price_max,
-                price_last_changed_at = :price_last_changed_at,
-                price_dropped_flag = :price_dropped_flag,
-                price_drop_amount = :price_drop_amount,
-                price_drop_detected_at = :price_drop_detected_at,
-                low_ticket_flag = :low_ticket_flag,
-                ticket_status_code = :ticket_status_code,
-                availability_tag = :availability_tag,
-                sold_out_flag = :sold_out_flag
-                WHERE event_id = :id");
+            if ($this->stmtSaveUpdate === null) {
+                $this->stmtSaveUpdate = $this->db->prepare("UPDATE events SET 
+                    artist_name = :artist,
+                    venue_name = :venue,
+                    city_name = :city,
+                    market = :market,
+                    start_time = :start,
+                    ticket_url = :url,
+                    status = :status,
+                    source = :source,
+                    genre = :genre,
+                    tags = :tags,
+                    genre_source = :genre_source,
+                    genre_locked = :genre_locked,
+                    price_min = :price_min,
+                    price_max = :price_max,
+                    price_last_changed_at = :price_last_changed_at,
+                    price_dropped_flag = :price_dropped_flag,
+                    price_drop_amount = :price_drop_amount,
+                    price_drop_detected_at = :price_drop_detected_at,
+                    low_ticket_flag = :low_ticket_flag,
+                    ticket_status_code = :ticket_status_code,
+                    availability_tag = :availability_tag,
+                    sold_out_flag = :sold_out_flag
+                    WHERE event_id = :id");
+            }
                 
-            executeWithRetry($stmtUpdate, [
+            executeWithRetry($this->stmtSaveUpdate, [
                 ':artist' => $mergedArtist,
                 ':venue' => $event['venue_name'],
                 ':city' => $event['city_name'],
@@ -1602,16 +1638,18 @@ class EventAggregator {
             $initialGenreSource = $isManualOverride ? 'manual' : strtolower($event['source'] ?? 'ticketmaster');
             $initialGenreLocked = $isManualOverride ? 1 : 0;
 
-            $stmtInsert = $this->db->prepare("INSERT INTO events (
-                event_id, artist_name, venue_name, city_name, market, start_time, ticket_url, status, source, genre, tags, genre_source, genre_locked, price_min, price_max,
-                price_last_changed_at, price_dropped_flag, price_drop_amount, price_drop_detected_at, low_ticket_flag, ticket_status_code, availability_tag, sold_out_flag
-            ) VALUES (
-                :id, :artist, :venue, :city, :market, :start, :url, :status, :source, :genre, :tags, :genre_source, :genre_locked, :price_min, :price_max,
-                :price_last_changed_at, :price_dropped_flag, :price_drop_amount, :price_drop_detected_at, :low_ticket_flag, :ticket_status_code, :availability_tag, :sold_out_flag
-            )");
+            if ($this->stmtSaveInsert === null) {
+                $this->stmtSaveInsert = $this->db->prepare("INSERT OR REPLACE INTO events (
+                    event_id, artist_name, venue_name, city_name, market, start_time, ticket_url, status, source, genre, tags, genre_source, genre_locked, price_min, price_max,
+                    price_last_changed_at, price_dropped_flag, price_drop_amount, price_drop_detected_at, low_ticket_flag, ticket_status_code, availability_tag, sold_out_flag
+                ) VALUES (
+                    :id, :artist, :venue, :city, :market, :start, :url, :status, :source, :genre, :tags, :genre_source, :genre_locked, :price_min, :price_max,
+                    :price_last_changed_at, :price_dropped_flag, :price_drop_amount, :price_drop_detected_at, :low_ticket_flag, :ticket_status_code, :availability_tag, :sold_out_flag
+                )");
+            }
             
             $initialChangedAt = ($priceMin !== null || $priceMax !== null) ? date('Y-m-d H:i:s') : null;
-            executeWithRetry($stmtInsert, [
+            executeWithRetry($this->stmtSaveInsert, [
                 ':id' => $event['event_id'],
                 ':artist' => $event['artist_name'],
                 ':venue' => $event['venue_name'],

@@ -30,17 +30,26 @@ function loadScrapedEventsForTarget(array $target, string $cacheDir, EventAggreg
 
 function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
     $scrapedCount = 0;
-    $scraper = new VenueScraper();
     $cacheDir = ensureSyncCacheDir();
 
     foreach (SCRAPER_TARGETS as $target) {
+        $scraper = new VenueScraper();
+        $venueName = trim((string)($target['venue_name'] ?? 'Unknown Venue'));
+        $sourceName = 'VenueScraper: ' . $venueName;
+        $cacheFile = $cacheDir . '/' . md5($target['venue_url']) . '.json';
+        $cacheTTL = 604800; // 7 days
+
+        $isCached = (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTTL);
         $scrapedEvents = loadScrapedEventsForTarget($target, $cacheDir, $aggregator, $scraper);
 
+        $eventsForThisVenue = 0;
+        $venueMarket = 'front-range';
         foreach ($scrapedEvents as $event) {
-            $resolvedVenue = $aggregator->resolveTargetVenue($event['venue_name']);
+            $resolvedVenue = $aggregator->resolveTargetVenue($event['venue_name'] ?? $venueName);
             if (!$resolvedVenue) {
                 continue;
             }
+            $venueMarket = $resolvedVenue['market'] ?? 'front-range';
 
             $isMetal = $aggregator->isMetalArtist($event['artist_name']);
             if (!$isMetal) {
@@ -63,19 +72,43 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
                 'start_time' => $event['start_time'],
                 'ticket_url' => $event['ticket_url'],
                 'status' => $status,
-                'source' => $event['source'],
+                'source' => $sourceName,
                 'market' => $resolvedVenue['market']
             ]);
             $scrapedCount++;
+            $eventsForThisVenue++;
         }
 
-        foreach ($scraper->getLogs() as $log) {
+        $scraperLogs = $scraper->getLogs();
+        $hasWarn = false;
+        $proxyUsed = false;
+        foreach ($scraperLogs as $log) {
             $aggregator->log('[SCRAPER] ' . $log);
             $logLower = strtolower((string)$log);
+            if (strpos($logLower, '[proxy]') !== false) {
+                $proxyUsed = true;
+            }
             if (strpos($logLower, '[warn]') !== false || strpos($logLower, 'fallback') !== false || strpos($logLower, 'failed') !== false) {
                 $aggregator->recordScraperDropout($log);
+                $hasWarn = true;
             }
         }
+
+        if ($isCached) {
+            $runStatus = 'CACHED';
+            $runDetails = "Loaded {$eventsForThisVenue} events from local JSON cache (< 7d)";
+        } elseif ($hasWarn) {
+            $runStatus = 'WARN';
+            $runDetails = "Scraped {$eventsForThisVenue} events (simulation fallback)";
+        } elseif ($proxyUsed) {
+            $runStatus = 'SUCCESS';
+            $runDetails = "Live scraped {$eventsForThisVenue} events (Scrape.do proxy)";
+        } else {
+            $runStatus = 'SUCCESS';
+            $runDetails = "Live scraped {$eventsForThisVenue} events";
+        }
+
+        $aggregator->recordSourceRun($sourceName, $runStatus, $runDetails, 'Venue Scraper', $venueMarket);
     }
 
     return $scrapedCount;

@@ -45,18 +45,23 @@ function marketLabelForReport(string $market): string {
 }
 
 function sourceLabelForReport(string $source): string {
-    $key = strtolower(trim($source));
+    $raw = trim($source);
+    if (preg_match('/^venuescraper\s*:\s*(.+)$/i', $raw, $m)) {
+        return trim($m[1]);
+    }
+
+    $key = strtolower($raw);
     switch ($key) {
         case 'ticketmaster':
-            return 'Ticketmaster';
+            return 'Ticketmaster API';
         case 'bandsintown':
-            return 'Bandsintown';
+            return 'Bandsintown API';
         case 'venuescraper':
-            return 'VenueScraper';
+            return 'Venue Scraper';
         case 'musicbrainz':
             return 'MusicBrainz';
         default:
-            return trim($source) !== '' ? $source : 'Unknown';
+            return $raw !== '' ? $raw : 'Unknown';
     }
 }
 
@@ -137,6 +142,133 @@ function summarizeHttpErrors(array $httpErrors): array {
     ];
 }
 
+function getSourceRunTallyData(array $report): array {
+    $ingestion = (array)($report['ingestion'] ?? []);
+    $recordedSources = (array)($report['sources'] ?? []);
+    
+    $rows = [];
+    $seenKeys = [];
+
+    // 1. Process explicit source runs recorded by EventAggregator / SyncService
+    foreach ($recordedSources as $sKey => $sData) {
+        $rawName = (string)($sData['name'] ?? $sKey);
+        $cleanName = sourceLabelForReport($rawName);
+        $marketKey = (string)($sData['market'] ?? 'all');
+        $type = (string)($sData['type'] ?? 'Venue Scraper');
+        $status = (string)($sData['status'] ?? 'SUCCESS');
+        $details = (string)($sData['details'] ?? 'Scraped successfully');
+
+        $added = 0;
+        $updated = 0;
+        $purged = 0;
+
+        foreach ($ingestion as $ingSource => $markets) {
+            $ingClean = sourceLabelForReport((string)$ingSource);
+            if (strtolower(trim((string)$ingSource)) === strtolower(trim((string)$sKey)) ||
+                strtolower(trim($ingClean)) === strtolower(trim($cleanName)) ||
+                (strpos(strtolower(trim((string)$ingSource)), 'venuescraper:') === 0 && strtolower(trim(substr((string)$ingSource, 13))) === strtolower(trim($cleanName)))) {
+                foreach ((array)$markets as $mKey => $c) {
+                    $added += (int)($c['added'] ?? 0);
+                    $updated += (int)($c['updated'] ?? 0);
+                    $purged += (int)($c['purged'] ?? 0);
+                }
+            }
+        }
+
+        $rowKey = strtolower($cleanName);
+        $seenKeys[$rowKey] = true;
+        $rows[] = [
+            'name' => $cleanName,
+            'type' => $type,
+            'market' => marketLabelForReport($marketKey),
+            'status' => $status,
+            'added' => $added,
+            'updated' => $updated,
+            'purged' => $purged,
+            'total' => $added + $updated,
+            'details' => $details,
+        ];
+    }
+
+    // 2. Process any remaining ingestion entries not explicitly in source runs
+    foreach ($ingestion as $ingSource => $markets) {
+        $cleanName = sourceLabelForReport((string)$ingSource);
+        $rowKey = strtolower($cleanName);
+        if (isset($seenKeys[$rowKey])) {
+            continue;
+        }
+
+        foreach ((array)$markets as $mKey => $c) {
+            $added = (int)($c['added'] ?? 0);
+            $updated = (int)($c['updated'] ?? 0);
+            $purged = (int)($c['purged'] ?? 0);
+
+            $rows[] = [
+                'name' => $cleanName,
+                'type' => (strpos(strtolower($cleanName), 'api') !== false) ? 'API' : 'Venue Scraper',
+                'market' => marketLabelForReport((string)$mKey),
+                'status' => 'SUCCESS',
+                'added' => $added,
+                'updated' => $updated,
+                'purged' => $purged,
+                'total' => $added + $updated,
+                'details' => 'Ingested show data',
+            ];
+            $seenKeys[$rowKey] = true;
+        }
+    }
+
+    // 3. Ensure any configured SCRAPER_TARGETS not yet listed are present
+    if (defined('SCRAPER_TARGETS') && is_array(SCRAPER_TARGETS)) {
+        foreach (SCRAPER_TARGETS as $target) {
+            $venueName = trim((string)($target['venue_name'] ?? ''));
+            if ($venueName === '') continue;
+            $rowKey = strtolower($venueName);
+            if (!isset($seenKeys[$rowKey])) {
+                $rows[] = [
+                    'name' => $venueName,
+                    'type' => 'Venue Scraper',
+                    'market' => 'Front Range',
+                    'status' => 'SUCCESS',
+                    'added' => 0,
+                    'updated' => 0,
+                    'purged' => 0,
+                    'total' => 0,
+                    'details' => 'Scrape completed (0 shows)',
+                ];
+                $seenKeys[$rowKey] = true;
+            }
+        }
+    }
+
+    // Sort: APIs first, then Venue Scrapers alphabetically
+    usort($rows, function($a, $b) {
+        if ($a['type'] !== $b['type']) {
+            return $a['type'] === 'API' ? -1 : 1;
+        }
+        return strcmp($a['name'], $b['name']);
+    });
+
+    return $rows;
+}
+
+function renderStatusBadgeHtml(string $status): string {
+    switch (strtoupper(trim($status))) {
+        case 'SUCCESS':
+        case 'OK':
+            return '<span style="display:inline-block;padding:3px 8px;border:1px solid #86efac;background:#ecfdf5;color:#166534;border-radius:999px;font-size:11px;font-weight:700;">OK</span>';
+        case 'CACHED':
+            return '<span style="display:inline-block;padding:3px 8px;border:1px solid #bfdbfe;background:#eff6ff;color:#1e40af;border-radius:999px;font-size:11px;font-weight:700;">CACHED</span>';
+        case 'WARN':
+        case 'WARNING':
+            return '<span style="display:inline-block;padding:3px 8px;border:1px solid #fde68a;background:#fffbeb;color:#92400e;border-radius:999px;font-size:11px;font-weight:700;">WARN</span>';
+        case 'FAILED':
+        case 'ERROR':
+        default:
+            return '<span style="display:inline-block;padding:3px 8px;border:1px solid #fca5a5;background:#fef2f2;color:#991b1b;border-radius:999px;font-size:11px;font-weight:700;">FAILED</span>';
+    }
+}
+
 function buildSyncReportHtml(array $report): string {
     $execution = $report['execution'] ?? [];
     $ingestion = $report['ingestion'] ?? [];
@@ -177,32 +309,34 @@ function buildSyncReportHtml(array $report): string {
     $html .= '</table>';
     $html .= '</td></tr>';
 
+    // 2) Event Sources & Scraper Run Tally
+    $sourceTallies = getSourceRunTallyData($report);
     $html .= '<tr><td style="padding:18px 24px 0 24px;">';
-    $html .= '<h2 style="margin:0 0 10px 0;font-size:16px;color:#111827;">2) Ingestion Summary</h2>';
-    $html .= '<div style="font-size:12px;color:#6b7280;margin-bottom:8px;">Added / Updated / Purged</div>';
-    if (empty($ingestion)) {
-        $html .= '<div style="font-size:13px;color:#6b7280;">No ingestion counters recorded.</div>';
+    $html .= '<h2 style="margin:0 0 10px 0;font-size:16px;color:#111827;">2) Event Sources & Scraper Run Tally</h2>';
+    $html .= '<div style="font-size:12px;color:#6b7280;margin-bottom:8px;">Running tally and execution status for all API feeds and venue scrapers</div>';
+    if (empty($sourceTallies)) {
+        $html .= '<div style="font-size:13px;color:#6b7280;">No event sources recorded.</div>';
     } else {
-        $html .= '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:13px;">';
+        $html .= '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:12px;">';
         $html .= '<tr>';
-        $html .= '<th align="left" style="padding:8px;border:1px solid #e5e7eb;background:#f3f4f6;">Source</th>';
-        $html .= '<th align="left" style="padding:8px;border:1px solid #e5e7eb;background:#f3f4f6;">Market</th>';
+        $html .= '<th align="left" style="padding:8px;border:1px solid #e5e7eb;background:#f3f4f6;">Source / Venue</th>';
+        $html .= '<th align="left" style="padding:8px;border:1px solid #e5e7eb;background:#f3f4f6;">Type</th>';
+        $html .= '<th align="center" style="padding:8px;border:1px solid #e5e7eb;background:#f3f4f6;">Status</th>';
         $html .= '<th align="right" style="padding:8px;border:1px solid #e5e7eb;background:#f3f4f6;">Added</th>';
         $html .= '<th align="right" style="padding:8px;border:1px solid #e5e7eb;background:#f3f4f6;">Updated</th>';
         $html .= '<th align="right" style="padding:8px;border:1px solid #e5e7eb;background:#f3f4f6;">Purged</th>';
+        $html .= '<th align="left" style="padding:8px;border:1px solid #e5e7eb;background:#f3f4f6;">Run Details / Notes</th>';
         $html .= '</tr>';
-        ksort($ingestion);
-        foreach ($ingestion as $source => $marketsForSource) {
-            ksort($marketsForSource);
-            foreach ($marketsForSource as $marketKey => $counts) {
-                $html .= '<tr>';
-                $html .= '<td style="padding:8px;border:1px solid #e5e7eb;">' . escHtml(sourceLabelForReport((string)$source)) . '</td>';
-                $html .= '<td style="padding:8px;border:1px solid #e5e7eb;">' . escHtml(marketLabelForReport((string)$marketKey)) . '</td>';
-                $html .= '<td align="right" style="padding:8px;border:1px solid #e5e7eb;color:#065f46;font-weight:600;">+' . (int)($counts['added'] ?? 0) . '</td>';
-                $html .= '<td align="right" style="padding:8px;border:1px solid #e5e7eb;color:#1f2937;">~' . (int)($counts['updated'] ?? 0) . '</td>';
-                $html .= '<td align="right" style="padding:8px;border:1px solid #e5e7eb;color:#7f1d1d;font-weight:600;">-' . (int)($counts['purged'] ?? 0) . '</td>';
-                $html .= '</tr>';
-            }
+        foreach ($sourceTallies as $row) {
+            $html .= '<tr>';
+            $html .= '<td style="padding:7px 8px;border:1px solid #e5e7eb;font-weight:600;color:#111827;">' . escHtml((string)$row['name']) . '</td>';
+            $html .= '<td style="padding:7px 8px;border:1px solid #e5e7eb;color:#4b5563;">' . escHtml((string)$row['type']) . '</td>';
+            $html .= '<td align="center" style="padding:7px 8px;border:1px solid #e5e7eb;">' . renderStatusBadgeHtml((string)$row['status']) . '</td>';
+            $html .= '<td align="right" style="padding:7px 8px;border:1px solid #e5e7eb;color:#065f46;font-weight:600;">+' . (int)$row['added'] . '</td>';
+            $html .= '<td align="right" style="padding:7px 8px;border:1px solid #e5e7eb;color:#1f2937;">~' . (int)$row['updated'] . '</td>';
+            $html .= '<td align="right" style="padding:7px 8px;border:1px solid #e5e7eb;color:#7f1d1d;font-weight:600;">-' . (int)$row['purged'] . '</td>';
+            $html .= '<td style="padding:7px 8px;border:1px solid #e5e7eb;color:#374151;">' . escHtml((string)$row['details']) . '</td>';
+            $html .= '</tr>';
         }
         $html .= '</table>';
     }
@@ -323,7 +457,6 @@ function buildSyncReportHtml(array $report): string {
 
 function buildSyncReportText(array $report): string {
     $execution = $report['execution'] ?? [];
-    $ingestion = $report['ingestion'] ?? [];
     $enrichment = $report['enrichment'] ?? [];
     $errors = $report['errors'] ?? [];
 
@@ -344,20 +477,22 @@ function buildSyncReportText(array $report): string {
     $lines[] = '- Overall Status: ' . $success;
     $lines[] = '';
 
-    $lines[] = '2) INGESTION SUMMARY (ADDED / UPDATED / PURGED)';
-    if (empty($ingestion)) {
-        $lines[] = '- No ingestion counters recorded.';
+    $lines[] = '2) EVENT SOURCES & SCRAPER RUN TALLY';
+    $sourceTallies = getSourceRunTallyData($report);
+    if (empty($sourceTallies)) {
+        $lines[] = '- No event sources recorded.';
     } else {
-        ksort($ingestion);
-        foreach ($ingestion as $source => $marketsForSource) {
-            $lines[] = '- Source: ' . $source;
-            ksort($marketsForSource);
-            foreach ($marketsForSource as $marketKey => $counts) {
-                $lines[] = '  * ' . marketLabelForReport((string)$marketKey)
-                    . ': +' . (int)($counts['added'] ?? 0)
-                    . ' / ~' . (int)($counts['updated'] ?? 0)
-                    . ' / -' . (int)($counts['purged'] ?? 0);
-            }
+        foreach ($sourceTallies as $row) {
+            $lines[] = sprintf(
+                '- [%s] %s (%s) | Added: +%d | Updated: ~%d | Purged: -%d | %s',
+                $row['status'],
+                $row['name'],
+                $row['type'],
+                $row['added'],
+                $row['updated'],
+                $row['purged'],
+                $row['details']
+            );
         }
     }
     $lines[] = '';

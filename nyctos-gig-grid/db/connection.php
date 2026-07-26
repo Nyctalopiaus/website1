@@ -33,9 +33,11 @@ function executeWithRetry(PDOStatement $stmt, array $params = [], $maxRetries = 
             $isLocked = (strpos($msg, 'locked') !== false || strpos($msg, 'busy') !== false);
             
             if ($isLocked && $attempt < $maxRetries) {
+                @$stmt->closeCursor();
                 usleep($initialDelayUs * $attempt); // Exponential delay: 100ms, 200ms, 300ms...
                 continue;
             }
+            @$stmt->closeCursor();
             throw $e;
         }
     }

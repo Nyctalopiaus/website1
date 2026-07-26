@@ -7,6 +7,57 @@ const outdoorVenues = {
   'The Junkyard': { lat: 39.7397, lon: -105.0195 }
 };
 
+const defaultCityCoords = {
+  'morrison': { lat: 39.6536, lon: -105.1911 },
+  'greenwood village': { lat: 39.5986, lon: -104.8872 },
+  'bellvue': { lat: 40.6865, lon: -105.3562 },
+  'denver': { lat: 39.7392, lon: -104.9903 },
+  'boulder': { lat: 40.0150, lon: -105.2705 },
+  'fort collins': { lat: 40.5853, lon: -105.0844 },
+  'colorado springs': { lat: 38.8339, lon: -104.8214 },
+  'los angeles': { lat: 34.0522, lon: -118.2437 },
+  'san diego': { lat: 32.7157, lon: -117.1611 },
+  'san francisco': { lat: 37.7749, lon: -122.4194 }
+};
+
+function isOutdoorVenue(venueName) {
+  if (!venueName) return false;
+  const vLower = venueName.toLowerCase().trim();
+  if (outdoorVenues[venueName] || outdoorVenues[vLower]) return true;
+  const keywords = [
+    'amphitheatre', 'amphitheater', 'park', 'field', 'gardens',
+    'fairgrounds', 'ranch', 'pavilion', 'junkyard', 'patio',
+    'outdoor', 'stadium', 'bowl'
+  ];
+  return keywords.some(kw => vLower.includes(kw));
+}
+
+function getVenueCoords(container, venueName) {
+  if (outdoorVenues[venueName]) return outdoorVenues[venueName];
+
+  const dataLat = parseFloat(container.getAttribute('data-lat'));
+  const dataLon = parseFloat(container.getAttribute('data-lon'));
+  if (!isNaN(dataLat) && !isNaN(dataLon) && dataLat !== 0 && dataLon !== 0) {
+    return { lat: dataLat, lon: dataLon };
+  }
+
+  const venueList = window.venueData || [];
+  const matched = venueList.find(v => v.venue_name && v.venue_name.toLowerCase() === venueName.toLowerCase());
+  if (matched) {
+    const vLat = parseFloat(matched.latitude);
+    const vLon = parseFloat(matched.longitude);
+    if (!isNaN(vLat) && !isNaN(vLon) && vLat !== 0 && vLon !== 0) {
+      return { lat: vLat, lon: vLon };
+    }
+    const cLower = (matched.city || '').toLowerCase().trim();
+    if (cLower && defaultCityCoords[cLower]) {
+      return defaultCityCoords[cLower];
+    }
+  }
+
+  return defaultCityCoords['denver'];
+}
+
 const weatherCodes = {
   0: { label: 'Clear', emoji: '\u2600\ufe0f' },
   1: { label: 'Mainly Clear', emoji: '\ud83c\udf24\ufe0f' },
@@ -45,9 +96,13 @@ export async function loadWeatherForecasts() {
   for (const container of containers) {
     const venueName = container.getAttribute('data-venue');
     const startStr = container.getAttribute('data-start');
+    const isOutdoorAttr = container.getAttribute('data-is-outdoor');
     if (!venueName || !startStr) continue;
 
-    const coords = outdoorVenues[venueName];
+    const isOutdoor = isOutdoorAttr === '1' || isOutdoorVenue(venueName);
+    if (!isOutdoor) continue;
+
+    const coords = getVenueCoords(container, venueName);
     if (!coords) continue;
 
     const showParts = startStr.split(' ')[0].split('-');
@@ -59,7 +114,7 @@ export async function loadWeatherForecasts() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays >= 0 && diffDays < 7) {
-      const cacheKey = `${coords.lat},${coords.lon}`;
+      const cacheKey = `${coords.lat.toFixed(4)},${coords.lon.toFixed(4)}`;
       let forecastData = weatherCache[cacheKey];
       if (!forecastData) {
         try {

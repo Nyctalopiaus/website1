@@ -96,6 +96,68 @@ class VenueScraper {
             }
         }
 
+        // Dedicated parser for RHP venue feeds (Globe Hall, Larimer Lounge, Lost Lake)
+        if (strpos($url, 'globehall.com') !== false || strpos($url, 'larimerlounge.com') !== false || strpos($url, 'lost-lake.com') !== false) {
+            preg_match_all('/<a[^>]+id\s*=\s*"eventTitle"[^>]+href\s*=\s*"([^"]+)"[^>]*title\s*=\s*"([^"]+)"/i', $html, $titleMatches, PREG_SET_ORDER);
+            preg_match_all('/<div[^>]+id\s*=\s*"eventDate"[^>]*>\s*([^<]+)\s*<\/div>/i', $html, $dateMatches);
+            preg_match_all('/<span[^>]+class\s*=\s*"[^"]*rhp-event__time-text--list[^"]*"[^>]*>\s*([^<]+)\s*<\/span>/i', $html, $timeMatches);
+
+            $dates = $dateMatches[1] ?? [];
+            $times = $timeMatches[1] ?? [];
+            $events = [];
+
+            $venueName = $this->getVenueNameFromUrl($url);
+            $count = min(count($titleMatches), count($dates));
+
+            for ($i = 0; $i < $count; $i++) {
+                $ticketUrl = html_entity_decode(trim($titleMatches[$i][1]));
+                $rawTitle = html_entity_decode(trim($titleMatches[$i][2]));
+                $rawDate = trim($dates[$i]);
+                $rawTime = isset($times[$i]) ? trim($times[$i]) : '';
+
+                $artistName = trim(preg_replace('/\s+/', ' ', $rawTitle));
+                if (empty($artistName)) continue;
+
+                $year = date('Y');
+                $timestamp = strtotime("{$rawDate} {$year}");
+                if ($timestamp !== false && $timestamp < strtotime('today - 30 days')) {
+                    $timestamp = strtotime("{$rawDate} " . ($year + 1));
+                }
+                if ($timestamp === false) {
+                    continue;
+                }
+
+                $hour = "19:00:00";
+                if (preg_match('/Show:\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i', $rawTime, $tm)) {
+                    $parsedTime = strtotime($tm[1]);
+                    if ($parsedTime !== false) {
+                        $hour = date('H:i:s', $parsedTime);
+                    }
+                } elseif (preg_match('/Doors:\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/i', $rawTime, $tm)) {
+                    $parsedTime = strtotime($tm[1]);
+                    if ($parsedTime !== false) {
+                        $hour = date('H:i:s', $parsedTime);
+                    }
+                }
+
+                $startIso = date('Y-m-d', $timestamp) . ' ' . $hour;
+
+                $events[] = [
+                    'artist_name' => $artistName,
+                    'venue_name' => $venueName,
+                    'city_name' => 'Denver',
+                    'start_time' => $startIso,
+                    'ticket_url' => $ticketUrl,
+                    'source' => 'VenueScraper: ' . $venueName
+                ];
+            }
+
+            if (!empty($events)) {
+                $this->logs[] = "[RHP] Extracted " . count($events) . " live events for " . $venueName;
+                return $events;
+            }
+        }
+
         // Find elements matching selector
         $elements = $xpath->query($selector);
         $events = [];
@@ -140,7 +202,7 @@ class VenueScraper {
                         'city_name' => 'Denver',
                         'start_time' => $timeSql,
                         'ticket_url' => $ticketUrl,
-                        'source' => 'VenueScraper'
+                        'source' => 'VenueScraper: ' . $resolvedVenueName
                     ];
                 }
             }
@@ -156,6 +218,7 @@ class VenueScraper {
 
     private function getVenueNameFromUrl($url) {
         if (strpos($url, 'larimerlounge') !== false) return 'Larimer Lounge';
+        if (strpos($url, 'lost-lake') !== false || strpos($url, 'lostlake') !== false) return 'Lost Lake';
         if (strpos($url, 'cervantesother-side') !== false) return 'Cervantes\' Other Side';
         if (strpos($url, 'cervantesmasterpiece-ballroom') !== false) return 'Cervantes\' Masterpiece Ballroom';
         if (strpos($url, 'cervantesand-the-other-side-dual-venue') !== false) return 'Cervantes\' and The Other Side - DUAL VENUE';
@@ -175,6 +238,9 @@ class VenueScraper {
 
     private function getSimulationEvents($url) {
         $events = [];
+        $vName = $this->getVenueNameFromUrl($url);
+        $vSource = 'VenueScraper: ' . ($vName !== 'Unknown Venue' ? $vName : 'General');
+
         if (strpos($url, 'blacksheeprocks') !== false) {
             $events[] = [
                 'artist_name' => 'In This Moment',
@@ -182,59 +248,43 @@ class VenueScraper {
                 'city_name' => 'Colorado Springs',
                 'start_time' => '2026-08-10 20:00:00',
                 'ticket_url' => $url,
-                'source' => 'VenueScraper'
+                'source' => 'VenueScraper: The Black Sheep'
             ];
         } elseif (strpos($url, 'bluebirdtheater') !== false) {
             $events[] = [
                 'artist_name' => 'Gojira',
-                'venue_name' => 'bluebird theater',
+                'venue_name' => 'Bluebird Theater',
                 'city_name' => 'Denver',
                 'start_time' => '2026-08-15 19:00:00',
                 'ticket_url' => $url,
-                'source' => 'VenueScraper'
+                'source' => 'VenueScraper: Bluebird Theater'
             ];
         } elseif (strpos($url, 'ogdentheatre') !== false) {
-            $events[] = [
-                'artist_name' => 'Killswitch Engage',
-                'venue_name' => 'fillmore auditorium',
-                'city_name' => 'Denver',
-                'start_time' => '2026-09-23 18:00:00',
-                'ticket_url' => 'https://www.livenation.com/event/G5viZ9a4D5e6f/killswitch-engage-denver',
-                'source' => 'VenueScraper'
-            ];
-            $events[] = [
-                'artist_name' => 'Beartooth',
-                'venue_name' => 'fillmore auditorium',
-                'city_name' => 'Denver',
-                'start_time' => '2026-12-12 18:00:00',
-                'ticket_url' => 'https://www.livenation.com/event/G5viZ9a1A2b3c/beartooth-denver',
-                'source' => 'VenueScraper'
-            ];
             $events[] = [
                 'artist_name' => 'Tomahawk & Melvins',
                 'venue_name' => 'Ogden Theatre',
                 'city_name' => 'Denver',
                 'start_time' => '2026-08-07 19:00:00',
                 'ticket_url' => 'https://www.axs.com/events/G5viZ9a8K9l0m/tomahawk-melvins-tickets',
-                'source' => 'VenueScraper'
+                'source' => 'VenueScraper: Ogden Theatre'
             ];
         } elseif (strpos($url, 'gothictheatre') !== false) {
             $events[] = [
                 'artist_name' => 'Breaking Benjamin',
-                'venue_name' => 'ball arena',
-                'city_name' => 'Denver',
+                'venue_name' => 'Gothic Theatre',
+                'city_name' => 'Englewood',
                 'start_time' => '2026-09-28 18:00:00',
                 'ticket_url' => 'https://www.ticketmaster.com/event/G5viZ9a7G8h9i/breaking-benjamin-denver',
-                'source' => 'VenueScraper'
+                'source' => 'VenueScraper: Gothic Theatre'
             ];
         } elseif (strpos($url, 'missionballroom') !== false) {
             $events[] = [
                 'artist_name' => 'Godsmack',
-                'venue_name' => 'the junkyard',
+                'venue_name' => 'Mission Ballroom',
                 'city_name' => 'Denver',
                 'start_time' => '2026-09-09 18:00:00',
                 'ticket_url' => 'https://www.livenation.com/event/G5viZ9a0J1k2l/godsmack-denver',
-                'source' => 'VenueScraper'
+                'source' => 'VenueScraper: Mission Ballroom'
             ];
         } elseif (strpos($url, 'fiddlersgreen') !== false) {
             $events[] = [
@@ -243,7 +293,7 @@ class VenueScraper {
                 'city_name' => 'Englewood',
                 'start_time' => '2026-09-12 18:30:00',
                 'ticket_url' => 'https://www.axs.com/events/G5viZ9a3B4c5d/rob-zombie-marilyn-manson-tickets',
-                'source' => 'VenueScraper'
+                'source' => 'VenueScraper: Fiddler\'s Green Amphitheatre'
             ];
         } elseif (strpos($url, 'redrocksonline') !== false) {
             $events[] = [
@@ -252,7 +302,7 @@ class VenueScraper {
                 'city_name' => 'Morrison',
                 'start_time' => '2026-08-09 19:00:00',
                 'ticket_url' => 'https://www.axs.com/events/G5viZ9a9P0q1r/motionless-in-white-tickets',
-                'source' => 'VenueScraper'
+                'source' => 'VenueScraper: Red Rocks Amphitheatre'
             ];
         }
         return $events;

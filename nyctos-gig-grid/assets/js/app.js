@@ -62,6 +62,33 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  const initMarketLinkPrefetching = () => {
+    const prefetchedUrls = new Set();
+    const marketLinks = document.querySelectorAll('.header-market-link');
+
+    const prefetchUrl = (url) => {
+      if (!url || prefetchedUrls.has(url) || url === window.location.href) return;
+      prefetchedUrls.add(url);
+
+      const linkEl = document.createElement('link');
+      linkEl.rel = 'prefetch';
+      linkEl.href = url;
+      linkEl.as = 'document';
+      document.head.appendChild(linkEl);
+
+      fetch(url, { priority: 'low', credentials: 'same-origin' }).catch(() => {});
+    };
+
+    marketLinks.forEach(link => {
+      ['mouseenter', 'touchstart', 'focus'].forEach(evtType => {
+        link.addEventListener(evtType, () => {
+          const href = link.getAttribute('href');
+          if (href) prefetchUrl(href);
+        }, { passive: true });
+      });
+    });
+  };
+
   initEmailModal(getInterestedIds);
   initFeatureModal();
   initVenueModal(venueData);
@@ -78,5 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
     getIgnoredEventIds,
     saveIgnoredEventIds
   });
+  initMarketLinkPrefetching();
   loadWeatherForecasts();
 });

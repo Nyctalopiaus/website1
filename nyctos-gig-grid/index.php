@@ -43,8 +43,8 @@ if (($_COOKIE['market'] ?? null) !== $activeMarket) {
 
 $marketConfig = [
     'front-range' => [
-        'title' => "Nycto's Gig Grid - Front Range Live Music Grid",
-        'region_name' => 'Front Range Live Gig Grid',
+        'title' => "Nycto's Gig Grid - Colorado Live Music Grid",
+        'region_name' => 'Colorado Live Gig Grid',
         'logo_text' => "Nycto's Gig Grid",
         'intro' => 'Everything you usually have to hunt down, lineup, venue, setlist, and your plan, all in one place.'
     ],
@@ -55,8 +55,8 @@ $marketConfig = [
         'intro' => 'Everything you usually have to hunt down, lineup, venue, setlist, and your plan, all in one place.'
     ],
     'scotland' => [
-        'title' => "Nycto's Gig Grid - Scotland Live Music Grid",
-        'region_name' => 'Scotland Live Gig Grid',
+        'title' => "Nycto's Gig Grid - UK Live Music Grid",
+        'region_name' => 'UK Live Gig Grid',
         'logo_text' => "Nycto's Gig Grid",
         'intro' => 'Everything you usually have to hunt down, lineup, venue, setlist, and your plan, all in one place.'
     ]
@@ -78,7 +78,7 @@ $marketLinks = [
 $marketDisplayLabels = [
     'front-range' => '🏔️ Colorado',
     'socal' => '🌴 California',
-    'scotland' => '🏴 Scotland',
+    'scotland' => '🇬🇧 UK',
 ];
 
 $marketCardCounts = array_fill_keys($allowedMarkets, 0);
@@ -106,8 +106,7 @@ $monthsStmt = $db->prepare("
     SELECT DISTINCT strftime('%Y-%m', start_time) AS event_month 
     FROM events 
     WHERE market = :market
-      AND
-      start_time >= date('now', '-1 day') 
+      AND start_time >= datetime('now', '-4 hours') 
     ORDER BY event_month ASC
 ");
 $monthsStmt->execute([':market' => $activeMarket]);
@@ -121,7 +120,7 @@ foreach ($activeMonths as $month) {
         FROM events 
         WHERE market = :market
           AND strftime('%Y-%m', start_time) = :month 
-          AND start_time >= date('now', '-1 day') 
+          AND start_time >= datetime('now', '-4 hours') 
         ORDER BY start_time ASC
 ");
     $stmt->execute([
@@ -193,7 +192,7 @@ if (file_exists($lastSyncFile)) {
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=21" />
+    <link rel="stylesheet" href="styles.css?v=<?php echo filemtime(__DIR__ . '/styles.css'); ?>" />
 </head>
 <body data-market="<?php echo htmlspecialchars($activeMarket); ?>">
 
@@ -349,104 +348,88 @@ if (file_exists($lastSyncFile)) {
     </div>
 
     <!-- Header Navigation -->
-    <header class="container header">
+    <header class="container header header-compact">
         <div class="header-nav">
             <a href="../index.html" class="btn-back">← Back to Lab</a>
             <a href="../" class="logo">
                 <span class="logo-icon">🤘</span>
                 <span class="logo-text"><?php echo htmlspecialchars($activeMarketConfig['logo_text']); ?></span>
             </a>
+            <button type="button" id="btn-toggle-intro" class="btn-info-badge" title="Show market info & quick start">
+                <span>ℹ️</span> <span>Info</span>
+            </button>
         </div>
         <div class="controls-group">
-            <span class="sync-status">
-                <span class="sync-status-dot"></span>
-                Last Sync: <?php echo htmlspecialchars($lastSyncText); ?>
-            </span>
+            <button type="button" id="btn-open-features" class="privacy-feature-button" title="View site features">
+                <span class="privacy-feature-button-icon">◌</span>
+                <span>Features</span>
+            </button>
         </div>
     </header>
 
     <main class="container">
-        <!-- Banner Intro -->
-        <section class="intro">
-            <h1>
-                <span class="intro-title-main">NYCTO'S GIG GRID</span>
-                <span class="intro-title-region"><?php echo htmlspecialchars($activeMarketConfig['region_name']); ?></span>
-            </h1>
-            <p><?php echo htmlspecialchars($activeMarketConfig['intro']); ?></p>
-            <div class="quick-start-strip" aria-label="Quick start">
-                <span class="quick-start-label">Quick Start</span>
-                <span class="quick-start-step">1) Pick a market</span>
-                <span class="quick-start-step">2) Search or filter</span>
-                <span class="quick-start-step">3) Star and email interested shows</span>
-            </div>
-        </section>
-
-        <!-- Sticky Controls Container -->
-        <div class="sticky-controls-wrapper">
-            <!-- Privacy & Trust Header Banner -->
-            <div class="privacy-banner-container">
-                <span class="privacy-banner-icon">🔒</span>
-                <div class="privacy-banner-copy">
-                    <strong class="privacy-banner-heading">100% Private & Dispatch-Only</strong>
-                    Your data is processed locally to you. If you choose to email your interested shows, your email address is used for this one-time dispatch only. It is not stored in our database, nor will it ever be shared or used for future marketing.
-                </div>
-                <button type="button" id="btn-open-features" class="privacy-feature-button" title="View site features">
-                    <span class="privacy-feature-button-icon">◌</span>
-                    <span>Site Features</span>
-                </button>
-            </div>
-
-            <div id="live-filter-summary" class="live-filter-summary" role="status" aria-live="polite">
-                <span class="summary-chip summary-chip-market" id="summary-market">Market: <?php echo htmlspecialchars($marketDisplayLabels[$activeMarket] ?? 'Colorado'); ?></span>
-                <span class="summary-chip" id="summary-results">Visible shows: 0</span>
-                <span class="summary-chip" id="summary-filters">Filters: default</span>
-            </div>
-
-            <!-- Dynamic On-Page Search Bar -->
-            <div class="search-container">
-                <div class="search-input-wrap">
-                    <input type="text" id="artist-search-input" placeholder="🔍 Search band, venue, or subgenre tag (e.g. Gojira, Red Rocks, Deathcore)..." />
-                    <button type="button" id="btn-clear-search" aria-label="Clear search" title="Clear search">&times;</button>
+        <!-- Collapsible Info & Quick Start Drawer -->
+        <div id="intro-drawer" class="intro-drawer-panel hidden">
+            <div class="intro-drawer-inner">
+                <p class="intro-drawer-copy"><?php echo htmlspecialchars($activeMarketConfig['intro']); ?></p>
+                <div class="quick-start-strip" aria-label="Quick start">
+                    <span class="quick-start-label">Quick Start</span>
+                    <span class="quick-start-step">1) Pick a market</span>
+                    <span class="quick-start-step">2) Search or filter</span>
+                    <span class="quick-start-step">3) Star and email interested shows</span>
                 </div>
             </div>
+        </div>
 
-            <!-- Filter & Control Panel -->
-            <div class="filter-panel">
-                <div class="filter-group market-filter-group">
-                    <span class="filter-label">Market:</span>
-                    <nav class="header-market-switcher" aria-label="Market selector">
-                        <a href="<?php echo htmlspecialchars($marketLinks['front-range']); ?>" class="header-market-link <?php echo $activeMarket === 'front-range' ? 'active' : ''; ?>" <?php echo $activeMarket === 'front-range' ? 'aria-current="page"' : ''; ?>><?php echo htmlspecialchars($marketDisplayLabels['front-range'] . ' (' . $marketCardCounts['front-range'] . ')'); ?></a>
-                        <a href="<?php echo htmlspecialchars($marketLinks['socal']); ?>" class="header-market-link <?php echo $activeMarket === 'socal' ? 'active' : ''; ?>" <?php echo $activeMarket === 'socal' ? 'aria-current="page"' : ''; ?>><?php echo htmlspecialchars($marketDisplayLabels['socal'] . ' (' . $marketCardCounts['socal'] . ')'); ?></a>
-                        <a href="<?php echo htmlspecialchars($marketLinks['scotland']); ?>" class="header-market-link <?php echo $activeMarket === 'scotland' ? 'active' : ''; ?>" <?php echo $activeMarket === 'scotland' ? 'aria-current="page"' : ''; ?>><?php echo htmlspecialchars($marketDisplayLabels['scotland'] . ' (' . $marketCardCounts['scotland'] . ')'); ?></a>
-                    </nav>
-                </div>
-                
-                <!-- 1. Region Toggle Button Group -->
-                <div class="filter-group">
-                    <span class="filter-label">Region:</span>
-                    <div class="region-controls">
-                        <button class="region-btn active" data-region="all">All</button>
-                        <?php if ($activeMarket === 'front-range'): ?>
-                            <button class="region-btn" data-region="denver">Denver / Boulder</button>
-                            <button class="region-btn" data-region="springs">Springs / Pueblo</button>
-                            <button class="region-btn" data-region="north">Ft Collins / North</button>
-                            <button class="region-btn" data-region="west">West Slope / Grand Junction</button>
-                        <?php elseif ($activeMarket === 'socal'): ?>
-                            <button class="region-btn" data-region="norcal">NorCal / Bay Area</button>
-                            <button class="region-btn" data-region="la">Los Angeles</button>
-                            <button class="region-btn" data-region="oc">Orange County</button>
-                            <button class="region-btn" data-region="sd">San Diego</button>
-                        <?php elseif ($activeMarket === 'scotland'): ?>
-                            <button class="region-btn" data-region="glasgow">Glasgow</button>
-                            <button class="region-btn" data-region="edinburgh">Edinburgh</button>
-                            <button class="region-btn" data-region="other">Other</button>
+        <!-- Tightened Unified Sticky Controls Wrapper -->
+        <div class="sticky-controls-wrapper" style="width: 100%; box-sizing: border-box;">
+            <!-- Row 1: Market Tabs (Left) + Month Selection (Far Right Edge) -->
+            <div class="controls-row-primary" style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: nowrap;">
+                <nav class="header-market-switcher" style="margin: 0; flex: 0 0 auto;" aria-label="Market selector">
+                    <a href="<?php echo htmlspecialchars($marketLinks['front-range']); ?>" class="header-market-link <?php echo $activeMarket === 'front-range' ? 'active' : ''; ?>" <?php echo $activeMarket === 'front-range' ? 'aria-current="page"' : ''; ?>><?php echo htmlspecialchars($marketDisplayLabels['front-range'] . ' (' . $marketCardCounts['front-range'] . ')'); ?></a>
+                    <a href="<?php echo htmlspecialchars($marketLinks['socal']); ?>" class="header-market-link <?php echo $activeMarket === 'socal' ? 'active' : ''; ?>" <?php echo $activeMarket === 'socal' ? 'aria-current="page"' : ''; ?>><?php echo htmlspecialchars($marketDisplayLabels['socal'] . ' (' . $marketCardCounts['socal'] . ')'); ?></a>
+                    <a href="<?php echo htmlspecialchars($marketLinks['scotland']); ?>" class="header-market-link <?php echo $activeMarket === 'scotland' ? 'active' : ''; ?>" <?php echo $activeMarket === 'scotland' ? 'aria-current="page"' : ''; ?>><?php echo htmlspecialchars($marketDisplayLabels['scotland'] . ' (' . $marketCardCounts['scotland'] . ')'); ?></a>
+                </nav>
+
+                <div class="month-select-controls" style="margin-left: auto; flex: 0 0 auto;">
+                    <select id="month-dropdown-select">
+                        <?php if (empty($activeMonths)): ?>
+                            <option value="empty-view">No Shows Found</option>
+                        <?php else: ?>
+                            <?php foreach ($activeMonths as $index => $month): ?>
+                                <option value="month-<?php echo $month; ?>" <?php echo $index === 0 ? 'selected' : ''; ?>>
+                                    📅 <?php echo formatMonthName($month); ?>
+                                </option>
+                            <?php endforeach; ?>
+                            <option id="interested-dropdown-option" value="interested-view">⭐ Interested Shows (0)</option>
                         <?php endif; ?>
-                    </div>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Row 2: Region Toggles (Left) + Venue Select + Genre Select (Far Right) -->
+            <div class="controls-row-secondary" style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: nowrap;">
+                <div class="region-controls" style="display: flex; align-items: center; gap: 0.35rem; flex: 0 0 auto;">
+                    <button class="region-btn active" data-region="all">All</button>
+                    <?php if ($activeMarket === 'front-range'): ?>
+                        <button class="region-btn" data-region="denver">Denver / Boulder</button>
+                        <button class="region-btn" data-region="springs">Springs / Pueblo</button>
+                        <button class="region-btn" data-region="north">Ft Collins / North</button>
+                        <button class="region-btn" data-region="west">West Slope / Grand Junction</button>
+                    <?php elseif ($activeMarket === 'socal'): ?>
+                        <button class="region-btn" data-region="norcal">NorCal / Bay Area</button>
+                        <button class="region-btn" data-region="la">Los Angeles</button>
+                        <button class="region-btn" data-region="oc">Orange County</button>
+                        <button class="region-btn" data-region="sd">San Diego</button>
+                    <?php elseif ($activeMarket === 'scotland'): ?>
+                        <button class="region-btn" data-region="scotland">Scotland</button>
+                        <button class="region-btn" data-region="england">England</button>
+                        <button class="region-btn" data-region="wales">Wales</button>
+                        <button class="region-btn" data-region="ireland">Ireland</button>
+                    <?php endif; ?>
                 </div>
 
-                <!-- 2. Venue Multi-Select Dropdown -->
-                <div class="filter-group filter-group-inline filter-group-venues">
-                    <span class="filter-label">Venues:</span>
+                <div class="dropdown-filters-group" style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto; flex: 0 0 auto;">
                     <div class="dropdown-wrapper">
                         <button id="venue-dropdown-toggle">
                             <span id="venue-selected-count">All Venues</span>
@@ -460,67 +443,55 @@ if (file_exists($lastSyncFile)) {
                                     <button type="button" id="btn-venue-clear-all">Clear All</button>
                                 </div>
                             </div>
-                            <div id="venue-checkboxes-list">
-                            </div>
+                            <div id="venue-checkboxes-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="genre-filter-group">
+                        <select id="genre-select">
+                            <?php foreach ($genreBuckets as $bucketKey => $bucket): ?>
+                                <option value="<?php echo htmlspecialchars($bucketKey); ?>"><?php echo htmlspecialchars($bucket['label']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="button" id="genre-help-trigger" class="genre-help-trigger" aria-label="Genre filter help" title="Genre info & definitions">?</button>
+                        <div id="genre-help-panel" class="genre-help-panel" role="note" aria-live="polite">
+                            <div id="genre-help-title" class="genre-help-title"><?php echo htmlspecialchars($genreBuckets['all']['label']); ?></div>
+                            <div id="genre-help-text" class="genre-help-text"><?php echo htmlspecialchars($genreBuckets['all']['title']); ?></div>
                         </div>
                     </div>
                 </div>
-
-                <!-- 3. Genre Filter Dropdown -->
-                <div class="filter-group filter-group-inline genre-filter-group">
-                    <span class="filter-label">Genre:</span>
-                    <select id="genre-select">
-                        <?php foreach ($genreBuckets as $bucketKey => $bucket): ?>
-                            <option value="<?php echo htmlspecialchars($bucketKey); ?>"><?php echo htmlspecialchars($bucket['label']); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <button type="button" id="genre-help-trigger" class="genre-help-trigger" aria-label="Genre filter help">?</button>
-                    <div id="genre-help-panel" class="genre-help-panel" role="note" aria-live="polite">
-                        <div id="genre-help-title" class="genre-help-title"><?php echo htmlspecialchars($genreBuckets['all']['label']); ?></div>
-                        <div id="genre-help-text" class="genre-help-text"><?php echo htmlspecialchars($genreBuckets['all']['title']); ?></div>
-                    </div>
-                </div>
-
-                <!-- 4. Interested + Email Actions -->
-                <div class="filter-group filter-actions-group">
-                    <button type="button" id="btn-interested-filter" class="btn-premium-filter btn-premium-filter--secondary">
-                        <span class="btn-premium-filter-icon">⭐</span>
-                        <span class="btn-premium-filter-label">Interested Only</span>
-                    </button>
-                    <button type="button" id="btn-email-passport" class="btn-premium-filter btn-premium-filter--secondary">
-                        <span class="btn-premium-filter-icon">✉️</span>
-                        <span class="btn-premium-filter-label">Email Me My Interested Shows</span>
-                    </button>
-                </div>
-
             </div>
 
-            <!-- Month Selection Dropdown -->
-            <section class="month-select-section month-select-row">
-                <div class="filter-group month-select-controls">
-                    <span class="month-select-label">📅 Select Month:</span>
-                    <select id="month-dropdown-select">
-                        <?php if (empty($activeMonths)): ?>
-                            <option value="empty-view">No Shows Found</option>
-                        <?php else: ?>
-                            <!-- Month options -->
-                            <?php foreach ($activeMonths as $index => $month): ?>
-                                <option value="month-<?php echo $month; ?>" <?php echo $index === 0 ? 'selected' : ''; ?>>
-                                    <?php echo formatMonthName($month); ?>
-                                </option>
-                            <?php endforeach; ?>
-                            
-                            <!-- Interested shows option -->
-                            <option id="interested-dropdown-option" value="interested-view">⭐ Interested Shows (0)</option>
-                        <?php endif; ?>
-                    </select>
+            <!-- Row 3: Full-width Search Input (Left) + Compact Action Buttons (Right) -->
+            <div class="controls-row-actions" style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 0.75rem; margin-top: 0.4rem; flex-wrap: nowrap;">
+                <div class="search-input-wrap" style="flex: 1 1 auto; width: 100%; max-width: none; min-width: 150px; margin-right: 0.5rem;">
+                    <input type="text" id="artist-search-input" style="width: 100%; height: 36px; box-sizing: border-box;" placeholder="🔍 Search band, venue, subgenre..." />
+                    <button type="button" id="btn-clear-search" aria-label="Clear search" title="Clear search">&times;</button>
                 </div>
-                
-                <button type="button" id="btn-reset-ignored" class="btn-premium-filter btn-premium-filter--secondary btn-reset-ignored">
-                    <span class="btn-premium-filter-icon">🔄</span>
-                    <span class="btn-premium-filter-label" id="reset-ignored-label">Reset Ignored (0)</span>
-                </button>
-            </section>
+
+                <div class="filter-actions-group" style="display: flex; align-items: center; gap: 0.45rem; flex: 0 0 auto; margin-left: auto;">
+                    <button type="button" id="btn-interested-filter" class="btn-premium-filter btn-premium-filter--secondary">
+                        <span class="btn-premium-filter-icon">⭐</span>
+                        <span class="btn-premium-filter-label">Interested</span>
+                    </button>
+                    <button type="button" id="btn-email-passport" class="btn-premium-filter btn-premium-filter--secondary" title="Email interested shows (100% Private & Dispatch-Only)">
+                        <span class="btn-premium-filter-icon">✉️</span>
+                        <span class="btn-premium-filter-label">Email</span>
+                    </button>
+                    <button type="button" id="btn-reset-ignored" class="btn-premium-filter btn-premium-filter--secondary btn-reset-ignored" title="Reset ignored shows">
+                        <span class="btn-premium-filter-icon">🔄</span>
+                        <span class="btn-premium-filter-label" id="reset-ignored-label">Reset (0)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Compact Live Filter Summary Line -->
+            <div id="live-filter-summary" class="live-filter-summary live-filter-summary-compact" role="status" aria-live="polite">
+                <span class="summary-chip summary-chip-market" id="summary-market">Market: <?php echo htmlspecialchars($marketDisplayLabels[$activeMarket] ?? 'Colorado'); ?></span>
+                <span class="summary-chip" id="summary-results">Visible shows: 0</span>
+                <span class="summary-chip" id="summary-filters">Filters: default</span>
+                <span class="privacy-inline-badge" title="Your data is processed locally. Emails are used for one-time dispatch only.">🔒 100% Private</span>
+            </div>
         </div>
 
         <!-- Calendar Events Listings -->
@@ -608,7 +579,14 @@ if (file_exists($lastSyncFile)) {
                             }
                         }
 
+                        $cardIndex = 0;
+                        $inDeferredTemplate = false;
                         foreach ($groupedEvents as $group): 
+                            $cardIndex++;
+                            if ($cardIndex === 16) {
+                                $inDeferredTemplate = true;
+                                echo '<template class="deferred-cards-template">';
+                            }
                             $event = $group['primary'];
                             $dateInfo = getEventDateDetails($event['start_time']);
                             $ticketUrl = $event['ticket_url'];
@@ -844,7 +822,7 @@ if (file_exists($lastSyncFile)) {
                                     <div class="time-row time-row-wrap">
                                         <span>⏱️</span>
                                         <span>Show starts at <?php echo $dateInfo['time']; ?></span>
-                                        <span class="weather-container" data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>" data-start="<?php echo htmlspecialchars($event['start_time']); ?>"></span>
+                                        <span class="weather-container" data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>" data-start="<?php echo htmlspecialchars($event['start_time']); ?>" data-is-outdoor="<?php echo isOutdoorVenue($event['venue_name']) ? '1' : '0'; ?>"></span>
                                     </div>
                                     <?php if (!empty($group['tags'])): ?>
                                         <div class="subgenre-source-note">
@@ -900,6 +878,9 @@ if (file_exists($lastSyncFile)) {
                                 </div>
                             </article>
                         <?php endforeach; ?>
+                        <?php if ($inDeferredTemplate): ?>
+                            </template>
+                        <?php endif; ?>
 
                     </div>
                 <?php endforeach; ?>
@@ -914,6 +895,10 @@ if (file_exists($lastSyncFile)) {
         <button type="button" id="btn-open-contact" class="site-footer-contact-btn">
             📧 <span>Contact Nycto</span>
         </button>
+        <span class="sync-status">
+            <span class="sync-status-dot"></span>
+            Last Sync: <?php echo htmlspecialchars($lastSyncText); ?>
+        </span>
         <p class="site-footer-copy">
             <?php echo htmlspecialchars($activeMarketConfig['title']); ?> &copy; <?php echo date('Y'); ?>.
         </p>

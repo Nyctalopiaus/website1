@@ -158,37 +158,67 @@ const SCRAPER_TARGETS = [
     [
         'venue_name' => 'The Black Sheep',
         'venue_url' => 'https://www.blacksheeprocks.com/events',
-        'selector' => '//div[contains(@class, "event-card")]'
+        'selector' => '//div[contains(@class, "event-card")]|//div[contains(@class, "event")]'
     ],
     [
         'venue_name' => 'Bluebird Theater',
         'venue_url' => 'https://www.bluebirdtheater.net/events',
-        'selector' => '//div[contains(@class, "event-list")]'
+        'selector' => '//div[contains(@class, "event-list")]|//div[contains(@class, "event")]|//article'
     ],
     [
         'venue_name' => 'Ogden Theatre',
         'venue_url' => 'https://www.ogdentheatre.com/events',
-        'selector' => '//div[contains(@class, "event-list")]'
+        'selector' => '//div[contains(@class, "event-list")]|//div[contains(@class, "event")]|//article'
     ],
     [
         'venue_name' => 'Gothic Theatre',
         'venue_url' => 'https://www.gothictheatre.com/events',
-        'selector' => '//div[contains(@class, "event-list")]'
+        'selector' => '//div[contains(@class, "event-list")]|//div[contains(@class, "event")]|//article'
     ],
     [
         'venue_name' => 'Mission Ballroom',
         'venue_url' => 'https://www.missionballroom.com/events',
-        'selector' => '//div[contains(@class, "event-list")]'
+        'selector' => '//div[contains(@class, "event-list")]|//div[contains(@class, "event")]|//article'
     ],
     [
         'venue_name' => 'Fiddler\'s Green Amphitheatre',
         'venue_url' => 'https://www.fiddlersgreenamp.com/events',
-        'selector' => '//div[contains(@class, "event-list")]'
+        'selector' => '//div[contains(@class, "event-list")]|//div[contains(@class, "event")]|//article'
     ],
     [
         'venue_name' => 'Red Rocks Amphitheatre',
         'venue_url' => 'https://www.redrocksonline.com/events',
-        'selector' => '//div[contains(@class, "event-list")]'
+        'selector' => '//div[contains(@class, "event-list")]|//div[contains(@class, "event")]|//article'
+    ],
+    [
+        'venue_name' => 'Globe Hall',
+        'venue_url' => 'https://globehall.com/events/',
+        'selector' => '//a[contains(@id, "eventTitle")]'
+    ],
+    [
+        'venue_name' => 'Larimer Lounge',
+        'venue_url' => 'https://larimerlounge.com/events/',
+        'selector' => '//a[contains(@id, "eventTitle")]'
+    ],
+    [
+        'venue_name' => 'Lost Lake',
+        'venue_url' => 'https://lost-lake.com/events/',
+        'selector' => '//a[contains(@id, "eventTitle")]'
+    ],
+    [
+        'venue_name' => 'Cervantes\' Masterpiece Ballroom & Other Side',
+        'venue_url' => 'https://cervantesmasterpiece.com/events/',
+        'selector' => '//div[contains(@class, "event")]|//article'
+    ],
+    [
+        'venue_name' => 'Hi-Dive',
+        'venue_url' => 'https://do303.com/venues/hi-dive',
+        'selector' => '//a[contains(@href, "/events/")]'
+    ],
+    [
+        'venue_name' => 'The Skylark Lounge',
+        'venue_url' => 'https://do303.com/venues/the-skylark-lounge',
+        'selector' => '//a[contains(@href, "/events/")]'
     ]
 ];
 
@@ -245,13 +275,29 @@ if (!defined('SYNC_REPORT_EMAIL_ENABLED')) {
 }
 
 if (!function_exists('getMarketLocationSuffix')) {
-    function getMarketLocationSuffix($market) {
+    function getMarketLocationSuffix($market, $cityName = '') {
         $normalized = strtolower(trim((string)$market));
         switch ($normalized) {
             case 'socal':
                 return 'CA';
             case 'scotland':
-                return 'Scotland';
+                $cLower = strtolower(trim((string)$cityName));
+                if ($cLower === '') return 'England';
+
+                $scottishKeywords = ['glasgow', 'edinburgh', 'dundee', 'aberdeen', 'stirling', 'perth', 'falkirk', 'paisley', 'inverness', 'kinross', 'dunfermline', 'bathgate', 'highlands', 'scotland', 'orkney', 'greenock', 'ayr', 'kilmarnock', 'inverurie', 'fort william', 'elgin', 'dumfries', 'arbroath', 'st andrews', 'kirkcaldy', 'motherwell', 'hamilton', 'coatbridge', 'livingston', 'glenrothes', 'cumbernauld', 'irvine', 'caird', 'strathaven', 'galashiels', 'hawick', 'kelso', 'selkirk', 'peebles', 'dumbarton', 'helensburgh', 'oban', 'campbeltown', 'wick', 'thurso', 'lerwick', 'stornoway'];
+                $welshKeywords = ['cardiff', 'swansea', 'newport', 'wrexham', 'wales', 'abertillery', 'merthyr tydfil', 'llandudno', 'bangor', 'rhyl', 'aberystwyth', 'bridgend', 'barry', 'neath', 'port talbot', 'cwmbran', 'pontypridd', 'caerphilly', 'llanelli', 'colwyn bay'];
+                $irishKeywords = ['belfast', 'dublin', 'cork', 'galway', 'limerick', 'derry', 'londonderry', 'ireland', 'kilkenny', 'waterford', 'drogheda', 'dundalk', 'sligo', 'wexford', 'athlone', 'letterkenny', 'killarney', 'tralee', 'bray', 'navan', 'ennis', 'carlow'];
+
+                foreach ($scottishKeywords as $kw) {
+                    if (strpos($cLower, $kw) !== false) return 'Scotland';
+                }
+                foreach ($welshKeywords as $kw) {
+                    if (strpos($cLower, $kw) !== false) return 'Wales';
+                }
+                foreach ($irishKeywords as $kw) {
+                    if (strpos($cLower, $kw) !== false) return 'Ireland';
+                }
+                return 'England';
             case 'front-range':
             default:
                 return 'CO';
@@ -262,7 +308,7 @@ if (!function_exists('getMarketLocationSuffix')) {
 if (!function_exists('formatMarketLocation')) {
     function formatMarketLocation($cityName, $market) {
         $city = trim((string)$cityName);
-        $suffix = trim((string)getMarketLocationSuffix($market));
+        $suffix = trim((string)getMarketLocationSuffix($market, $city));
         if ($city === '') {
             return $suffix;
         }
@@ -270,6 +316,24 @@ if (!function_exists('formatMarketLocation')) {
             return $city;
         }
         return $city . ', ' . $suffix;
+    }
+}
+
+if (!function_exists('isOutdoorVenue')) {
+    function isOutdoorVenue($venueName) {
+        $name = strtolower(trim((string)$venueName));
+        if ($name === '') return false;
+        $outdoorKeywords = [
+            'amphitheatre', 'amphitheater', 'park', 'field', 'gardens', 
+            'fairgrounds', 'ranch', 'pavilion', 'junkyard', 'patio', 
+            'outdoor', 'stadium', 'bowl'
+        ];
+        foreach ($outdoorKeywords as $kw) {
+            if (strpos($name, $kw) !== false) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 

@@ -125,7 +125,8 @@ function ensureDatabaseSchema(PDO $db) {
     foreach ([
         "ALTER TABLE venues ADD COLUMN market TEXT NOT NULL DEFAULT 'front-range'",
         "ALTER TABLE venues ADD COLUMN latitude REAL",
-        "ALTER TABLE venues ADD COLUMN longitude REAL"
+        "ALTER TABLE venues ADD COLUMN longitude REAL",
+        "ALTER TABLE venues ADD COLUMN is_outdoor INTEGER NOT NULL DEFAULT 0"
     ] as $sql) {
         try {
             @$db->exec($sql);

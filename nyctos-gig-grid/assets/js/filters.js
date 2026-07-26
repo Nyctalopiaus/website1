@@ -33,12 +33,63 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   let filterInterestedOnly = false;
   let lastActiveMonthView = (monthSelect && monthSelect.value !== 'interested-view') ? monthSelect.value : null;
   const activeMarket = document.body?.dataset?.market || 'front-range';
+  const marketRegionStorageKey = `gig_grid_active_regions_${activeMarket}`;
+
+  const CHUNK_SIZE = 15;
+  let visibleChunkLimit = CHUNK_SIZE;
+
+  function resetChunkLimit() {
+    visibleChunkLimit = CHUNK_SIZE;
+  }
+
+  function saveActiveRegions() {
+    try {
+      localStorage.setItem(marketRegionStorageKey, JSON.stringify(Array.from(activeRegions)));
+    } catch (e) {
+      console.warn('Failed to save active regions to localStorage:', e);
+    }
+  }
+
+  function loadActiveRegions() {
+    try {
+      const saved = localStorage.getItem(marketRegionStorageKey);
+      const validRegions = new Set(Array.from(document.querySelectorAll('.region-btn')).map(b => b.getAttribute('data-region')));
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const filtered = parsed.filter(r => validRegions.has(r));
+          if (filtered.length > 0) {
+            activeRegions = new Set(filtered);
+          } else {
+            activeRegions = new Set(['all']);
+          }
+          document.querySelectorAll('.region-btn').forEach(b => {
+            const rVal = b.getAttribute('data-region');
+            b.classList.toggle('active', activeRegions.has(rVal));
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load active regions from localStorage:', e);
+    }
+  }
+
+  loadActiveRegions();
 
   const btnResetIgnored = document.getElementById('btn-reset-ignored');
   const resetIgnoredLabel = document.getElementById('reset-ignored-label');
   const summaryMarket = document.getElementById('summary-market');
-  const summaryResults = document.getElementById('summary-results');
+  const summaryVisible = document.getElementById('summary-visible');
   const summaryFilters = document.getElementById('summary-filters');
+  const summaryPill = document.getElementById('live-filter-summary');
+  const btnToggleIntro = document.getElementById('btn-toggle-intro');
+  const introDrawer = document.getElementById('intro-drawer');
+
+  if (btnToggleIntro && introDrawer) {
+    btnToggleIntro.addEventListener('click', () => {
+      introDrawer.classList.toggle('hidden');
+    });
+  }
 
   function updateResetIgnoredButton() {
     const ignoredIds = getIgnoredEventIds ? getIgnoredEventIds() : [];
@@ -66,16 +117,17 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       sd: ['san diego', 'chula vista', 'la mesa', 'el cajon', 'oceanside', 'solana beach']
     },
     scotland: {
-      glasgow: ['glasgow', 'glasgow scotland'],
-      edinburgh: ['edinburgh', 'edinburgh scotland'],
-      other: ['dundee', 'aberdeen', 'stirling', 'perth', 'falkirk', 'paisley', 'inverness', 'kinross', 'dunfermline', 'bathgate']
+      scotland: ['glasgow', 'edinburgh', 'dundee', 'aberdeen', 'stirling', 'perth', 'falkirk', 'paisley', 'inverness', 'kinross', 'dunfermline', 'bathgate', 'highlands', 'orkney', 'greenock', 'ayr', 'kilmarnock', 'inverurie', 'fort william', 'elgin', 'dumfries', 'arbroath', 'st andrews', 'kirkcaldy', 'motherwell', 'hamilton', 'livingston', 'glenrothes', 'cumbernauld', 'irvine', 'caird', 'strathaven', 'galashiels', 'hawick', 'kelso', 'selkirk', 'peebles', 'dumbarton', 'helensburgh', 'oban', 'wick', 'thurso', 'lerwick', 'stornoway'],
+      wales: ['cardiff', 'swansea', 'newport', 'wrexham', 'abertillery', 'merthyr tydfil', 'llandudno', 'bangor', 'rhyl', 'aberystwyth', 'bridgend', 'barry', 'neath', 'port talbot', 'cwmbran', 'pontypridd', 'caerphilly', 'llanelli', 'colwyn bay'],
+      ireland: ['belfast', 'dublin', 'cork', 'galway', 'limerick', 'derry', 'londonderry', 'kilkenny', 'waterford', 'drogheda', 'dundalk', 'sligo', 'wexford', 'athlone', 'letterkenny', 'killarney', 'tralee', 'bray', 'navan', 'ennis', 'carlow'],
+      england: ['london', 'manchester', 'birmingham', 'bristol', 'southampton', 'leeds', 'sheffield', 'newcastle', 'liverpool', 'brighton', 'nottingham', 'oxford', 'cambridge', 'portsmouth', 'exeter', 'norwich', 'hull', 'york']
     }
   };
   const regionCities = regionCitiesByMarket[activeMarket] || regionCitiesByMarket['front-range'];
 
   function getMarketLabel(marketKey) {
     if (marketKey === 'socal') return 'California';
-    if (marketKey === 'scotland') return 'Scotland';
+    if (marketKey === 'scotland') return 'UK';
     return 'Colorado';
   }
 
@@ -107,8 +159,26 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   }
 
   const venuesSet = new Set();
-  cards.forEach(card => {
-    if (card.dataset.venue) {
+
+  if (Array.isArray(venueData)) {
+    venueData.forEach(v => {
+      if (v && v.venue_name) {
+        venuesSet.add(v.venue_name.trim().toLowerCase());
+      }
+    });
+  }
+
+  const allCardsToScan = [];
+  document.querySelectorAll('.event-card').forEach(c => allCardsToScan.push(c));
+  document.querySelectorAll('template.deferred-cards-template').forEach(tpl => {
+    try {
+      const clone = tpl.content.cloneNode(true);
+      clone.querySelectorAll('.event-card').forEach(c => allCardsToScan.push(c));
+    } catch (e) {}
+  });
+
+  allCardsToScan.forEach(card => {
+    if (card.dataset && card.dataset.venue) {
       const rawVenue = card.dataset.venue.trim().toLowerCase();
       const matched = findVenueDetails(venueData, rawVenue);
       const normalized = matched ? matched.venue_name.toLowerCase() : rawVenue;
@@ -118,7 +188,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   });
 
   const sortedVenues = Array.from(venuesSet).map(venue => {
-    const matched = venueData.find(item => item.venue_name.toLowerCase() === venue);
+    const matched = Array.isArray(venueData) ? venueData.find(item => item.venue_name.toLowerCase() === venue) : null;
     const displayName = matched ? matched.venue_name : venue.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     return { raw: venue, name: displayName };
   }).sort((a, b) => a.name.localeCompare(b.name));
@@ -295,12 +365,30 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     }
   }
 
+  function unpackDeferredCards(view) {
+    if (!view) return;
+    const template = view.querySelector('template.deferred-cards-template');
+    if (template) {
+      const clone = template.content.cloneNode(true);
+      view.appendChild(clone);
+      template.remove();
+    }
+  }
+
   function applyFilters() {
     const checkedVenues = Array.from(document.querySelectorAll('.venue-filter-checkbox:checked')).map(cb => cb.value);
     const selectedCountSpan = document.getElementById('venue-selected-count');
     const totalCount = document.querySelectorAll('.venue-filter-checkbox').length;
     const searchQuery = artistSearchInput ? artistSearchInput.value.toLowerCase().trim() : '';
     let targetId = monthSelect ? monthSelect.value : '';
+
+    const needsFullUnpack = (searchQuery !== '' || activeGenre !== 'all' || !activeRegions.has('all') || checkedVenues.length < totalCount || filterInterestedOnly || visibleChunkLimit > CHUNK_SIZE);
+    views.forEach(v => {
+      if (needsFullUnpack || v.id === targetId) {
+        unpackDeferredCards(v);
+      }
+    });
+
     if (!filterInterestedOnly && targetId === 'interested-view') {
       if (lastActiveMonthView && document.querySelector(`#month-dropdown-select option[value="${lastActiveMonthView}"]`)) {
         targetId = lastActiveMonthView;
@@ -317,33 +405,20 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       }
     }
 
-    if (searchQuery === '' && !filterInterestedOnly && lastActiveMonthView) {
-      if (document.querySelector(`#month-dropdown-select option[value="${lastActiveMonthView}"]`)) {
-        targetId = lastActiveMonthView;
-        if (monthSelect && monthSelect.value !== targetId) {
-          monthSelect.value = targetId;
-          const monthCustomLabel = monthSelect.parentElement?.querySelector('.custom-select-label') ||
-                                 monthSelect.closest('.custom-select-wrapper')?.querySelector('.custom-select-label');
-          const activeOpt = monthSelect.options[monthSelect.selectedIndex];
-          if (monthCustomLabel && activeOpt) {
-            monthCustomLabel.textContent = activeOpt.textContent;
-          }
-        }
-      }
-    }
-
     if (selectedCountSpan) {
       if (checkedVenues.length === totalCount) selectedCountSpan.textContent = 'All Venues';
       else if (checkedVenues.length === 0) selectedCountSpan.textContent = '0 Venues';
       else selectedCountSpan.textContent = `${checkedVenues.length} Selected`;
     }
 
-    let activeViewVisibleCount = 0;
+    // Step 1: Calculate visibility for all cards across all views
+    const viewVisibleCounts = {};
+    const viewTotalMatchingCounts = {};
 
     views.forEach(view => {
       let visibleCount = 0;
       let visibleIndexInView = 0;
-      const wasActiveView = view.classList.contains('active');
+
       view.querySelectorAll('.event-card').forEach(card => {
         const cardCity = card.dataset.city;
         const cardVenue = card.dataset.venue;
@@ -389,8 +464,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
         if (show && searchQuery !== '') {
           const searchBlob = (card.dataset.search || '').toLowerCase();
           const cardText = card.textContent.toLowerCase();
-          const isMatch = searchBlob.includes(searchQuery) ||
-                          cardText.includes(searchQuery);
+          const isMatch = searchBlob.includes(searchQuery) || cardText.includes(searchQuery);
           if (!isMatch) {
             show = false;
           }
@@ -413,32 +487,93 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
             return hasTagInList(allCardTags, bTags);
           };
 
-          const matchGenre = () => checkBucketMatch(activeGenre);
-
-          if (!matchGenre()) {
+          if (!checkBucketMatch(activeGenre)) {
             show = false;
           }
         }
 
         if (show) {
-          card.classList.remove('card-hiding');
-          card.style.display = 'grid';
-          visibleCount++;
           visibleIndexInView++;
+          if (visibleIndexInView <= visibleChunkLimit) {
+            card.classList.remove('card-hiding');
+            card.style.display = 'grid';
+            visibleCount++;
+          } else {
+            card.style.display = 'none';
+            card.classList.remove('card-hiding');
+          }
         } else {
           card.style.display = 'none';
           card.classList.remove('card-hiding');
         }
       });
 
-      const isActiveView = (filterInterestedOnly && targetId === 'interested-view') ? (view.id === 'interested-view') : (view.id === targetId);
+      viewVisibleCounts[view.id] = visibleCount;
+      viewTotalMatchingCounts[view.id] = visibleIndexInView;
+    });
 
-      if (isActiveView && !wasActiveView) {
-        view.classList.remove('active');
-        void view.offsetWidth;
-        view.classList.add('active');
-      } else if (!isActiveView) {
-        view.classList.remove('active');
+    // Step 2: Auto-switch to first month with matches if current month has 0 matches
+    const hasFilterActive = (searchQuery !== '' || activeGenre !== 'all' || !activeRegions.has('all') || checkedVenues.length < totalCount);
+    if (!filterInterestedOnly && hasFilterActive) {
+      if ((viewVisibleCounts[targetId] || 0) === 0) {
+        const monthViews = Array.from(views).filter(v => v.id !== 'interested-view' && v.id !== 'empty-view');
+        const firstMatching = monthViews.find(v => (viewVisibleCounts[v.id] || 0) > 0);
+        if (firstMatching) {
+          targetId = firstMatching.id;
+          if (monthSelect) {
+            monthSelect.value = targetId;
+            lastActiveMonthView = targetId;
+            const monthCustomLabel = monthSelect.parentElement?.querySelector('.custom-select-label') ||
+              monthSelect.closest('.custom-select-wrapper')?.querySelector('.custom-select-label');
+            const activeOpt = monthSelect.options[monthSelect.selectedIndex];
+            if (monthCustomLabel && activeOpt) {
+              monthCustomLabel.textContent = activeOpt.textContent;
+            }
+          }
+        }
+      }
+    }
+
+    // Step 3: Activate target view and update UI empty states & load more buttons
+    let activeViewVisibleCount = 0;
+
+    views.forEach(view => {
+      const isActiveView = (filterInterestedOnly && targetId === 'interested-view') ? (view.id === 'interested-view') : (view.id === targetId);
+      const visibleCount = viewVisibleCounts[view.id] || 0;
+      const visibleIndexInView = viewTotalMatchingCounts[view.id] || 0;
+
+      view.classList.toggle('active', isActiveView);
+
+      if (isActiveView) {
+        activeViewVisibleCount = visibleCount;
+      }
+
+      let loadMoreContainer = view.querySelector('.load-more-container');
+      if (isActiveView && visibleIndexInView > visibleChunkLimit) {
+        if (!loadMoreContainer) {
+          loadMoreContainer = document.createElement('div');
+          loadMoreContainer.className = 'load-more-container';
+          loadMoreContainer.innerHTML = `
+            <button type="button" class="btn-load-more">
+              <span>Load More Shows (${visibleCount} of ${visibleIndexInView})</span>
+            </button>
+          `;
+          view.appendChild(loadMoreContainer);
+
+          loadMoreContainer.querySelector('.btn-load-more').addEventListener('click', e => {
+            e.preventDefault();
+            visibleChunkLimit += CHUNK_SIZE;
+            applyFilters();
+          });
+        } else {
+          loadMoreContainer.style.display = 'flex';
+          const btn = loadMoreContainer.querySelector('.btn-load-more');
+          if (btn) {
+            btn.innerHTML = `<span>Load More Shows (${visibleCount} of ${visibleIndexInView})</span>`;
+          }
+        }
+      } else if (loadMoreContainer) {
+        loadMoreContainer.style.display = 'none';
       }
 
       let emptyStateEl = view.querySelector('.filter-empty-state');
@@ -468,49 +603,35 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       } else if (emptyStateEl) {
         emptyStateEl.style.display = 'none';
       }
-
-      if (isActiveView) {
-        activeViewVisibleCount = visibleCount;
-      }
     });
 
     updateLiveFilterSummary(activeViewVisibleCount, checkedVenues.length, totalCount, searchQuery);
 
-    if (!filterInterestedOnly && (searchQuery !== '' || activeGenre !== 'all' || !activeRegions.has('all'))) {
-      autoSwitchToFirstMatchingMonth();
+    // Step 4: Hide month options in monthSelect dropdown that have 0 matches when a filter/search is active
+    if (monthSelect) {
+      Array.from(monthSelect.options).forEach(opt => {
+        if (opt.value === 'interested-view' || opt.value === 'empty-view') return;
+        const count = viewVisibleCounts[opt.value] || 0;
+        if (hasFilterActive && count === 0) {
+          opt.hidden = true;
+          opt.style.display = 'none';
+        } else {
+          opt.hidden = false;
+          opt.style.display = '';
+        }
+      });
+    }
+
+    const eventsContainer = document.querySelector('.events-content');
+    if (eventsContainer) {
+      eventsContainer.classList.add('is-ready');
     }
   }
 
-  function autoSwitchToFirstMatchingMonth() {
-    if (!monthSelect) return;
 
-    const currentMonthView = document.getElementById(monthSelect.value);
-    const hasVisibleCardsInCurrent = currentMonthView && Array.from(currentMonthView.querySelectorAll('.event-card')).some(c => c.style.display === 'grid');
-
-    if (hasVisibleCardsInCurrent) return;
-
-    const monthViews = Array.from(views).filter(v => v.id !== 'interested-view' && v.id !== 'empty-view');
-    const firstMatchingView = monthViews.find(v => {
-      return Array.from(v.querySelectorAll('.event-card')).some(c => c.style.display === 'grid');
-    });
-
-    if (!firstMatchingView || monthSelect.value === firstMatchingView.id) return;
-
-    monthSelect.value = firstMatchingView.id;
-    lastActiveMonthView = firstMatchingView.id;
-
-    const monthCustomLabel = monthSelect.parentElement?.querySelector('.custom-select-label') ||
-      monthSelect.closest('.custom-select-wrapper')?.querySelector('.custom-select-label');
-    const activeOpt = monthSelect.options[monthSelect.selectedIndex];
-    if (monthCustomLabel && activeOpt) {
-      monthCustomLabel.textContent = activeOpt.textContent;
-    }
-    views.forEach(v => {
-      v.classList.toggle('active', v.id === firstMatchingView.id);
-    });
-  }
 
   function resetAllFilters() {
+    resetChunkLimit();
     if (artistSearchInput) artistSearchInput.value = '';
     activeGenre = 'all';
     if (genreSelect) {
@@ -522,6 +643,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     document.querySelectorAll('.region-btn').forEach(b => {
       b.classList.toggle('active', b.getAttribute('data-region') === 'all');
     });
+    saveActiveRegions();
     if (venueList) {
       venueList.querySelectorAll('.venue-filter-checkbox').forEach(cb => cb.checked = true);
     }
@@ -631,6 +753,8 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
         }
       }
 
+      saveActiveRegions();
+      resetChunkLimit();
       applyFilters();
     });
   });
@@ -652,6 +776,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     genreSelect.addEventListener('change', event => {
       activeGenre = event.target.value;
       updateGenreTooltip();
+      resetChunkLimit();
       applyFilters();
     });
   }
@@ -689,6 +814,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       document.querySelectorAll('.venue-filter-checkbox').forEach(cb => {
         cb.checked = venueSelectAll.checked;
       });
+      resetChunkLimit();
       applyFilters();
     });
   }
@@ -700,12 +826,14 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       if (venueSelectAll) {
         venueSelectAll.checked = cbs.length === checked.length;
       }
+      resetChunkLimit();
       applyFilters();
     }
   });
 
   if (monthSelect) {
     monthSelect.addEventListener('change', () => {
+      resetChunkLimit();
       const targetId = monthSelect.value;
       if (targetId && targetId !== 'interested-view' && targetId !== 'empty-view') {
         lastActiveMonthView = targetId;
@@ -767,6 +895,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       menu.innerHTML = '';
       Array.from(selectEl.options).forEach(opt => {
         if (opt.value === 'empty-view') return;
+        if (opt.hidden || opt.style.display === 'none') return;
         const item = document.createElement('div');
         item.className = 'custom-select-option' + (opt.value === selectEl.value ? ' selected' : '');
         item.textContent = opt.textContent;
@@ -789,9 +918,11 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     function closeMenu() {
       menu.classList.remove('open');
       toggleBtn.classList.remove('active');
+      wrapper.classList.remove('is-open');
     }
 
     function openMenu() {
+      document.querySelectorAll('.custom-select-wrapper.is-open').forEach(w => w.classList.remove('is-open'));
       document.querySelectorAll('.custom-select-menu.open').forEach(m => m.classList.remove('open'));
       document.querySelectorAll('.custom-select-toggle.active').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.links-popover').forEach(p => { p.style.display = 'none'; p.classList.remove('open'); });
@@ -801,6 +932,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       syncOptions();
       menu.classList.add('open');
       toggleBtn.classList.add('active');
+      wrapper.classList.add('is-open');
     }
 
     toggleBtn.addEventListener('click', e => {
@@ -862,6 +994,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     artistSearchInput.addEventListener('input', () => {
       syncSearchClearButton();
       updateMarketLinksWithSearch();
+      resetChunkLimit();
       applyFilters();
     });
   }
@@ -871,6 +1004,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       artistSearchInput.value = '';
       syncSearchClearButton();
       updateMarketLinksWithSearch();
+      resetChunkLimit();
       applyFilters();
       artistSearchInput.focus();
     });
@@ -901,6 +1035,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   if (btnInterestedFilter) {
     btnInterestedFilter.setAttribute('aria-pressed', 'false');
     btnInterestedFilter.addEventListener('click', () => {
+      resetChunkLimit();
       filterInterestedOnly = !filterInterestedOnly;
       btnInterestedFilter.classList.toggle('is-active', filterInterestedOnly);
       btnInterestedFilter.setAttribute('aria-pressed', filterInterestedOnly ? 'true' : 'false');
@@ -959,6 +1094,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   if (btnResetIgnored) {
     btnResetIgnored.addEventListener('click', e => {
       e.preventDefault();
+      resetChunkLimit();
       if (saveIgnoredEventIds) saveIgnoredEventIds([]);
       document.querySelectorAll('.event-card').forEach(c => c.classList.remove('card-hiding'));
       if (artistSearchInput) {
@@ -971,6 +1107,23 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       moveToFirstVisibleMonthView();
     });
   }
+
+  let isScrollingToLoad = false;
+  window.addEventListener('scroll', () => {
+    if (isScrollingToLoad) return;
+    const scrollPosition = window.innerHeight + window.scrollY;
+    const threshold = document.documentElement.scrollHeight - 400;
+    if (scrollPosition >= threshold) {
+      const activeView = document.querySelector('.calendar-view.active');
+      const loadMoreContainer = activeView ? activeView.querySelector('.load-more-container') : null;
+      if (loadMoreContainer && loadMoreContainer.style.display !== 'none') {
+        isScrollingToLoad = true;
+        visibleChunkLimit += CHUNK_SIZE;
+        applyFilters();
+        setTimeout(() => { isScrollingToLoad = false; }, 250);
+      }
+    }
+  });
 
   updateResetIgnoredButton();
   updateInterestedCards();
