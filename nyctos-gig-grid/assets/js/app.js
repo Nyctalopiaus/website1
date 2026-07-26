@@ -1,9 +1,9 @@
-import { setupGlobalErrorLogging, getVenueData, getGenreBucketData } from './utils.js?v=55';
-import { getInterestedIds, saveInterestedIds, getIgnoredEventIds, saveIgnoredEventIds } from './store.js?v=55';
-import { initEmailModal, initFeatureModal, initVenueModal, initSetlistModal, initContactModal } from './modals.js?v=55';
-import { initArtistInsights, initAudioPreview, initArtistLinksDropdown } from './media.js?v=55';
-import { initFilters } from './filters.js?v=55';
-import { loadWeatherForecasts } from './weather.js?v=55';
+import { setupGlobalErrorLogging, getVenueData, getGenreBucketData } from './utils.js?v=20260726_v5';
+import { getInterestedIds, saveInterestedIds, getIgnoredEventIds, saveIgnoredEventIds } from './store.js?v=20260726_v5';
+import { initEmailModal, initFeatureModal, initVenueModal, initSetlistModal, initContactModal } from './modals.js?v=20260726_v5';
+import { initArtistInsights, initAudioPreview, initArtistLinksDropdown } from './media.js?v=20260726_v5';
+import { initFilters } from './filters.js?v=20260726_v5';
+import { loadWeatherForecasts } from './weather.js?v=20260726_v5';
 
 setupGlobalErrorLogging();
 
@@ -75,8 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
       linkEl.href = url;
       linkEl.as = 'document';
       document.head.appendChild(linkEl);
-
-      fetch(url, { priority: 'low', credentials: 'same-origin' }).catch(() => {});
     };
 
     marketLinks.forEach(link => {

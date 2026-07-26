@@ -189,6 +189,7 @@ if (file_exists($lastSyncFile)) {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title><?php echo htmlspecialchars($activeMarketConfig['title']); ?> // Live Show Intelligence</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤘</text></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -480,7 +481,7 @@ if (file_exists($lastSyncFile)) {
                     </button>
                     <button type="button" id="btn-reset-ignored" class="btn-premium-filter btn-premium-filter--secondary btn-reset-ignored" title="Reset ignored shows">
                         <span class="btn-premium-filter-icon">🔄</span>
-                        <span class="btn-premium-filter-label" id="reset-ignored-label">Reset (0)</span>
+                        <span class="btn-premium-filter-label" id="reset-ignored-label">Reset Ignored (0)</span>
                     </button>
                 </div>
             </div>
@@ -906,6 +907,6 @@ if (file_exists($lastSyncFile)) {
 
     <script id="venue-data" type="application/json"><?php echo json_encode($venuesList, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
     <script id="genre-buckets-data" type="application/json"><?php echo json_encode($genreBuckets, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
-    <script type="module" src="assets/js/app.js?v=55"></script>
+    <script type="module" src="assets/js/app.js?v=<?php echo filemtime(__DIR__ . '/assets/js/app.js'); ?>"></script>
 </body>
 </html>

@@ -13,11 +13,13 @@ function normalizeLocationToken(value) {
 }
 
 export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInterestedIds, getIgnoredEventIds, saveIgnoredEventIds }) {
+  console.log('[GigGrid] initFilters loaded v20260726_v5');
   const venueList = document.getElementById('venue-checkboxes-list');
   const dropdownToggle = document.getElementById('venue-dropdown-toggle');
   const dropdownMenu = document.getElementById('venue-dropdown-menu');
   const venueSelectAll = document.getElementById('venue-select-all');
   const monthSelect = document.getElementById('month-dropdown-select');
+  const genreSelect = document.getElementById('genre-select');
   const views = document.querySelectorAll('.calendar-view');
   const artistSearchInput = document.getElementById('artist-search-input');
   const clearSearchButton = document.getElementById('btn-clear-search');
@@ -79,7 +81,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   const btnResetIgnored = document.getElementById('btn-reset-ignored');
   const resetIgnoredLabel = document.getElementById('reset-ignored-label');
   const summaryMarket = document.getElementById('summary-market');
-  const summaryVisible = document.getElementById('summary-visible');
+  const summaryResults = document.getElementById('summary-results');
   const summaryFilters = document.getElementById('summary-filters');
   const summaryPill = document.getElementById('live-filter-summary');
   const btnToggleIntro = document.getElementById('btn-toggle-intro');
@@ -512,13 +514,16 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       viewTotalMatchingCounts[view.id] = visibleIndexInView;
     });
 
-    // Step 2: Auto-switch to first month with matches if current month has 0 matches
-    const hasFilterActive = (searchQuery !== '' || activeGenre !== 'all' || !activeRegions.has('all') || checkedVenues.length < totalCount);
-    if (!filterInterestedOnly && hasFilterActive) {
+
+
+
+
+    // Step 2: Auto-switch month ONLY when an active text search query is entered and current month has 0 matches
+    if (!filterInterestedOnly && searchQuery !== '') {
       if ((viewVisibleCounts[targetId] || 0) === 0) {
         const monthViews = Array.from(views).filter(v => v.id !== 'interested-view' && v.id !== 'empty-view');
         const firstMatching = monthViews.find(v => (viewVisibleCounts[v.id] || 0) > 0);
-        if (firstMatching) {
+        if (firstMatching && firstMatching.id !== targetId) {
           targetId = firstMatching.id;
           if (monthSelect) {
             monthSelect.value = targetId;
@@ -543,6 +548,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       const visibleIndexInView = viewTotalMatchingCounts[view.id] || 0;
 
       view.classList.toggle('active', isActiveView);
+      view.style.display = isActiveView ? 'flex' : 'none';
 
       if (isActiveView) {
         activeViewVisibleCount = visibleCount;
@@ -607,20 +613,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
 
     updateLiveFilterSummary(activeViewVisibleCount, checkedVenues.length, totalCount, searchQuery);
 
-    // Step 4: Hide month options in monthSelect dropdown that have 0 matches when a filter/search is active
-    if (monthSelect) {
-      Array.from(monthSelect.options).forEach(opt => {
-        if (opt.value === 'interested-view' || opt.value === 'empty-view') return;
-        const count = viewVisibleCounts[opt.value] || 0;
-        if (hasFilterActive && count === 0) {
-          opt.hidden = true;
-          opt.style.display = 'none';
-        } else {
-          opt.hidden = false;
-          opt.style.display = '';
-        }
-      });
-    }
+
 
     const eventsContainer = document.querySelector('.events-content');
     if (eventsContainer) {
@@ -656,26 +649,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     applyFilters();
   }
 
-  function moveToFirstVisibleMonthView() {
-    if (!monthSelect) return;
 
-    const monthViews = Array.from(views).filter(v => v.id !== 'interested-view' && v.id !== 'empty-view');
-    const firstVisible = monthViews.find(v => {
-      const visibleCard = Array.from(v.querySelectorAll('.event-card')).find(c => c.style.display !== 'none');
-      return !!visibleCard;
-    });
-
-    if (!firstVisible || monthSelect.value === firstVisible.id) return;
-
-    monthSelect.value = firstVisible.id;
-    const monthCustomLabel = monthSelect.parentElement?.querySelector('.custom-select-label') ||
-      monthSelect.closest('.custom-select-wrapper')?.querySelector('.custom-select-label');
-    const activeOpt = monthSelect.options[monthSelect.selectedIndex];
-    if (monthCustomLabel && activeOpt) {
-      monthCustomLabel.textContent = activeOpt.textContent;
-    }
-    monthSelect.dispatchEvent(new Event('change', { bubbles: true }));
-  }
 
   function animateInterestedBadge() {
     const customToggle = document.getElementById('month-custom-toggle');
@@ -759,8 +733,30 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     });
   });
 
-  const genreSelect = document.getElementById('genre-select');
+  const genreStorageKey = 'gig_grid_active_genre';
+
+  function saveActiveGenre() {
+    try {
+      localStorage.setItem(genreStorageKey, activeGenre);
+    } catch (e) {
+      console.warn('Failed to save active genre to localStorage:', e);
+    }
+  }
+
+  function loadActiveGenre() {
+    try {
+      const saved = localStorage.getItem(genreStorageKey);
+      if (saved && genreSelect && Array.from(genreSelect.options).some(opt => opt.value === saved)) {
+        activeGenre = saved;
+        genreSelect.value = saved;
+      }
+    } catch (e) {
+      console.warn('Failed to load active genre from localStorage:', e);
+    }
+  }
+
   if (genreSelect) {
+    loadActiveGenre();
     const updateGenreTooltip = () => {
       const selected = genreSelect.options[genreSelect.selectedIndex];
       const bucket = genreBuckets[selected?.value] || genreBuckets.all;
@@ -775,6 +771,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     updateGenreTooltip();
     genreSelect.addEventListener('change', event => {
       activeGenre = event.target.value;
+      saveActiveGenre();
       updateGenreTooltip();
       resetChunkLimit();
       applyFilters();
@@ -1104,7 +1101,6 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       }
       updateResetIgnoredButton();
       applyFilters();
-      moveToFirstVisibleMonthView();
     });
   }
 

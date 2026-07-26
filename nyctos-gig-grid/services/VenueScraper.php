@@ -71,14 +71,28 @@ class VenueScraper {
         if (strpos($url, 'do303.com') !== false) {
             preg_match_all('/<a[^>]+href="(\/events\/(20\d\d)\/(\d+)\/(\d+)[^"]*)"[^>]*>(.*?)<\/a>/s', $html, $matches, PREG_SET_ORDER);
             $events = [];
+            $seenPaths = [];
             foreach ($matches as $m) {
                 $eventPath = $m[1];
                 $year = $m[2];
                 $month = str_pad($m[3], 2, '0', STR_PAD_LEFT);
                 $day = str_pad($m[4], 2, '0', STR_PAD_LEFT);
-                $cleanTitle = trim(strip_tags(html_entity_decode($m[5])));
+                $cleanTitle = trim(preg_replace('/\s+/', ' ', strip_tags(html_entity_decode($m[5]))));
                 
-                if (!empty($cleanTitle) && strlen($cleanTitle) > 2 && preg_match('/[a-zA-Z]/', $cleanTitle) && strpos($cleanTitle, '2026') !== 0 && !preg_match('/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/i', $cleanTitle)) {
+                // Skip date-only button links (e.g. "Friday Aug 14")
+                $isDateHeader = preg_match('/^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)[\s,]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s,]+\d{1,2}$/i', $cleanTitle);
+                if ($isDateHeader) {
+                    continue;
+                }
+
+                if (isset($seenPaths[$eventPath])) {
+                    continue;
+                }
+                $seenPaths[$eventPath] = true;
+
+                $cleanTitle = str_replace(' + ', ' & ', $cleanTitle);
+                
+                if (!empty($cleanTitle) && strlen($cleanTitle) > 2 && preg_match('/[a-zA-Z]/', $cleanTitle) && strpos($cleanTitle, '2026') !== 0) {
                     $startIso = "{$year}-{$month}-{$day} 19:00:00";
                     $events[] = [
                         'artist_name' => $cleanTitle,
@@ -86,7 +100,7 @@ class VenueScraper {
                         'city_name' => 'Denver',
                         'start_time' => $startIso,
                         'ticket_url' => 'https://do303.com' . $eventPath,
-                        'source' => 'VenueScraper'
+                        'source' => 'VenueScraper: ' . $this->getVenueNameFromUrl($url)
                     ];
                 }
             }

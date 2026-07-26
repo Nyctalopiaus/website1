@@ -1408,7 +1408,12 @@ class EventAggregator {
         $incomingMarket = $this->normalizeMarketKey($event['market'] ?? null);
         if ($incomingMarket === null) {
             $resolvedVenue = $this->resolveTargetVenue($event['venue_name'] ?? '', null);
-            $incomingMarket = $resolvedVenue['market'] ?? 'front-range';
+            $incomingMarket = $resolvedVenue['market'] ?? null;
+        }
+
+        if ($incomingMarket === null) {
+            $this->log("[IGNORE] Rejecting event in unmapped market region for venue '{$event['venue_name']}' in city '{$event['city_name']}'.");
+            return false;
         }
 
         $event['city_name'] = !empty(trim((string)($event['city_name'] ?? ''))) ? trim((string)$event['city_name']) : 'Denver';
@@ -1471,6 +1476,34 @@ class EventAggregator {
         $existing = $this->stmtSaveSelect->fetch();
         $this->stmtSaveSelect->closeCursor();
 
+        // Secondary Fuzzy Deduplication Match:
+        // If exact ID search misses (e.g. Bandsintown sent a tour name instead of venue), match on Market + Date + Primary Headliner
+        if (!$existing) {
+            $parts = $this->splitPerformerNames($event['artist_name']);
+            $primaryArtist = trim($parts[0] ?? $event['artist_name']);
+            $cleanPrimary = preg_replace('/[^a-z0-9]/', '', strtolower($primaryArtist));
+            $eventDate = date('Y-m-d', strtotime($event['start_time']));
+
+            if (!empty($cleanPrimary) && !empty($eventDate)) {
+                $stmtFuzzy = $this->db->prepare("SELECT * FROM events WHERE market = :market AND DATE(start_time) = :edate");
+                executeWithRetry($stmtFuzzy, [':market' => $incomingMarket, ':edate' => $eventDate]);
+                $candidates = $stmtFuzzy->fetchAll(PDO::FETCH_ASSOC);
+                $stmtFuzzy->closeCursor();
+
+                foreach ($candidates as $cand) {
+                    $candParts = $this->splitPerformerNames($cand['artist_name']);
+                    $candPrimary = trim($candParts[0] ?? $cand['artist_name']);
+                    $candClean = preg_replace('/[^a-z0-9]/', '', strtolower($candPrimary));
+
+                    if ($candClean === $cleanPrimary || (strlen($candClean) > 3 && strpos($cleanPrimary, $candClean) !== false) || (strlen($cleanPrimary) > 3 && strpos($candClean, $cleanPrimary) !== false)) {
+                        $existing = $cand;
+                        $event['event_id'] = $cand['event_id']; // Reuse existing ID to update in place
+                        break;
+                    }
+                }
+            }
+        }
+
         if ($existing) {
             $existingLocked = (int)($existing['genre_locked'] ?? 0);
             $existingGenreSource = strtolower(trim((string)($existing['genre_source'] ?? '')));
@@ -1515,7 +1548,15 @@ class EventAggregator {
             $incomingArtist = $event['artist_name'];
             $mergedArtist = $this->mergePerformerNames($existingArtist, $incomingArtist);
 
-            // 5. Merge prices
+            // 5. Preserve real venue names over tour names (e.g. "Fillmore Auditorium" over "Constantly Nowhere NA Tour")
+            $existingVenueLower = strtolower($existing['venue_name'] ?? '');
+            $incomingVenueLower = strtolower($event['venue_name'] ?? '');
+            $incomingIsTourName = (strpos($incomingVenueLower, 'tour') !== false || strpos($incomingVenueLower, 'fest') !== false);
+            
+            $mergedVenue = ($incomingIsTourName && !empty($existing['venue_name'])) ? $existing['venue_name'] : $event['venue_name'];
+            $mergedCity = ($incomingIsTourName && !empty($existing['city_name'])) ? $existing['city_name'] : $event['city_name'];
+
+            // 6. Merge prices
             $existingPriceMin = $this->normalizePriceValue($existing['price_min'] ?? null);
             $existingPriceMax = $this->normalizePriceValue($existing['price_max'] ?? null);
 
@@ -1596,8 +1637,8 @@ class EventAggregator {
                 
             executeWithRetry($this->stmtSaveUpdate, [
                 ':artist' => $mergedArtist,
-                ':venue' => $event['venue_name'],
-                ':city' => $event['city_name'],
+                ':venue' => $mergedVenue,
+                ':city' => $mergedCity,
                 ':market' => $mergedMarket,
                 ':start' => $event['start_time'],
                 ':url' => $mergedUrl,
