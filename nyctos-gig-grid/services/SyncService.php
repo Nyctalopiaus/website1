@@ -83,40 +83,26 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
 
 function persistLastSyncTimestamp() {
     $nowStr = date('Y-m-d H:i:s');
-    $targets = [];
-
-    // Primary app cache directory.
-    $targets[] = __DIR__ . '/../cache';
-
-    // Sync to sibling domain cache directories if running in multi-domain environment.
-    $targets[] = dirname(__DIR__, 2) . '/metal-calendar/cache';
-    $targets[] = dirname(__DIR__, 2) . '/nyctos-gig-grid/cache';
+    $targets = [
+        __DIR__ . '/../cache',
+        dirname(__DIR__) . '/cache'
+    ];
 
     $writeCount = 0;
     foreach (array_unique($targets) as $dir) {
         if (!is_dir($dir)) {
-            // Only auto-create directories under this project root.
-            if (strpos($dir, realpath(__DIR__ . '/..')) === 0) {
-                if (!mkdir($dir, 0775, true) && !is_dir($dir)) {
-                    error_log('[SYNC TIMESTAMP] Failed to create cache directory: ' . $dir);
-                    continue;
-                }
-            } else {
-                continue;
-            }
+            @mkdir($dir, 0755, true);
         }
 
         $path = rtrim($dir, '/\\') . '/last_sync.txt';
-        $written = file_put_contents($path, $nowStr, LOCK_EX);
-        if ($written === false) {
-            error_log('[SYNC TIMESTAMP] Failed to write last_sync.txt at: ' . $path);
-            continue;
+        $written = @file_put_contents($path, $nowStr, LOCK_EX);
+        if ($written !== false) {
+            $writeCount++;
         }
-        $writeCount++;
     }
 
     if ($writeCount === 0) {
-        error_log('[SYNC TIMESTAMP] No last_sync.txt locations were updated.');
+        error_log('[SYNC TIMESTAMP] Failed to update last_sync.txt');
     }
 }
 

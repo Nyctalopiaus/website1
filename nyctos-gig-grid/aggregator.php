@@ -26,7 +26,7 @@ foreach ($argvList as $arg) {
     }
 }
 
-if ($cliSync) {
+if ($cliSync || ($isCli && empty($_GET['action']) && !isset($_GET['sync']))) {
     handleSyncRequest(true);
     exit;
 }

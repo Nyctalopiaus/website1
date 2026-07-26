@@ -79,10 +79,10 @@ function summarizeHttpErrors(array $httpErrors): array {
         $httpCode = null;
         $context = '';
 
-        if (preg_match('/^([^|]+)\|\s*market=([^|]+)\|\s*http=([0-9]{3})\|\s*(.*)$/i', $entry, $m)) {
+        if (preg_match('/^([^|]+)\|\s*market=([^|]*)\|\s*(?:http=([0-9]{3})\|)?\s*(.*)$/i', $entry, $m)) {
             $source = trim($m[1]);
-            $market = trim($m[2]);
-            $httpCode = (string)$m[3];
+            $market = trim($m[2]) !== '' ? trim($m[2]) : 'all';
+            $httpCode = !empty($m[3]) ? (string)$m[3] : '404';
             $context = trim($m[4]);
         } elseif (preg_match('/^\[ERROR\]\s+([A-Za-z0-9]+)\s+API query returned HTTP code\s+([0-9]{3})\s+for\s+([a-z\-]+)\s+location\s+(.+)$/i', $entry, $m)) {
             $source = trim($m[1]);
