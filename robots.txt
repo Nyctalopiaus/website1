@@ -24,3 +24,6 @@ Disallow: /backend/
 Disallow: /*.db$
 Disallow: /*.json$
 Allow: /
+
+Sitemap: https://nycto.ninja/sitemap.xml
+Sitemap: https://nycto.ninja/sitemap.php

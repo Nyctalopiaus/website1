@@ -36,7 +36,7 @@
 
 body {
   background-color: var(--bg-dark);
-  background-image: radial-gradient(circle at 50% 50%, rgba(34, 36, 41, 0.72), rgba(17, 19, 23, 0.92)), url('../assets/scenic_highway_bg.jpg');
+  background-image: radial-gradient(circle at 50% 50%, rgba(34, 36, 41, 0.72), rgba(17, 19, 23, 0.92)), url('../assets/scenic_highway_bg.webp');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;

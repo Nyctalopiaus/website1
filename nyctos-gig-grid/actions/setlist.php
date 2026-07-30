@@ -4,7 +4,7 @@ function handleGetSetlist() {
     $eventId = $_GET['event_id'] ?? $_POST['event_id'] ?? '';
     $db = getDbConnection();
 
-    $stmtEvent = $db->prepare("SELECT artist_name, start_time, city_name FROM events WHERE event_id = :id");
+    $stmtEvent = $db->prepare("SELECT e.artist_name, e.start_time, v.city FROM events e INNER JOIN venues v ON e.venue_id = v.venue_id WHERE e.event_id = :id");
     $stmtEvent->execute([':id' => $eventId]);
     $event = $stmtEvent->fetch();
     if (!$event) {
@@ -42,7 +42,7 @@ function handleGetSetlist() {
         $shouldCacheAll = true;
 
         foreach ($artists as $artist) {
-            $result = fetchSetlistFromSetlistFm($artist, $event['start_time'], $event['city_name']);
+            $result = fetchSetlistFromSetlistFm($artist, $event['start_time'], $event['city'] ?? '');
             $songs = $result['songs'] ?? [];
             if (!$result['should_cache']) {
                 $shouldCacheAll = false;

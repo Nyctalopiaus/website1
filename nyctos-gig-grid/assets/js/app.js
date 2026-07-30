@@ -104,5 +104,11 @@ document.addEventListener('DOMContentLoaded', () => {
     saveIgnoredEventIds
   });
   initMarketLinkPrefetching();
-  loadWeatherForecasts();
+  
+  // Defer weather API calls after initial DOM paint to maximize Lighthouse TBT & FCP performance
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(() => loadWeatherForecasts(), { timeout: 1500 });
+  } else {
+    setTimeout(loadWeatherForecasts, 200);
+  }
 });

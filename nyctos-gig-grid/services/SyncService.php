@@ -32,15 +32,34 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
     $scrapedCount = 0;
     $cacheDir = ensureSyncCacheDir();
 
-    foreach (SCRAPER_TARGETS as $target) {
-        $scraper = new VenueScraper();
+    // Query active scraped_venues from database table
+    $dbTargets = [];
+    try {
+        $stmtV = $db->query("SELECT venue_name, scrape_url AS venue_url, xpath_container AS selector FROM scraped_venues WHERE is_active = 1");
+        if ($stmtV !== false) {
+            $dbTargets = $stmtV->fetchAll(PDO::FETCH_ASSOC);
+        }
+    } catch (Exception $e) {
+        $dbTargets = [];
+    }
+
+    $targetsToUse = !empty($dbTargets) ? $dbTargets : (defined('SCRAPER_TARGETS') ? SCRAPER_TARGETS : []);
+
+    foreach ($targetsToUse as $target) {
+        $scraper = new VenueScraper($db);
+        $venueUrl = $target['venue_url'] ?? ($target['scrape_url'] ?? '');
         $venueName = trim((string)($target['venue_name'] ?? 'Unknown Venue'));
+        $targetConfig = [
+            'venue_name' => $venueName,
+            'venue_url' => $venueUrl,
+            'selector' => $target['selector'] ?? "//div[contains(@class, 'event')]"
+        ];
         $sourceName = 'VenueScraper: ' . $venueName;
-        $cacheFile = $cacheDir . '/' . md5($target['venue_url']) . '.json';
+        $cacheFile = $cacheDir . '/' . md5($venueUrl) . '.json';
         $cacheTTL = 604800; // 7 days
 
         $isCached = (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $cacheTTL);
-        $scrapedEvents = loadScrapedEventsForTarget($target, $cacheDir, $aggregator, $scraper);
+        $scrapedEvents = loadScrapedEventsForTarget($targetConfig, $cacheDir, $aggregator, $scraper);
 
         $eventsForThisVenue = 0;
         $venueMarket = 'front-range';
@@ -70,6 +89,7 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
                 'venue_name' => $resolvedVenue['venue_name'],
                 'city_name' => $event['city_name'],
                 'start_time' => $event['start_time'],
+                'doors_time' => $event['doors_time'] ?? null,
                 'ticket_url' => $event['ticket_url'],
                 'status' => $status,
                 'source' => $sourceName,
@@ -145,10 +165,11 @@ function backfillMissingSetlists(EventAggregator $aggregator) {
     try {
         $db = getDbConnection();
         $pastEvents = $db->query("
-            SELECT e.event_id, e.artist_name, e.start_time, e.city_name
+            SELECT e.event_id, e.artist_name, e.start_time, v.city
             FROM events e
+            INNER JOIN venues v ON e.venue_id = v.venue_id
             LEFT JOIN event_setlists s ON e.event_id = s.event_id
-            WHERE e.status = 'Approved'
+            WHERE (e.is_approved = 1 OR e.status = 'Approved')
               AND e.start_time < datetime('now', 'localtime')
               AND s.event_id IS NULL
             ORDER BY e.start_time DESC
@@ -156,7 +177,7 @@ function backfillMissingSetlists(EventAggregator $aggregator) {
         ")->fetchAll();
 
         foreach ($pastEvents as $pastEvent) {
-            $result = fetchSetlistFromSetlistFm($pastEvent['artist_name'], $pastEvent['start_time'], $pastEvent['city_name']);
+            $result = fetchSetlistFromSetlistFm($pastEvent['artist_name'], $pastEvent['start_time'], $pastEvent['city'] ?? '');
             $songsJson = json_encode($result['songs']);
 
             $stmtCacheInsert = $db->prepare("INSERT OR REPLACE INTO event_setlists (event_id, setlist_json) VALUES (:id, :json)");

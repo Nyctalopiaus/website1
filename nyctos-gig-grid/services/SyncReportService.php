@@ -346,6 +346,8 @@ function buildSyncReportHtml(array $report): string {
     $html .= '<h2 style="margin:0 0 10px 0;font-size:16px;color:#111827;">3) Enrichment and Normalization Highlights</h2>';
     $html .= '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:13px;">';
     $html .= '<tr><td style="padding:6px 8px;border:1px solid #e5e7eb;background:#f9fafb;width:48%;font-weight:600;">Auto-approved artists via MusicBrainz</td><td style="padding:6px 8px;border:1px solid #e5e7eb;">' . (int)($enrichment['musicbrainz_auto_approved_count'] ?? 0) . '</td></tr>';
+    $pendingCount = (int)($enrichment['pending_hold_queue_count'] ?? 0);
+    $html .= '<tr><td style="padding:6px 8px;border:1px solid #e5e7eb;background:#fffbeb;color:#92400e;font-weight:600;">Pending events in Hold Queue (is_approved = 0)</td><td style="padding:6px 8px;border:1px solid #e5e7eb;font-weight:700;color:#92400e;">' . $pendingCount . '</td></tr>';
     $unknownCount = (int)($enrichment['unknown_tags_write_count'] ?? 0);
     $html .= '<tr><td style="padding:6px 8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:600;">Unknown tags written to cache log</td><td style="padding:6px 8px;border:1px solid #e5e7eb;">' . $unknownCount . '</td></tr>';
     $html .= '</table>';

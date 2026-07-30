@@ -116,12 +116,13 @@ $activeMonths = $monthsStmt->fetchAll(PDO::FETCH_COLUMN);
 $eventsByMonth = [];
 foreach ($activeMonths as $month) {
     $stmt = $db->prepare("
-        SELECT * 
-        FROM events 
-        WHERE market = :market
-          AND strftime('%Y-%m', start_time) = :month 
-          AND start_time >= datetime('now', '-4 hours') 
-        ORDER BY start_time ASC
+        SELECT e.*, COALESCE(sv.city_name, '') AS city_name
+        FROM events e
+        LEFT JOIN scraped_venues sv ON (e.venue_id = sv.id OR LOWER(TRIM(e.venue_name)) = LOWER(TRIM(sv.venue_name)))
+        WHERE e.market = :market
+          AND strftime('%Y-%m', e.start_time) = :month 
+          AND e.start_time >= datetime('now', '-4 hours') 
+        ORDER BY e.start_time ASC
 ");
     $stmt->execute([
         ':market' => $activeMarket,
@@ -159,6 +160,19 @@ function formatMonthName($yearMonthStr) {
 
 
 // Helper to format event date details
+
+function resolveEventCardCity($event) {
+    $cName = trim((string)($event['city_name'] ?? $event['city'] ?? ''));
+    if ($cName !== '') return ucwords(strtolower($cName));
+    $vName = strtolower(trim((string)($event['venue_name'] ?? '')));
+    if (strpos($vName, 'red rocks') !== false) return 'Morrison';
+    if (strpos($vName, 'fiddler') !== false) return 'Greenwood Village';
+    if (strpos($vName, 'gothic') !== false) return 'Englewood';
+    if (strpos($vName, 'mission ballroom') !== false || strpos($vName, 'ogden') !== false || strpos($vName, 'bluebird') !== false || strpos($vName, 'cervantes') !== false || strpos($vName, 'summit') !== false || strpos($vName, 'marquis') !== false) return 'Denver';
+    if (strpos($vName, 'boulder') !== false || strpos($vName, 'fox theatre') !== false) return 'Boulder';
+    return ucwords($vName);
+}
+
 function getEventDateDetails($dateTimeStr) {
     $timestamp = strtotime($dateTimeStr);
     return [
@@ -550,8 +564,15 @@ if (file_exists($lastSyncFile)) {
                         $groupedEvents = [];
                         foreach ($eventsByMonth[$month] as $eventItem) {
                             $dateKey = date('Y-m-d', strtotime($eventItem['start_time']));
+                            $timeKey = date('H:i', strtotime($eventItem['start_time']));
                             $venueKey = strtolower(trim((string)$eventItem['venue_name']));
-                            $groupKey = $venueKey . '_' . $dateKey;
+                            $eventGenre = strtolower((string)($eventItem['genre'] ?? 'all'));
+                            
+                            if ($eventGenre === 'special_event' || ($timeKey !== '00:00' && $timeKey !== '12:00')) {
+                                $groupKey = $venueKey . '_' . $dateKey . '_' . $timeKey . '_' . md5($eventItem['artist_name']);
+                            } else {
+                                $groupKey = $venueKey . '_' . $dateKey;
+                            }
                             $eventTags = filterIgnoredTagsArray(
                                 splitNormalizedTags($eventItem['tags'] ?? ''),
                                 $ignoredTags
@@ -614,7 +635,7 @@ if (file_exists($lastSyncFile)) {
                             }
                             $groupEventIdsStr = implode(',', array_column($group['events'], 'event_id'));
                         ?>
-                            <article class="event-card" data-status="Approved" data-event-ids="<?php echo htmlspecialchars($groupEventIdsStr); ?>" data-city="<?php echo htmlspecialchars(strtolower($event['city_name'])); ?>" data-venue="<?php echo htmlspecialchars(strtolower($event['venue_name'])); ?>" data-genre="<?php echo htmlspecialchars(strtolower($event['genre'] ?? 'all')); ?>" data-tags="<?php echo htmlspecialchars(strtolower($combinedTagsStr)); ?>" data-search="<?php echo htmlspecialchars($searchBlob); ?>" id="card-<?php echo $event['event_id']; ?>">
+                            <article class="event-card" data-status="Approved" data-event-ids="<?php echo htmlspecialchars($groupEventIdsStr); ?>" data-city="<?php echo htmlspecialchars(resolveEventCardCity($event)); ?>" data-venue="<?php echo htmlspecialchars(strtolower($event['venue_name'])); ?>" data-genre="<?php echo htmlspecialchars(strtolower($event['genre'] ?? 'all')); ?>" data-tags="<?php echo htmlspecialchars(strtolower($combinedTagsStr)); ?>" data-search="<?php echo htmlspecialchars($searchBlob); ?>" id="card-<?php echo $event['event_id']; ?>">
                                 <!-- Left Stub -->
                                 <div class="date-stub">
                                     <div class="date-block-vertical">
@@ -633,12 +654,44 @@ if (file_exists($lastSyncFile)) {
 
                                 <!-- Center Info -->
                                 <div class="event-info">
+                                    <?php 
+                                        $eventTitleBanner = null;
+                                        $filteredArtists = [];
+                                        $eventGenre = strtolower((string)($event['genre'] ?? 'all'));
+                                        $isSpecialEvent = ($eventGenre === 'special_event');
+
+                                        foreach ($group['artists'] as $artName) {
+                                            $aLower = strtolower(trim($artName));
+                                            if (strpos($aLower, 'yoga') !== false || strpos($aLower, 'film on the rocks') !== false || strpos($aLower, 'nasa') !== false || strpos($aLower, 'run the rocks') !== false) {
+                                                $isSpecialEvent = true;
+                                            }
+                                            if (in_array($aLower, ['k-love live', 'k-love live at red rocks', 'reggae on the rocks', 'run the rocks', 'film on the rocks', 'yoga on the rocks'], true)) {
+                                                if (!$eventTitleBanner) {
+                                                    $eventTitleBanner = strtoupper(trim($artName));
+                                                }
+                                            } else {
+                                                $filteredArtists[] = $artName;
+                                            }
+                                        }
+
+                                        if (empty($filteredArtists) && $eventTitleBanner) {
+                                            $filteredArtists[] = $eventTitleBanner;
+                                            $eventTitleBanner = null;
+                                        }
+                                    ?>
+
+                                    <?php if ($eventTitleBanner): ?>
+                                        <div class="event-title-badge">
+                                            <span class="event-title-icon">🎟️</span> <span class="event-title-text"><?php echo htmlspecialchars($eventTitleBanner); ?></span>
+                                        </div>
+                                    <?php endif; ?>
                                     <?php if ($isCoheadliner): ?>
                                         <div class="artist-list">
-                                            <?php foreach ($group['artists'] as $artIndex => $artName): ?>
+                                            <?php foreach ($filteredArtists as $artIndex => $artName): ?>
                                                 <?php if ($artIndex === 0): ?>
                                                     <div class="artist-line headliner-line">
                                                         <h2 class="artist-name"><?php echo htmlspecialchars($artName); ?></h2>
+                                                        <?php if (!$isSpecialEvent): ?>
                                                         <div class="artist-line-actions inline-actions">
                                                             <button type="button" class="btn-listen" data-artist="<?php echo htmlspecialchars($artName); ?>">
                                                                 🎧 Listen
@@ -669,10 +722,12 @@ if (file_exists($lastSyncFile)) {
                                                                 </div>
                                                             </div>
                                                         </div>
+                                                        <?php endif; ?>
                                                     </div>
                                                 <?php else: ?>
                                                     <div class="artist-line supporting-line">
                                                         <span class="supporting-artist-name"><?php echo htmlspecialchars($artName); ?></span>
+                                                        <?php if (!$isSpecialEvent): ?>
                                                         <div class="artist-line-actions inline-actions">
                                                             <button type="button" class="btn-listen" data-artist="<?php echo htmlspecialchars($artName); ?>">
                                                                 🎧 Listen
@@ -703,15 +758,17 @@ if (file_exists($lastSyncFile)) {
                                                                 </div>
                                                             </div>
                                                         </div>
+                                                        <?php endif; ?>
                                                     </div>
                                                 <?php endif; ?>
                                             <?php endforeach; ?>
                                         </div>
                                     <?php else: ?>
-                                        <?php $singleArt = $group['artists'][0] ?? 'Unknown Artist'; ?>
+                                        <?php $singleArt = $filteredArtists[0] ?? 'Unknown Artist'; ?>
                                         <div class="artist-list">
                                             <div class="artist-line headliner-line">
                                                 <h2 class="artist-name"><?php echo htmlspecialchars($singleArt); ?></h2>
+                                                <?php if (!$isSpecialEvent): ?>
                                                 <div class="artist-line-actions inline-actions">
                                                     <button type="button" class="btn-listen" data-artist="<?php echo htmlspecialchars($singleArt); ?>">
                                                         🎧 Listen
@@ -742,6 +799,7 @@ if (file_exists($lastSyncFile)) {
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <?php endif; ?>
                                             </div>
                                         </div>
                                     <?php endif; ?>
@@ -818,7 +876,7 @@ if (file_exists($lastSyncFile)) {
                                     <div class="venue-row">
                                         <span>📍</span>
                                         <strong class="clickable-venue" data-venue-name="<?php echo htmlspecialchars($event['venue_name']); ?>"><?php echo htmlspecialchars($event['venue_name']); ?></strong> 
-                                        <span class="venue-location-text">// <?php echo htmlspecialchars(formatMarketLocation($event['city_name'] ?? '', $event['market'] ?? $activeMarket)); ?></span>
+                                        <span class="venue-location-text">// <?php echo htmlspecialchars(formatMarketLocation(resolveEventCardCity($event), $event['market'] ?? $activeMarket)); ?></span>
                                     </div>
                                     <div class="time-row time-row-wrap">
                                         <span>⏱️</span>
@@ -833,15 +891,49 @@ if (file_exists($lastSyncFile)) {
                                 </div>
 
                                 <div class="ticket-stub">
-                                    <?php if (!empty($ticketUrl)): ?>
-                                        <a href="<?php echo htmlspecialchars($ticketUrl); ?>" target="_blank" class="btn-tickets">
-                                            Get Tickets
-                                        </a>
-                                    <?php else: ?>
-                                        <a href="https://www.google.com/search?q=<?php echo urlencode($event['artist_name'] . ' concert ' . $event['venue_name']); ?>" target="_blank" class="btn-tickets secondary">
-                                            Search Tickets
-                                        </a>
-                                    <?php endif; ?>
+                                    <?php
+                                        $ticketLinks = [];
+                                        $addedUrls = [];
+
+                                        if (!empty($event['venue_url']) && !in_array($event['venue_url'], $addedUrls, true)) {
+                                            $ticketLinks[] = ['url' => $event['venue_url'], 'icon' => '🏢', 'name' => 'Venue Direct'];
+                                            $addedUrls[] = $event['venue_url'];
+                                        }
+                                        if (!empty($event['ticketmaster_url']) && !in_array($event['ticketmaster_url'], $addedUrls, true)) {
+                                            $ticketLinks[] = ['url' => $event['ticketmaster_url'], 'icon' => '🎫', 'name' => 'Ticketmaster'];
+                                            $addedUrls[] = $event['ticketmaster_url'];
+                                        }
+                                        if (!empty($event['eventbrite_url']) && !in_array($event['eventbrite_url'], $addedUrls, true)) {
+                                            $ticketLinks[] = ['url' => $event['eventbrite_url'], 'icon' => '🎟️', 'name' => 'Eventbrite'];
+                                            $addedUrls[] = $event['eventbrite_url'];
+                                        }
+                                        if (!empty($event['bandsintown_url']) && !in_array($event['bandsintown_url'], $addedUrls, true)) {
+                                            $ticketLinks[] = ['url' => $event['bandsintown_url'], 'icon' => '🎸', 'name' => 'Bandsintown'];
+                                            $addedUrls[] = $event['bandsintown_url'];
+                                        }
+                                        if (!empty($ticketUrl) && !in_array($ticketUrl, $addedUrls, true)) {
+                                            $ticketLinks[] = ['url' => $ticketUrl, 'icon' => '🎟️', 'name' => 'Primary Tickets'];
+                                            $addedUrls[] = $ticketUrl;
+                                        }
+                                        if (empty($ticketLinks)) {
+                                            $searchUrl = "https://www.google.com/search?q=" . urlencode($event['artist_name'] . ' concert ' . $event['venue_name']);
+                                            $ticketLinks[] = ['url' => $searchUrl, 'icon' => '🔍', 'name' => 'Search Tickets'];
+                                        }
+                                    ?>
+                                    <div class="artist-links-dropdown" style="width: 100%;">
+                                        <button type="button" class="btn-tickets secondary btn-links-toggle" style="width: 100% !important; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; padding: 0.5rem 0.35rem; font-size: 0.76rem; font-weight: 700; letter-spacing: 0;">
+                                            <span>🎟️</span>
+                                            <span>GET TICKETS</span>
+                                            <span class="dropdown-caret" style="font-size: 0.65rem;">▼</span>
+                                        </button>
+                                        <div class="links-popover" style="width: 100%; min-width: 100%; box-sizing: border-box;">
+                                            <?php foreach ($ticketLinks as $link): ?>
+                                                <a href="<?php echo htmlspecialchars($link['url']); ?>" target="_blank" rel="noopener noreferrer" class="link-item">
+                                                    <span class="link-icon"><?php echo $link['icon']; ?></span> <?php echo htmlspecialchars($link['name']); ?>
+                                                </a>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
                                      
                                      <div class="ticket-action-row">
                                          <a href="ical.php?event_id=<?php echo $event['event_id']; ?>" class="btn-ticket-action" title="Add to Calendar">

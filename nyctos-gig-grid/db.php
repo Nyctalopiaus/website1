@@ -12,5 +12,3 @@ function initDatabase() {
     ensureDatabaseSchema($db);
     seedDatabaseDefaults($db);
 }
-
-initDatabase();

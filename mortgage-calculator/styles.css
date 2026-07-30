@@ -41,7 +41,7 @@ body {
   background-color: var(--bg-dark);
   background-image: 
     linear-gradient(rgba(6, 8, 11, 0.85), rgba(6, 8, 11, 0.85)),
-    url('../assets/cyber_calc_bg.jpg');
+    url('../assets/cyber_calc_bg.webp');
   background-attachment: fixed;
   background-size: cover;
   background-position: center;

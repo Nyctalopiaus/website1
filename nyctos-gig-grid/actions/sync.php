@@ -30,6 +30,9 @@ function handleSyncRequest(bool $isCli = false) {
         
         $aggregator->log('[DEBUG] Calling fetchBandsintown...');
         $bitCount = $aggregator->fetchBandsintown();
+
+        $aggregator->log('[DEBUG] Calling fetchEventbrite...');
+        $ebCount = $aggregator->fetchEventbrite();
         
         $db = getDbConnection();
         
@@ -38,6 +41,9 @@ function handleSyncRequest(bool $isCli = false) {
         
         $aggregator->log('[DEBUG] Calling purgeIgnoredEvents...');
         $ignoredRemoved = $aggregator->purgeIgnoredEvents();
+
+        $aggregator->log('[DEBUG] Calling reconcileEventLocations...');
+        $reconciledCount = $aggregator->reconcileEventLocations();
 
         // Persist last sync timestamp immediately after ingestion completes
         $aggregator->log('[DEBUG] Persisting last sync timestamp...');

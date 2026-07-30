@@ -61,10 +61,15 @@ document.addEventListener('DOMContentLoaded', () => {
     btnExportReport: document.getElementById('btn-export-report'),
     autocompleteList: document.getElementById('autocomplete-list'),
 
+    primaryStatusWrap: document.getElementById('primary-status-wrap'),
     primaryStatusPill: document.getElementById('primary-status-pill'),
     primaryStatusText: document.getElementById('primary-status-text'),
+    btnRetryPrimary: document.getElementById('btn-retry-primary'),
+
+    compareStatusWrap: document.getElementById('compare-status-wrap'),
     compareStatusPill: document.getElementById('compare-status-pill'),
     compareStatusText: document.getElementById('compare-status-text'),
+    btnRetryCompare: document.getElementById('btn-retry-compare'),
 
     telemetryText: document.getElementById('scanner-status'),
     scannerGrid: document.getElementById('scanner-grid'),
@@ -96,7 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     cuisineInput: document.getElementById('cuisine-tags-input'),
     cuisineActiveDisplay: document.getElementById('cuisine-tags-active'),
-    btnApplyCuisines: document.getElementById('btn-apply-cuisines')
+    btnApplyCuisines: document.getElementById('btn-apply-cuisines'),
+    btnClearCuisines: document.getElementById('btn-clear-cuisines')
   };
 
   const controls = {
@@ -150,10 +156,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function setPrimaryStatus(text, stateType = 'ready') {
     setStatusPill(reads.primaryStatusPill, reads.primaryStatusText, text, stateType);
+    if (reads.btnRetryPrimary) {
+      reads.btnRetryPrimary.hidden = (stateType !== 'error');
+    }
   }
 
   function setCompareStatus(text, stateType = 'ready') {
     setStatusPill(reads.compareStatusPill, reads.compareStatusText, text, stateType);
+    if (reads.btnRetryCompare) {
+      reads.btnRetryCompare.hidden = (!state.compareEnabled || stateType !== 'error');
+    }
   }
 
   function refreshSliderReadouts() {
@@ -195,7 +207,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderCuisineDisplay() {
     if (!reads.cuisineActiveDisplay) return;
-    reads.cuisineActiveDisplay.textContent = state.cuisineTags.join(', ');
+    if (!state.cuisineTags || state.cuisineTags.length === 0) {
+      reads.cuisineActiveDisplay.textContent = 'All Cuisines';
+    } else {
+      reads.cuisineActiveDisplay.textContent = state.cuisineTags.join(', ');
+    }
   }
 
   function updateUseLastSearchState() {
@@ -259,16 +275,92 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (reads.hdrCompareSummary) {
-      if (!primary || !compare || !state.compareEnabled) {
-        reads.hdrCompareSummary.textContent = 'Select preferences and run a search to see what this location matches well.';
-      } else if (primary.score === compare.score) {
-        reads.hdrCompareSummary.textContent = 'Both locations match equally well.';
-      } else if (primary.score > compare.score) {
-        reads.hdrCompareSummary.textContent = `Primary location leads by ${primary.score - compare.score} points.`;
+      if (!primary) {
+        reads.hdrCompareSummary.textContent = 'Select preferences and run a search to see what this location matches well. Your 100-point Match Score is calculated by comparing nearby live amenities against the target goals shown below.';
+      } else if (!compare || !state.compareEnabled) {
+        const activeKeys = selectedCategoryKeys();
+        const maxPerCat = (100 / (activeKeys.length || 1)).toFixed(1);
+        reads.hdrCompareSummary.innerHTML = `💡 <strong>Match Score: ${primary.score}/100</strong> across ${activeKeys.length} selected categories. Each category contributes up to <strong>+${maxPerCat} pts</strong> toward your score upon reaching its target goal below.`;
       } else {
-        reads.hdrCompareSummary.textContent = `Compare location leads by ${compare.score - primary.score} points.`;
+        const diff = Math.abs(primary.score - compare.score);
+        const leadText = primary.score === compare.score
+          ? 'Both locations match equally well.'
+          : primary.score > compare.score
+            ? `Primary location leads by ${diff} points (${primary.score} vs ${compare.score}).`
+            : `Compare location leads by ${diff} points (${compare.score} vs ${primary.score}).`;
+        reads.hdrCompareSummary.innerHTML = `🏆 <strong>${leadText}</strong> Each location earns points per category based on reaching its target goal below.`;
       }
     }
+  }
+
+  function renderPlaceItems(container, placesList, sectionTitle) {
+    const listWrap = document.createElement('div');
+    listWrap.className = 'place-detail-section-wrap';
+
+    if (sectionTitle) {
+      const header = document.createElement('div');
+      header.className = 'place-detail-section-header';
+      header.textContent = `${sectionTitle} (${placesList.length})`;
+      listWrap.appendChild(header);
+    }
+
+    const ul = document.createElement('ul');
+    ul.className = 'place-detail-list';
+
+    if (!placesList || placesList.length === 0) {
+      const emptyLi = document.createElement('li');
+      emptyLi.className = 'place-detail-item';
+      emptyLi.innerHTML = '<em>No places detected in radius</em>';
+      ul.appendChild(emptyLi);
+      listWrap.appendChild(ul);
+      container.appendChild(listWrap);
+      return;
+    }
+
+    const INITIAL_LIMIT = 15;
+    const overflowLis = [];
+
+    placesList.forEach((pt, idx) => {
+      const li = document.createElement('li');
+      li.className = 'place-detail-item';
+      if (idx >= INITIAL_LIMIT) {
+        li.className += ' place-item-overflow';
+        li.hidden = true;
+        overflowLis.push(li);
+      }
+      li.textContent = pt.name || 'Nearby point';
+      ul.appendChild(li);
+    });
+
+    listWrap.appendChild(ul);
+
+    if (overflowLis.length > 0) {
+      const btnToggle = document.createElement('button');
+      btnToggle.type = 'button';
+      btnToggle.className = 'btn-show-more-places';
+      btnToggle.textContent = `Show all ${placesList.length} places (+${overflowLis.length} more) ▼`;
+
+      btnToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const currentlyHidden = overflowLis[0].hidden;
+        overflowLis.forEach((li) => {
+          li.hidden = !currentlyHidden;
+        });
+
+        if (currentlyHidden) {
+          ul.classList.add('is-expanded');
+          btnToggle.textContent = `Show fewer places ▲`;
+        } else {
+          ul.classList.remove('is-expanded');
+          btnToggle.textContent = `Show all ${placesList.length} places (+${overflowLis.length} more) ▼`;
+        }
+      });
+
+      listWrap.appendChild(btnToggle);
+    }
+
+    container.appendChild(listWrap);
   }
 
   function renderScoreboardList() {
@@ -278,6 +370,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const primary = state.assessments.primary;
     const compare = state.assessments.compare;
     const isCompare = state.compareEnabled && compare;
+    const activeKeys = selectedCategoryKeys();
+    const maxPtsPerCat = activeKeys.length ? (100 / activeKeys.length) : 0;
 
     CATEGORY_ORDER.forEach((key) => {
       if (!state.categoryPrefs[key]) return;
@@ -288,6 +382,15 @@ document.addEventListener('DOMContentLoaded', () => {
       const pPlaces = primary?.markers[key] || [];
       const cPlaces = compare?.markers[key] || [];
 
+      // Calculate score breakdown metrics
+      const pRatio = Math.min(pCount / meta.target, 1);
+      const pPct = Math.round(pRatio * 100);
+      const pPts = (pRatio * maxPtsPerCat).toFixed(1);
+
+      const cRatio = Math.min(cCount / meta.target, 1);
+      const cPct = Math.round(cRatio * 100);
+      const cPts = (cRatio * maxPtsPerCat).toFixed(1);
+
       const details = document.createElement('details');
       details.className = 'scoreboard-accordion';
 
@@ -295,16 +398,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const title = document.createElement('span');
       title.className = 'scoreboard-title';
-      title.textContent = isCompare ? `${meta.label} (Primary / Compare)` : `${meta.label} (Target: ${meta.target})`;
+      title.textContent = `${meta.label} (Target: ${meta.target} ${key === 'trails' ? 'mi' : ''})`;
 
       const valWrap = document.createElement('span');
       valWrap.className = 'scoreboard-val';
 
-      const countText = document.createTextNode(
-        isCompare
-          ? (key === 'trails' ? `${pCount} mi / ${cCount} mi ` : `${pCount} / ${cCount} `)
-          : (key === 'trails' ? `${pCount} mi ` : `${pCount} `)
-      );
+      let countTextContent = '';
+      if (!primary) {
+        countTextContent = 'Waiting... ';
+      } else if (isCompare) {
+        countTextContent = key === 'trails'
+          ? `P: ${pCount} mi (${pPts} pts) | C: ${cCount} mi (${cPts} pts) `
+          : `P: ${pCount} (${pPts} pts) | C: ${cCount} (${cPts} pts) `;
+      } else {
+        countTextContent = key === 'trails'
+          ? `${pCount} mi (${pPct}% · +${pPts} pts) `
+          : `${pCount} found (${pPct}% · +${pPts} pts) `;
+      }
+
+      const countText = document.createTextNode(countTextContent);
       valWrap.appendChild(countText);
 
       const chevron = document.createElement('span');
@@ -316,69 +428,48 @@ document.addEventListener('DOMContentLoaded', () => {
       summary.appendChild(valWrap);
       details.appendChild(summary);
 
-      const placeList = document.createElement('ul');
-      placeList.className = 'place-detail-list';
+      // Scoring Breakdown & Visual Progress Bar
+      if (primary) {
+        const breakdownBox = document.createElement('div');
+        breakdownBox.className = 'category-score-breakdown-box';
 
-      if (isCompare) {
-        const pHeader = document.createElement('div');
-        pHeader.className = 'place-detail-section-header';
-        pHeader.textContent = `PRIMARY LOCATION PLACES (${pPlaces.length})`;
-        placeList.appendChild(pHeader);
+        let breakdownHTML = `
+          <div class="breakdown-metric-row">
+            <span>Primary Goal Progress (${pCount} of ${meta.target}${key === 'trails' ? ' mi' : ''}):</span>
+            <span class="breakdown-pct-val" style="color: ${meta.color};">${pPct}% (+${pPts} / ${maxPtsPerCat.toFixed(1)} pts)</span>
+          </div>
+          <div class="score-progress-track">
+            <div class="score-progress-fill" style="width: ${pPct}%; background-color: ${meta.color};"></div>
+          </div>
+        `;
 
-        if (pPlaces.length === 0) {
-          const emptyLi = document.createElement('li');
-          emptyLi.className = 'place-detail-item';
-          emptyLi.innerHTML = '<em>No places detected in radius</em>';
-          placeList.appendChild(emptyLi);
-        } else {
-          pPlaces.slice(0, 15).forEach((pt) => {
-            const li = document.createElement('li');
-            li.className = 'place-detail-item';
-            li.textContent = pt.name || 'Nearby point';
-            placeList.appendChild(li);
-          });
+        if (isCompare) {
+          breakdownHTML += `
+            <div class="breakdown-metric-row" style="margin-top: 0.6rem;">
+              <span>Compare Goal Progress (${cCount} of ${meta.target}${key === 'trails' ? ' mi' : ''}):</span>
+              <span class="breakdown-pct-val" style="color: ${meta.color};">${cPct}% (+${cPts} / ${maxPtsPerCat.toFixed(1)} pts)</span>
+            </div>
+            <div class="score-progress-track">
+              <div class="score-progress-fill" style="width: ${cPct}%; background-color: ${meta.color}; opacity: 0.85;"></div>
+            </div>
+          `;
         }
 
-        const cHeader = document.createElement('div');
-        cHeader.className = 'place-detail-section-header';
-        cHeader.textContent = `COMPARE LOCATION PLACES (${cPlaces.length})`;
-        placeList.appendChild(cHeader);
-
-        if (cPlaces.length === 0) {
-          const emptyLi = document.createElement('li');
-          emptyLi.className = 'place-detail-item';
-          emptyLi.innerHTML = '<em>No places detected in radius</em>';
-          placeList.appendChild(emptyLi);
-        } else {
-          cPlaces.slice(0, 15).forEach((pt) => {
-            const li = document.createElement('li');
-            li.className = 'place-detail-item';
-            li.textContent = pt.name || 'Nearby point';
-            placeList.appendChild(li);
-          });
-        }
-      } else {
-        const pHeader = document.createElement('div');
-        pHeader.className = 'place-detail-section-header';
-        pHeader.textContent = `DETECTED PLACES (${pPlaces.length})`;
-        placeList.appendChild(pHeader);
-
-        if (pPlaces.length === 0) {
-          const emptyLi = document.createElement('li');
-          emptyLi.className = 'place-detail-item';
-          emptyLi.innerHTML = '<em>No places detected in radius</em>';
-          placeList.appendChild(emptyLi);
-        } else {
-          pPlaces.slice(0, 15).forEach((pt) => {
-            const li = document.createElement('li');
-            li.className = 'place-detail-item';
-            li.textContent = pt.name || 'Nearby point';
-            placeList.appendChild(li);
-          });
-        }
+        breakdownBox.innerHTML = breakdownHTML;
+        details.appendChild(breakdownBox);
       }
 
-      details.appendChild(placeList);
+      const placeWrapper = document.createElement('div');
+      placeWrapper.className = 'place-detail-wrapper';
+
+      if (isCompare) {
+        renderPlaceItems(placeWrapper, pPlaces, 'PRIMARY LOCATION PLACES');
+        renderPlaceItems(placeWrapper, cPlaces, 'COMPARE LOCATION PLACES');
+      } else {
+        renderPlaceItems(placeWrapper, pPlaces, 'DETECTED PLACES');
+      }
+
+      details.appendChild(placeWrapper);
       reads.scoreboardList.appendChild(details);
     });
   }
@@ -463,20 +554,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const group = state.layerGroups[slot];
     group.clearLayers();
 
+    const emptyOverlay = slot === 'primary' ? document.getElementById('route-preview-empty') : document.getElementById('route-preview-empty-compare');
+
     if (!assessment || !assessment.center) {
       map.setView([39.8283, -98.5795], 4);
-      if (footerEl) footerEl.textContent = 'Enter an address to view live map features';
+      if (emptyOverlay) emptyOverlay.hidden = false;
+      if (footerEl) footerEl.innerHTML = '';
       return;
     }
 
+    if (emptyOverlay) emptyOverlay.hidden = true;
+
     const { center, radiusMeters, radiusMinutes, markers, counts, sourceLabel } = assessment;
 
-    map.setView([center.lat, center.lon], 13);
-    window.L.circle([center.lat, center.lon], {
+    const radiusCircle = window.L.circle([center.lat, center.lon], {
       radius: radiusMeters,
       color: '#38bdf8',
       fillColor: '#0284c7',
-      fillOpacity: 0.1,
+      fillOpacity: 0.12,
       weight: 2
     }).addTo(group);
 
@@ -487,7 +582,7 @@ document.addEventListener('DOMContentLoaded', () => {
       fillOpacity: 1,
       weight: 3
     }).addTo(group);
-    centerMarker.bindPopup(`<strong>${assessment.displayName}</strong><br>Search center`);
+    centerMarker.bindPopup(`<strong>${assessment.displayName}</strong><br>Search Center`);
 
     CATEGORY_ORDER.forEach((key) => {
       if (!state.categoryPrefs[key]) return;
@@ -496,18 +591,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
       list.forEach((pt) => {
         const m = window.L.circleMarker([pt.lat, pt.lon], {
-          radius: 5,
+          radius: 5.5,
           color: '#ffffff',
           fillColor: meta.color,
-          fillOpacity: 0.9,
+          fillOpacity: 0.95,
           weight: 1.5
         }).addTo(group);
         m.bindPopup(`<strong>${meta.label}: ${pt.name || 'Nearby point'}</strong>`);
       });
     });
 
+    try {
+      const circleBounds = radiusCircle.getBounds();
+      map.fitBounds(circleBounds, { padding: [22, 22], maxZoom: 15 });
+    } catch (_err) {
+      map.setView([center.lat, center.lon], 13);
+    }
+
     if (footerEl) {
-      footerEl.textContent = `${sourceLabel || 'Live view'} | Radius: ${radiusMinutes} min | Grocery: ${counts.grocery} | Fitness: ${counts.fitness} | Trails: ${counts.trails} mi | Cuisine: ${counts.cuisine} | Parks: ${counts.parks}`;
+      const activeKeys = CATEGORY_ORDER.filter((key) => !!state.categoryPrefs[key]);
+      const miles = (radiusMeters / 1609.344).toFixed(1);
+
+      let legendItemsHTML = `
+        <div class="legend-badge-item">
+          <span class="legend-dot" style="background-color: #0ea5e9; box-shadow: 0 0 6px #0ea5e9;"></span>
+          <span class="legend-name">Center</span>
+        </div>
+      `;
+
+      activeKeys.forEach((key) => {
+        const meta = CATEGORY_META[key];
+        const countVal = counts[key] ?? 0;
+        const formattedVal = key === 'trails' ? `${countVal} mi` : countVal;
+        legendItemsHTML += `
+          <div class="legend-badge-item">
+            <span class="legend-dot" style="background-color: ${meta.color}; box-shadow: 0 0 6px ${meta.color};"></span>
+            <span class="legend-name">${meta.label}</span>
+            <span class="legend-count">${formattedVal}</span>
+          </div>
+        `;
+      });
+
+      footerEl.innerHTML = `
+        <div class="map-legend-card">
+          <div class="legend-header-row">
+            <span class="legend-title">📍 Transit Radius: ${radiusMinutes} min (${miles} mi)</span>
+            <span class="legend-source-badge">${sourceLabel || 'Live View'}</span>
+          </div>
+          <div class="legend-badges-grid">
+            ${legendItemsHTML}
+          </div>
+        </div>
+      `;
     }
 
     setTimeout(() => map.invalidateSize(), 150);
@@ -585,8 +720,8 @@ document.addEventListener('DOMContentLoaded', () => {
         sourceLabel = 'Live view (alternate server)';
       }
 
-      if (!parsed || (!spatial.hasAnyDataPoints(parsed) && sourceLabel.includes('alternate'))) {
-        throw new Error('Live map servers are busy or rate-limited. Click Search to retry.');
+      if (!parsed || !spatial.hasAnyDataPoints(parsed)) {
+        throw new Error('Live map servers returned 0 results or are rate-limited. Click Search to retry.');
       }
 
       state.sources[slot] = { query, candidate, parsed, queriedRadiusMinutes: radiusMinutes };
@@ -626,7 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function executeSearch(rawQuery, slot = 'primary') {
+  async function executeSearch(rawQuery, slot = 'primary', forceRetry = false) {
     if (state.loading) {
       telemetry('A search is already running. Please wait a moment.', 'warn', false);
       return;
@@ -636,6 +771,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!query) {
       telemetry(`Enter a search location first.`, 'warn');
       return;
+    }
+
+    if (forceRetry) {
+      state.sources[slot] = null;
+      telemetry(`Retrying live spatial search for ${slot} location...`, 'info', false);
     }
 
     // Check if we already have valid cached live map source for this exact query, slot AND transit radius
@@ -749,24 +889,57 @@ document.addEventListener('DOMContentLoaded', () => {
     if (reads.compareToggle) {
       reads.compareToggle.checked = state.compareEnabled;
       if (reads.compareGroup) reads.compareGroup.hidden = !state.compareEnabled;
-      if (reads.compareStatusPill) reads.compareStatusPill.hidden = !state.compareEnabled;
+      if (reads.compareStatusWrap) reads.compareStatusWrap.hidden = !state.compareEnabled;
+      if (!state.compareEnabled) {
+        setCompareStatus('Compare Mode Disabled', 'idle');
+      } else if (!state.assessments.compare) {
+        setCompareStatus('Ready for second street address search', 'ready');
+      }
       updateSearchButtonText();
 
       reads.compareToggle.addEventListener('change', () => {
         state.compareEnabled = !!reads.compareToggle.checked;
         if (reads.compareGroup) reads.compareGroup.hidden = !state.compareEnabled;
-        if (reads.compareStatusPill) reads.compareStatusPill.hidden = !state.compareEnabled;
-        updateSearchButtonText();
+        if (reads.compareStatusWrap) reads.compareStatusWrap.hidden = !state.compareEnabled;
 
-        if (!state.compareEnabled) {
+        if (state.compareEnabled) {
+          if (state.assessments.compare) {
+            const label = geocoder.getShortAddressLabel(state.assessments.compare.displayName);
+            setCompareStatus(`Compare Address: ${label}`, 'success');
+          } else {
+            setCompareStatus('Ready for second street address search', 'ready');
+          }
+        } else {
           state.sources.compare = null;
           state.assessments.compare = null;
           setCompareStatus('Compare Mode Disabled', 'idle');
-        } else {
-          setCompareStatus('Ready for second street address search', 'ready');
         }
+
+        updateSearchButtonText();
         renderDashboard();
         savePrefs();
+      });
+    }
+
+    if (reads.btnRetryPrimary) {
+      reads.btnRetryPrimary.addEventListener('click', () => {
+        const query = reads.locationInput?.value || state.sources.primary?.query || '';
+        if (query) {
+          executeSearch(query, 'primary', true);
+        } else {
+          telemetry('Enter a primary location first to retry.', 'warn');
+        }
+      });
+    }
+
+    if (reads.btnRetryCompare) {
+      reads.btnRetryCompare.addEventListener('click', () => {
+        const query = reads.compareInput?.value || state.sources.compare?.query || '';
+        if (query) {
+          executeSearch(query, 'compare', true);
+        } else {
+          telemetry('Enter a second location to compare first.', 'warn');
+        }
       });
     }
 
@@ -841,6 +1014,17 @@ document.addEventListener('DOMContentLoaded', () => {
           addCuisines();
         });
       }
+
+      if (reads.btnClearCuisines) {
+        reads.btnClearCuisines.addEventListener('click', () => {
+          state.cuisineTags = [];
+          if (reads.cuisineInput) reads.cuisineInput.value = '';
+          renderCuisineDisplay();
+          recomputeAssessmentsFromSources();
+          savePrefs();
+          telemetry('Cuisine filters cleared. Cuisine search will now match all restaurants.', 'info');
+        });
+      }
     }
 
     if (reads.locationForm) {
@@ -858,6 +1042,11 @@ document.addEventListener('DOMContentLoaded', () => {
             telemetry('Enter a second street address to compare.', 'warn');
             return;
           }
+          const pShort = geocoder.getShortAddressLabel(null, primaryQuery);
+          const cShort = geocoder.getShortAddressLabel(null, compareQuery);
+          setPrimaryStatus(`Searching: ${pShort}...`, 'searching');
+          setCompareStatus(`Searching: ${cShort}...`, 'searching');
+
           await executeSearch(primaryQuery, 'primary');
           await new Promise((resolve) => setTimeout(resolve, 400));
           await executeSearch(compareQuery, 'compare');

@@ -28,7 +28,7 @@
 
 body {
   background-color: var(--bg-dark);
-  background-image: linear-gradient(rgba(7, 8, 11, 0.84), rgba(7, 8, 11, 0.84)), url('assets/cyber_mainframe_bg.jpg');
+  background-image: linear-gradient(rgba(7, 8, 11, 0.84), rgba(7, 8, 11, 0.84)), url('assets/cyber_mainframe_bg.webp');
   background-attachment: fixed;
   background-size: cover;
   background-position: center;

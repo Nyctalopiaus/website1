@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="styles.css?v=117" />
+  <link rel="stylesheet" href="styles.css?v=120" />
 </head>
 <body>
 
@@ -92,6 +92,7 @@
                   <div class="cuisine-input-row">
                     <input id="cuisine-tags-input" class="cuisine-tags-input" type="text" placeholder="thai, vietnamese, korean, indian" />
                     <button id="btn-apply-cuisines" type="button" class="ghost-btn">Update</button>
+                    <button id="btn-clear-cuisines" type="button" class="ghost-btn">Clear</button>
                   </div>
                   <span class="slider-desc">Use comma-separated cuisines to personalize dining relevance.</span>
                 </div>
@@ -105,41 +106,28 @@
           </div>
 
           <div id="location-status-container" class="location-status-container">
-            <div id="primary-status-pill" class="status-pill status-ready">
-              <span class="status-pulse"></span>
-              <span id="primary-status-text" class="status-text">Ready for primary street address search</span>
+            <div id="primary-status-wrap" class="status-pill-wrap">
+              <div id="primary-status-pill" class="status-pill status-ready">
+                <span class="status-pulse"></span>
+                <span id="primary-status-text" class="status-text">Ready for primary street address search</span>
+              </div>
+              <button type="button" id="btn-retry-primary" class="btn-retry-pill" aria-label="Retry primary location search" title="Retry primary location lookup" hidden>🔄 Retry</button>
             </div>
-            <div id="compare-status-pill" class="status-pill status-ready" hidden>
-              <span class="status-pulse"></span>
-              <span id="compare-status-text" class="status-text">Ready for second street address search</span>
+
+            <div id="compare-status-wrap" class="status-pill-wrap" hidden>
+              <div id="compare-status-pill" class="status-pill status-ready">
+                <span class="status-pulse"></span>
+                <span id="compare-status-text" class="status-text">Ready for second street address search</span>
+              </div>
+              <button type="button" id="btn-retry-compare" class="btn-retry-pill" aria-label="Retry compare location search" title="Retry compare location lookup" hidden>🔄 Retry</button>
             </div>
           </div>
         </div>
       </section>
 
-      <!-- Side-by-Side Results Row: Map (Left) & Match Score (Right) -->
+      <!-- Side-by-Side Results Row: Match Score (Left) & Map (Right) -->
       <div class="results-hero-grid">
-        <!-- Map Panel (Left Column) -->
-        <section class="panel-card route-panel">
-          <div class="panel-header">
-            <span class="panel-icon">🗺️</span>
-            <h2>What&apos;s Around You Map</h2>
-          </div>
-          <div class="map-grid" id="around-map-grid">
-            <div class="route-preview-wrap">
-              <div id="route-preview-map" aria-label="primary location map preview"></div>
-              <div id="route-preview-empty" class="route-preview-empty">Search a location to map nearby places that match your preferences.</div>
-              <div id="route-preview-meta" class="route-preview-meta"></div>
-            </div>
-            <div id="compare-map-card" class="route-preview-wrap" hidden>
-              <div id="route-preview-map-compare" aria-label="compare location map preview"></div>
-              <div id="route-preview-empty-compare" class="route-preview-empty">Run compare to render the second map.</div>
-              <div id="route-preview-meta-compare" class="route-preview-meta"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Match Score Panel (Right Column) -->
+        <!-- Match Score Panel (Left Column) -->
         <section class="panel-card stats-panel">
           <div class="panel-header">
             <span class="panel-icon">🎯</span>
@@ -165,7 +153,7 @@
               </div>
             </div>
           </div>
-          <div id="match-score-explain" class="match-score-explain">Select preferences and run a search to see what this location matches well.</div>
+          <div id="match-score-explain" class="match-score-explain">Select preferences and run a search to see what this location matches well. Your 100-point Match Score is calculated by comparing nearby live amenities against the target goals shown below.</div>
 
           <div class="scoreboard-inline-wrap">
             <div class="scoreboard-inline-header">Selected Category Snapshot</div>
@@ -174,31 +162,29 @@
             </div>
           </div>
         </section>
+
+        <!-- Map Panel (Right Column) -->
+        <section class="panel-card route-panel">
+          <div class="panel-header">
+            <span class="panel-icon">🗺️</span>
+            <h2>What&apos;s Around You Map</h2>
+          </div>
+          <div class="map-grid" id="around-map-grid">
+            <div class="route-preview-wrap">
+              <div id="route-preview-map" aria-label="primary location map preview"></div>
+              <div id="route-preview-empty" class="route-preview-empty">Search a location to map nearby places that match your preferences.</div>
+              <div id="route-preview-meta" class="route-preview-meta"></div>
+            </div>
+            <div id="compare-map-card" class="route-preview-wrap" hidden>
+              <div id="route-preview-map-compare" aria-label="compare location map preview"></div>
+              <div id="route-preview-empty-compare" class="route-preview-empty">Run compare to render the second map.</div>
+              <div id="route-preview-meta-compare" class="route-preview-meta"></div>
+            </div>
+          </div>
+        </section>
       </div>
 
-      <!-- Category Count Matrix -->
-      <section class="panel-card matrix-panel">
-        <div class="panel-header">
-          <span class="panel-icon">📋</span>
-          <h2>Category Count Matrix</h2>
-        </div>
-        <div class="table-wrapper">
-          <table class="matrix-table" id="matrix-table">
-            <thead>
-              <tr id="matrix-head-row">
-                <th>Location</th>
-                <th>Score</th>
-              </tr>
-            </thead>
-            <tbody id="matrix-tbody">
-              <!-- Dynamic matrix rows inserted here -->
-            </tbody>
-          </table>
-        </div>
-        <div class="matrix-legend">
-          <span class="legend-item"><span class="badge badge-detected">Selected</span> Only categories you selected are shown and scored</span>
-        </div>
-      </section>
+
 
       <!-- Live Activity Feed (Bottom - Currently Hidden) -->
       <section class="panel-card scanner-panel" hidden style="display: none;">
@@ -222,11 +208,11 @@
   </footer>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="keywords.js?v=117"></script>
-  <script src="geocoder.js?v=117"></script>
-  <script src="autocomplete.js?v=117"></script>
-  <script src="spatial.js?v=117"></script>
-  <script src="scoring.js?v=117"></script>
-  <script src="app.js?v=117"></script>
+  <script src="keywords.js?v=141"></script>
+  <script src="geocoder.js?v=141"></script>
+  <script src="autocomplete.js?v=141"></script>
+  <script src="spatial.js?v=141"></script>
+  <script src="scoring.js?v=141"></script>
+  <script src="app.js?v=141"></script>
 </body>
 </html>

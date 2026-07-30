@@ -32,7 +32,7 @@ body {
   background-color: var(--bg-steam-dark);
   background-image: 
     linear-gradient(rgba(13, 14, 18, 0.85), rgba(13, 14, 18, 0.85)),
-    url('../assets/cyber_gaming_bg.jpg');
+    url('../assets/cyber_gaming_bg.webp');
   background-attachment: fixed;
   background-size: cover;
   background-position: center;

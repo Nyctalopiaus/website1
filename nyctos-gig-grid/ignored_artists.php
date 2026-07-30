@@ -30,7 +30,12 @@ function getIgnoredArtistsNormalized() {
         'paw patrol live',
         'monster truck',
         'kidz bop',
-        'peppa pig live'
+        'peppa pig live',
+        'bus to show',
+        'pickup spot',
+        'shuttle pick',
+        'bus pickup',
+        'pickup location'
     ];
 
     foreach ($defaults as $d) {

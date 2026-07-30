@@ -29,10 +29,12 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   const genreHelpPanel = document.getElementById('genre-help-panel');
   const genreHelpTitle = document.getElementById('genre-help-title');
   const genreHelpText = document.getElementById('genre-help-text');
+  const btnJustAnnounced = document.getElementById('btn-just-announced');
 
   let activeRegions = new Set(['all']);
   let activeGenre = 'all';
   let filterInterestedOnly = false;
+  let filterJustAnnounced = false;
   let lastActiveMonthView = (monthSelect && monthSelect.value !== 'interested-view') ? monthSelect.value : null;
   const activeMarket = document.body?.dataset?.market || 'front-range';
   const marketRegionStorageKey = `gig_grid_active_regions_${activeMarket}`;
@@ -384,7 +386,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     const searchQuery = artistSearchInput ? artistSearchInput.value.toLowerCase().trim() : '';
     let targetId = monthSelect ? monthSelect.value : '';
 
-    const needsFullUnpack = (searchQuery !== '' || activeGenre !== 'all' || !activeRegions.has('all') || checkedVenues.length < totalCount || filterInterestedOnly || visibleChunkLimit > CHUNK_SIZE);
+    const needsFullUnpack = (searchQuery !== '' || activeGenre !== 'all' || !activeRegions.has('all') || checkedVenues.length < totalCount || filterInterestedOnly || filterJustAnnounced || visibleChunkLimit > CHUNK_SIZE);
     views.forEach(v => {
       if (needsFullUnpack || v.id === targetId) {
         unpackDeferredCards(v);
@@ -463,6 +465,18 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
           }
         }
 
+        if (show && filterJustAnnounced) {
+          const createdAtStr = card.getAttribute('data-created-at');
+          if (createdAtStr) {
+            const createdDate = new Date(createdAtStr);
+            const now = new Date();
+            const diffDays = (now - createdDate) / (1000 * 60 * 60 * 24);
+            if (diffDays > 7) {
+              show = false;
+            }
+          }
+        }
+
         if (show && searchQuery !== '') {
           const searchBlob = (card.dataset.search || '').toLowerCase();
           const cardText = card.textContent.toLowerCase();
@@ -518,8 +532,8 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
 
 
 
-    // Step 2: Auto-switch month ONLY when an active text search query is entered and current month has 0 matches
-    if (!filterInterestedOnly && searchQuery !== '') {
+    // Step 2: Auto-switch month when active text search or Just Announced filter is set and current month has 0 matches
+    if (!filterInterestedOnly && (searchQuery !== '' || filterJustAnnounced)) {
       if ((viewVisibleCounts[targetId] || 0) === 0) {
         const monthViews = Array.from(views).filter(v => v.id !== 'interested-view' && v.id !== 'empty-view');
         const firstMatching = monthViews.find(v => (viewVisibleCounts[v.id] || 0) > 0);
@@ -848,6 +862,21 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
           btnInterestedFilter.setAttribute('aria-pressed', 'false');
         }
       }
+      applyFilters();
+
+      // Smoothly scroll back up to top of page / schedule controls
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 40);
+    });
+  }
+
+  if (btnJustAnnounced) {
+    btnJustAnnounced.addEventListener('click', () => {
+      filterJustAnnounced = !filterJustAnnounced;
+      btnJustAnnounced.classList.toggle('active', filterJustAnnounced);
+      btnJustAnnounced.classList.toggle('is-active', filterJustAnnounced);
+      resetChunkLimit();
       applyFilters();
     });
   }

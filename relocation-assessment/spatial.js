@@ -5,9 +5,9 @@
   const OVERPASS_ENDPOINTS = [
     'https://overpass.kumi.systems/api/interpreter',
     'https://overpass.private.coffee/api/interpreter',
-    'https://overpass-api.de/api/interpreter',
+    'https://overpass.osm.ch/api/interpreter',
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-    'https://overpass.osm.ch/api/interpreter'
+    'https://overpass-api.de/api/interpreter'
   ];
   const OVERPASS_ENDPOINT_TIMEOUT_MS = 25000;
 
@@ -101,18 +101,26 @@
       const cat = config[key];
       if (!cat) return;
       if (key === 'cuisine') {
-        clauses.push(`nwr(around:${radius},${lat},${lon})["amenity"="restaurant"]["cuisine"~"${userCuisineRegex}",i];`);
+        if (cuisineTags && cuisineTags.length > 0) {
+          const userCuisineRegex = cuisineTags.map((c) => c.replace(/[^a-zA-Z0-9_\-\s]/g, '')).join('|');
+          clauses.push(`node(around:${radius},${lat},${lon})["amenity"="restaurant"]["cuisine"~"${userCuisineRegex}",i];`);
+          clauses.push(`way(around:${radius},${lat},${lon})["amenity"="restaurant"]["cuisine"~"${userCuisineRegex}",i];`);
+        } else {
+          clauses.push(`node(around:${radius},${lat},${lon})["amenity"="restaurant"];`);
+          clauses.push(`way(around:${radius},${lat},${lon})["amenity"="restaurant"];`);
+        }
         return;
       }
       if (Array.isArray(cat.overpassClauses)) {
         cat.overpassClauses.forEach((tagSelector) => {
-          clauses.push(`nwr(around:${radius},${lat},${lon})${tagSelector};`);
+          clauses.push(`node(around:${radius},${lat},${lon})${tagSelector};`);
+          clauses.push(`way(around:${radius},${lat},${lon})${tagSelector};`);
         });
       }
     });
 
     const outMode = 'out center tags;';
-    const body = clauses.length ? clauses.join('\n  ') : `nwr(around:${radius},${lat},${lon})["amenity"="pharmacy"];`;
+    const body = clauses.length ? clauses.join('\n  ') : `node(around:${radius},${lat},${lon})["amenity"="pharmacy"];`;
 
     return `
 [out:json][timeout:25];
@@ -126,34 +134,26 @@ ${outMode}
   let overpassEndpointIndex = 0;
 
   async function requestOverpassEndpoint(endpoint, queryText) {
-    const controller = new AbortController();
     const body = new URLSearchParams({ data: queryText }).toString();
 
-    let timer = null;
     try {
-      const timeoutPromise = new Promise((_, reject) => {
-        timer = setTimeout(() => {
-          controller.abort();
-          reject(new Error(`Timed out after ${OVERPASS_ENDPOINT_TIMEOUT_MS}ms`));
-        }, OVERPASS_ENDPOINT_TIMEOUT_MS);
-      });
-
-      const fetchPromise = fetch(endpoint, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-          Accept: '*/*'
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'application/json, */*'
         },
         body,
-        signal: controller.signal
+        signal: AbortSignal.timeout(OVERPASS_ENDPOINT_TIMEOUT_MS)
       });
-
-      const res = await Promise.race([fetchPromise, timeoutPromise]);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const raw = await res.text();
       return JSON.parse(raw);
-    } finally {
-      if (timer) clearTimeout(timer);
+    } catch (err) {
+      if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+        throw new Error(`Timed out after ${OVERPASS_ENDPOINT_TIMEOUT_MS}ms`);
+      }
+      throw err;
     }
   }
 
@@ -165,7 +165,7 @@ ${outMode}
       const endpoint = OVERPASS_ENDPOINTS[(overpassEndpointIndex + i) % numEndpoints];
       try {
         const data = await requestOverpassEndpoint(endpoint, queryText);
-        if (data && Array.isArray(data.elements)) {
+        if (data && Array.isArray(data.elements) && data.elements.length > 0) {
           overpassEndpointIndex = (overpassEndpointIndex + i + 1) % numEndpoints;
           return data;
         }
@@ -173,7 +173,7 @@ ${outMode}
         lastError = err;
       }
     }
-    throw lastError || new Error('All live map servers failed to respond');
+    throw lastError || new Error('All live Overpass endpoints failed to respond.');
   }
 
   function getElementCenter(el) {
@@ -201,7 +201,13 @@ ${outMode}
       const tags = el.tags || {};
       const center = getElementCenter(el);
       if (!center && el.type !== 'way') continue;
-      const name = tags.name || tags['name:en'] || 'Unnamed place';
+
+      const rawName = (tags.name || tags['name:en'] || tags.brand || tags.operator || '').trim();
+      const isUnnamed = !rawName || rawName.toLowerCase() === 'unnamed' || rawName.toLowerCase() === 'unnamed place';
+
+      // Filter out unnamed places so anonymous nodes are never counted or displayed
+      if (isUnnamed && el.type !== 'way') continue;
+      const name = rawName || 'Cycleway segment';
 
       const shop = (tags.shop || '').toLowerCase();
       const amenity = (tags.amenity || '').toLowerCase();

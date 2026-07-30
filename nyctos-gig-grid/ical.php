@@ -11,7 +11,7 @@ if (empty($eventId)) {
 }
 
 $db = getDbConnection();
-$stmt = $db->prepare("SELECT * FROM events WHERE event_id = :id");
+$stmt = $db->prepare("SELECT e.*, v.city FROM events e INNER JOIN venues v ON e.venue_id = v.venue_id WHERE e.event_id = :id");
 $stmt->execute([':id' => $eventId]);
 $event = $stmt->fetch();
 
@@ -55,7 +55,7 @@ echo "DTSTAMP:" . gmdate('Ymd\THis\Z') . "\r\n";
 echo "DTSTART:" . $dtStart . "\r\n";
 echo "DTEND:" . $dtEnd . "\r\n";
 echo "SUMMARY:" . escapeIcs($event['artist_name'] . " @ " . $event['venue_name']) . "\r\n";
-echo "LOCATION:" . escapeIcs($event['venue_name'] . ", " . formatMarketLocation($event['city_name'] ?? '', $event['market'] ?? 'front-range')) . "\r\n";
+echo "LOCATION:" . escapeIcs($event['venue_name'] . ", " . formatMarketLocation($event['city'] ?? '', $event['market'] ?? 'front-range')) . "\r\n";
 echo "DESCRIPTION:" . escapeIcs("Concert Details:\nArtist: " . $event['artist_name'] . "\nVenue: " . $event['venue_name'] . "\nTicket Link: " . ($event['ticket_url'] ?? 'N/A')) . "\r\n";
 echo "END:VEVENT\r\n";
 echo "END:VCALENDAR\r\n";

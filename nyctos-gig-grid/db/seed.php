@@ -3,6 +3,7 @@
 function seedDatabaseDefaults(PDO $db) {
     seedDefaultVenues($db);
     seedDefaultMetalArtists($db);
+    seedMarketCities($db);
 }
 
 function seedDefaultVenues(PDO $db) {
@@ -100,6 +101,62 @@ function seedDefaultMetalArtists(PDO $db) {
     $db->beginTransaction();
     foreach ($defaultBands as $band) {
         $stmt->execute([':name' => $band]);
+    }
+    $db->commit();
+}
+
+function seedMarketCities(PDO $db) {
+    $cities = [
+        // Colorado Front Range & Mountains
+        ['market' => 'front-range', 'region' => 'denver', 'city_name' => 'Denver', 'state_code' => 'CO', 'latitude' => 39.7392, 'longitude' => -104.9903, 'default_radius_miles' => 30],
+        ['market' => 'front-range', 'region' => 'denver', 'city_name' => 'Boulder', 'state_code' => 'CO', 'latitude' => 40.0150, 'longitude' => -105.2705, 'default_radius_miles' => 20],
+        ['market' => 'front-range', 'region' => 'springs', 'city_name' => 'Colorado Springs', 'state_code' => 'CO', 'latitude' => 38.8339, 'longitude' => -104.8214, 'default_radius_miles' => 30],
+        ['market' => 'front-range', 'region' => 'springs', 'city_name' => 'Pueblo', 'state_code' => 'CO', 'latitude' => 38.2544, 'longitude' => -104.6091, 'default_radius_miles' => 25],
+        ['market' => 'front-range', 'region' => 'north', 'city_name' => 'Fort Collins', 'state_code' => 'CO', 'latitude' => 40.5853, 'longitude' => -105.0844, 'default_radius_miles' => 30],
+        ['market' => 'front-range', 'region' => 'west', 'city_name' => 'Grand Junction', 'state_code' => 'CO', 'latitude' => 39.0639, 'longitude' => -108.5506, 'default_radius_miles' => 35],
+        ['market' => 'front-range', 'region' => 'mountain', 'city_name' => 'Steamboat Springs', 'state_code' => 'CO', 'latitude' => 40.4850, 'longitude' => -106.8317, 'default_radius_miles' => 35],
+        ['market' => 'front-range', 'region' => 'mountain', 'city_name' => 'Aspen', 'state_code' => 'CO', 'latitude' => 39.1911, 'longitude' => -106.8175, 'default_radius_miles' => 35],
+
+        // California / SoCal / NorCal / Central
+        ['market' => 'socal', 'region' => 'la', 'city_name' => 'Los Angeles', 'state_code' => 'CA', 'latitude' => 34.0522, 'longitude' => -118.2437, 'default_radius_miles' => 30],
+        ['market' => 'socal', 'region' => 'oc', 'city_name' => 'Anaheim', 'state_code' => 'CA', 'latitude' => 33.8366, 'longitude' => -117.9143, 'default_radius_miles' => 25],
+        ['market' => 'socal', 'region' => 'sd', 'city_name' => 'San Diego', 'state_code' => 'CA', 'latitude' => 32.7157, 'longitude' => -117.1611, 'default_radius_miles' => 30],
+        ['market' => 'socal', 'region' => 'norcal', 'city_name' => 'San Francisco', 'state_code' => 'CA', 'latitude' => 37.7749, 'longitude' => -122.4194, 'default_radius_miles' => 30],
+        ['market' => 'socal', 'region' => 'norcal', 'city_name' => 'Sacramento', 'state_code' => 'CA', 'latitude' => 38.5816, 'longitude' => -121.4944, 'default_radius_miles' => 30],
+        ['market' => 'socal', 'region' => 'central', 'city_name' => 'Fresno', 'state_code' => 'CA', 'latitude' => 36.7378, 'longitude' => -119.7871, 'default_radius_miles' => 35],
+        ['market' => 'socal', 'region' => 'central', 'city_name' => 'Santa Barbara', 'state_code' => 'CA', 'latitude' => 34.4208, 'longitude' => -119.6982, 'default_radius_miles' => 30],
+        ['market' => 'socal', 'region' => 'central', 'city_name' => 'San Luis Obispo', 'state_code' => 'CA', 'latitude' => 35.2828, 'longitude' => -120.6596, 'default_radius_miles' => 30],
+
+        // Scotland & UK
+        ['market' => 'scotland', 'region' => 'scotland', 'city_name' => 'Edinburgh', 'state_code' => 'UK', 'latitude' => 55.9533, 'longitude' => -3.1883, 'default_radius_miles' => 35],
+        ['market' => 'scotland', 'region' => 'scotland', 'city_name' => 'Glasgow', 'state_code' => 'UK', 'latitude' => 55.8642, 'longitude' => -4.2518, 'default_radius_miles' => 35],
+        ['market' => 'scotland', 'region' => 'scotland', 'city_name' => 'Aberdeen', 'state_code' => 'UK', 'latitude' => 57.1497, 'longitude' => -2.0943, 'default_radius_miles' => 35],
+        ['market' => 'scotland', 'region' => 'scotland', 'city_name' => 'Inverness', 'state_code' => 'UK', 'latitude' => 57.4778, 'longitude' => -4.2247, 'default_radius_miles' => 35],
+        ['market' => 'scotland', 'region' => 'england', 'city_name' => 'London', 'state_code' => 'UK', 'latitude' => 51.5074, 'longitude' => -0.1278, 'default_radius_miles' => 35],
+        ['market' => 'scotland', 'region' => 'england', 'city_name' => 'Manchester', 'state_code' => 'UK', 'latitude' => 53.4808, 'longitude' => -2.2426, 'default_radius_miles' => 30],
+        ['market' => 'scotland', 'region' => 'england', 'city_name' => 'Birmingham', 'state_code' => 'UK', 'latitude' => 52.4862, 'longitude' => -1.8904, 'default_radius_miles' => 30],
+        ['market' => 'scotland', 'region' => 'england', 'city_name' => 'Bristol', 'state_code' => 'UK', 'latitude' => 51.4545, 'longitude' => -2.5879, 'default_radius_miles' => 30],
+        ['market' => 'scotland', 'region' => 'england', 'city_name' => 'Liverpool', 'state_code' => 'UK', 'latitude' => 53.4084, 'longitude' => -2.9916, 'default_radius_miles' => 25],
+        ['market' => 'scotland', 'region' => 'england', 'city_name' => 'Newcastle upon Tyne', 'state_code' => 'UK', 'latitude' => 54.9783, 'longitude' => -1.6178, 'default_radius_miles' => 30],
+        ['market' => 'scotland', 'region' => 'england', 'city_name' => 'Leeds', 'state_code' => 'UK', 'latitude' => 53.8008, 'longitude' => -1.5491, 'default_radius_miles' => 30],
+    ];
+
+    $stmt = $db->prepare("INSERT OR IGNORE INTO market_cities (market, region, city_name, state_code, latitude, longitude, default_radius_miles) VALUES (:m, :r, :c, :s, :lat, :lon, :rad)");
+    $db->beginTransaction();
+    foreach ($cities as $c) {
+        $check = $db->prepare("SELECT city_id FROM market_cities WHERE market = :m AND city_name = :c");
+        $check->execute([':m' => $c['market'], ':c' => $c['city_name']]);
+        if (!$check->fetch()) {
+            $stmt->execute([
+                ':m' => $c['market'],
+                ':r' => $c['region'],
+                ':c' => $c['city_name'],
+                ':s' => $c['state_code'],
+                ':lat' => $c['latitude'],
+                ':lon' => $c['longitude'],
+                ':rad' => $c['default_radius_miles']
+            ]);
+        }
     }
     $db->commit();
 }

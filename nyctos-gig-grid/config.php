@@ -150,15 +150,40 @@ const COLORADO_VENUES = [
     'budweiser events center',
     'surfside 7',
     'moxi theater',
-    'moxi'
+    'moxi',
+    'goosetown tavern',
+    'goosetown',
+    'ante up',
+    'ante up denver',
+    '7th circle music collective',
+    '7th circle',
+    '7th circle diy',
+    'hq',
+    'hq denver',
+    'meow wolf denver',
+    'meow wolf',
+    'the oriental theater',
+    'oriental theater',
+    'the federal theatre',
+    'federal theatre',
+    'the armory',
+    'armory fort collins',
+    'armory foco',
+    'bohemian live music',
+    'washingtons',
+    'washingtons fort collins',
+    'washingtons foco',
+    'club vinyl',
+    'vinyl denver',
+    'vinyl nightclub'
 ];
 
 // Target scraping definitions for independent venues
 const SCRAPER_TARGETS = [
     [
         'venue_name' => 'The Black Sheep',
-        'venue_url' => 'https://www.blacksheeprocks.com/events',
-        'selector' => '//div[contains(@class, "event-card")]|//div[contains(@class, "event")]'
+        'venue_url' => 'https://www.blacksheeprocks.com/',
+        'selector' => '//div[contains(@class, "event-card")]|//div[contains(@class, "event")]|//article'
     ],
     [
         'venue_name' => 'Bluebird Theater',
@@ -206,6 +231,11 @@ const SCRAPER_TARGETS = [
         'selector' => '//a[contains(@id, "eventTitle")]'
     ],
     [
+        'venue_name' => 'Goosetown Tavern',
+        'venue_url' => 'https://goosetowntavern.com/calendar/',
+        'selector' => '//a[contains(@id, "eventTitle")]'
+    ],
+    [
         'venue_name' => 'Cervantes\' Masterpiece Ballroom & Other Side',
         'venue_url' => 'https://cervantesmasterpiece.com/events/',
         'selector' => '//div[contains(@class, "event")]|//article'
@@ -219,6 +249,66 @@ const SCRAPER_TARGETS = [
         'venue_name' => 'The Skylark Lounge',
         'venue_url' => 'https://do303.com/venues/the-skylark-lounge',
         'selector' => '//a[contains(@href, "/events/")]'
+    ],
+    [
+        'venue_name' => 'Marquis Theater',
+        'venue_url' => 'https://www.marquisdenver.com/shows',
+        'selector' => '//div[contains(@class, "event")]|//article|//a[contains(@href, "ticketmaster.com")]|//a[contains(@href, "livenation.com")]'
+    ],
+    [
+        'venue_name' => 'Ante Up',
+        'venue_url' => 'https://www.anteupdenver.com/events-1',
+        'selector' => '//a[contains(@href, "/events/")]'
+    ],
+    [
+        'venue_name' => '7th Circle Music Collective',
+        'venue_url' => 'https://www.7thcirclemusiccollective.org/',
+        'selector' => '//div[contains(@class, "post-container")]'
+    ],
+    [
+        'venue_name' => 'HQ',
+        'venue_url' => 'https://hqdenver.com/',
+        'selector' => '//script[contains(@type, "ld+json")]'
+    ],
+    [
+        'venue_name' => 'Meow Wolf Denver',
+        'venue_url' => 'https://tickets.meowwolf.com/events/denver/',
+        'selector' => '//script[@id="__NEXT_DATA__"]'
+    ],
+    [
+        'venue_name' => 'La Rumba',
+        'venue_url' => 'https://larumbadenver.com/events-schedule/',
+        'selector' => '//div[contains(@class, "tw-section")]'
+    ],
+    [
+        'venue_name' => 'The Oriental Theater',
+        'venue_url' => 'https://www.theorientaltheater.com/events',
+        'selector' => '//script[contains(@type, "ld+json")]'
+    ],
+    [
+        'venue_name' => 'The Federal Theatre',
+        'venue_url' => 'https://thefederaltheatre.com/',
+        'selector' => '//script[contains(@type, "ld+json")]'
+    ],
+    [
+        'venue_name' => 'Moxi Theater',
+        'venue_url' => 'https://moxitheater.com/events',
+        'selector' => '//script[contains(@type, "ld+json")]'
+    ],
+    [
+        'venue_name' => 'The Armory',
+        'venue_url' => 'https://bohemianlivemusic.org/events/',
+        'selector' => '//script[contains(@type, "ld+json")]|//div[contains(@class, "event")]|//article'
+    ],
+    [
+        'venue_name' => 'Washington\'s',
+        'venue_url' => 'https://washingtonsfoco.com/events/',
+        'selector' => '//script[contains(@type, "ld+json")]|//div[contains(@class, "event")]|//article'
+    ],
+    [
+        'venue_name' => 'Club Vinyl',
+        'venue_url' => 'https://vinylnightclub.com/upcoming-denver-colorado-nightlife-club-events-shows-concerts-near-me/',
+        'selector' => '//a[contains(@href, "/event/")]'
     ]
 ];
 

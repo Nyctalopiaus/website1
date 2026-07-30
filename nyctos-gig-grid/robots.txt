@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /db/
+Disallow: /actions/
+Disallow: /PHPMailer/
+Disallow: /services/
+Disallow: /cache/
+
+Sitemap: https://nycto.ninja/sitemap.xml
+Sitemap: https://nycto.ninja/sitemap.php

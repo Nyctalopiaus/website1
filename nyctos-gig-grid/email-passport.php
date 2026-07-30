@@ -56,7 +56,7 @@ if (empty($eventIds)) {
 try {
     $db = getDbConnection();
     $placeholders = implode(',', array_fill(0, count($eventIds), '?'));
-    $stmt = $db->prepare("SELECT * FROM events WHERE event_id IN ($placeholders) AND status = 'Approved' ORDER BY start_time ASC");
+    $stmt = $db->prepare("SELECT e.*, v.city FROM events e INNER JOIN venues v ON e.venue_id = v.venue_id WHERE e.event_id IN ($placeholders) AND (e.is_approved = 1 OR e.status = 'Approved') ORDER BY e.start_time ASC");
     $stmt->execute(array_values($eventIds));
     $events = $stmt->fetchAll();
 } catch (Exception $e) {
@@ -106,8 +106,8 @@ foreach ($events as $e) {
     $dateInfo = getEmailDateDetails($e['start_time']);
     $artistName = htmlspecialchars($e['artist_name']);
     $venueName = htmlspecialchars($e['venue_name']);
-    $cityName = htmlspecialchars($e['city_name']);
-    $locationText = htmlspecialchars(formatMarketLocation($e['city_name'] ?? '', $e['market'] ?? 'front-range'));
+    $cityName = htmlspecialchars($e['city'] ?? '');
+    $locationText = htmlspecialchars(formatMarketLocation($e['city'] ?? '', $e['market'] ?? 'front-range'));
     $ticketUrl = $e['ticket_url'] ?: 'https://www.google.com/search?q=' . urlencode($e['artist_name'] . ' concert ' . $e['venue_name']);
 
     $emailBody .= '
