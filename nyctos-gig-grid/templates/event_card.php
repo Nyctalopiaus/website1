@@ -24,6 +24,38 @@ $searchBlob = strtolower(trim(implode(' ', array_filter([
     $combinedTagsStr
 ]))));
 
+// Resolve which filter region this event's city falls under
+$regionCitiesByMarket = [
+    'colorado'   => ['springs' => ['colorado springs','pueblo','castle rock'], 'denver' => ['denver','boulder','golden','morrison','englewood','littleton','arvada','westminster','thornton','lakewood','greenwood village'], 'north' => ['fort collins','greeley','loveland','longmont','bellvue'], 'west' => ['grand junction','fruita','palisade','montrose','telluride','aspen','steamboat springs','glenwood springs']],
+    'california' => ['norcal' => ['san francisco','oakland','berkeley','san jose','mountain view','napa','roseville','wheatland','lincoln','sacramento','concord'], 'la' => ['los angeles','la','inglewood','hollywood','west hollywood','pasadena','pomona'], 'oc' => ['anaheim','santa ana','orange','fullerton','costa mesa','irvine'], 'sd' => ['san diego','chula vista','la mesa','el cajon','oceanside','solana beach']],
+    'texas'      => ['austin' => ['austin','round rock','san marcos','cedar park','georgetown','pflugerville','buda','kyle','bastrop','taylor'], 'dallas' => ['dallas','fort worth','arlington','plano','garland','irving','denton','mckinney','frisco','grand prairie'], 'houston' => ['houston','the woodlands','sugar land','katy','pasadena','galveston','baytown','conroe','pearland','spring'], 'san-antonio' => ['san antonio','new braunfels','corpus christi','laredo','brownsville','mcallen','victoria','seguin','boerne','kerrville','helotes']],
+    'scotland'   => ['glasgow' => ['glasgow','paisley','greenock','kilmarnock','ayr','dumbarton','hamilton','motherwell','livingston'], 'edinburgh' => ['edinburgh','dunfermline','bathgate','falkirk','stirling','perth','galashiels'], 'aberdeen' => ['aberdeen','dundee','inverurie','elgin','arbroath'], 'highlands' => ['inverness','fort william','wick','thurso','lerwick','stornoway','orkney','oban']],
+    'wales'      => ['cardiff' => ['cardiff','newport','barry','cwmbran','pontypridd','caerphilly'], 'swansea' => ['swansea','llanelli','port talbot','bridgend','neath','merthyr tydfil'], 'northwales' => ['wrexham','rhyl','llandudno','bangor','colwyn bay','aberystwyth']],
+    'ireland'    => ['dublin' => ['dublin','bray','drogheda','dundalk','navan','carlow','wexford','kilkenny','waterford'], 'belfast' => ['belfast','derry','londonderry','sligo','letterkenny'], 'cork' => ['cork','limerick','tralee','killarney','ennis'], 'galway' => ['galway','athlone']],
+    'england'    => ['london' => ['london','brighton','oxford','cambridge','southampton','portsmouth','exeter','norwich'], 'manchester' => ['manchester','liverpool','preston'], 'birmingham' => ['birmingham','nottingham','shrewsbury'], 'bristol' => ['bristol'], 'leeds' => ['leeds','sheffield','newcastle','hull','york']],
+];
+$eventMarket = strtolower(trim((string)($event['market'] ?? $activeMarket ?? '')));
+$resolvedCityLower = strtolower(trim($resolvedCity));
+$adminRegionLabel = null;
+// Manual override wins over city-based lookup
+$venueRegionOverrides = function_exists('getAdminVenueRegions') ? getAdminVenueRegions() : [];
+$vNameLower = strtolower(trim((string)($event['venue_name'] ?? '')));
+if ($vNameLower !== '' && isset($venueRegionOverrides[$vNameLower])) {
+    $adminRegionLabel = strtoupper($venueRegionOverrides[$vNameLower]);
+} else {
+    $regionMap = $regionCitiesByMarket[$eventMarket] ?? null;
+    if ($regionMap && $resolvedCityLower !== '') {
+        foreach ($regionMap as $rKey => $rCities) {
+            foreach ($rCities as $rCity) {
+                if (strpos($resolvedCityLower, $rCity) !== false) {
+                    $adminRegionLabel = strtoupper($rKey);
+                    break 2;
+                }
+            }
+        }
+    }
+}
+
 // Check for Multi-Day Stand / Residency
 $isMultiDayResidency = false;
 $residencyNightCount = 0;
@@ -346,6 +378,11 @@ $shouldShowFreeBadge = $hasExplicitFreeSignal || $looksFreeByPrice;
             <span>📍</span>
             <strong class="clickable-venue" data-venue-name="<?php echo htmlspecialchars($event['venue_name']); ?>"><?php echo htmlspecialchars($event['venue_name']); ?></strong> 
             <span class="venue-location-text"><?php echo htmlspecialchars(formatMarketLocation(resolveEventCardCity($event), $event['market'] ?? $activeMarket)); ?></span>
+            <?php if (!empty($isAdmin) && $adminRegionLabel): ?>
+                <span class="admin-region-badge" title="Filter region in DB"><?php echo htmlspecialchars($adminRegionLabel); ?></span>
+            <?php elseif (!empty($isAdmin)): ?>
+                <span class="admin-region-badge admin-region-badge--unknown" title="City not mapped to any filter region">? NO REGION</span>
+            <?php endif; ?>
         </div>
         <div class="time-row time-row-wrap">
             <span>⏱️</span>
@@ -506,11 +543,53 @@ $shouldShowFreeBadge = $hasExplicitFreeSignal || $looksFreeByPrice;
                     </label>
                 </div>
 
+                <div class="admin-control-card">
+                    <label class="admin-field admin-field-region">
+                        <span class="admin-field-label">Sub-Area Override</span>
+                        <div class="admin-input-row">
+                            <select class="admin-region-select admin-input" data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>">
+                                <option value="">-- Auto-detect --</option>
+                                <?php
+                                $currentOverrideRegion = $venueRegionOverrides[$vNameLower] ?? '';
+                                $regionOptions = array_keys($regionCitiesByMarket[$eventMarket] ?? []);
+                                foreach ($regionOptions as $rOpt):
+                                    $sel = ($currentOverrideRegion === $rOpt) ? 'selected' : '';
+                                    echo '<option value="' . htmlspecialchars($rOpt) . '" ' . $sel . '>' . htmlspecialchars(strtoupper($rOpt)) . '</option>';
+                                endforeach;
+                                ?>
+                            </select>
+                            <button type="button" class="btn-admin-act btn-admin-save-region btn-admin-slim" data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>">Save</button>
+                        </div>
+                    </label>
+                </div>
+
                 <div class="admin-control-card admin-control-card-actions">
-                    <button type="button" class="btn-admin-act btn-admin-title btn-admin-slim" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" data-current-title="<?php echo htmlspecialchars($event['artist_name'] ?? ''); ?>" title="Set a single banner/title line (disables artist splitting for this card)">Set Banner Name</button>
+                    <?php if ($isCoheadliner): ?>
+                        <button type="button" class="btn-admin-act btn-admin-edit-artists btn-admin-slim" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" data-artists="<?php echo htmlspecialchars($event['artist_name'] ?? ''); ?>" title="Edit individual artist names on this multi-band card">✏️ Edit Artists</button>
+                    <?php endif; ?>
+                    <button type="button" class="btn-admin-act btn-admin-title btn-admin-slim" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" data-current-title="<?php echo htmlspecialchars($event['artist_name'] ?? ''); ?>" title="Override how the artist name displays on this card (disables splitting)">Override Display Name</button>
                     <button type="button" class="btn-admin-act btn-admin-mark-special btn-admin-slim btn-admin-warn" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" title="Mark this event as non-music and hide listen/link buttons">Mark Non-Music</button>
                 </div>
             </div>
         </div>
     <?php endif; ?>
+
+    <!-- Edit Artists Modal -->
+    <div class="modal-overlay modal-edit-artists-overlay" style="display: none;">
+        <div class="modal-card modal-edit-artists">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit Artist Names</h3>
+                <button type="button" class="modal-close-btn" aria-label="Close modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="artists-edit-list" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-modal-action btn-modal-cancel">Cancel</button>
+                <button type="button" class="btn-modal-action btn-modal-save">Save Artists</button>
+            </div>
+        </div>
+    </div>
 </article>

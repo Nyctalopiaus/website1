@@ -73,7 +73,7 @@ function seedDefaultVenues(PDO $db) {
 }
 
 function seedDefaultMetalArtists(PDO $db) {
-    $count = $db->query("SELECT COUNT(*) FROM metal_artists")->fetchColumn();
+    $count = $db->query("SELECT COUNT(*) FROM approved_artists")->fetchColumn();
     if ($count != 0) {
         return;
     }
@@ -97,7 +97,7 @@ function seedDefaultMetalArtists(PDO $db) {
         'Breaking Benjamin', 'In This Moment'
     ];
 
-    $stmt = $db->prepare("INSERT OR IGNORE INTO metal_artists (artist_name) VALUES (:name)");
+    $stmt = $db->prepare("INSERT OR IGNORE INTO approved_artists (artist_name) VALUES (:name)");
     $db->beginTransaction();
     foreach ($defaultBands as $band) {
         $stmt->execute([':name' => $band]);

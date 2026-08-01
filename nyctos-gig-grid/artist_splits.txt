@@ -1,6 +1,0 @@
-# Custom Artist Split Patterns (One per line)
-|
-ft.
-feat.
-featuring
--

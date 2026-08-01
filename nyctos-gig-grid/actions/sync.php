@@ -7,37 +7,38 @@ function syncCliLog(string $message, bool $isCli = false): void {
     if (!$isCli) {
         return;
     }
-    echo '[' . date('Y-m-d H:i:s') . '] ' . $message . "\n";
+    echo '[' . date('Y-m-d H:i:s T') . '] ' . $message . "\n";
 }
 
-function handleSyncRequest(bool $isCli = false) {
+function handleSyncRequest(bool $isCli = false, ?string $targetMarket = null) {
     $syncStartedAt = microtime(true);
 
     if (!$isCli) {
         header('Content-Type: application/json');
     } else {
-        syncCliLog('[CLI SYNC] Initializing aggregator processes...', true);
+        $mLog = !empty($targetMarket) ? " (Target Market: {$targetMarket})" : "";
+        syncCliLog('[CLI SYNC] Initializing aggregator processes' . $mLog . '...', true);
     }
 
-    @set_time_limit(600);
+    @set_time_limit(0);
 
     try {
         syncCliLog('[DEBUG] Instantiating EventAggregator...', $isCli);
         $aggregator = new EventAggregator();
         
         $aggregator->log('[DEBUG] Calling fetchTicketmaster...');
-        $tmCount = $aggregator->fetchTicketmaster();
+        $tmCount = $aggregator->fetchTicketmaster($targetMarket);
         
         $aggregator->log('[DEBUG] Calling fetchBandsintown...');
-        $bitCount = $aggregator->fetchBandsintown();
+        $bitCount = $aggregator->fetchBandsintown($targetMarket);
 
         $aggregator->log('[DEBUG] Calling fetchEventbrite...');
-        $ebCount = $aggregator->fetchEventbrite();
+        $ebCount = $aggregator->fetchEventbrite($targetMarket);
         
         $db = getDbConnection();
         
         $aggregator->log('[DEBUG] Calling importScrapedVenueEvents...');
-        $scrapedCount = importScrapedVenueEvents($aggregator, $db);
+        $scrapedCount = importScrapedVenueEvents($aggregator, $db, $targetMarket);
         
         $aggregator->log('[DEBUG] Calling purgeIgnoredEvents...');
         $ignoredRemoved = $aggregator->purgeIgnoredEvents();
@@ -88,7 +89,7 @@ function handleSyncRequest(bool $isCli = false) {
             'success' => true,
         ]);
 
-        $configuredMarkets = $aggregator->getConfiguredMarkets();
+        $configuredMarkets = !empty($targetMarket) ? [$targetMarket] : $aggregator->getConfiguredMarkets();
         if (!empty($configuredMarkets)) {
             $reportData['execution']['markets_processed'] = $configuredMarkets;
             $reportData['execution']['markets_processed_count'] = count($configuredMarkets);

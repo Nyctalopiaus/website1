@@ -185,11 +185,24 @@ class LastFmNormalizer {
     /**
      * Normalizes event genres for all distinct un-locked artists in the database.
      */
-    public function normalizeAllEvents(): int {
-        $this->log("Starting Last.fm genre normalization pipeline...");
+    public function normalizeAllEvents(int $limit = 50): int {
+        $this->log("Starting Last.fm genre normalization pipeline (batch limit: {$limit})...");
 
         // Fetch only artists with at least one unlocked row that still needs normalization.
-        $stmt = $this->db->query("\n            SELECT DISTINCT artist_name\n            FROM events\n            WHERE TRIM(COALESCE(artist_name, '')) <> ''\n              AND genre_locked = 0\n              AND (\n                  lastfm_normalized_at IS NULL\n                  OR LOWER(COALESCE(genre_source, '')) <> 'lastfm'\n                  OR TRIM(COALESCE(tags, '')) = ''\n              )\n        ");
+        $stmt = $this->db->prepare("
+            SELECT DISTINCT artist_name
+            FROM events
+            WHERE TRIM(COALESCE(artist_name, '')) <> ''
+              AND genre_locked = 0
+              AND (
+                  lastfm_normalized_at IS NULL
+                  OR LOWER(COALESCE(genre_source, '')) <> 'lastfm'
+                  OR TRIM(COALESCE(tags, '')) = ''
+              )
+            LIMIT :lim
+        ");
+        $stmt->bindValue(':lim', $limit, PDO::PARAM_INT);
+        $stmt->execute();
         $artists = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
         if (empty($artists)) {

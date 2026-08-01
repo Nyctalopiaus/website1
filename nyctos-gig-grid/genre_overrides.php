@@ -14,7 +14,9 @@ function getGenreOverridesNormalized() {
         return $cached;
     }
 
-    $filePath = __DIR__ . '/genre_overrides.txt';
+    $filePath = file_exists(__DIR__ . '/rules/genre_overrides.txt')
+        ? __DIR__ . '/rules/genre_overrides.txt'
+        : __DIR__ . '/genre_overrides.txt';
     if (!file_exists($filePath)) {
         $cached = [];
         return $cached;

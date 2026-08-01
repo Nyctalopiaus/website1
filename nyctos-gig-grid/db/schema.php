@@ -1,11 +1,11 @@
 <?php
 
 function ensureDatabaseSchema(PDO $db) {
-    $db->exec("CREATE TABLE IF NOT EXISTS metal_artists (
+    $db->exec("CREATE TABLE IF NOT EXISTS approved_artists (
         artist_id INTEGER PRIMARY KEY AUTOINCREMENT,
         artist_name TEXT UNIQUE NOT NULL
     )");
-    $db->exec("CREATE INDEX IF NOT EXISTS idx_artist_name ON metal_artists(artist_name)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_artist_name ON approved_artists(artist_name)");
 
     $db->exec("CREATE TABLE IF NOT EXISTS venues (
         venue_id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -5,7 +5,9 @@ function normalizeArtistForIgnore($name) {
 }
 
 function getIgnoredArtistsNormalized() {
-    $ignoredFile = __DIR__ . '/ignored_artists.txt';
+    $ignoredFile = file_exists(__DIR__ . '/rules/ignored_artists.txt')
+        ? __DIR__ . '/rules/ignored_artists.txt'
+        : __DIR__ . '/ignored_artists.txt';
     $ignored = [];
 
     if (file_exists($ignoredFile)) {
@@ -65,9 +67,10 @@ function isArtistIgnored($artistName, $ignoredArtists = null) {
         return true;
     }
 
-    // Substring match check
+    // Substring match check (requires at least 3 characters to prevent false positives)
     foreach (array_keys($ignoredArtists) as $blocked) {
-        if ($blocked !== '' && strpos($norm, $blocked) !== false) {
+        $blocked = strtolower(trim((string)$blocked));
+        if (strlen($blocked) >= 3 && strpos($norm, $blocked) !== false) {
             return true;
         }
     }

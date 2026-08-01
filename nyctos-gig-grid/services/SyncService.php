@@ -1,9 +1,18 @@
 <?php
 
 function ensureSyncCacheDir() {
-    $cacheDir = __DIR__ . '/../cache';
+    $cacheDir = __DIR__ . '/../cache/scrapers';
     if (!is_dir($cacheDir)) {
         mkdir($cacheDir, 0755, true);
+    }
+    $files = glob($cacheDir . '/*.json');
+    if ($files) {
+        $now = time();
+        foreach ($files as $f) {
+            if (is_file($f) && ($now - filemtime($f)) > 604800) {
+                @unlink($f);
+            }
+        }
     }
     return $cacheDir;
 }
@@ -28,22 +37,43 @@ function loadScrapedEventsForTarget(array $target, string $cacheDir, EventAggreg
     return $scrapedEvents;
 }
 
-function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db) {
+function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db, ?string $targetMarket = null) {
     $scrapedCount = 0;
     $cacheDir = ensureSyncCacheDir();
 
     // Query active scraped_venues from database table
     $dbTargets = [];
     try {
-        $stmtV = $db->query("SELECT venue_name, scrape_url AS venue_url, xpath_container AS selector FROM scraped_venues WHERE is_active = 1");
-        if ($stmtV !== false) {
-            $dbTargets = $stmtV->fetchAll(PDO::FETCH_ASSOC);
+        $sqlV = "SELECT venue_name, scrape_url AS venue_url, xpath_container AS selector FROM scraped_venues WHERE is_active = 1";
+        $paramsV = [];
+        if (!empty($targetMarket) && strtolower($targetMarket) !== 'all') {
+            $mLow = strtolower(trim($targetMarket));
+            $marketGroup = [$mLow];
+            if ($mLow === 'colorado') {
+                $marketGroup = ['colorado', 'front-range'];
+            } elseif ($mLow === 'california') {
+                $marketGroup = ['california', 'socal', 'norcal'];
+            } elseif ($mLow === 'uk') {
+                $marketGroup = ['uk', 'scotland', 'england', 'wales', 'ireland'];
+            }
+            $inClause = implode(',', array_map(function($i) { return ":m{$i}"; }, array_keys($marketGroup)));
+            $sqlV .= " AND LOWER(market) IN ({$inClause})";
+            foreach ($marketGroup as $i => $mk) {
+                $paramsV[":m{$i}"] = $mk;
+            }
         }
+        $stmtV = $db->prepare($sqlV);
+        $stmtV->execute($paramsV);
+        $dbTargets = $stmtV->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
         $dbTargets = [];
     }
 
-    $targetsToUse = !empty($dbTargets) ? $dbTargets : (defined('SCRAPER_TARGETS') ? SCRAPER_TARGETS : []);
+    if (!empty($targetMarket) && strtolower($targetMarket) !== 'all') {
+        $targetsToUse = $dbTargets;
+    } else {
+        $targetsToUse = !empty($dbTargets) ? $dbTargets : (defined('SCRAPER_TARGETS') ? SCRAPER_TARGETS : []);
+    }
 
     foreach ($targetsToUse as $target) {
         $scraper = new VenueScraper($db);

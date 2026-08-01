@@ -60,6 +60,13 @@ switch ($action) {
             $success = appendRuleToTextFile('venue_cities.txt', $rule);
         }
         break;
+    case 'add_venue_region':
+        $venue = trim((string)($input['venue'] ?? ''));
+        if (!empty($venue)) {
+            $rule = strtolower($venue) . '=' . $value;
+            $success = appendRuleToTextFile('venue_regions.txt', $rule);
+        }
+        break;
     case 'override_genre':
         $eventId = trim((string)($input['event_id'] ?? ''));
         if (!empty($eventId)) {

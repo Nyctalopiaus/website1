@@ -29,20 +29,24 @@ require_once __DIR__ . '/actions/sync.php';
 require_once __DIR__ . '/actions/setlist.php';
 require_once __DIR__ . '/actions/log-js-error.php';
 
-set_time_limit(300);
+@set_time_limit(0);
 
 $isCli = (php_sapi_name() === 'cli' || empty($_SERVER['REMOTE_ADDR']));
 $argvList = $_SERVER['argv'] ?? $argv ?? [];
 $cliSync = false;
+$targetMarket = null;
+
 foreach ($argvList as $arg) {
     if (strpos($arg, 'cli-sync') !== false) {
         $cliSync = true;
-        break;
+    }
+    if (strpos($arg, 'market=') === 0) {
+        $targetMarket = strtolower(trim(substr($arg, 7)));
     }
 }
 
 if ($cliSync || ($isCli && empty($_GET['action']) && !isset($_GET['sync']))) {
-    handleSyncRequest(true);
+    handleSyncRequest(true, $targetMarket);
     exit;
 }
 

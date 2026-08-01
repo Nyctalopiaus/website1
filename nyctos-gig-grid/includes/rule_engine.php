@@ -4,7 +4,9 @@
  */
 
 function loadLinesFromTextFile($filename) {
-    $filePath = __DIR__ . '/../' . $filename;
+    $filePath = file_exists(__DIR__ . '/../rules/' . $filename)
+        ? __DIR__ . '/../rules/' . $filename
+        : __DIR__ . '/../' . $filename;
     $items = [];
     if (file_exists($filePath)) {
         $lines = file($filePath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -99,6 +101,21 @@ function getAdminVenueCities() {
     return $cache;
 }
 
+function getAdminVenueRegions() {
+    static $cache = null;
+    if ($cache === null) {
+        $lines = loadLinesFromTextFile('venue_regions.txt');
+        $cache = [];
+        foreach ($lines as $l) {
+            if (strpos($l, '=') !== false) {
+                list($v, $r) = explode('=', $l, 2);
+                $cache[strtolower(trim($v))] = strtolower(trim($r));
+            }
+        }
+    }
+    return $cache;
+}
+
 function getAdminIgnoredPromos() {
     static $cache = null;
     if ($cache === null) {
@@ -109,7 +126,11 @@ function getAdminIgnoredPromos() {
 }
 
 function appendRuleToTextFile($filename, $ruleText) {
-    $filePath = __DIR__ . '/../' . $filename;
+    $rulesDir = __DIR__ . '/../rules';
+    if (!is_dir($rulesDir)) {
+        @mkdir($rulesDir, 0755, true);
+    }
+    $filePath = is_dir($rulesDir) ? ($rulesDir . '/' . $filename) : (__DIR__ . '/../' . $filename);
     $ruleText = trim($ruleText);
     if ($ruleText === '') return false;
 

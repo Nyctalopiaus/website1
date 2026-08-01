@@ -16,7 +16,7 @@ class GenreClassifierService {
         
         if (!$this->db) return false;
         try {
-            $stmt = $this->db->prepare("SELECT COUNT(*) FROM metal_artists WHERE LOWER(artist_name) = :name");
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM approved_artists WHERE LOWER(artist_name) = :name");
             $stmt->execute([':name' => $norm]);
             return ($stmt->fetchColumn() > 0);
         } catch (\PDOException $e) {

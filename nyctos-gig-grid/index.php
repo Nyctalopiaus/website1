@@ -207,6 +207,8 @@ foreach ($monthsToFetch as $month) {
     $monthStart = $monthDate->format('Y-m-01 00:00:00');
     $nextMonthStart = (clone $monthDate)->modify('+1 month')->format('Y-m-01 00:00:00');
 
+    $subregionFilter = strtolower(trim((string)($_GET['subregion'] ?? '')));
+
     if ($activeMarket === 'uk' && !empty($countryFilter)) {
         $stmt = $db->prepare("
             SELECT e.*, v.city AS city_name
@@ -214,7 +216,7 @@ foreach ($monthsToFetch as $month) {
             JOIN venues v ON e.venue_name = v.venue_name
             JOIN market_cities mc ON v.city = mc.city_name
             WHERE e.market = :market
-                            AND LOWER(TRIM(mc.region)) = :country_filter
+              AND LOWER(TRIM(mc.region)) = :country_filter
               AND e.start_time >= :month_start
               AND e.start_time < :next_month_start
               AND e.start_time >= datetime('now', '-11 hours')
@@ -223,6 +225,25 @@ foreach ($monthsToFetch as $month) {
         $stmt->execute([
             ':market' => $activeMarket,
             ':country_filter' => $countryFilter,
+            ':month_start' => $monthStart,
+            ':next_month_start' => $nextMonthStart
+        ]);
+    } elseif (!empty($subregionFilter) && $subregionFilter !== 'all') {
+        $stmt = $db->prepare("
+            SELECT e.*, v.city AS city_name
+            FROM events e
+            JOIN venues v ON e.venue_name = v.venue_name
+            JOIN market_cities mc ON v.city = mc.city_name
+            WHERE e.market = :market
+              AND LOWER(TRIM(mc.region)) = :subregion_filter
+              AND e.start_time >= :month_start
+              AND e.start_time < :next_month_start
+              AND e.start_time >= datetime('now', '-11 hours')
+            ORDER BY e.start_time ASC
+        ");
+        $stmt->execute([
+            ':market' => $activeMarket,
+            ':subregion_filter' => $subregionFilter,
             ':month_start' => $monthStart,
             ':next_month_start' => $nextMonthStart
         ]);

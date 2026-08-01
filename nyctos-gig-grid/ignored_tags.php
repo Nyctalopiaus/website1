@@ -18,7 +18,9 @@ function getIgnoredTagsNormalized() {
         return $cached;
     }
 
-    $filePath = __DIR__ . '/ignored_tags.txt';
+    $filePath = file_exists(__DIR__ . '/rules/ignored_tags.txt')
+        ? __DIR__ . '/rules/ignored_tags.txt'
+        : __DIR__ . '/ignored_tags.txt';
     if (!file_exists($filePath)) {
         $cached = [];
         return $cached;

@@ -223,9 +223,39 @@ function getSourceRunTallyData(array $report): array {
         }
     }
 
-    // 3. Ensure any configured SCRAPER_TARGETS not yet listed are present
-    if (defined('SCRAPER_TARGETS') && is_array(SCRAPER_TARGETS)) {
-        foreach (SCRAPER_TARGETS as $target) {
+    $marketsProcessed = $report['execution']['markets_processed'] ?? [];
+    $singleMarket = (count($marketsProcessed) === 1) ? strtolower(trim($marketsProcessed[0])) : null;
+
+    // 3. Ensure any configured venue scrapers for the target market are present
+    $scrapersToInclude = [];
+    try {
+        $db = getDbConnection();
+        $sqlV = "SELECT venue_name, market FROM scraped_venues WHERE is_active = 1";
+        $paramsV = [];
+        if ($singleMarket !== null && $singleMarket !== 'all') {
+            $marketGroup = [$singleMarket];
+            if ($singleMarket === 'colorado') {
+                $marketGroup = ['colorado', 'front-range'];
+            } elseif ($singleMarket === 'california') {
+                $marketGroup = ['california', 'socal', 'norcal'];
+            } elseif ($singleMarket === 'uk') {
+                $marketGroup = ['uk', 'scotland', 'england', 'wales', 'ireland'];
+            }
+            $inClause = implode(',', array_map(function($i) { return ":m{$i}"; }, array_keys($marketGroup)));
+            $sqlV .= " AND LOWER(market) IN ({$inClause})";
+            foreach ($marketGroup as $i => $mk) {
+                $paramsV[":m{$i}"] = $mk;
+            }
+        }
+        $stmtV = $db->prepare($sqlV);
+        $stmtV->execute($paramsV);
+        $scrapersToInclude = $stmtV->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        $scrapersToInclude = [];
+    }
+
+    if (!empty($scrapersToInclude)) {
+        foreach ($scrapersToInclude as $target) {
             $venueName = trim((string)($target['venue_name'] ?? ''));
             if ($venueName === '') continue;
             $rowKey = strtolower($venueName);
@@ -233,7 +263,7 @@ function getSourceRunTallyData(array $report): array {
                 $rows[] = [
                     'name' => $venueName,
                     'type' => 'Venue Scraper',
-                    'market' => 'Front Range',
+                    'market' => marketLabelForReport($target['market'] ?? 'Colorado'),
                     'status' => 'SUCCESS',
                     'added' => 0,
                     'updated' => 0,
@@ -242,6 +272,28 @@ function getSourceRunTallyData(array $report): array {
                     'details' => 'Scrape completed (0 shows)',
                 ];
                 $seenKeys[$rowKey] = true;
+            }
+        }
+    } elseif ($singleMarket === null || $singleMarket === 'colorado' || $singleMarket === 'front-range') {
+        if (defined('SCRAPER_TARGETS') && is_array(SCRAPER_TARGETS)) {
+            foreach (SCRAPER_TARGETS as $target) {
+                $venueName = trim((string)($target['venue_name'] ?? ''));
+                if ($venueName === '') continue;
+                $rowKey = strtolower($venueName);
+                if (!isset($seenKeys[$rowKey])) {
+                    $rows[] = [
+                        'name' => $venueName,
+                        'type' => 'Venue Scraper',
+                        'market' => 'Colorado',
+                        'status' => 'SUCCESS',
+                        'added' => 0,
+                        'updated' => 0,
+                        'purged' => 0,
+                        'total' => 0,
+                        'details' => 'Scrape completed (0 shows)',
+                    ];
+                    $seenKeys[$rowKey] = true;
+                }
             }
         }
     }
@@ -670,7 +722,10 @@ function sendSyncReportEmail(array $report, callable $logger = null): bool {
 
     $subjectPrefix = defined('SYNC_REPORT_EMAIL_SUBJECT_PREFIX') ? trim((string)SYNC_REPORT_EMAIL_SUBJECT_PREFIX) : '[Nycto Sync]';
     $statusWord = !empty($report['execution']['success']) ? 'SUCCESS' : 'FAILED';
-    $subject = $subjectPrefix . ' Daily Sync Report - ' . $statusWord . ' - ' . date('Y-m-d');
+    $markets = $report['execution']['markets_processed'] ?? [];
+    $marketLabels = array_map('marketLabelForReport', $markets);
+    $marketTag = !empty($marketLabels) && count($marketLabels) === 1 ? ' [' . $marketLabels[0] . ']' : '';
+    $subject = $subjectPrefix . $marketTag . ' Sync Report - ' . $statusWord . ' - ' . date('Y-m-d');
 
     $bodyText = buildSyncReportText($report);
     $bodyHtml = buildSyncReportHtml($report);

@@ -202,7 +202,7 @@ class EventAggregator {
     }
 
     public function log($msg) {
-        $formatted = "[" . date('Y-m-d H:i:s') . "] " . $msg;
+        $formatted = "[" . date('Y-m-d H:i:s T') . "] " . $msg;
         $this->logs[] = $formatted;
         $this->parseLogForErrorBuckets($msg);
         if (php_sapi_name() === 'cli' || empty($_SERVER['REMOTE_ADDR'])) {
@@ -266,7 +266,7 @@ class EventAggregator {
             return [];
         }
 
-        $stmtSeed = $this->db->prepare("INSERT OR IGNORE INTO metal_artists (artist_name) VALUES (:name)");
+        $stmtSeed = $this->db->prepare("INSERT OR IGNORE INTO approved_artists (artist_name) VALUES (:name)");
         foreach ($names as $name) {
             $stmtSeed->execute([':name' => $name]);
         }
@@ -351,41 +351,7 @@ class EventAggregator {
     public function reconcileEventLocations() {
         $reconciledCount = 0;
         try {
-            // 1. Delete bogus tour title entries from venues table
-            $this->db->exec("DELETE FROM venues WHERE 
-                LOWER(venue_name) LIKE '%tour%' OR 
-                LOWER(venue_name) LIKE '%undercurrent%' OR 
-                LOWER(venue_name) LIKE '%fest%' OR 
-                LOWER(venue_name) LIKE '%anniversary%' OR 
-                LOWER(venue_name) LIKE '%presents%' OR
-                LOWER(venue_name) LIKE '%atmosphere%' OR
-                LOWER(venue_name) LIKE '%years in%'");
-
-            // 1b. Clean city/state suffixes & band prefixes from venue names in venues table
-            $rows = $this->db->query("SELECT venue_key, venue_name, city FROM venues")->fetchAll(PDO::FETCH_ASSOC);
-            $stmtUpd = $this->db->prepare("UPDATE venues SET venue_name = :vname, venue_key = :vkey WHERE venue_key = :oldkey");
-            $stmtDel = $this->db->prepare("DELETE FROM venues WHERE venue_key = :oldkey");
-            foreach ($rows as $r) {
-                $vname = trim((string)$r['venue_name']);
-                $clean = $vname;
-                if (strpos($clean, ' @ ') !== false) {
-                    $parts = explode(' @ ', $clean);
-                    $clean = trim(end($parts));
-                }
-                $clean = preg_replace('/^[A-Za-z\s]+,\s*[A-Z]{2}\s*-\s*/', '', $clean);
-                $clean = preg_replace('/\s*-\s*[A-Za-z\s]+,\s*[A-Z]{2}$/', '', $clean);
-                $clean = preg_replace('/\s*-\s*(CO|CA|UK)$/i', '', $clean);
-                $clean = trim($clean);
-
-                if ($clean !== $vname && $clean !== '') {
-                    $newKey = preg_replace('/[^a-z0-9]/', '', strtolower($clean));
-                    try {
-                        $stmtUpd->execute([':vname' => $clean, ':vkey' => $newKey, ':oldkey' => $r['venue_key']]);
-                    } catch (Exception $ex) {
-                        $stmtDel->execute([':oldkey' => $r['venue_key']]);
-                    }
-                }
-            }
+            // Avoid mutating canonical venues here; it can violate FK links from events.
 
             // 2. Exact match reconciliation against canonical venues table
             $sql = "UPDATE events
@@ -446,7 +412,7 @@ class EventAggregator {
         foreach ($parts as $part) {
             $part = trim($part);
             if (empty($part)) continue;
-            $stmt = $this->db->prepare("SELECT COUNT(*) FROM metal_artists WHERE LOWER(artist_name) = LOWER(:name)");
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM approved_artists WHERE LOWER(artist_name) = LOWER(:name)");
             $stmt->execute([':name' => $part]);
             if ($stmt->fetchColumn() > 0) {
                 return true;
@@ -495,10 +461,17 @@ class EventAggregator {
 
             if ($httpCode !== 200) {
                 $this->recordHttpNon200('MusicBrainz', 'all', $httpCode, "artist='{$part}'");
+                $stmtSaveCache = $this->db->prepare("INSERT OR REPLACE INTO artist_genre_cache (artist_name, is_metal, tags) VALUES (:name, 0, 'NOT_FOUND')");
+                $stmtSaveCache->execute([':name' => $part]);
                 continue;
             }
 
             $data = json_decode($response, true);
+            if (empty($data['artists'])) {
+                $stmtSaveCache = $this->db->prepare("INSERT OR REPLACE INTO artist_genre_cache (artist_name, is_metal, tags) VALUES (:name, 0, 'NOT_FOUND')");
+                $stmtSaveCache->execute([':name' => $part]);
+                continue;
+            }
             $isMetalThisPart = 0;
             $matchedTags = [];
             if (!empty($data['artists'][0]['tags'])) {
@@ -732,9 +705,24 @@ class EventAggregator {
     public function getMarketSearchCentroids($marketFilter = null) {
         $sql = "SELECT city_id, market, region, city_name, state_code, latitude, longitude, default_radius_miles FROM market_cities WHERE is_active = 1";
         $params = [];
-        if (!empty($marketFilter)) {
-            $sql .= " AND market = :m";
-            $params[':m'] = $marketFilter;
+        if (!empty($marketFilter) && strtolower($marketFilter) !== 'all') {
+            $mLow = strtolower(trim($marketFilter));
+            $marketGroup = [$mLow];
+            if ($mLow === 'colorado') {
+                $marketGroup = ['colorado', 'front-range'];
+            } elseif ($mLow === 'california') {
+                $marketGroup = ['california', 'socal', 'norcal'];
+            } elseif ($mLow === 'uk') {
+                $marketGroup = ['uk', 'scotland', 'england', 'wales', 'ireland'];
+            }
+
+            $inClause = [];
+            foreach ($marketGroup as $i => $mk) {
+                $pName = ":m{$i}";
+                $inClause[] = $pName;
+                $params[$pName] = $mk;
+            }
+            $sql .= " AND LOWER(market) IN (" . implode(',', $inClause) . ")";
         }
         $sql .= " ORDER BY market ASC, city_id ASC";
         $stmt = $this->db->prepare($sql);
@@ -742,8 +730,8 @@ class EventAggregator {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    private function getMarketIngestionProfiles() {
-        $rows = $this->getMarketSearchCentroids();
+    private function getMarketIngestionProfiles($targetMarket = null) {
+        $rows = $this->getMarketSearchCentroids($targetMarket);
         if (empty($rows)) {
             return [
                 [
@@ -756,6 +744,7 @@ class EventAggregator {
         }
 
         $byMarket = [];
+        $seenPoints = [];
         foreach ($rows as $r) {
             $m = $r['market'];
             if (!isset($byMarket[$m])) {
@@ -766,21 +755,67 @@ class EventAggregator {
                     'bandsintown_locations' => [],
                     'cities' => []
                 ];
+                $seenPoints[$m] = [];
             }
             $latlong = $r['latitude'] . ',' . $r['longitude'];
-            $byMarket[$m]['points'][] = [
-                'latlong' => $latlong,
-                'radius' => (int)$r['default_radius_miles'],
-                'unit' => 'miles',
-                'lat' => (float)$r['latitude'],
-                'lon' => (float)$r['longitude']
-            ];
+            $ptKey = round((float)$r['latitude'], 3) . ',' . round((float)$r['longitude'], 3) . ',' . (int)$r['default_radius_miles'];
+            if (!isset($seenPoints[$m][$ptKey])) {
+                $seenPoints[$m][$ptKey] = true;
+                $byMarket[$m]['points'][] = [
+                    'latlong' => $latlong,
+                    'radius' => (int)$r['default_radius_miles'],
+                    'unit' => 'miles',
+                    'lat' => (float)$r['latitude'],
+                    'lon' => (float)$r['longitude']
+                ];
+            }
             $locStr = $r['city_name'] . ($r['state_code'] ? ',' . $r['state_code'] : '');
             $byMarket[$m]['bandsintown_locations'][] = $locStr;
             $byMarket[$m]['cities'][] = $r;
         }
 
-        return array_values($byMarket);
+        $profiles = array_values($byMarket);
+
+        $targetLow = strtolower(trim((string)($targetMarket ?? '')));
+        if ($targetLow === 'uk') {
+            $merged = [
+                'market' => 'uk',
+                'stateCode' => null,
+                'points' => [],
+                'bandsintown_locations' => [],
+                'cities' => []
+            ];
+            $seenPt = [];
+            $seenLoc = [];
+
+            foreach ($profiles as $profile) {
+                foreach (($profile['points'] ?? []) as $pt) {
+                    $key = round((float)($pt['lat'] ?? 0), 3) . ',' . round((float)($pt['lon'] ?? 0), 3) . ',' . (int)($pt['radius'] ?? 0);
+                    if (isset($seenPt[$key])) {
+                        continue;
+                    }
+                    $seenPt[$key] = true;
+                    $merged['points'][] = $pt;
+                }
+
+                foreach (($profile['bandsintown_locations'] ?? []) as $loc) {
+                    $locKey = strtolower(trim((string)$loc));
+                    if ($locKey === '' || isset($seenLoc[$locKey])) {
+                        continue;
+                    }
+                    $seenLoc[$locKey] = true;
+                    $merged['bandsintown_locations'][] = $loc;
+                }
+
+                foreach (($profile['cities'] ?? []) as $cityRow) {
+                    $merged['cities'][] = $cityRow;
+                }
+            }
+
+            return [$merged];
+        }
+
+        return $profiles;
     }
 
     public function getConfiguredMarkets() {
@@ -1264,15 +1299,16 @@ class EventAggregator {
     /**
      * 1. Ingestion: Ticketmaster Discovery API
      */
-    public function fetchTicketmaster() {
-        $this->log("Starting Ticketmaster API query...");
+    public function fetchTicketmaster($targetMarket = null) {
+        $this->log("Starting Ticketmaster API query" . (!empty($targetMarket) ? " for market '{$targetMarket}'" : "") . "...");
         $apiKey = TICKETMASTER_API_KEY;
         $totalIngested = 0;
 
-        foreach ($this->getMarketIngestionProfiles() as $profile) {
+        foreach ($this->getMarketIngestionProfiles($targetMarket) as $profile) {
             $marketKey = $profile['market'];
             $marketIngested = 0;
             $this->log("[TICKETMASTER] Querying market '{$marketKey}'...");
+            $skipTicketPageTimeScrape = in_array(strtolower((string)$marketKey), ['uk', 'scotland', 'england', 'wales', 'ireland'], true);
 
             $queries = [];
             if (!empty($profile['stateCode'])) {
@@ -1289,11 +1325,17 @@ class EventAggregator {
 
             foreach ($queries as $qParam) {
                 for ($page = 0; $page < 5; $page++) {
-                    usleep(250000);
+                    usleep(200000);
+
+                    $pageStartTs = microtime(true);
+                    $pageMusicbrainzCalls = 0;
+                    $pageMusicbrainzMs = 0;
+                    $pageTicketPageFetchCount = 0;
+                    $pageTicketPageFetchMs = 0;
 
                     $url = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" . urlencode($apiKey)
                         . "&" . $qParam
-                        . "&classificationName=music&size=100&page=" . $page;
+                        . "&segmentId=KZFzniwnSyZfZ7v7nJ&classificationName=music&size=200&page=" . $page;
 
                     $response = false;
                     $httpCode = 0;
@@ -1336,8 +1378,11 @@ class EventAggregator {
                 }
 
                 $data = json_decode($response, true);
-                if (empty($data['_embedded']['events'])) {
-                    continue;
+                $eventsList = $data['_embedded']['events'] ?? [];
+                if (empty($eventsList)) {
+                    $pageElapsedMs = (int)round((microtime(true) - $pageStartTs) * 1000);
+                    $this->log("[TICKETMASTER] {$marketKey} page {$page} returned 0 events in {$pageElapsedMs}ms; ending query page loop.");
+                    break;
                 }
 
                 foreach ($data['_embedded']['events'] as $event) {
@@ -1388,7 +1433,11 @@ class EventAggregator {
                     }
 
                     if ($this->isIgnoredArtistName($artistName)) {
-                        $this->log("[IGNORE] Skipped blocked artist '{$artistName}' from Ticketmaster.");
+                        static $loggedIgnored = [];
+                        if (!isset($loggedIgnored[$artistName])) {
+                            $loggedIgnored[$artistName] = true;
+                            $this->log("[IGNORE] Skipped blocked artist '{$artistName}' from Ticketmaster.");
+                        }
                         continue;
                     }
 
@@ -1421,10 +1470,14 @@ class EventAggregator {
 
                     // Double-check live page if start time is date-only placeholder (00:00:00 or 12:00:00)
                     $timeOnly = date('H:i:s', strtotime($startTimeSql));
-                    if ($timeOnly === '00:00:00' || $timeOnly === '12:00:00') {
+                    if (($timeOnly === '00:00:00' || $timeOnly === '12:00:00') && !$skipTicketPageTimeScrape) {
                         $targetUrl = $event['url'] ?? null;
                         if (!empty($targetUrl) && strpos($targetUrl, 'http') === 0) {
-                            $pageHtml = @file_get_contents($targetUrl);
+                            $ticketPageStartTs = microtime(true);
+                            $ctx = stream_context_create(['http' => ['timeout' => 5, 'ignore_errors' => true]]);
+                            $pageHtml = @file_get_contents($targetUrl, false, $ctx);
+                            $pageTicketPageFetchCount++;
+                            $pageTicketPageFetchMs += (microtime(true) - $ticketPageStartTs) * 1000;
                             if (!empty($pageHtml)) {
                                 $datePart = date('Y-m-d', strtotime($startTimeSql));
                                 if (preg_match('/\bdoors?\s*(?:open)?\s*(?:at|:)?\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b/i', $pageHtml, $dM)) {
@@ -1450,7 +1503,10 @@ class EventAggregator {
 
                     $isMetal = $this->isMetalArtist($artistName);
                     if (!$isMetal) {
+                        $genreStartTs = microtime(true);
                         $isMetal = $this->fetchArtistGenreMetadata($artistName);
+                        $pageMusicbrainzCalls++;
+                        $pageMusicbrainzMs += (microtime(true) - $genreStartTs) * 1000;
                         if ($isMetal) {
                             $approvedNames = $this->seedApprovedArtistNames($artistName);
                             $this->recordAutoApprovedArtists($approvedNames);
@@ -1498,6 +1554,15 @@ class EventAggregator {
                     $marketIngested++;
                     $totalIngested++;
                 }
+
+                $pageElapsedMs = (int)round((microtime(true) - $pageStartTs) * 1000);
+                $pageGenreMsRounded = (int)round($pageMusicbrainzMs);
+                $pageTicketFetchMsRounded = (int)round($pageTicketPageFetchMs);
+                $this->log("[TICKETMASTER] {$marketKey} page {$page} processed " . count($eventsList) . " events in {$pageElapsedMs}ms (musicbrainz_calls={$pageMusicbrainzCalls}, musicbrainz_ms={$pageGenreMsRounded}, ticket_page_fetches={$pageTicketPageFetchCount}, ticket_page_fetch_ms={$pageTicketFetchMsRounded}).");
+
+                if (count($eventsList) < 200) {
+                    break;
+                }
             }
         }
 
@@ -1512,9 +1577,9 @@ class EventAggregator {
     /**
      * 2. Ingestion: Bandsintown API (Discovery-First Geographic Search)
      */
-    public function fetchBandsintown() {
+    public function fetchBandsintown($targetMarket = null) {
         $this->log("[BANDSINTOWN] Public location search endpoint is deprecated by provider (HTTP 403). Routing seamlessly to registered artist ingestion pipeline...");
-        return $this->fetchBandsintownFallback();
+        return $this->fetchBandsintownFallback($targetMarket);
     }
 
     /**
@@ -1524,7 +1589,7 @@ class EventAggregator {
         $marketLabel = $this->normalizeMarketKey($marketHint) ?? 'all-markets';
         $this->log("[FALLBACK] Querying Bandsintown events by artist registry concurrently for {$marketLabel}...");
 
-        $artists = $this->db->query("SELECT artist_name FROM metal_artists")->fetchAll(PDO::FETCH_COLUMN);
+        $artists = $this->db->query("SELECT artist_name FROM approved_artists")->fetchAll(PDO::FETCH_COLUMN);
         $appId = BANDSINTOWN_APP_ID;
         $totalIngestedCount = 0;
 
@@ -1649,10 +1714,10 @@ class EventAggregator {
     /**
      * 3. Ingestion: Eventbrite Music Discovery (Powered by market_cities database centroids)
      */
-    public function fetchEventbrite() {
-        $this->log("Starting Eventbrite music event discovery via market centroids...");
+    public function fetchEventbrite($targetMarket = null) {
+        $this->log("Starting Eventbrite music event discovery via market centroids" . (!empty($targetMarket) ? " for market '{$targetMarket}'" : "") . "...");
         $totalIngested = 0;
-        $centroids = $this->getMarketSearchCentroids();
+        $centroids = $this->getMarketSearchCentroids($targetMarket);
 
         foreach ($centroids as $c) {
             $market = $c['market'];
@@ -1669,8 +1734,8 @@ class EventAggregator {
                 curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate');
             }
             curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
             $html = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
