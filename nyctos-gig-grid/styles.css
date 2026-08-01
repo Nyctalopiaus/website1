@@ -1949,21 +1949,36 @@ select option,
         gap: 0.9rem;
     }
 
+    .controls-row-actions-secondary {
+        flex-wrap: wrap;
+    }
+
+    .genre-filter-group {
+        flex: 1 1 100% !important;
+        margin-bottom: 0.3rem;
+        order: -1;
+    }
+
+    .genre-filter-group select {
+        width: 100%;
+    }
 
     .filter-actions-group {
         display: flex;
         align-items: center;
-        justify-content: flex-end;
+        justify-content: flex-start;
         gap: 0.45rem;
-        width: auto !important;
-        flex: 0 0 auto !important;
-        margin-left: auto;
+        width: 100% !important;
+        flex: 1 1 auto !important;
+        margin-left: 0 !important;
+        flex-wrap: wrap;
     }
 
     .filter-actions-group .btn-premium-filter {
-        flex: 0 0 auto !important;
-        width: auto !important;
+        flex: 0 0 calc(50% - 0.225rem);
+        min-width: 0;
     }
+
     .controls-group {
         width: 100%;
         flex-direction: column;
@@ -3367,13 +3382,15 @@ select option,
 
     .filter-actions-group {
         gap: 0.45rem;
-        width: auto !important;
-        flex: 0 0 auto !important;
+        width: 100% !important;
+        flex: 1 1 auto !important;
+        flex-wrap: wrap;
     }
 
     .filter-actions-group .btn-premium-filter {
-        flex: 0 0 auto !important;
+        flex: 0 0 calc(50% - 0.225rem);
         width: auto !important;
+        min-width: 0;
     }
 
     .month-select-section {
@@ -3392,8 +3409,9 @@ select option,
     }
 
     #btn-reset-ignored {
-        width: 100% !important;
-        justify-content: center !important;
+        flex: 0 0 calc(50% - 0.225rem);
+        width: auto !important;
+        justify-content: flex-start;
     }
 
     .event-info {

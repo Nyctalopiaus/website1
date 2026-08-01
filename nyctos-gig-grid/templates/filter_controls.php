@@ -136,7 +136,7 @@ if (!in_array($activeCountry, ['scotland', 'england', 'wales', 'ireland'], true)
     </div>
 
     <!-- Row 4: Genres (Left) + Action Buttons (Right) -->
-    <div class="controls-row-actions-secondary" style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 0.45rem; margin-top: 0.4rem; flex-wrap: nowrap;">
+    <div class="controls-row-actions-secondary" style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 0.45rem; margin-top: 0.4rem; flex-wrap: wrap;">
         <div class="genre-filter-group" style="flex: 0 0 auto;">
             <select id="genre-select">
                 <?php foreach ($genreBuckets as $bucketKey => $bucket): ?>
