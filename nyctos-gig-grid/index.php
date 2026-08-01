@@ -168,11 +168,12 @@ usort($intlCountryMarkets, function($a, $b) { return strcmp($a['name'], $b['name
 $activeRegionCategory = ($marketMetadata[$activeMarket]['type'] ?? 'us') === 'intl' ? 'intl' : 'us';
 
 // Fetch unique months containing upcoming events in the SQLite database.
+// Cutoff: now - 4h show buffer - 7h PDT offset = -11h UTC, covers CA (PDT) and earlier timezones.
 $monthsStmt = $db->prepare("
     SELECT DISTINCT strftime('%Y-%m', start_time) AS event_month 
     FROM events 
     WHERE market = :market
-      AND start_time >= datetime('now', '-4 hours') 
+      AND start_time >= datetime('now', '-11 hours') 
     ORDER BY event_month ASC
 ");
 $monthsStmt->execute([':market' => $activeMarket]);
@@ -216,7 +217,7 @@ foreach ($monthsToFetch as $month) {
                             AND LOWER(TRIM(mc.region)) = :country_filter
               AND e.start_time >= :month_start
               AND e.start_time < :next_month_start
-              AND e.start_time >= datetime('now', '-4 hours') 
+              AND e.start_time >= datetime('now', '-11 hours')
             ORDER BY e.start_time ASC
         ");
         $stmt->execute([
@@ -233,7 +234,7 @@ foreach ($monthsToFetch as $month) {
             WHERE e.market = :market
               AND e.start_time >= :month_start
               AND e.start_time < :next_month_start
-              AND e.start_time >= datetime('now', '-4 hours') 
+              AND e.start_time >= datetime('now', '-11 hours')
               AND (
                     :geo_enabled = 0
                     OR v.latitude IS NULL

@@ -84,7 +84,6 @@ export function initFilters(opts = {}) {
   };
   const navigateToMarketScope = (nextUrl) => {
     if (!nextUrl) return;
-    // Force full SSR refresh for market/country switches to avoid stale card state.
     window.location.assign(nextUrl);
   };
 
@@ -129,8 +128,9 @@ export function initFilters(opts = {}) {
   }
 
   if (intlCountrySelect) {
-    intlCountrySelect.addEventListener('change', () => {
+    intlCountrySelect.addEventListener('change', (e) => {
       const nextUrl = intlCountrySelect.value;
+      console.log('[GigGrid] Intl country changed:', nextUrl);
       if (!nextUrl) return;
 
       try {

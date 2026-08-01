@@ -34,7 +34,7 @@ body {
     background-image: linear-gradient(rgba(10, 11, 13, 0.7), rgba(10, 11, 13, 0.8)), url('../assets/backstage_bg.jpg');
     background-size: cover;
     background-position: center;
-    background-attachment: scroll;
+    background-attachment: fixed;
     color: var(--text-medium);
     font-family: var(--font-body);
     line-height: 1.6;
@@ -1044,6 +1044,7 @@ select option,
 
 .region-controls {
     display: flex;
+    flex: 0 0 auto;
     background: rgba(0, 0, 0, 0.3);
     border-radius: 6px;
     border: 1px solid var(--card-border);
@@ -3359,7 +3360,7 @@ select option,
     }
 
     .region-btn {
-        flex: 1 1 auto;
+        flex: 0 0 auto;
         min-width: 120px;
         white-space: nowrap;
     }
@@ -3743,7 +3744,7 @@ select option,
     display: flex !important;
     align-items: center !important;
     gap: 0.35rem !important;
-    flex: 1 1 auto !important;
+    flex: 0 0 auto !important;
     max-width: 100% !important;
 }
 
@@ -4096,16 +4097,29 @@ select option,
         display: flex !important;
         flex-wrap: wrap !important;
         gap: 0.35rem !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
         overflow: visible !important;
     }
 
     .controls-row-secondary .region-controls .region-btn {
-        flex: 1 1 auto !important;
+        flex: 0 0 auto !important;
+        width: auto !important;
         min-width: 0 !important;
-        padding: 0.4rem 0.55rem !important;
+        padding: 0.4rem 0.65rem !important;
         font-size: 0.72rem !important;
         text-align: center !important;
         white-space: nowrap !important;
+        background: rgba(20, 22, 26, 0.85) !important;
+        border: 1px solid var(--card-border) !important;
+        border-radius: 6px !important;
+    }
+
+    .controls-row-secondary .region-controls .region-btn.active {
+        background: linear-gradient(135deg, rgba(255, 85, 0, 0.9), rgba(220, 38, 38, 0.9)) !important;
+        border-color: rgba(255, 85, 0, 0.8) !important;
+        color: #ffffff !important;
     }
 
     .controls-row-secondary .dropdown-filters-group {
