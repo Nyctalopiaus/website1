@@ -50,18 +50,34 @@ function fetchSetlistFromSetlistFm($artist, $date, $city) {
     $songs = [];
     $shouldCache = false;
 
+    $executeApiCall = function($url) use ($apiKey) {
+        $res = fetchHttpResource($url, [
+            'timeout' => 12,
+            'user_agent' => 'NyctosGigGrid/1.0',
+            'headers' => [
+                'Accept: application/json',
+                'x-api-key: ' . $apiKey
+            ]
+        ]);
+        // Handle Setlist.fm HTTP 429 rate-limiting with 1s retry
+        if (($res['status'] ?? 0) === 429) {
+            usleep(1000000);
+            $res = fetchHttpResource($url, [
+                'timeout' => 12,
+                'user_agent' => 'NyctosGigGrid/1.0',
+                'headers' => [
+                    'Accept: application/json',
+                    'x-api-key: ' . $apiKey
+                ]
+            ]);
+        }
+        return $res;
+    };
+
     // 1. Try to find the exact setlist for this show
     $formattedDate = date('d-m-Y', strtotime($date));
     $url = "https://api.setlist.fm/rest/1.0/search/setlists?artistName=" . urlencode($artist) . "&date=" . urlencode($formattedDate) . "&cityName=" . urlencode($city);
-
-    $result = fetchHttpResource($url, [
-        'timeout' => 12,
-        'user_agent' => 'NyctosGigGrid/1.0',
-        'headers' => [
-            'Accept: application/json',
-            'x-api-key: ' . $apiKey
-        ]
-    ]);
+    $result = $executeApiCall($url);
 
     $response = $result['body'];
     $httpCode = $result['status'];
@@ -77,51 +93,44 @@ function fetchSetlistFromSetlistFm($artist, $date, $city) {
         }
     }
     
-    // 2. Fallback: Search for the most recent past setlist for this artist
+    // 2. Fallback: Search pages 1 and 2 for the most recent past setlist with songs
     if (empty($songs)) {
-        $url = "https://api.setlist.fm/rest/1.0/search/setlists?artistName=" . urlencode($artist) . "&p=1";
+        for ($page = 1; $page <= 2; $page++) {
+            $url = "https://api.setlist.fm/rest/1.0/search/setlists?artistName=" . urlencode($artist) . "&p=" . $page;
+            $fallbackResult = $executeApiCall($url);
 
-        $fallbackResult = fetchHttpResource($url, [
-            'timeout' => 12,
-            'user_agent' => 'NyctosGigGrid/1.0',
-            'headers' => [
-                'Accept: application/json',
-                'x-api-key: ' . $apiKey
-            ]
-        ]);
+            $response = $fallbackResult['body'];
+            $httpCodeFallback = $fallbackResult['status'];
 
-        $response = $fallbackResult['body'];
-        $httpCodeFallback = $fallbackResult['status'];
-
-        if ($httpCodeFallback === 200 || $httpCodeFallback === 404) {
-            $shouldCache = true;
-        }
-        
-        if ($httpCodeFallback === 200 && !empty($response)) {
-            $data = json_decode($response, true);
-            if (!empty($data['setlist']) && is_array($data['setlist'])) {
-                foreach ($data['setlist'] as $sl) {
-                    $candidateSongs = parseSongsFromSetlistFmResponse($sl);
-                    if (!empty($candidateSongs)) {
-                        $refCity = !empty($sl['venue']['city']['name']) ? $sl['venue']['city']['name'] : 'Unknown City';
-                        $refState = !empty($sl['venue']['city']['stateCode']) ? $sl['venue']['city']['stateCode'] : '';
-                        $refStateText = !empty($refState) ? ", " . $refState : "";
-                        $refVenue = !empty($sl['venue']['name']) ? $sl['venue']['name'] : '';
-                        $refDateRaw = !empty($sl['eventDate']) ? $sl['eventDate'] : '';
-                        
-                        $refDateFormatted = '';
-                        if (!empty($refDateRaw)) {
-                            // Setlist.fm eventDate is dd-MM-yyyy. Reformat to yyyy-MM-dd so strtotime parses reliably.
-                            $dateParts = explode('-', $refDateRaw);
-                            if (count($dateParts) === 3) {
-                                $refDateRaw = $dateParts[2] . '-' . $dateParts[1] . '-' . $dateParts[0];
+            if ($httpCodeFallback === 200 || $httpCodeFallback === 404) {
+                $shouldCache = true;
+            }
+            
+            if ($httpCodeFallback === 200 && !empty($response)) {
+                $data = json_decode($response, true);
+                if (!empty($data['setlist']) && is_array($data['setlist'])) {
+                    foreach ($data['setlist'] as $sl) {
+                        $candidateSongs = parseSongsFromSetlistFmResponse($sl);
+                        if (!empty($candidateSongs)) {
+                            $refCity = !empty($sl['venue']['city']['name']) ? $sl['venue']['city']['name'] : 'Unknown City';
+                            $refState = !empty($sl['venue']['city']['stateCode']) ? $sl['venue']['city']['stateCode'] : '';
+                            $refStateText = !empty($refState) ? ", " . $refState : "";
+                            $refVenue = !empty($sl['venue']['name']) ? $sl['venue']['name'] : '';
+                            $refDateRaw = !empty($sl['eventDate']) ? $sl['eventDate'] : '';
+                            
+                            $refDateFormatted = '';
+                            if (!empty($refDateRaw)) {
+                                $dateParts = explode('-', $refDateRaw);
+                                if (count($dateParts) === 3) {
+                                    $refDateRaw = $dateParts[2] . '-' . $dateParts[1] . '-' . $dateParts[0];
+                                }
+                                $refDateFormatted = date('M j, Y', strtotime($refDateRaw));
                             }
-                            $refDateFormatted = date('M j, Y', strtotime($refDateRaw));
+                            
+                            $bannerText = "✨ Expected Tour Setlist (from " . $refVenue . " in " . $refCity . $refStateText . " on " . $refDateFormatted . ")";
+                            $songs = array_merge([$bannerText], $candidateSongs);
+                            break 2; // Exit page loop
                         }
-                        
-                        $bannerText = "\xE2\x9C\xA8 Expected Tour Setlist (from " . $refVenue . " in " . $refCity . $refStateText . " on " . $refDateFormatted . ")";
-                        $songs = array_merge([$bannerText], $candidateSongs);
-                        break;
                     }
                 }
             }

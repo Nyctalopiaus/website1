@@ -368,8 +368,12 @@ if (!function_exists('getMarketLocationSuffix')) {
     function getMarketLocationSuffix($market, $cityName = '') {
         $normalized = strtolower(trim((string)$market));
         switch ($normalized) {
+            case 'texas':
+                return 'TX';
+            case 'california':
             case 'socal':
                 return 'CA';
+            case 'uk':
             case 'scotland':
                 $cLower = strtolower(trim((string)$cityName));
                 if ($cLower === '') return 'England';
@@ -388,6 +392,7 @@ if (!function_exists('getMarketLocationSuffix')) {
                     if (strpos($cLower, $kw) !== false) return 'Ireland';
                 }
                 return 'England';
+            case 'colorado':
             case 'front-range':
             default:
                 return 'CO';

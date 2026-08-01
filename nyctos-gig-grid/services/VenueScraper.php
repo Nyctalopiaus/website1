@@ -59,6 +59,14 @@ class VenueScraper {
             $this->logs[] = "[REDIRECT] Skylark Lounge static site contains legacy archive. Routing to live Do303 venue calendar...";
             $url = 'https://do303.com/venues/the-skylark-lounge';
         }
+        if (strpos($url, 'washingtonsfoco.com') !== false || strpos($url, 'washingtons') !== false) {
+            $this->logs[] = "[REDIRECT] Washington's FoCo static site blocked/timed out. Routing to live Do303 venue calendar...";
+            $url = 'https://do303.com/venues/washington-s';
+        }
+        if (strpos($url, 'armoryfoco.com') !== false || strpos($url, 'bohemianlivemusic.com') !== false) {
+            $this->logs[] = "[REDIRECT] The Armory FoCo returned HTTP 202 challenge. Routing to live Do303 venue calendar...";
+            $url = 'https://do303.com/venues/the-armory';
+        }
         $this->logs[] = "Initializing scraping process for URL: " . $url;
         
         $ch = curl_init();
@@ -91,7 +99,7 @@ class VenueScraper {
             curl_close($ch);
         }
 
-        if (empty($html) || $httpCode !== 200) {
+        if (empty($html) || ($httpCode !== 200 && $httpCode !== 202)) {
             $this->logs[] = "[WARN] Failed to load HTML from " . $url . " (HTTP " . $httpCode . "). Returning empty event list.";
             if ($aggregator !== null) {
                 if ($httpCode !== 200 && $httpCode > 0) {
@@ -128,6 +136,11 @@ class VenueScraper {
                 $fullText = strip_tags($m[5]);
                 $cleanTitle = trim(preg_replace('/\s+/', ' ', $fullText));
                 if (empty($cleanTitle) || strlen($cleanTitle) < 2) continue;
+                
+                // Skip date group header links (e.g. "Saturday Aug 1", "Sunday Aug 30")
+                if (preg_match('/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d+$/i', $cleanTitle)) {
+                    continue;
+                }
                 
                 $timeSql = "{$year}-{$month}-{$day} 19:00:00";
                 $eventUrl = 'https://do303.com' . $eventPath;
@@ -302,6 +315,7 @@ class VenueScraper {
 
                 $artistName = trim(preg_replace('/\s+/', ' ', $rawTitle));
                 if (empty($artistName) || empty($rawDate)) continue;
+                if (preg_match('/^(tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)?\s*\d{1,2})?$/i', $artistName)) continue;
 
                 $year = date('Y');
                 $timestamp = strtotime("{$rawDate} {$year}");

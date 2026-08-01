@@ -9,6 +9,10 @@ require_once __DIR__ . '/../genre_buckets.php';
 require_once __DIR__ . '/../genre_overrides.php';
 require_once __DIR__ . '/../ignored_tags.php';
 require_once __DIR__ . '/LogRotatorService.php';
+require_once __DIR__ . '/GenreClassifierService.php';
+require_once __DIR__ . '/LocationResolverService.php';
+require_once __DIR__ . '/PriceTrackerService.php';
+require_once __DIR__ . '/ApiIngestionService.php';
 
 class EventAggregator {
     private $db;
@@ -21,11 +25,22 @@ class EventAggregator {
     private $stmtSaveInsert = null;
     private $stmtPriceSnapshot = null;
 
+    private $genreClassifier;
+    private $locationResolver;
+    private $priceTracker;
+    private $apiIngestion;
+
     public function __construct() {
         $this->db = getDbConnection();
         ensureDatabaseSchema($this->db);
         require_once __DIR__ . '/../db/seed.php';
         seedDatabaseDefaults($this->db);
+
+        $this->genreClassifier = new GenreClassifierService($this->db);
+        $this->locationResolver = new LocationResolverService($this->db);
+        $this->priceTracker = new PriceTrackerService($this->db);
+        $this->apiIngestion = new ApiIngestionService(function($msg) { $this->log($msg); });
+
         $this->genreOverrides = getGenreOverridesNormalized();
         $this->loadVenueWhitelist();
         $this->initRunMetrics();
@@ -135,6 +150,9 @@ class EventAggregator {
     }
 
     public function recordHttpNon200($source, $market, $httpCode, $context) {
+        if (($httpCode == 404 || $httpCode == '404') && strpos(strtolower((string)$source), 'bandsintown') !== false) {
+            return;
+        }
         $entry = sprintf('%s | market=%s | http=%s | %s', $this->normalizeSourceKey($source), $this->normalizeMarketKey($market) ?? 'unknown', (string)$httpCode, trim((string)$context));
         $this->appendUniqueError($this->runMetrics['errors']['http_non_200'], $entry);
     }
@@ -667,18 +685,22 @@ class EventAggregator {
         }
 
         $aliases = [
-            'frontrange' => 'front-range',
-            'front-range' => 'front-range',
-            'colorado' => 'front-range',
-            'co' => 'front-range',
-            'socal' => 'socal',
-            'california' => 'socal',
-            'ca' => 'socal',
-            'southern-california' => 'socal',
-            'southern california' => 'socal',
-            'la' => 'socal',
-            'scotland' => 'scotland',
-            'uk-scotland' => 'scotland'
+            'frontrange' => 'colorado',
+            'front-range' => 'colorado',
+            'colorado' => 'colorado',
+            'co' => 'colorado',
+            'socal' => 'california',
+            'california' => 'california',
+            'ca' => 'california',
+            'southern-california' => 'california',
+            'southern california' => 'california',
+            'la' => 'california',
+            'scotland' => 'uk',
+            'uk' => 'uk',
+            'uk-scotland' => 'uk',
+            'gb' => 'uk',
+            'texas' => 'texas',
+            'tx' => 'texas'
         ];
 
         return $aliases[$normalized] ?? $normalized;
@@ -691,14 +713,17 @@ class EventAggregator {
         }
 
         $market = $this->normalizeMarketKey($marketKey);
-        if ($market === 'front-range') {
+        if ($market === 'colorado') {
             return 'CO';
         }
-        if ($market === 'socal') {
+        if ($market === 'california') {
             return 'CA';
         }
-        if ($market === 'scotland') {
+        if ($market === 'uk') {
             return 'UK';
+        }
+        if ($market === 'texas') {
+            return 'TX';
         }
 
         return !empty($clean) ? $clean : null;
@@ -1151,11 +1176,13 @@ class EventAggregator {
 
             $targetMarket = null;
             if ($region === 'CO' || strtolower($region) === 'colorado') {
-                $targetMarket = 'front-range';
+                $targetMarket = 'colorado';
             } elseif ($region === 'CA' || strtolower($region) === 'california') {
-                $targetMarket = 'socal';
-            } elseif (in_array($country, ['GB', 'UK', 'SCOTLAND', 'GREAT BRITAIN', 'UNITED KINGDOM'], true) || in_array(strtolower($region), ['scotland'], true)) {
-                $targetMarket = 'scotland';
+                $targetMarket = 'california';
+            } elseif ($region === 'TX' || strtolower($region) === 'texas') {
+                $targetMarket = 'texas';
+            } elseif (in_array($country, ['GB', 'UK', 'SCOTLAND', 'GREAT BRITAIN', 'UNITED KINGDOM'], true) || in_array(strtolower($region), ['scotland', 'uk'], true)) {
+                $targetMarket = 'uk';
             }
 
             if ($targetMarket !== null) {
@@ -1239,27 +1266,39 @@ class EventAggregator {
 
             foreach ($queries as $qParam) {
                 for ($page = 0; $page < 5; $page++) {
-                    if ($page > 0) {
-                        usleep(200000);
-                    }
+                    usleep(250000);
 
                     $url = "https://app.ticketmaster.com/discovery/v2/events.json?apikey=" . urlencode($apiKey)
                         . "&" . $qParam
                         . "&classificationName=music&size=100&page=" . $page;
 
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $url);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                if (defined('CURLOPT_ENCODING')) {
-                    curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate');
-                }
-                curl_setopt($ch, CURLOPT_USERAGENT, 'NyctosGigGridAggregator/1.0');
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-                $response = curl_exec($ch);
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                $curlError = curl_error($ch);
-                curl_close($ch);
+                    $response = false;
+                    $httpCode = 0;
+                    $curlError = '';
+                    $maxAttempts = 3;
+
+                    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                        $ch = curl_init();
+                        curl_setopt($ch, CURLOPT_URL, $url);
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        if (defined('CURLOPT_ENCODING')) {
+                            curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate');
+                        }
+                        curl_setopt($ch, CURLOPT_USERAGENT, 'NyctosGigGridAggregator/1.0');
+                        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+                        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+                        $response = curl_exec($ch);
+                        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                        $curlError = curl_error($ch);
+                        curl_close($ch);
+
+                        if ($httpCode === 429 && $attempt < $maxAttempts) {
+                            $this->log("[WARN] Ticketmaster HTTP 429 Rate Limited on page {$page} for {$marketKey}. Retrying in 1.2s (Attempt {$attempt}/{$maxAttempts})...");
+                            usleep(1200000);
+                            continue;
+                        }
+                        break;
+                    }
 
                 if ($response === false || $httpCode === 0) {
                     $this->log("[ERROR] Ticketmaster failed connection handle on page {$page} for {$marketKey}: {$curlError}");

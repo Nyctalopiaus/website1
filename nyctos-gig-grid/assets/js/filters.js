@@ -1,4 +1,15 @@
-import { ICONS, findVenueDetails } from './utils.js';
+
+const ICONS = {
+  star: '⭐',
+  starFilled: '★',
+  starEmpty: '☆'
+};
+
+function findVenueDetails(venueData, rawVenue) {
+  if (!Array.isArray(venueData)) return null;
+  const normalized = String(rawVenue || '').toLowerCase().trim();
+  return venueData.find(item => String(item?.venue_name || '').toLowerCase().trim() === normalized) || null;
+}
 
 function containsAnyKeyword(value, keywords) {
   return keywords.some(keyword => value.includes(keyword));
@@ -12,7 +23,16 @@ function normalizeLocationToken(value) {
     .trim();
 }
 
-export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInterestedIds, getIgnoredEventIds, saveIgnoredEventIds }) {
+export function initFilters(opts = {}) {
+  const getInterestedIds = opts.getInterestedIds || function() { try { return JSON.parse(localStorage.getItem('gig_grid_interested_events') || '[]'); } catch(e) { return []; } };
+  const saveInterestedIds = opts.saveInterestedIds || function(ids) { try { localStorage.setItem('gig_grid_interested_events', JSON.stringify(ids)); } catch(e) {} };
+  const getIgnoredEventIds = opts.getIgnoredEventIds || function() { try { return JSON.parse(localStorage.getItem('gig_grid_ignored_events') || '[]'); } catch(e) { return []; } };
+  const saveIgnoredEventIds = opts.saveIgnoredEventIds || function(ids) { try { localStorage.setItem('gig_grid_ignored_events', JSON.stringify(ids)); } catch(e) {} };
+  const venueData = Array.isArray(opts.venueData) ? opts.venueData : [];
+  const genreBuckets = (opts.genreBuckets && typeof opts.genreBuckets === 'object')
+    ? opts.genreBuckets
+    : { all: { label: 'All Genres', title: 'All events' } };
+
   console.log('[GigGrid] initFilters loaded v20260726_v5');
   const venueList = document.getElementById('venue-checkboxes-list');
   const dropdownToggle = document.getElementById('venue-dropdown-toggle');
@@ -36,14 +56,189 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   let filterInterestedOnly = false;
   let filterJustAnnounced = false;
   let lastActiveMonthView = (monthSelect && monthSelect.value !== 'interested-view') ? monthSelect.value : null;
-  const activeMarket = document.body?.dataset?.market || 'front-range';
+  const activeMarket = document.body?.dataset?.market || 'colorado';
+  const INTL_MARKETS = new Set(['uk', 'england', 'scotland', 'wales', 'ireland']);
+  const activeCountry = document.body?.dataset?.country || (INTL_MARKETS.has(activeMarket) ? activeMarket : '');
+  const eventsApiUrl = document.body?.dataset?.eventsApi || 'api/events.php';
   const marketRegionStorageKey = `gig_grid_active_regions_${activeMarket}`;
+  const navigateTo = (nextUrl) => {
+    if (!nextUrl) return;
+    if (typeof window.__softNavigate === 'function') {
+      window.__softNavigate(nextUrl);
+      return;
+    }
+    window.location.assign(nextUrl);
+  };
+  const navigateToMarketScope = (nextUrl) => {
+    if (!nextUrl) return;
+    // Force full SSR refresh for market/country switches to avoid stale card state.
+    window.location.assign(nextUrl);
+  };
 
-  const CHUNK_SIZE = 15;
+  // Handle America vs International Toggle Buttons & Instant Market Navigation
+  const regionToggleBtns = document.querySelectorAll('.region-toggle-btn');
+  const usStatesContainer = document.getElementById('us-states-select-container');
+  const intlCountriesContainer = document.getElementById('intl-countries-select-container');
+  const usStateSelect = document.getElementById('us-state-dropdown-select');
+  const intlCountrySelect = document.getElementById('intl-country-dropdown-select');
+
+  function findOptionByParam(selectEl, paramName, expectedValue) {
+    if (!selectEl || !expectedValue) return null;
+    const normalizedExpected = String(expectedValue).toLowerCase();
+    return Array.from(selectEl.options).find(opt => {
+      try {
+        const parsed = new URL(opt.value, window.location.origin);
+        const actual = (parsed.searchParams.get(paramName) || '').toLowerCase();
+        return actual === normalizedExpected;
+      } catch (_) {
+        return false;
+      }
+    }) || null;
+  }
+
+  if (activeMarket === 'uk' && intlCountrySelect) {
+    const matchedCountryOption = findOptionByParam(intlCountrySelect, 'region', activeCountry || 'england');
+    if (matchedCountryOption) {
+      intlCountrySelect.value = matchedCountryOption.value;
+    }
+  } else if (INTL_MARKETS.has(activeMarket) && intlCountrySelect) {
+    const matchedCountryOption = findOptionByParam(intlCountrySelect, 'market', activeMarket);
+    if (matchedCountryOption) {
+      intlCountrySelect.value = matchedCountryOption.value;
+    }
+  }
+
+  if (!INTL_MARKETS.has(activeMarket) && usStateSelect) {
+    const matchedMarketOption = findOptionByParam(usStateSelect, 'market', activeMarket);
+    if (matchedMarketOption) {
+      usStateSelect.value = matchedMarketOption.value;
+    }
+  }
+
+  if (intlCountrySelect) {
+    intlCountrySelect.addEventListener('change', () => {
+      const nextUrl = intlCountrySelect.value;
+      if (!nextUrl) return;
+
+      try {
+        localStorage.removeItem(marketRegionStorageKey);
+      } catch (_) {}
+
+      navigateToMarketScope(nextUrl);
+    });
+  }
+
+  if (usStateSelect) {
+    usStateSelect.addEventListener('change', () => {
+      const nextUrl = usStateSelect.value;
+      if (!nextUrl) return;
+      navigateToMarketScope(nextUrl);
+    });
+  }
+
+  regionToggleBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetGroup = btn.getAttribute('data-target-group');
+      regionToggleBtns.forEach(b => b.classList.toggle('active', b === btn));
+
+      if (targetGroup === 'us') {
+        if (usStatesContainer) usStatesContainer.style.display = 'inline-block';
+        if (intlCountriesContainer) intlCountriesContainer.style.display = 'none';
+
+        const isCurrentUs = (activeMarket === 'colorado' || activeMarket === 'california' || activeMarket === 'texas');
+        if (!isCurrentUs && usStateSelect && usStateSelect.value) {
+          navigateToMarketScope(usStateSelect.value);
+        }
+      } else {
+        if (usStatesContainer) usStatesContainer.style.display = 'none';
+        if (intlCountriesContainer) intlCountriesContainer.style.display = 'inline-block';
+
+        const isCurrentIntl = INTL_MARKETS.has(activeMarket);
+        if (!isCurrentIntl && intlCountrySelect && intlCountrySelect.value) {
+          navigateToMarketScope(intlCountrySelect.value);
+        }
+      }
+    });
+  });
+
+  const CHUNK_SIZE = 8;
   let visibleChunkLimit = CHUNK_SIZE;
+  const pendingChunkLoads = new Set();
 
   function resetChunkLimit() {
     visibleChunkLimit = CHUNK_SIZE;
+  }
+
+  async function loadMoreFromServer(view) {
+    if (!view || view.dataset.hasMore !== '1') return 0;
+    const month = view.dataset.month || '';
+    if (!month) return 0;
+
+    const viewKey = view.id || month;
+    if (pendingChunkLoads.has(viewKey)) return 0;
+    pendingChunkLoads.add(viewKey);
+
+    const loadMoreBtn = view.querySelector('.load-more-container .btn-load-more');
+    if (loadMoreBtn) {
+      loadMoreBtn.disabled = true;
+      loadMoreBtn.innerHTML = '<span>Loading...</span>';
+    }
+
+    try {
+      const offset = Number(view.dataset.nextOffset || 0);
+      const params = new URLSearchParams({
+        market: activeMarket,
+        region: activeCountry,
+        month,
+        offset: String(offset),
+        limit: String(CHUNK_SIZE)
+      });
+
+      const response = await fetch(`${eventsApiUrl}?${params.toString()}`, {
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Chunk request failed (${response.status})`);
+      }
+
+      const payload = await response.json();
+      if (!payload || payload.status !== 'ok') {
+        throw new Error('Invalid chunk response payload');
+      }
+
+      if (payload.html) {
+        const existingLoadMore = view.querySelector('.load-more-container');
+        if (existingLoadMore) {
+          existingLoadMore.insertAdjacentHTML('beforebegin', payload.html);
+        } else {
+          view.insertAdjacentHTML('beforeend', payload.html);
+        }
+      }
+
+      const loadedCount = Number(payload.loaded_count || 0);
+      const totalGroups = Number(payload.total_groups || view.dataset.totalGroups || 0);
+      const previousLoaded = Number(view.dataset.loadedGroups || 0);
+
+      view.dataset.loadedGroups = String(previousLoaded + loadedCount);
+      view.dataset.nextOffset = String(Number(payload.next_offset || (offset + loadedCount)));
+      view.dataset.totalGroups = String(totalGroups);
+      view.dataset.hasMore = payload.has_more ? '1' : '0';
+
+      return loadedCount;
+    } catch (error) {
+      console.error('Failed loading additional event cards', error);
+      if (loadMoreBtn) {
+        loadMoreBtn.disabled = false;
+        loadMoreBtn.innerHTML = '<span>Load More Shows</span>';
+      }
+      return 0;
+    } finally {
+      pendingChunkLoads.delete(viewKey);
+    }
   }
 
   function saveActiveRegions() {
@@ -108,31 +303,66 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   }
 
   const regionCitiesByMarket = {
-    'front-range': {
+    colorado: {
       springs: ['colorado springs', 'pueblo', 'castle rock'],
       denver: ['denver', 'boulder', 'golden', 'morrison', 'englewood', 'littleton', 'arvada', 'westminster', 'thornton', 'lakewood', 'greenwood village'],
       north: ['fort collins', 'greeley', 'loveland', 'longmont', 'bellvue'],
       west: ['grand junction', 'fruita', 'palisade', 'montrose', 'telluride', 'aspen', 'steamboat springs', 'glenwood springs']
     },
-    socal: {
+    california: {
       norcal: ['san francisco', 'oakland', 'berkeley', 'san jose', 'mountain view', 'napa', 'roseville', 'wheatland', 'lincoln', 'sacramento', 'concord'],
       la: ['los angeles', 'la', 'inglewood', 'hollywood', 'west hollywood', 'pasadena', 'pomona'],
       oc: ['anaheim', 'santa ana', 'orange', 'fullerton', 'costa mesa', 'irvine'],
       sd: ['san diego', 'chula vista', 'la mesa', 'el cajon', 'oceanside', 'solana beach']
     },
     scotland: {
-      scotland: ['glasgow', 'edinburgh', 'dundee', 'aberdeen', 'stirling', 'perth', 'falkirk', 'paisley', 'inverness', 'kinross', 'dunfermline', 'bathgate', 'highlands', 'orkney', 'greenock', 'ayr', 'kilmarnock', 'inverurie', 'fort william', 'elgin', 'dumfries', 'arbroath', 'st andrews', 'kirkcaldy', 'motherwell', 'hamilton', 'livingston', 'glenrothes', 'cumbernauld', 'irvine', 'caird', 'strathaven', 'galashiels', 'hawick', 'kelso', 'selkirk', 'peebles', 'dumbarton', 'helensburgh', 'oban', 'wick', 'thurso', 'lerwick', 'stornoway'],
-      wales: ['cardiff', 'swansea', 'newport', 'wrexham', 'abertillery', 'merthyr tydfil', 'llandudno', 'bangor', 'rhyl', 'aberystwyth', 'bridgend', 'barry', 'neath', 'port talbot', 'cwmbran', 'pontypridd', 'caerphilly', 'llanelli', 'colwyn bay'],
-      ireland: ['belfast', 'dublin', 'cork', 'galway', 'limerick', 'derry', 'londonderry', 'kilkenny', 'waterford', 'drogheda', 'dundalk', 'sligo', 'wexford', 'athlone', 'letterkenny', 'killarney', 'tralee', 'bray', 'navan', 'ennis', 'carlow'],
-      england: ['london', 'manchester', 'birmingham', 'bristol', 'southampton', 'leeds', 'sheffield', 'newcastle', 'liverpool', 'brighton', 'nottingham', 'oxford', 'cambridge', 'portsmouth', 'exeter', 'norwich', 'hull', 'york']
+      glasgow: ['glasgow', 'paisley', 'greenock', 'kilmarnock', 'ayr', 'dumbarton', 'hamilton', 'motherwell', 'livingston', 'a\' chill bheag', 'campbeltown'],
+      edinburgh: ['edinburgh', 'dunfermline', 'bathgate', 'falkirk', 'stirling', 'perth', 'galashiels', 'hawick', 'kelso', 'selkirk'],
+      aberdeen: ['aberdeen', 'dundee', 'inverurie', 'elgin', 'arbroath', 'st andrews', 'glenrothes', 'kirkcaldy', 'mintlaw'],
+      highlands: ['inverness', 'fort william', 'wick', 'thurso', 'lerwick', 'stornoway', 'orkney', 'oban', 'caird', 'strathaven']
+    },
+    wales: {
+      cardiff: ['cardiff', 'newport', 'barry', 'cwmbran', 'pontypridd', 'caerphilly'],
+      swansea: ['swansea', 'llanelli', 'port talbot', 'bridgend', 'neath', 'abertillery', 'merthyr tydfil'],
+      northwales: ['wrexham', 'rhyl', 'llandudno', 'bangor', 'colwyn bay', 'aberystwyth']
+    },
+    ireland: {
+      dublin: ['dublin', 'bray', 'drogheda', 'dundalk', 'navan', 'carlow', 'wexford', 'kilkenny', 'waterford'],
+      belfast: ['belfast', 'derry', 'londonderry', 'sligo', 'letterkenny'],
+      cork: ['cork', 'limerick', 'tralee', 'killarney', 'ennis'],
+      galway: ['galway', 'athlone']
+    },
+    england: {
+      london: ['london', 'brighton', 'oxford', 'cambridge', 'southampton', 'portsmouth', 'exeter', 'norwich', 'alton'],
+      manchester: ['manchester', 'liverpool', 'preston'],
+      birmingham: ['birmingham', 'nottingham', 'shrewsbury', 'torquay'],
+      bristol: ['bristol'],
+      leeds: ['leeds', 'sheffield', 'newcastle', 'hull', 'york']
+    },
+    texas: {
+      austin: ['austin', 'round rock', 'san marcos', 'cedar park', 'georgetown', 'pflugerville', 'buda', 'kyle', 'bastrop', 'taylor'],
+      dallas: ['dallas', 'fort worth', 'arlington', 'plano', 'garland', 'irving', 'denton', 'mckinney', 'frisco', 'grand prairie'],
+      houston: ['houston', 'the woodlands', 'sugar land', 'katy', 'pasadena', 'galveston', 'baytown', 'conroe', 'pearland', 'spring'],
+      'san-antonio': ['san antonio', 'new braunfels', 'corpus christi', 'laredo', 'brownsville', 'mcallen', 'victoria', 'seguin', 'boerne', 'kerrville', 'helotes']
     }
   };
-  const regionCities = regionCitiesByMarket[activeMarket] || regionCitiesByMarket['front-range'];
+
+  const effectiveMarket = activeMarket === 'uk' ? (activeCountry || 'england') : activeMarket;
+  const regionCities = regionCitiesByMarket[effectiveMarket] || regionCitiesByMarket['colorado'];
 
   function getMarketLabel(marketKey) {
-    if (marketKey === 'socal') return 'California';
-    if (marketKey === 'scotland') return 'UK';
-    return 'Colorado';
+    if (marketKey === 'colorado') return 'CO';
+    if (marketKey === 'california') return 'CA';
+    if (marketKey === 'texas') return 'TX';
+    if (marketKey === 'uk') {
+      const c = (document.body?.dataset?.country || 'england').toLowerCase();
+      return c.charAt(0).toUpperCase() + c.slice(1);
+    }
+    if (marketKey === 'england') return 'England';
+    if (marketKey === 'scotland') return 'Scotland';
+    if (marketKey === 'wales') return 'Wales';
+    if (marketKey === 'ireland') return 'Ireland';
+    return 'CO';
   }
 
   function updateLiveFilterSummary(visibleCount, selectedVenueCount, totalVenueCount, searchQuery) {
@@ -158,7 +388,8 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       if (filterInterestedOnly) parts.push('Interested only');
       if (searchQuery) parts.push(`Search "${searchQuery}"`);
 
-      summaryFilters.textContent = `Filters: ${parts.length ? parts.join(' • ') : 'default'}`;
+      summaryFilters.textContent = parts.length ? `Filters: ${parts.length} active` : 'Filters: default';
+      summaryFilters.title = parts.length ? parts.join(' • ') : 'No extra filters active';
     }
   }
 
@@ -302,8 +533,14 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     if (btnFilter) {
       const labelSpan = btnFilter.querySelector('.btn-premium-filter-label');
       if (labelSpan) {
-        labelSpan.textContent = count > 0 ? `Interested Only (${count})` : 'Interested Only';
+        labelSpan.textContent = 'Interested Only';
       }
+      const iconSpan = btnFilter.querySelector('.btn-premium-filter-icon');
+      if (iconSpan) {
+        iconSpan.textContent = '⭐';
+      }
+      btnFilter.setAttribute('title', count > 0 ? `Show starred favorite shows (${count})` : 'Show starred favorite shows');
+      btnFilter.setAttribute('aria-label', count > 0 ? `Interested only filter (${count} shows)` : 'Interested only filter');
     }
 
     document.querySelectorAll('.event-card').forEach(card => {
@@ -381,9 +618,18 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
 
   function applyFilters() {
     const checkedVenues = Array.from(document.querySelectorAll('.venue-filter-checkbox:checked')).map(cb => cb.value);
+    const checkedVenueSet = new Set(checkedVenues);
     const selectedCountSpan = document.getElementById('venue-selected-count');
     const totalCount = document.querySelectorAll('.venue-filter-checkbox').length;
     const searchQuery = artistSearchInput ? artistSearchInput.value.toLowerCase().trim() : '';
+    const ignoredSet = new Set((getIgnoredEventIds ? getIgnoredEventIds() : []).map(id => String(id)));
+    const interestedSet = filterInterestedOnly ? new Set(getInterestedIds().map(id => String(id))) : null;
+    const regionTokenMap = {};
+    if (!activeRegions.has('all')) {
+      activeRegions.forEach(rKey => {
+        regionTokenMap[rKey] = (regionCities[rKey] || []).map(normalizeLocationToken);
+      });
+    }
     let targetId = monthSelect ? monthSelect.value : '';
 
     const needsFullUnpack = (searchQuery !== '' || activeGenre !== 'all' || !activeRegions.has('all') || checkedVenues.length < totalCount || filterInterestedOnly || filterJustAnnounced || visibleChunkLimit > CHUNK_SIZE);
@@ -430,13 +676,16 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
 
         const cardEventIdsStr = card.dataset.eventIds || card.id.replace('card-', '');
         const cardEventIds = cardEventIdsStr.split(',').map(id => id.trim()).filter(Boolean);
-        const ignoredIds = (getIgnoredEventIds ? getIgnoredEventIds() : []).map(id => String(id));
-        if (cardEventIds.some(id => ignoredIds.includes(id))) {
+        if (cardEventIds.some(id => ignoredSet.has(id))) {
           show = false;
         }
 
-        const btnAction = card.querySelector('.btn-interested-toggle');
-        const startTimeStr = btnAction ? btnAction.getAttribute('data-start') : '';
+        const startTimeStr = card.dataset.startTime || (() => {
+          const btnAction = card.querySelector('.btn-interested-toggle');
+          const startVal = btnAction ? (btnAction.getAttribute('data-start') || '') : '';
+          card.dataset.startTime = startVal;
+          return startVal;
+        })();
         if (startTimeStr && !isShowActive(startTimeStr)) {
           show = false;
         }
@@ -446,7 +695,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
             let matchesAnyRegion = false;
             const normalizedCardCity = normalizeLocationToken(cardCity);
             for (const rKey of activeRegions) {
-              const targetCities = (regionCities[rKey] || []).map(normalizeLocationToken);
+              const targetCities = regionTokenMap[rKey] || [];
               if (containsAnyKeyword(normalizedCardCity, targetCities)) {
                 matchesAnyRegion = true;
                 break;
@@ -454,13 +703,12 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
             }
             if (!matchesAnyRegion) show = false;
           }
-          if (show && !checkedVenues.includes(cardVenue)) show = false;
+          if (show && !checkedVenueSet.has(cardVenue)) show = false;
         }
 
         if (show && filterInterestedOnly) {
           const eventId = card.id.replace('card-', '');
-          const interestedIds = getInterestedIds().map(id => String(id));
-          if (!interestedIds.includes(eventId)) {
+          if (!interestedSet || !interestedSet.has(eventId)) {
             show = false;
           }
         }
@@ -478,9 +726,8 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
         }
 
         if (show && searchQuery !== '') {
-          const searchBlob = (card.dataset.search || '').toLowerCase();
-          const cardText = card.textContent.toLowerCase();
-          const isMatch = searchBlob.includes(searchQuery) || cardText.includes(searchQuery);
+          const searchBlob = (card.dataset.search || card.dataset.searchTextCache || (card.dataset.searchTextCache = card.textContent.toLowerCase())).toLowerCase();
+          const isMatch = searchBlob.includes(searchQuery);
           if (!isMatch) {
             show = false;
           }
@@ -490,7 +737,8 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
           const genre = (card.getAttribute('data-genre') || 'all').toLowerCase();
           const tagsStr = (card.getAttribute('data-tags') || '').toLowerCase();
           const cardTags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
-          const renderedTags = Array.from(card.querySelectorAll('.tag-pill')).map(pill => pill.textContent.toLowerCase().trim());
+          const renderedTagsCache = card.dataset.renderedTagsCache || (card.dataset.renderedTagsCache = Array.from(card.querySelectorAll('.tag-pill')).map(pill => pill.textContent.toLowerCase().trim()).join('|'));
+          const renderedTags = renderedTagsCache ? renderedTagsCache.split('|').filter(Boolean) : [];
           const allCardTags = [...new Set([...cardTags, ...renderedTags])];
 
           const hasTagInList = (cardTagsList, bucketList) => {
@@ -513,24 +761,27 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
           if (visibleIndexInView <= visibleChunkLimit) {
             card.classList.remove('card-hiding');
             card.style.display = 'grid';
+            // Animate cards only on first reveal to avoid flashing during repeated filter passes.
+            if (card.dataset.didEnter !== '1') {
+              card.style.setProperty('--stagger-delay', `${Math.min(visibleCount * 0.02, 0.18)}s`);
+              card.classList.remove('card-entering');
+              card.classList.add('card-entering');
+              card.dataset.didEnter = '1';
+            }
             visibleCount++;
           } else {
             card.style.display = 'none';
-            card.classList.remove('card-hiding');
+            card.classList.remove('card-hiding', 'card-entering');
           }
         } else {
           card.style.display = 'none';
-          card.classList.remove('card-hiding');
+          card.classList.remove('card-hiding', 'card-entering');
         }
       });
 
       viewVisibleCounts[view.id] = visibleCount;
       viewTotalMatchingCounts[view.id] = visibleIndexInView;
     });
-
-
-
-
 
     // Step 2: Auto-switch month when active text search or Just Announced filter is set and current month has 0 matches
     if (!filterInterestedOnly && (searchQuery !== '' || filterJustAnnounced)) {
@@ -553,43 +804,69 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       }
     }
 
-    // Step 3: Activate target view and update UI empty states & load more buttons
+    // Step 3: Activate target view with smooth fade transition & update UI empty states
     let activeViewVisibleCount = 0;
 
     views.forEach(view => {
       const isActiveView = (filterInterestedOnly && targetId === 'interested-view') ? (view.id === 'interested-view') : (view.id === targetId);
+      const wasActive = view.classList.contains('active');
       const visibleCount = viewVisibleCounts[view.id] || 0;
       const visibleIndexInView = viewTotalMatchingCounts[view.id] || 0;
 
       view.classList.toggle('active', isActiveView);
       view.style.display = isActiveView ? 'flex' : 'none';
 
+      if (isActiveView && !wasActive) {
+        view.style.animation = 'none';
+        void view.offsetWidth;
+        view.style.animation = 'viewFadeInUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards';
+      }
+
       if (isActiveView) {
         activeViewVisibleCount = visibleCount;
       }
 
+      const hasMoreServer = view.dataset.hasMore === '1';
+      const totalGroupsFromServer = Number(view.dataset.totalGroups || 0);
       let loadMoreContainer = view.querySelector('.load-more-container');
-      if (isActiveView && visibleIndexInView > visibleChunkLimit) {
+      if (isActiveView && (visibleIndexInView > visibleChunkLimit || hasMoreServer)) {
         if (!loadMoreContainer) {
           loadMoreContainer = document.createElement('div');
           loadMoreContainer.className = 'load-more-container';
           loadMoreContainer.innerHTML = `
             <button type="button" class="btn-load-more">
-              <span>Load More Shows (${visibleCount} of ${visibleIndexInView})</span>
+              <span>Load More Shows</span>
             </button>
           `;
           view.appendChild(loadMoreContainer);
 
-          loadMoreContainer.querySelector('.btn-load-more').addEventListener('click', e => {
+          loadMoreContainer.querySelector('.btn-load-more').addEventListener('click', async e => {
             e.preventDefault();
+            if (view.dataset.hasMore === '1') {
+              const loadedCount = await loadMoreFromServer(view);
+              if (loadedCount > 0) {
+                visibleChunkLimit += loadedCount;
+                applyFilters();
+              }
+              return;
+            }
+
             visibleChunkLimit += CHUNK_SIZE;
             applyFilters();
           });
-        } else {
-          loadMoreContainer.style.display = 'flex';
-          const btn = loadMoreContainer.querySelector('.btn-load-more');
-          if (btn) {
-            btn.innerHTML = `<span>Load More Shows (${visibleCount} of ${visibleIndexInView})</span>`;
+        }
+
+        loadMoreContainer.style.display = 'flex';
+        const btn = loadMoreContainer.querySelector('.btn-load-more');
+        if (btn) {
+          const totalLabelCount = totalGroupsFromServer > 0 ? totalGroupsFromServer : visibleIndexInView;
+          const isPending = pendingChunkLoads.has(view.id || view.dataset.month || '');
+          if (isPending) {
+            btn.innerHTML = '<span>Loading...</span>';
+            btn.disabled = true;
+          } else {
+            btn.innerHTML = `<span>Load More Shows (${visibleCount} of ${totalLabelCount})</span>`;
+            btn.disabled = false;
           }
         }
       } else if (loadMoreContainer) {
@@ -635,10 +912,41 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     }
   }
 
+  let applyFiltersRaf = null;
+  let applyFiltersDebounceTimer = null;
+
+  function scheduleApplyFilters(delayMs = 0) {
+    if (applyFiltersDebounceTimer) {
+      clearTimeout(applyFiltersDebounceTimer);
+      applyFiltersDebounceTimer = null;
+    }
+
+    const run = () => {
+      if (applyFiltersRaf) {
+        cancelAnimationFrame(applyFiltersRaf);
+      }
+      applyFiltersRaf = requestAnimationFrame(() => {
+        applyFiltersRaf = null;
+        applyFilters();
+      });
+    };
+
+    if (delayMs > 0) {
+      applyFiltersDebounceTimer = setTimeout(run, delayMs);
+      return;
+    }
+
+    run();
+  }
+
 
 
   function resetAllFilters() {
     resetChunkLimit();
+    document.querySelectorAll('.event-card').forEach(card => {
+      delete card.dataset.didEnter;
+      card.classList.remove('card-entering');
+    });
     if (artistSearchInput) artistSearchInput.value = '';
     activeGenre = 'all';
     if (genreSelect) {
@@ -846,6 +1154,15 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     monthSelect.addEventListener('change', () => {
       resetChunkLimit();
       const targetId = monthSelect.value;
+      if (targetId && targetId.startsWith('month-')) {
+        const m = targetId.replace('month-', '');
+        const currentUrl = new URL(window.location.href);
+        if (currentUrl.searchParams.get('month') !== m) {
+          currentUrl.searchParams.set('month', m);
+          navigateTo(currentUrl.toString());
+          return;
+        }
+      }
       if (targetId && targetId !== 'interested-view' && targetId !== 'empty-view') {
         lastActiveMonthView = targetId;
       }
@@ -892,8 +1209,18 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       return;
     }
 
+    const originalRect = selectEl.getBoundingClientRect();
+    const originalWidth = Math.ceil(originalRect.width || selectEl.offsetWidth || 0);
+    const originalHeight = Math.ceil(originalRect.height || selectEl.offsetHeight || 0);
+
     const wrapper = document.createElement('div');
     wrapper.className = 'custom-select-wrapper';
+    if (originalWidth > 0) {
+      wrapper.style.minWidth = `${originalWidth}px`;
+    }
+    if (originalHeight > 0) {
+      wrapper.style.minHeight = `${originalHeight}px`;
+    }
     selectEl.parentNode.insertBefore(wrapper, selectEl);
     wrapper.appendChild(selectEl);
     selectEl.style.cssText = 'display: none !important;';
@@ -993,8 +1320,9 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
     syncOptions();
   }
 
-  setupCustomSingleSelect(genreSelect);
-  setupCustomSingleSelect(monthSelect);
+  if (document.body && document.body.classList.contains('select-enhancing')) {
+    document.body.classList.remove('select-enhancing');
+  }
 
   function updateMarketLinksWithSearch() {
     const query = artistSearchInput ? artistSearchInput.value.trim() : '';
@@ -1021,7 +1349,7 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
       syncSearchClearButton();
       updateMarketLinksWithSearch();
       resetChunkLimit();
-      applyFilters();
+      scheduleApplyFilters(90);
     });
   }
 
@@ -1134,20 +1462,51 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   }
 
   let isScrollingToLoad = false;
-  window.addEventListener('scroll', () => {
+  let autoExpandFollowUpQueued = false;
+
+  function scheduleAutoExpandRecheck(delayMs = 0) {
+    if (autoExpandFollowUpQueued) return;
+    autoExpandFollowUpQueued = true;
+    window.setTimeout(() => {
+      autoExpandFollowUpQueued = false;
+      checkAndTriggerAutoExpand();
+    }, delayMs);
+  }
+
+  async function checkAndTriggerAutoExpand() {
     if (isScrollingToLoad) return;
-    const scrollPosition = window.innerHeight + window.scrollY;
-    const threshold = document.documentElement.scrollHeight - 400;
-    if (scrollPosition >= threshold) {
-      const activeView = document.querySelector('.calendar-view.active');
-      const loadMoreContainer = activeView ? activeView.querySelector('.load-more-container') : null;
-      if (loadMoreContainer && loadMoreContainer.style.display !== 'none') {
-        isScrollingToLoad = true;
-        visibleChunkLimit += CHUNK_SIZE;
-        applyFilters();
-        setTimeout(() => { isScrollingToLoad = false; }, 250);
+    const activeView = document.querySelector('.calendar-view.active');
+    if (!activeView) return;
+
+    const loadMoreContainer = activeView.querySelector('.load-more-container');
+    if (!loadMoreContainer || loadMoreContainer.style.display === 'none') return;
+
+    const rect = loadMoreContainer.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+
+    if (rect.top <= viewportHeight + 400) {
+      isScrollingToLoad = true;
+      try {
+        if (activeView.dataset.hasMore === '1') {
+          const loadedCount = await loadMoreFromServer(activeView);
+          if (loadedCount > 0) {
+            visibleChunkLimit += loadedCount;
+            applyFilters();
+          }
+        } else {
+          visibleChunkLimit += CHUNK_SIZE;
+          applyFilters();
+        }
+      } finally {
+        setTimeout(() => {
+          isScrollingToLoad = false;
+        }, 250);
       }
     }
+  }
+
+  ['scroll', 'resize', 'wheel', 'touchmove'].forEach(evt => {
+    window.addEventListener(evt, checkAndTriggerAutoExpand, { passive: true });
   });
 
   updateResetIgnoredButton();
@@ -1155,6 +1514,8 @@ export function initFilters({ venueData, genreBuckets, getInterestedIds, saveInt
   renderInterestedShows();
   syncSearchClearButton();
   applyFilters();
+  // Kick off auto-expand on first paint in case no scroll/wheel events fire.
+  scheduleAutoExpandRecheck(60);
 
   return {
     applyFilters,

@@ -33,14 +33,19 @@ function formatSyncRuntime(float $seconds): string {
 
 function marketLabelForReport(string $market): string {
     switch (strtolower(trim($market))) {
+        case 'colorado':
         case 'front-range':
-            return 'Front Range';
+            return 'Colorado';
+        case 'california':
         case 'socal':
-            return 'SoCal';
+            return 'California';
+        case 'uk':
         case 'scotland':
-            return 'Scotland';
+            return 'UK';
+        case 'texas':
+            return 'Texas';
         default:
-            return $market;
+            return ucfirst($market);
     }
 }
 
@@ -269,11 +274,60 @@ function renderStatusBadgeHtml(string $status): string {
     }
 }
 
+function getSecurityAuditSummary(int $maxHours = 24): array {
+    $baseDir = dirname(__DIR__);
+    $logFiles = [
+        $baseDir . '/cache/security_audit.log',
+        $baseDir . '/logs/security_audit.log'
+    ];
+
+    $failedCount = 0;
+    $successCount = 0;
+    $failedDetails = [];
+    $cutoff = time() - ($maxHours * 3600);
+
+    foreach ($logFiles as $file) {
+        if (!file_exists($file)) continue;
+        $lines = @file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if (!$lines) continue;
+
+        foreach ($lines as $line) {
+            if (preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[([^\]]+)\] IP: ([^|]+) \| ([^|]+)/', $line, $m)) {
+                $time = strtotime($m[1]);
+                if ($time && $time >= $cutoff) {
+                    $type = $m[2];
+                    $ip = trim($m[3]);
+                    $detail = trim($m[4]);
+
+                    if (strpos($type, 'FAILED') !== false) {
+                        $failedCount++;
+                        $failedDetails[] = [
+                            'time' => date('M j, g:i A', $time),
+                            'type' => $type,
+                            'ip' => $ip,
+                            'detail' => $detail
+                        ];
+                    } elseif ($type === 'SUCCESSFUL_LOGIN') {
+                        $successCount++;
+                    }
+                }
+            }
+        }
+    }
+
+    return [
+        'failed_count' => $failedCount,
+        'success_count' => $successCount,
+        'failed_details' => array_slice($failedDetails, -10)
+    ];
+}
+
 function buildSyncReportHtml(array $report): string {
     $execution = $report['execution'] ?? [];
     $ingestion = $report['ingestion'] ?? [];
     $enrichment = $report['enrichment'] ?? [];
     $errors = $report['errors'] ?? [];
+    $secAudit = getSecurityAuditSummary(24);
 
     $runtime = formatSyncRuntime((float)($execution['runtime_seconds'] ?? 0));
     $markets = (array)($execution['markets_processed'] ?? []);
@@ -307,6 +361,31 @@ function buildSyncReportHtml(array $report): string {
     $html .= '<tr><td style="padding:6px 8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:600;">Markets Processed</td><td style="padding:6px 8px;border:1px solid #e5e7eb;">' . (int)($execution['markets_processed_count'] ?? count($markets)) . '</td></tr>';
     $html .= '<tr><td style="padding:6px 8px;border:1px solid #e5e7eb;background:#f9fafb;font-weight:600;">Market List</td><td style="padding:6px 8px;border:1px solid #e5e7eb;">' . escHtml(!empty($marketLabels) ? implode(', ', $marketLabels) : 'N/A') . '</td></tr>';
     $html .= '</table>';
+    $html .= '</td></tr>';
+
+    // 🔒 Security & Admin Authentication Audit Section
+    $html .= '<tr><td style="padding:18px 24px 0 24px;">';
+    $html .= '<h2 style="margin:0 0 10px 0;font-size:16px;color:#111827;">🔒 Security & Admin Authentication Audit (Last 24 Hours)</h2>';
+    if ($secAudit['failed_count'] > 0) {
+        $html .= '<div style="padding:10px 12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;margin-bottom:10px;font-size:13px;color:#991b1b;font-weight:600;">';
+        $html .= '⚠️ WARNING: ' . $secAudit['failed_count'] . ' Failed Admin Login Attempt(s) Detected!';
+        $html .= '</div>';
+        $html .= '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:12px;">';
+        $html .= '<tr><th align="left" style="padding:6px;border:1px solid #e5e7eb;background:#f3f4f6;">Time</th><th align="left" style="padding:6px;border:1px solid #e5e7eb;background:#f3f4f6;">Event Type</th><th align="left" style="padding:6px;border:1px solid #e5e7eb;background:#f3f4f6;">IP Address</th><th align="left" style="padding:6px;border:1px solid #e5e7eb;background:#f3f4f6;">Details</th></tr>';
+        foreach ($secAudit['failed_details'] as $fd) {
+            $html .= '<tr>';
+            $html .= '<td style="padding:6px;border:1px solid #e5e7eb;">' . escHtml($fd['time']) . '</td>';
+            $html .= '<td style="padding:6px;border:1px solid #e5e7eb;color:#b91c1c;font-weight:600;">' . escHtml($fd['type']) . '</td>';
+            $html .= '<td style="padding:6px;border:1px solid #e5e7eb;font-family:monospace;">' . escHtml($fd['ip']) . '</td>';
+            $html .= '<td style="padding:6px;border:1px solid #e5e7eb;">' . escHtml($fd['detail']) . '</td>';
+            $html .= '</tr>';
+        }
+        $html .= '</table>';
+    } else {
+        $html .= '<div style="padding:10px 12px;background:#ecfdf5;border:1px solid #86efac;border-radius:6px;font-size:13px;color:#166534;font-weight:600;">';
+        $html .= '🟢 0 Failed Admin Login Attempts (Successful Logins: ' . $secAudit['success_count'] . ')';
+        $html .= '</div>';
+    }
     $html .= '</td></tr>';
 
     // 2) Event Sources & Scraper Run Tally

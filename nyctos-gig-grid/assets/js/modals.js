@@ -109,10 +109,14 @@ export function initFeatureModal() {
 
   const openFeaturesModal = () => {
     featuresModal.style.display = 'flex';
+    featuresModal.classList.remove('hidden');
+    featuresModal.setAttribute('aria-hidden', 'false');
   };
 
   const closeFeaturesModal = () => {
     featuresModal.style.display = 'none';
+    featuresModal.classList.add('hidden');
+    featuresModal.setAttribute('aria-hidden', 'true');
   };
 
   btnOpenFeatures.addEventListener('click', openFeaturesModal);
@@ -147,13 +151,14 @@ export function initVenueModal(venueData) {
       venueModalAddress.textContent = details.address;
       venueModalMaps.href = details.maps_url;
     } else {
-      const market = document.body?.dataset?.market || 'front-range';
+      const market = document.body?.dataset?.market || 'colorado';
       let regionLabel = 'Colorado';
-      if (market === 'socal') {
-        regionLabel = 'California';
-      } else if (market === 'scotland') {
-        regionLabel = 'Scotland';
-      }
+      if (market === 'california') regionLabel = 'California';
+      if (market === 'texas') regionLabel = 'Texas';
+      if (market === 'england') regionLabel = 'England';
+      if (market === 'scotland') regionLabel = 'Scotland';
+      if (market === 'wales') regionLabel = 'Wales';
+      if (market === 'ireland') regionLabel = 'Ireland';
 
       venueModalName.textContent = venueName;
       venueModalAddress.textContent = `${regionLabel} Venue`;
@@ -161,47 +166,64 @@ export function initVenueModal(venueData) {
     }
 
     venueModal.style.display = 'flex';
+    venueModal.classList.remove('hidden');
+    venueModal.setAttribute('aria-hidden', 'false');
   });
 
   if (venueCloseBtn) {
     venueCloseBtn.addEventListener('click', () => {
       venueModal.style.display = 'none';
+      venueModal.classList.add('hidden');
+      venueModal.setAttribute('aria-hidden', 'true');
     });
   }
 
   venueModal.addEventListener('click', event => {
     if (event.target === venueModal) {
       venueModal.style.display = 'none';
+      venueModal.classList.add('hidden');
+      venueModal.setAttribute('aria-hidden', 'true');
     }
   });
 }
 
 export function initSetlistModal() {
   const setlistModal = document.getElementById('setlist-modal');
-  if (!setlistModal) return;
 
   const setlistCloseBtn = document.getElementById('btn-close-setlist');
   const setlistTitle = document.getElementById('setlist-modal-title');
   const setlistMeta = document.getElementById('setlist-modal-meta');
   const setlistSongsContainer = document.getElementById('setlist-songs-container');
 
+  const closeSetlist = () => {
+    const modal = document.getElementById('setlist-modal');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+  };
+
   if (setlistCloseBtn) {
-    setlistCloseBtn.addEventListener('click', () => {
-      setlistModal.style.display = 'none';
-    });
+    setlistCloseBtn.addEventListener('click', closeSetlist);
   }
 
-  setlistModal.addEventListener('click', event => {
-    if (event.target === setlistModal) {
-      setlistModal.style.display = 'none';
-    }
-  });
+  if (setlistModal) {
+    setlistModal.addEventListener('click', event => {
+      if (event.target === setlistModal) {
+        closeSetlist();
+      }
+    });
+  }
 
   document.addEventListener('click', async event => {
     const btn = event.target.closest('.btn-view-setlist');
     if (!btn) return;
 
     event.preventDefault();
+    const modal = document.getElementById('setlist-modal');
+    if (!modal) return;
+
     const eventId = btn.getAttribute('data-id');
     const artist = btn.getAttribute('data-artist');
     const dateStr = btn.getAttribute('data-date');
@@ -209,12 +231,38 @@ export function initSetlistModal() {
     const city = btn.getAttribute('data-city');
     const isSharedLineup = /,|\s&\s|\swith\s|\sw\/\s/i.test(artist || '');
 
-    setlistTitle.textContent = isSharedLineup ? 'Shared Lineup Setlist' : `${artist} Setlist`;
-    const dateObj = new Date(dateStr);
-    const formattedDate = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    setlistMeta.textContent = `${venue} // ${city}, CO // ${formattedDate}`;
-    setlistSongsContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 2rem 0;">${ICONS.music} Loading setlist from Setlist.fm...</div>`;
-    setlistModal.style.display = 'flex';
+    const titleEl = document.getElementById('setlist-modal-title') || setlistTitle;
+    const metaEl = document.getElementById('setlist-modal-meta') || setlistMeta;
+    const containerEl = document.getElementById('setlist-songs-container') || setlistSongsContainer;
+
+    modal.style.display = 'flex';
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+
+    if (titleEl) titleEl.textContent = isSharedLineup ? 'Shared Lineup Setlist' : `${artist} Setlist`;
+    let formattedDate = dateStr || '';
+    if (dateStr) {
+      const dateObj = new Date(dateStr);
+      if (!Number.isNaN(dateObj.getTime())) {
+        formattedDate = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      }
+    }
+    if (metaEl) {
+      const metaParts = [venue || 'Unknown Venue'];
+      if (city) metaParts.push(city);
+      if (formattedDate) metaParts.push(formattedDate);
+      metaEl.textContent = metaParts.join(' // ');
+    }
+    if (containerEl) {
+      containerEl.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.9rem; padding: 2rem 0;">${ICONS.music} Loading setlist from Setlist.fm...</div>`;
+    }
+
+    if (!eventId) {
+      if (containerEl) {
+        containerEl.innerHTML = '<div class="setlist-empty-state">Unable to load setlist for this card (missing event ID).</div>';
+      }
+      return;
+    }
 
     try {
       const response = await fetch(`aggregator.php?action=get_setlist&event_id=${encodeURIComponent(eventId)}&t=${Date.now()}`);
@@ -223,7 +271,13 @@ export function initSetlistModal() {
         return;
       }
 
-      const data = await response.json();
+      const rawText = await response.text();
+      let data = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch (_) {
+        data = { status: 'error', message: 'Unexpected setlist response format.' };
+      }
       if (data.status === 'success') {
         if (Array.isArray(data.acts) && data.acts.length > 1) {
           setlistTitle.textContent = 'Shared Lineup Setlist';

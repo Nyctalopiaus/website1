@@ -1,16 +1,50 @@
-import { setupGlobalErrorLogging, getVenueData, getGenreBucketData } from './utils.js?v=20260726_v5';
-import { getInterestedIds, saveInterestedIds, getIgnoredEventIds, saveIgnoredEventIds } from './store.js?v=20260726_v5';
-import { initEmailModal, initFeatureModal, initVenueModal, initSetlistModal, initContactModal } from './modals.js?v=20260726_v5';
-import { initArtistInsights, initAudioPreview, initArtistLinksDropdown } from './media.js?v=20260726_v5';
-import { initFilters } from './filters.js?v=20260726_v5';
-import { loadWeatherForecasts } from './weather.js?v=20260726_v5';
+import { setupGlobalErrorLogging, getVenueData, getGenreBucketData } from './utils.js?v=20260731_v10';
+import { getInterestedIds, saveInterestedIds, getIgnoredEventIds, saveIgnoredEventIds } from './store.js?v=20260731_v10';
+import { initEmailModal, initFeatureModal, initVenueModal, initSetlistModal, initContactModal } from './modals.js?v=20260731_v10';
+import { initArtistInsights, initAudioPreview, initArtistLinksDropdown } from './media.js?v=20260731_v10';
+import { initFilters } from './filters.js?v=20260731_v10';
+import { loadWeatherForecasts } from './weather.js?v=20260731_v10';
 
 setupGlobalErrorLogging();
+
+if (typeof window.__softNavigate !== 'function') {
+  window.__softNavigate = async (targetUrl) => {
+    if (!targetUrl) return;
+
+    const absoluteTarget = new URL(targetUrl, window.location.href).toString();
+    if (absoluteTarget === window.location.href) return;
+
+    try {
+      document.documentElement.classList.add('is-soft-navigating');
+      const response = await fetch(absoluteTarget, {
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'text/html'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Soft navigation failed (${response.status})`);
+      }
+
+      const html = await response.text();
+      window.history.pushState({}, '', absoluteTarget);
+
+      document.open();
+      document.write(html);
+      document.close();
+    } catch (error) {
+      console.warn('Soft navigation fallback to hard navigation', error);
+      window.location.assign(absoluteTarget);
+    }
+  };
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   const venueData = getVenueData();
   const genreBuckets = getGenreBucketData();
   const btnCopyMarketLink = document.getElementById('btn-copy-market-link');
+  const btnBackToTop = document.getElementById('btn-back-to-top');
 
   const copyTextFallback = text => {
     const textarea = document.createElement('textarea');
@@ -104,6 +138,21 @@ document.addEventListener('DOMContentLoaded', () => {
     saveIgnoredEventIds
   });
   initMarketLinkPrefetching();
+
+  if (btnBackToTop) {
+    const updateBackToTopVisibility = () => {
+      const shouldShow = window.scrollY > 520;
+      btnBackToTop.classList.toggle('is-visible', shouldShow);
+    };
+
+    btnBackToTop.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    window.addEventListener('scroll', updateBackToTopVisibility, { passive: true });
+    window.addEventListener('resize', updateBackToTopVisibility, { passive: true });
+    updateBackToTopVisibility();
+  }
   
   // Defer weather API calls after initial DOM paint to maximize Lighthouse TBT & FCP performance
   if ('requestIdleCallback' in window) {

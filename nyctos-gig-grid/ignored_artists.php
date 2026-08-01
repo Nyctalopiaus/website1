@@ -35,7 +35,15 @@ function getIgnoredArtistsNormalized() {
         'pickup spot',
         'shuttle pick',
         'bus pickup',
-        'pickup location'
+        'pickup location',
+        'karaoke thursdays',
+        '$5 thursdays',
+        'ladies night',
+        'noche sonidera',
+        'tomorrow jul',
+        'tomorrow aug',
+        'today jul',
+        'today aug'
     ];
 
     foreach ($defaults as $d) {
