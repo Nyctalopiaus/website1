@@ -32,11 +32,9 @@ require_once __DIR__ . '/rule_engine.php';
 
 if (!function_exists('resolveEventCardCity')) {
     function resolveEventCardCity($event) {
-        $cName = trim((string)($event['city_name'] ?? $event['city'] ?? ''));
-        if ($cName !== '') return ucwords(strtolower($cName));
         $vName = strtolower(trim((string)($event['venue_name'] ?? '')));
 
-        // Check text file overrides from venue_cities.txt
+        // Manual venue city overrides should always win.
         $overrides = getAdminVenueCities();
         foreach ($overrides as $vPattern => $cOverride) {
             if ($vPattern !== '' && strpos($vName, $vPattern) !== false) {
@@ -44,7 +42,23 @@ if (!function_exists('resolveEventCardCity')) {
             }
         }
 
-        return ucwords($vName);
+        // Prefer explicit city fields when present.
+        $candidateCity = trim((string)($event['city_name'] ?? $event['city'] ?? ''));
+        if ($candidateCity !== '') {
+            return ucwords(strtolower($candidateCity));
+        }
+
+        // Optional fallback from address if available: "street, city, ..."
+        $address = trim((string)($event['address'] ?? ''));
+        if ($address !== '' && strpos($address, ',') !== false) {
+            $parts = array_map('trim', explode(',', $address));
+            if (count($parts) >= 2 && $parts[1] !== '') {
+                return ucwords(strtolower($parts[1]));
+            }
+        }
+
+        // If no city can be determined, return empty so UI renders market suffix only.
+        return '';
     }
 }
 
@@ -101,7 +115,30 @@ if (!function_exists('renderEventCard')) {
             $eventRow['event_id'] = md5(json_encode($eventRow));
         }
 
-        $artists = splitArtistListNames((string)($eventRow['artist_name'] ?? 'Unknown Artist'));
+        $artistOverrides = function_exists('getAdminEventArtistOverrides') ? getAdminEventArtistOverrides() : [];
+        $titleOverrides = function_exists('getAdminEventTitleOverrides') ? getAdminEventTitleOverrides() : [];
+        $hasArtistOverride = false;
+        $hasTitleOverride = false;
+
+        if (!empty($eventRow['event_id']) && isset($artistOverrides[$eventRow['event_id']])) {
+            $overrideArtists = trim((string)$artistOverrides[$eventRow['event_id']]);
+            if ($overrideArtists !== '') {
+                $eventRow['artist_name'] = $overrideArtists;
+                $hasArtistOverride = true;
+            }
+        }
+
+        if (!empty($eventRow['event_id']) && isset($titleOverrides[$eventRow['event_id']])) {
+            $overrideTitle = trim((string)$titleOverrides[$eventRow['event_id']]);
+            if ($overrideTitle !== '') {
+                $eventRow['artist_name'] = $overrideTitle;
+                $hasTitleOverride = true;
+            }
+        }
+
+        $artists = $hasTitleOverride
+            ? [(string)($eventRow['artist_name'] ?? 'Unknown Artist')]
+            : splitArtistListNames((string)($eventRow['artist_name'] ?? 'Unknown Artist'));
         $tags = [];
         $tagsRaw = (string)($eventRow['tags'] ?? '');
         if ($tagsRaw !== '') {
@@ -118,7 +155,12 @@ if (!function_exists('renderEventCard')) {
         $residencyCounts = [];
         $activeMarket = strtolower((string)($eventRow['market'] ?? ($_GET['market'] ?? 'colorado')));
         $ignoredTags = function_exists('getIgnoredTagsNormalized') ? getIgnoredTagsNormalized() : [];
-        $isAdmin = false;
+        // Allow card-level admin tools whenever an authenticated admin session is active
+        // or when admin.php explicitly sets the page context flag.
+        $isAdmin = !empty($GLOBALS['isAdmin']);
+        if (!$isAdmin && session_status() === PHP_SESSION_ACTIVE) {
+            $isAdmin = !empty($_SESSION['is_admin']);
+        }
 
         include __DIR__ . '/../templates/event_card.php';
     }

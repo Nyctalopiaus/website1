@@ -124,30 +124,37 @@ if (!in_array($activeCountry, ['scotland', 'england', 'wales', 'ireland'], true)
                     <div id="venue-checkboxes-list"></div>
                 </div>
             </div>
-
-            <div class="genre-filter-group">
-                <select id="genre-select">
-                    <?php foreach ($genreBuckets as $bucketKey => $bucket): ?>
-                        <option value="<?php echo htmlspecialchars($bucketKey); ?>"><?php echo htmlspecialchars($bucket['label']); ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <button type="button" id="genre-help-trigger" class="genre-help-trigger" aria-label="Genre filter help" title="Genre info & definitions">?</button>
-                <div id="genre-help-panel" class="genre-help-panel" role="note" aria-live="polite">
-                    <div id="genre-help-title" class="genre-help-title"><?php echo htmlspecialchars($genreBuckets['all']['label']); ?></div>
-                    <div id="genre-help-text" class="genre-help-text"><?php echo htmlspecialchars($genreBuckets['all']['title']); ?></div>
-                </div>
-            </div>
         </div>
     </div>
 
-    <!-- Row 3: Full-width Search Input (Left) + Compact Action Buttons (Right) -->
+    <!-- Row 3: Search Input Expanded to 50% Width -->
     <div class="controls-row-actions" style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 0.75rem; margin-top: 0.4rem; flex-wrap: nowrap;">
-        <div class="search-input-wrap" style="flex: 1 1 auto; width: 100%; max-width: none; min-width: 150px; margin-right: 0.5rem;">
+        <div class="search-input-wrap" style="flex: 0 0 50%; width: 50%; max-width: 50%; min-width: 220px; margin-right: 0.5rem;">
             <input type="text" id="artist-search-input" style="width: 100%; height: 36px; box-sizing: border-box;" placeholder="🔍 Search band, venue, subgenre..." />
             <button type="button" id="btn-clear-search" aria-label="Clear search" title="Clear search">&times;</button>
         </div>
+    </div>
+
+    <!-- Row 4: Genres (Left) + Action Buttons (Right) -->
+    <div class="controls-row-actions-secondary" style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 0.45rem; margin-top: 0.4rem; flex-wrap: nowrap;">
+        <div class="genre-filter-group" style="flex: 0 0 auto;">
+            <select id="genre-select">
+                <?php foreach ($genreBuckets as $bucketKey => $bucket): ?>
+                    <option value="<?php echo htmlspecialchars($bucketKey); ?>"><?php echo htmlspecialchars($bucket['label']); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <button type="button" id="genre-help-trigger" class="genre-help-trigger" aria-label="Genre filter help" title="Genre info & definitions">?</button>
+            <div id="genre-help-panel" class="genre-help-panel" role="note" aria-live="polite">
+                <div id="genre-help-title" class="genre-help-title"><?php echo htmlspecialchars($genreBuckets['all']['label']); ?></div>
+                <div id="genre-help-text" class="genre-help-text"><?php echo htmlspecialchars($genreBuckets['all']['title']); ?></div>
+            </div>
+        </div>
 
         <div class="filter-actions-group" style="display: flex; align-items: center; gap: 0.45rem; flex: 0 0 auto; margin-left: auto;">
+            <button type="button" id="btn-free-filter" class="btn-premium-filter btn-premium-filter--secondary btn-premium-filter--free" title="Show only free events">
+                <span class="btn-premium-filter-icon">🆓</span>
+                <span class="btn-premium-filter-label">Free Events</span>
+            </button>
             <button type="button" id="btn-interested-filter" class="btn-premium-filter btn-premium-filter--secondary" title="Show starred favorite shows">
                 <span class="btn-premium-filter-icon">⭐</span>
                 <span class="btn-premium-filter-label">Interested Only</span>
@@ -161,6 +168,10 @@ if (!in_array($activeCountry, ['scotland', 'england', 'wales', 'ireland'], true)
                 <span class="btn-premium-filter-label" id="reset-ignored-label">Reset Ignored (0)</span>
             </button>
             <?php if (!empty($isAdmin)): ?>
+                <a href="admin_data_quality.php" class="btn-premium-filter btn-premium-filter--secondary" title="Review events filtered by geo sanity checks" style="text-decoration: none; border-color: rgba(251, 191, 36, 0.4); color: #fcd34d; background: rgba(245, 158, 11, 0.12);">
+                    <span class="btn-premium-filter-icon">🧪</span>
+                    <span class="btn-premium-filter-label">Data QA</span>
+                </a>
                 <a href="admin.php?action=logout" class="btn-premium-filter btn-premium-filter--secondary btn-admin-logout" title="Log out of Admin Session" style="text-decoration: none; border-color: rgba(255, 68, 68, 0.4); color: #ff6b6b; background: rgba(255, 68, 68, 0.08);">
                     <span class="btn-premium-filter-icon">🔒</span>
                     <span class="btn-premium-filter-label">Admin Logout</span>

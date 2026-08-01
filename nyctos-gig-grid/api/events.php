@@ -44,6 +44,13 @@ try {
     }
     $activeCountry = $activeMarket === 'uk' ? $requestedCountryRaw : '';
 
+    $marketGeoBounds = [
+        'colorado' => ['min_lat' => 36.0, 'max_lat' => 42.5, 'min_lng' => -110.5, 'max_lng' => -101.5],
+        'california' => ['min_lat' => 32.0, 'max_lat' => 42.5, 'min_lng' => -125.0, 'max_lng' => -114.0],
+        'texas' => ['min_lat' => 25.0, 'max_lat' => 37.5, 'min_lng' => -107.0, 'max_lng' => -93.0],
+    ];
+    $activeGeoBounds = $marketGeoBounds[$activeMarket] ?? null;
+
     $month = trim((string)($_GET['month'] ?? ''));
     if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
         http_response_code(400);
@@ -51,21 +58,38 @@ try {
         exit;
     }
 
+    $monthDate = DateTime::createFromFormat('!Y-m', $month);
+    if (!$monthDate) {
+        http_response_code(400);
+        echo json_encode(['status' => 'error', 'message' => 'Invalid month value.']);
+        exit;
+    }
+    $monthStart = $monthDate->format('Y-m-01 00:00:00');
+    $nextMonthStart = (clone $monthDate)->modify('+1 month')->format('Y-m-01 00:00:00');
+
     $offset = max(0, (int)($_GET['offset'] ?? 0));
     $limit = max(1, min(50, (int)($_GET['limit'] ?? 8)));
 
     if ($activeMarket === 'uk') {
-        $stmt = $db->prepare("\n            SELECT e.*, v.city AS city_name\n            FROM events e\n            JOIN venues v ON e.venue_name = v.venue_name\n            JOIN market_cities mc ON v.city = mc.city_name\n            WHERE e.market = :market\n              AND LOWER(TRIM(mc.region)) = :country_filter\n              AND strftime('%Y-%m', e.start_time) = :month\n              AND e.start_time >= datetime('now', '-4 hours')\n            ORDER BY e.start_time ASC\n        ");
+        $stmt = $db->prepare("\n            SELECT e.*, v.city AS city_name\n            FROM events e\n            JOIN venues v ON e.venue_name = v.venue_name\n            JOIN market_cities mc ON v.city = mc.city_name\n            WHERE e.market = :market\n              AND LOWER(TRIM(mc.region)) = :country_filter\n              AND e.start_time >= :month_start\n              AND e.start_time < :next_month_start\n              AND e.start_time >= datetime('now', '-4 hours')\n            ORDER BY e.start_time ASC\n        ");
         $stmt->execute([
             ':market' => $activeMarket,
             ':country_filter' => $activeCountry,
-            ':month' => $month
+            ':month_start' => $monthStart,
+            ':next_month_start' => $nextMonthStart
         ]);
     } else {
-        $stmt = $db->prepare("\n            SELECT e.*, COALESCE(v.city, '') AS city_name\n            FROM events e\n            LEFT JOIN venues v ON e.venue_name = v.venue_name\n            WHERE e.market = :market\n              AND strftime('%Y-%m', e.start_time) = :month\n              AND e.start_time >= datetime('now', '-4 hours')\n            ORDER BY e.start_time ASC\n        ");
+        $stmt = $db->prepare("\n            SELECT e.*, COALESCE(v.city, '') AS city_name\n            FROM events e\n            LEFT JOIN venues v ON e.venue_name = v.venue_name\n            WHERE e.market = :market\n              AND e.start_time >= :month_start\n              AND e.start_time < :next_month_start\n              AND e.start_time >= datetime('now', '-4 hours')\n              AND (\n                    :geo_enabled = 0\n                    OR v.latitude IS NULL\n                    OR v.longitude IS NULL\n                    OR (\n                        v.latitude BETWEEN :min_lat AND :max_lat\n                        AND v.longitude BETWEEN :min_lng AND :max_lng\n                    )\n                  )\n            ORDER BY e.start_time ASC\n        ");
+        $geoEnabled = $activeGeoBounds ? 1 : 0;
         $stmt->execute([
             ':market' => $activeMarket,
-            ':month' => $month
+            ':month_start' => $monthStart,
+            ':next_month_start' => $nextMonthStart,
+            ':geo_enabled' => $geoEnabled,
+            ':min_lat' => $activeGeoBounds['min_lat'] ?? 0,
+            ':max_lat' => $activeGeoBounds['max_lat'] ?? 0,
+            ':min_lng' => $activeGeoBounds['min_lng'] ?? 0,
+            ':max_lng' => $activeGeoBounds['max_lng'] ?? 0
         ]);
     }
     $events = $stmt->fetchAll(PDO::FETCH_ASSOC);

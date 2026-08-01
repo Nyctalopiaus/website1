@@ -32,6 +32,46 @@ function getAdminEventTitles() {
     return $cache;
 }
 
+function getAdminEventTitleOverrides() {
+    static $cache = null;
+    if ($cache === null) {
+        $lines = loadLinesFromTextFile('event_title_overrides.txt');
+        $cache = [];
+        foreach ($lines as $l) {
+            if (strpos($l, '=') === false) {
+                continue;
+            }
+            list($eventId, $title) = explode('=', $l, 2);
+            $eventId = trim((string)$eventId);
+            $title = trim((string)$title);
+            if ($eventId !== '' && $title !== '') {
+                $cache[$eventId] = $title;
+            }
+        }
+    }
+    return $cache;
+}
+
+function getAdminEventArtistOverrides() {
+    static $cache = null;
+    if ($cache === null) {
+        $lines = loadLinesFromTextFile('event_artist_overrides.txt');
+        $cache = [];
+        foreach ($lines as $l) {
+            if (strpos($l, '=') === false) {
+                continue;
+            }
+            list($eventId, $artistStr) = explode('=', $l, 2);
+            $eventId = trim((string)$eventId);
+            $artistStr = trim((string)$artistStr);
+            if ($eventId !== '' && $artistStr !== '') {
+                $cache[$eventId] = $artistStr;
+            }
+        }
+    }
+    return $cache;
+}
+
 function getAdminSpecialEvents() {
     static $cache = null;
     if ($cache === null) {

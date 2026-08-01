@@ -68,6 +68,20 @@ switch ($action) {
             $success = $stmt->execute([':genre' => $value, ':id' => $eventId]);
         }
         break;
+    case 'override_event_title':
+        $eventId = trim((string)($input['event_id'] ?? ''));
+        if (!empty($eventId)) {
+            $rule = $eventId . '=' . $value;
+            $success = appendRuleToTextFile('event_title_overrides.txt', $rule);
+        }
+        break;
+    case 'override_event_artists':
+        $eventId = trim((string)($input['event_id'] ?? ''));
+        if (!empty($eventId)) {
+            $rule = $eventId . '=' . $value;
+            $success = appendRuleToTextFile('event_artist_overrides.txt', $rule);
+        }
+        break;
     case 'make_headliner':
         $eventId = trim((string)($input['event_id'] ?? ''));
         if (!empty($eventId)) {

@@ -15,11 +15,12 @@ $ticketUrl = $event['ticket_url'];
 $isCoheadliner = count($group['artists']) > 1;
 $availabilityTag = trim((string)($event['availability_tag'] ?? ''));
 $combinedTagsStr = implode(', ', $group['tags']);
+$resolvedCity = resolveEventCardCity($event);
 $searchBlob = strtolower(trim(implode(' ', array_filter([
     implode(' ', $group['artists']),
     (string)($event['artist_name'] ?? ''),
     (string)($event['venue_name'] ?? ''),
-    (string)($event['city_name'] ?? ''),
+    (string)$resolvedCity,
     $combinedTagsStr
 ]))));
 
@@ -34,8 +35,29 @@ foreach ($group['artists'] as $artName) {
     }
 }
 $groupEventIdsStr = implode(',', array_column($group['events'], 'event_id'));
+
+$pMin = isset($event['price_min']) ? (float)$event['price_min'] : null;
+$pMax = isset($event['price_max']) ? (float)$event['price_max'] : null;
+$priceTextSources = [
+    trim((string)($event['availability_tag'] ?? '')),
+    trim((string)($event['ticket_url'] ?? '')),
+    trim((string)($event['artist_name'] ?? '')),
+    trim((string)($event['venue_name'] ?? '')),
+];
+foreach ((array)($group['tags'] ?? []) as $tag) {
+    $tagText = trim((string)$tag);
+    if ($tagText !== '') {
+        $priceTextSources[] = $tagText;
+    }
+}
+$priceTextBlob = strtolower(implode(' ', array_filter($priceTextSources, static function ($value) {
+    return trim((string)$value) !== '';
+})));
+$hasExplicitFreeSignal = preg_match('/\b(?:free(?:\s+(?:show|event|entry|admission|concert|music|night))?|no cover|no cover charge|complimentary|doors? free)\b/i', $priceTextBlob) === 1;
+$looksFreeByPrice = $pMin !== null && $pMin === 0.0 && ($pMax === null || $pMax <= 0.0);
+$shouldShowFreeBadge = $hasExplicitFreeSignal || $looksFreeByPrice;
 ?>
-<article class="event-card" data-status="Approved" data-event-ids="<?php echo htmlspecialchars($groupEventIdsStr); ?>" data-city="<?php echo htmlspecialchars(strtolower(resolveEventCardCity($event))); ?>" data-venue="<?php echo htmlspecialchars(strtolower($event['venue_name'])); ?>" data-genre="<?php echo htmlspecialchars(strtolower($event['genre'] ?? 'all')); ?>" data-tags="<?php echo htmlspecialchars(strtolower($combinedTagsStr)); ?>" data-search="<?php echo htmlspecialchars($searchBlob); ?>" id="card-<?php echo $event['event_id']; ?>">
+<article class="event-card" data-status="Approved" data-event-ids="<?php echo htmlspecialchars($groupEventIdsStr); ?>" data-city="<?php echo htmlspecialchars(strtolower($resolvedCity)); ?>" data-venue="<?php echo htmlspecialchars(strtolower($event['venue_name'])); ?>" data-genre="<?php echo htmlspecialchars(strtolower($event['genre'] ?? 'all')); ?>" data-tags="<?php echo htmlspecialchars(strtolower($combinedTagsStr)); ?>" data-search="<?php echo htmlspecialchars($searchBlob); ?>" data-free="<?php echo $shouldShowFreeBadge ? '1' : '0'; ?>" id="card-<?php echo $event['event_id']; ?>">
     <!-- Left Stub -->
     <div class="date-stub">
         <div class="date-block-vertical">
@@ -140,12 +162,13 @@ $groupEventIdsStr = implode(',', array_column($group['events'], 'event_id'));
                             </div>
                             <?php endif; ?>
                             <?php if (!empty($isAdmin)): ?>
-                                <div class="admin-artist-inline-tools" style="display: inline-flex; align-items: center; gap: 0.25rem; margin-left: 0.4rem;">
-                                    <button type="button" class="btn-admin-act btn-admin-headliner" data-artist="<?php echo htmlspecialchars($artName); ?>" data-event-id="<?php echo $event['event_id']; ?>" title="Promote '<?php echo htmlspecialchars($artName); ?>' to #1 Headliner">👑 Headliner</button>
-                                    <button type="button" class="btn-admin-act btn-admin-banner" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Set '<?php echo htmlspecialchars($artName); ?>' as Tour/Event Banner">🎟️ Banner</button>
-                                    <button type="button" class="btn-admin-act btn-admin-special" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Suppress Music Buttons for '<?php echo htmlspecialchars($artName); ?>'">🚫 Suppress</button>
-                                    <button type="button" class="btn-admin-act btn-admin-split" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Split combined band names in '<?php echo htmlspecialchars($artName); ?>'">✂️ Split</button>
-                                    <button type="button" class="btn-admin-act btn-admin-omit" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Omit/Ignore '<?php echo htmlspecialchars($artName); ?>'">🗑️ Omit</button>
+                                <div class="admin-artist-inline-tools">
+                                    <button type="button" class="btn-admin-act btn-admin-mini btn-admin-headliner" data-artist="<?php echo htmlspecialchars($artName); ?>" data-event-id="<?php echo $event['event_id']; ?>" title="Promote '<?php echo htmlspecialchars($artName); ?>' to #1 Headliner">👑 Headliner</button>
+                                    <button type="button" class="btn-admin-act btn-admin-mini btn-admin-banner" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Set '<?php echo htmlspecialchars($artName); ?>' as Tour/Event Banner">🎟️ Banner</button>
+                                    <button type="button" class="btn-admin-act btn-admin-mini btn-admin-special" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Suppress Music Buttons for '<?php echo htmlspecialchars($artName); ?>'">🚫 Suppress</button>
+                                    <button type="button" class="btn-admin-act btn-admin-mini btn-admin-split" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Split combined band names in '<?php echo htmlspecialchars($artName); ?>'">✂️ Split</button>
+                                    <button type="button" class="btn-admin-act btn-admin-mini btn-admin-artist-override" data-event-id="<?php echo $event['event_id']; ?>" data-current-artists="<?php echo htmlspecialchars($event['artist_name'] ?? ''); ?>" title="Override artist name(s) for this card (supports multiple bands)">✍️ Artists</button>
+                                    <button type="button" class="btn-admin-act btn-admin-mini btn-admin-omit" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Omit/Ignore '<?php echo htmlspecialchars($artName); ?>'">🗑️ Omit</button>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -185,12 +208,13 @@ $groupEventIdsStr = implode(',', array_column($group['events'], 'event_id'));
                             </div>
                             <?php endif; ?>
                             <?php if (!empty($isAdmin)): ?>
-                                <div class="admin-artist-inline-tools" style="display: inline-flex; align-items: center; gap: 0.25rem; margin-left: 0.4rem;">
-                                    <button type="button" class="btn-admin-act btn-admin-headliner" data-artist="<?php echo htmlspecialchars($artName); ?>" data-event-id="<?php echo $event['event_id']; ?>" title="Promote '<?php echo htmlspecialchars($artName); ?>' to #1 Headliner">👑 Headliner</button>
-                                    <button type="button" class="btn-admin-act btn-admin-banner" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Set '<?php echo htmlspecialchars($artName); ?>' as Tour/Event Banner">🎟️ Banner</button>
-                                    <button type="button" class="btn-admin-act btn-admin-special" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Suppress Music Buttons for '<?php echo htmlspecialchars($artName); ?>'">🚫 Suppress</button>
-                                    <button type="button" class="btn-admin-act btn-admin-split" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Split combined band names in '<?php echo htmlspecialchars($artName); ?>'">✂️ Split</button>
-                                    <button type="button" class="btn-admin-act btn-admin-omit" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Omit/Ignore '<?php echo htmlspecialchars($artName); ?>'">🗑️ Omit</button>
+                                <div class="admin-artist-inline-tools">
+                                    <button type="button" class="btn-admin-act btn-admin-mini btn-admin-headliner" data-artist="<?php echo htmlspecialchars($artName); ?>" data-event-id="<?php echo $event['event_id']; ?>" title="Promote '<?php echo htmlspecialchars($artName); ?>' to #1 Headliner">👑 Headliner</button>
+                                    <button type="button" class="btn-admin-act btn-admin-mini btn-admin-banner" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Set '<?php echo htmlspecialchars($artName); ?>' as Tour/Event Banner">🎟️ Banner</button>
+                                    <button type="button" class="btn-admin-act btn-admin-mini btn-admin-special" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Suppress Music Buttons for '<?php echo htmlspecialchars($artName); ?>'">🚫 Suppress</button>
+                                    <button type="button" class="btn-admin-act btn-admin-mini btn-admin-split" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Split combined band names in '<?php echo htmlspecialchars($artName); ?>'">✂️ Split</button>
+                                    <button type="button" class="btn-admin-act btn-admin-mini btn-admin-artist-override" data-event-id="<?php echo $event['event_id']; ?>" data-current-artists="<?php echo htmlspecialchars($event['artist_name'] ?? ''); ?>" title="Override artist name(s) for this card (supports multiple bands)">✍️ Artists</button>
+                                    <button type="button" class="btn-admin-act btn-admin-mini btn-admin-omit" data-artist="<?php echo htmlspecialchars($artName); ?>" title="Omit/Ignore '<?php echo htmlspecialchars($artName); ?>'">🗑️ Omit</button>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -235,11 +259,12 @@ $groupEventIdsStr = implode(',', array_column($group['events'], 'event_id'));
                     </div>
                     <?php endif; ?>
                     <?php if (!empty($isAdmin)): ?>
-                        <div class="admin-artist-inline-tools" style="display: inline-flex; align-items: center; gap: 0.25rem; margin-left: 0.4rem;">
-                            <button type="button" class="btn-admin-act btn-admin-banner" data-artist="<?php echo htmlspecialchars($singleArt); ?>" title="Set '<?php echo htmlspecialchars($singleArt); ?>' as Tour/Event Banner">🎟️ Banner</button>
-                            <button type="button" class="btn-admin-act btn-admin-special" data-artist="<?php echo htmlspecialchars($singleArt); ?>" title="Suppress Music Buttons for '<?php echo htmlspecialchars($singleArt); ?>'">🚫 Suppress</button>
-                            <button type="button" class="btn-admin-act btn-admin-split" data-artist="<?php echo htmlspecialchars($singleArt); ?>" title="Split combined band names in '<?php echo htmlspecialchars($singleArt); ?>'">✂️ Split</button>
-                            <button type="button" class="btn-admin-act btn-admin-omit" data-artist="<?php echo htmlspecialchars($singleArt); ?>" title="Omit/Ignore '<?php echo htmlspecialchars($singleArt); ?>'">🗑️ Omit</button>
+                        <div class="admin-artist-inline-tools">
+                            <button type="button" class="btn-admin-act btn-admin-mini btn-admin-banner" data-artist="<?php echo htmlspecialchars($singleArt); ?>" title="Set '<?php echo htmlspecialchars($singleArt); ?>' as Tour/Event Banner">🎟️ Banner</button>
+                            <button type="button" class="btn-admin-act btn-admin-mini btn-admin-special" data-artist="<?php echo htmlspecialchars($singleArt); ?>" title="Suppress Music Buttons for '<?php echo htmlspecialchars($singleArt); ?>'">🚫 Suppress</button>
+                            <button type="button" class="btn-admin-act btn-admin-mini btn-admin-split" data-artist="<?php echo htmlspecialchars($singleArt); ?>" title="Split combined band names in '<?php echo htmlspecialchars($singleArt); ?>'">✂️ Split</button>
+                            <button type="button" class="btn-admin-act btn-admin-mini btn-admin-artist-override" data-event-id="<?php echo $event['event_id']; ?>" data-current-artists="<?php echo htmlspecialchars($event['artist_name'] ?? ''); ?>" title="Override artist name(s) for this card (supports multiple bands)">✍️ Artists</button>
+                            <button type="button" class="btn-admin-act btn-admin-mini btn-admin-omit" data-artist="<?php echo htmlspecialchars($singleArt); ?>" title="Omit/Ignore '<?php echo htmlspecialchars($singleArt); ?>'">🗑️ Omit</button>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -258,10 +283,12 @@ $groupEventIdsStr = implode(',', array_column($group['events'], 'event_id'));
                  </span>
              <?php endif; ?>
 
-             <?php if (isset($event['price_min']) && $event['price_min'] !== null): 
-                 $pMin = $event['price_min'];
-                 $pMax = $event['price_max'] ?? null;
-                 if ($pMin < 30) {
+             <?php if ($shouldShowFreeBadge): ?>
+                 <span class="badge-price price-free" title="Free event indicated by the source data.">
+                     🆓 FREE
+                 </span>
+             <?php elseif ($pMin !== null): ?>
+                 <?php if ($pMin < 30) {
                      $tier = '$';
                      $tierClass = 'price-low';
                      $tierText = 'Budget-Friendly';
@@ -275,10 +302,10 @@ $groupEventIdsStr = implode(',', array_column($group['events'], 'event_id'));
                      $tierText = 'Premium';
                  }
                  $tooltipText = "Est: $" . number_format($pMin, 2);
-                 if ($pMax && $pMax > $pMin) {
+                 if ($pMax !== null && $pMax > $pMin) {
                      $tooltipText .= " - $" . number_format($pMax, 2);
                  }
-             ?>
+                 ?>
                  <span class="badge-price <?php echo $tierClass; ?>" title="<?php echo htmlspecialchars($tooltipText . ' (' . $tierText . ')'); ?>">
                      💵 <?php echo $tier; ?>
                  </span>
@@ -420,7 +447,7 @@ $groupEventIdsStr = implode(',', array_column($group['events'], 'event_id'));
                      data-artist="<?php echo htmlspecialchars($event['artist_name']); ?>"
                      data-date="<?php echo htmlspecialchars($event['start_time']); ?>"
                      data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>"
-                     data-city="<?php echo htmlspecialchars($event['city_name']); ?>"
+                    data-city="<?php echo htmlspecialchars($resolvedCity); ?>"
                      title="View Setlist">
                  🎵
              </button>
@@ -429,7 +456,7 @@ $groupEventIdsStr = implode(',', array_column($group['events'], 'event_id'));
                      data-id="<?php echo $event['event_id']; ?>"
                      data-artist="<?php echo htmlspecialchars($event['artist_name']); ?>"
                      data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>"
-                     data-city="<?php echo htmlspecialchars($event['city_name']); ?>"
+                    data-city="<?php echo htmlspecialchars($resolvedCity); ?>"
                      data-start="<?php echo htmlspecialchars($event['start_time']); ?>"
                      data-tags="<?php echo htmlspecialchars($combinedTagsStr); ?>"
                      title="Mark as Interested">
@@ -446,31 +473,44 @@ $groupEventIdsStr = implode(',', array_column($group['events'], 'event_id'));
     </div>
 
     <?php if (!empty($isAdmin)): ?>
-        <div class="admin-card-bar" style="width: 100%; background: rgba(255, 68, 68, 0.08); border-top: 1px dashed rgba(255, 68, 68, 0.3); padding: 0.5rem 0.75rem; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem;">
-            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                <span style="font-size: 0.75rem; color: #ff6b6b; font-weight: 700;">🛠️ CARD OVERRIDES:</span>
-                
-                <label style="font-size: 0.75rem; color: #ccc; display: flex; align-items: center; gap: 0.3rem;">
-                    🏷️ Genre:
-                    <select class="admin-genre-select" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" style="background: #1a1c23; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 0.25rem 0.4rem; font-size: 0.75rem; cursor: pointer;">
-                        <?php 
-                        $currGenre = strtolower((string)($event['genre'] ?? 'all'));
-                        $genres = ['all' => 'All Genres', 'rock' => 'Rock', 'metal' => 'Metal', 'electronic' => 'Electronic / EDM', 'country' => 'Country / Folk', 'hip-hop' => 'Hip-Hop / Rap', 'pop' => 'Pop', 'indie' => 'Indie / Alt', 'jazz' => 'Jazz / Blues', 'special_event' => 'Special Event'];
-                        foreach ($genres as $gVal => $gLbl) {
-                            $sel = ($currGenre === $gVal) ? 'selected' : '';
-                            echo '<option value="' . $gVal . '" ' . $sel . '>' . htmlspecialchars($gLbl) . '</option>';
-                        }
-                        ?>
-                    </select>
-                </label>
-
-                <label style="font-size: 0.75rem; color: #ccc; display: flex; align-items: center; gap: 0.3rem;">
-                    📍 City:
-                    <input type="text" class="admin-city-input" data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>" value="<?php echo htmlspecialchars(resolveEventCardCity($event)); ?>" style="background: #1a1c23; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; padding: 0.25rem 0.4rem; font-size: 0.75rem; width: 120px;" placeholder="Override City..." />
-                    <button type="button" class="btn-admin-act btn-admin-save-city" data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.72rem; cursor: pointer; border-radius: 4px;">Save City</button>
-                </label>
+        <div class="admin-card-bar">
+            <div class="admin-card-bar-header">
+                <span class="admin-card-bar-label">Card Overrides</span>
+                <span class="admin-card-id">ID: <?php echo htmlspecialchars($event['event_id']); ?></span>
             </div>
-            <span style="font-size: 0.7rem; color: #888;">ID: <?php echo htmlspecialchars($event['event_id']); ?></span>
+
+            <div class="admin-card-grid">
+                <div class="admin-control-card">
+                    <label class="admin-field admin-field-genre">
+                        <span class="admin-field-label">Genre</span>
+                        <select class="admin-genre-select admin-input" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>">
+                            <?php 
+                            $currGenre = strtolower((string)($event['genre'] ?? 'all'));
+                            $genres = ['all' => 'All Genres', 'rock' => 'Rock', 'metal' => 'Metal', 'electronic' => 'Electronic / EDM', 'country' => 'Country / Folk', 'hip-hop' => 'Hip-Hop / Rap', 'pop' => 'Pop', 'indie' => 'Indie / Alt', 'jazz' => 'Jazz / Blues', 'special_event' => 'Special Event'];
+                            foreach ($genres as $gVal => $gLbl) {
+                                $sel = ($currGenre === $gVal) ? 'selected' : '';
+                                echo '<option value="' . $gVal . '" ' . $sel . '>' . htmlspecialchars($gLbl) . '</option>';
+                            }
+                            ?>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="admin-control-card">
+                    <label class="admin-field admin-field-city">
+                        <span class="admin-field-label">City Override</span>
+                        <div class="admin-input-row">
+                            <input type="text" class="admin-city-input admin-input" data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>" value="<?php echo htmlspecialchars($resolvedCity); ?>" placeholder="Override city..." />
+                            <button type="button" class="btn-admin-act btn-admin-save-city btn-admin-slim" data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>">Save City</button>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="admin-control-card admin-control-card-actions">
+                    <button type="button" class="btn-admin-act btn-admin-title btn-admin-slim" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" data-current-title="<?php echo htmlspecialchars($event['artist_name'] ?? ''); ?>" title="Set a single banner/title line (disables artist splitting for this card)">Set Banner Name</button>
+                    <button type="button" class="btn-admin-act btn-admin-mark-special btn-admin-slim btn-admin-warn" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" title="Mark this event as non-music and hide listen/link buttons">Mark Non-Music</button>
+                </div>
+            </div>
         </div>
     <?php endif; ?>
 </article>

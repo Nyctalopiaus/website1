@@ -44,6 +44,7 @@ export function initFilters(opts = {}) {
   const artistSearchInput = document.getElementById('artist-search-input');
   const clearSearchButton = document.getElementById('btn-clear-search');
   const btnInterestedFilter = document.getElementById('btn-interested-filter');
+  const btnFreeFilter = document.getElementById('btn-free-filter');
   const cards = document.querySelectorAll('.events-content .event-card');
   const genreHelpTrigger = document.getElementById('genre-help-trigger');
   const genreHelpPanel = document.getElementById('genre-help-panel');
@@ -54,8 +55,20 @@ export function initFilters(opts = {}) {
   let activeRegions = new Set(['all']);
   let activeGenre = 'all';
   let filterInterestedOnly = false;
+  let filterFreeOnly = false;
   let filterJustAnnounced = false;
   let lastActiveMonthView = (monthSelect && monthSelect.value !== 'interested-view') ? monthSelect.value : null;
+
+  // Keep dropdown in sync with SSR-selected month to avoid browser-restored stale selection.
+  if (monthSelect) {
+    const activeServerView = document.querySelector('.calendar-view.active[data-month]');
+    const activeServerMonth = activeServerView ? String(activeServerView.dataset.month || '').trim() : '';
+    const activeServerValue = activeServerMonth ? `month-${activeServerMonth}` : '';
+    if (activeServerValue && monthSelect.querySelector(`option[value="${activeServerValue}"]`)) {
+      monthSelect.value = activeServerValue;
+      lastActiveMonthView = activeServerValue;
+    }
+  }
   const activeMarket = document.body?.dataset?.market || 'colorado';
   const INTL_MARKETS = new Set(['uk', 'england', 'scotland', 'wales', 'ireland']);
   const activeCountry = document.body?.dataset?.country || (INTL_MARKETS.has(activeMarket) ? activeMarket : '');
@@ -386,6 +399,7 @@ export function initFilters(opts = {}) {
       }
       if (selectedVenueCount !== totalVenueCount) parts.push(`Venues ${selectedVenueCount}/${totalVenueCount}`);
       if (filterInterestedOnly) parts.push('Interested only');
+      if (filterFreeOnly) parts.push('Free events');
       if (searchQuery) parts.push(`Search "${searchQuery}"`);
 
       summaryFilters.textContent = parts.length ? `Filters: ${parts.length} active` : 'Filters: default';
@@ -413,17 +427,22 @@ export function initFilters(opts = {}) {
   });
 
   allCardsToScan.forEach(card => {
-    if (card.dataset && card.dataset.venue) {
-      const rawVenue = card.dataset.venue.trim().toLowerCase();
+    if (card.dataset) {
+      const rawVenue = String(card.dataset.venue || '').trim().toLowerCase();
+      if (!rawVenue) {
+        return;
+      }
       const matched = findVenueDetails(venueData, rawVenue);
-      const normalized = matched ? matched.venue_name.toLowerCase() : rawVenue;
+      const normalized = matched ? String(matched.venue_name || '').toLowerCase() : rawVenue;
       card.dataset.venue = normalized;
       venuesSet.add(normalized);
     }
   });
 
   const sortedVenues = Array.from(venuesSet).map(venue => {
-    const matched = Array.isArray(venueData) ? venueData.find(item => item.venue_name.toLowerCase() === venue) : null;
+    const matched = Array.isArray(venueData)
+      ? venueData.find(item => String(item?.venue_name || '').toLowerCase() === venue)
+      : null;
     const displayName = matched ? matched.venue_name : venue.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     return { raw: venue, name: displayName };
   }).sort((a, b) => a.name.localeCompare(b.name));
@@ -709,6 +728,13 @@ export function initFilters(opts = {}) {
         if (show && filterInterestedOnly) {
           const eventId = card.id.replace('card-', '');
           if (!interestedSet || !interestedSet.has(eventId)) {
+            show = false;
+          }
+        }
+
+        if (show && filterFreeOnly) {
+          const freeFlag = String(card.getAttribute('data-free') || '0') === '1';
+          if (!freeFlag) {
             show = false;
           }
         }
@@ -1159,7 +1185,8 @@ export function initFilters(opts = {}) {
         const currentUrl = new URL(window.location.href);
         if (currentUrl.searchParams.get('month') !== m) {
           currentUrl.searchParams.set('month', m);
-          navigateTo(currentUrl.toString());
+          // Force a full SSR refresh for month switches to avoid stale view/summary state.
+          window.location.assign(currentUrl.toString());
           return;
         }
       }
@@ -1412,6 +1439,17 @@ export function initFilters(opts = {}) {
       } else {
         applyFilters();
       }
+    });
+  }
+
+  if (btnFreeFilter) {
+    btnFreeFilter.setAttribute('aria-pressed', 'false');
+    btnFreeFilter.addEventListener('click', () => {
+      resetChunkLimit();
+      filterFreeOnly = !filterFreeOnly;
+      btnFreeFilter.classList.toggle('is-active', filterFreeOnly);
+      btnFreeFilter.setAttribute('aria-pressed', filterFreeOnly ? 'true' : 'false');
+      applyFilters();
     });
   }
 

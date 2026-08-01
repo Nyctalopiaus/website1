@@ -1008,7 +1008,7 @@ class EventAggregator {
         $this->venuesByMarket = [];
 
         try {
-            $rows = $this->db->query("SELECT venue_name, city, COALESCE(NULLIF(TRIM(market), ''), 'front-range') AS market FROM venues")->fetchAll(PDO::FETCH_ASSOC);
+            $rows = $this->db->query("SELECT venue_id, venue_name, city, address, maps_url, latitude, longitude, COALESCE(NULLIF(TRIM(market), ''), 'front-range') AS market FROM venues")->fetchAll(PDO::FETCH_ASSOC);
             foreach ($rows as $row) {
                 $market = $this->normalizeMarketKey($row['market'] ?? 'front-range') ?? 'front-range';
                 $name = trim((string)($row['venue_name'] ?? ''));
@@ -1024,8 +1024,13 @@ class EventAggregator {
                 $nameLower = strtolower($name);
                 if (!isset($this->venuesByMarket[$market][$nameLower])) {
                     $this->venuesByMarket[$market][$nameLower] = [
+                        'venue_id' => isset($row['venue_id']) ? (int)$row['venue_id'] : null,
                         'name' => $name,
                         'city' => $city,
+                        'address' => trim((string)($row['address'] ?? '')),
+                        'maps_url' => trim((string)($row['maps_url'] ?? '')),
+                        'latitude' => isset($row['latitude']) ? (float)$row['latitude'] : null,
+                        'longitude' => isset($row['longitude']) ? (float)$row['longitude'] : null,
                         'name_lower' => $nameLower,
                         'name_simple' => $this->simplifyVenueName($name)
                     ];
@@ -1061,12 +1066,12 @@ class EventAggregator {
 
         // 1. Country validation
         if ($countryNorm !== '') {
-            if ($marketNorm === 'front-range' || $marketNorm === 'socal') {
+            if ($marketNorm === 'colorado' || $marketNorm === 'california' || $marketNorm === 'texas') {
                 if (!in_array($countryNorm, ['united states', 'us', 'usa', 'united states of america'], true)) {
                     return false;
                 }
-            } elseif ($marketNorm === 'scotland') {
-                if (!in_array($countryNorm, ['united kingdom', 'uk', 'gb', 'scotland', 'great britain', 'england', 'wales'], true)) {
+            } elseif ($marketNorm === 'uk') {
+                if (!in_array($countryNorm, ['united kingdom', 'uk', 'gb', 'scotland', 'great britain', 'england', 'wales', 'ireland'], true)) {
                     return false;
                 }
             }
@@ -1075,15 +1080,19 @@ class EventAggregator {
         $cityNorm = strtolower(trim((string)$city));
 
         // 2. Region / State & City validation
-        if ($marketNorm === 'front-range') {
+        if ($marketNorm === 'colorado') {
             if ($regionNorm !== '' && !in_array($regionNorm, ['co', 'colorado', 'co.'], true)) {
                 return false;
             }
-        } elseif ($marketNorm === 'socal') {
+        } elseif ($marketNorm === 'california') {
             if ($regionNorm !== '' && !in_array($regionNorm, ['ca', 'california', 'ca.'], true)) {
                 return false;
             }
-        } elseif ($marketNorm === 'scotland') {
+        } elseif ($marketNorm === 'texas') {
+            if ($regionNorm !== '' && !in_array($regionNorm, ['tx', 'texas', 'tx.'], true)) {
+                return false;
+            }
+        } elseif ($marketNorm === 'uk') {
             if ($regionNorm !== '' && in_array($regionNorm, ['co', 'colorado', 'ca', 'california', 'wa', 'washington', 'or', 'oregon', 'tx', 'texas', 'mo', 'missouri', 'ne', 'nebraska', 'il', 'illinois', 'ny', 'new york'], true)) {
                 return false;
             }
@@ -1129,6 +1138,15 @@ class EventAggregator {
                 continue;
             }
 
+            if (is_array($locationHint)) {
+                $hintCity = trim((string)($locationHint['city'] ?? ''));
+                $hintRegion = trim((string)($locationHint['region'] ?? ''));
+                $hintCountry = trim((string)($locationHint['country'] ?? ''));
+                if (!$this->isEventInMarketRegion($market, $hintCity, $hintRegion, $hintCountry)) {
+                    continue;
+                }
+            }
+
             foreach ($this->venuesByMarket[$market] as $entry) {
                 $score = -1;
                 $candidate = $entry['name_lower'];
@@ -1158,8 +1176,13 @@ class EventAggregator {
                     $bestScore = $score;
                     $best = [
                         'market' => $market,
+                        'venue_id' => $entry['venue_id'] ?? null,
                         'venue_name' => $entry['name'],
-                        'city' => $entry['city'] ?? ''
+                        'city' => $entry['city'] ?? '',
+                        'address' => $entry['address'] ?? '',
+                        'maps_url' => $entry['maps_url'] ?? '',
+                        'latitude' => $entry['latitude'] ?? null,
+                        'longitude' => $entry['longitude'] ?? null
                     ];
                 }
             }
@@ -1181,7 +1204,7 @@ class EventAggregator {
                 $targetMarket = 'california';
             } elseif ($region === 'TX' || strtolower($region) === 'texas') {
                 $targetMarket = 'texas';
-            } elseif (in_array($country, ['GB', 'UK', 'SCOTLAND', 'GREAT BRITAIN', 'UNITED KINGDOM'], true) || in_array(strtolower($region), ['scotland', 'uk'], true)) {
+            } elseif (in_array($country, ['GB', 'UK', 'SCOTLAND', 'GREAT BRITAIN', 'UNITED KINGDOM', 'IRELAND'], true) || in_array(strtolower($region), ['scotland', 'uk', 'england', 'wales', 'ireland'], true)) {
                 $targetMarket = 'uk';
             }
 
@@ -1857,6 +1880,7 @@ class EventAggregator {
 
         $resolvedVenue = $this->resolveTargetVenue($event['venue_name'] ?? '', $event['market'] ?? null);
         $incomingMarket = $this->normalizeMarketKey($event['market'] ?? null);
+        $originalIncomingMarket = $incomingMarket;
 
         if ($resolvedVenue !== null) {
             $event['venue_name'] = $resolvedVenue['venue_name'];
@@ -1872,6 +1896,10 @@ class EventAggregator {
                 $this->log("[IGNORE] Rejecting out-of-market unverified show for artist '{$event['artist_name']}' in city '{$event['city_name']}', region '{$region}'.");
                 return false;
             }
+        }
+
+        if ($originalIncomingMarket !== null && $incomingMarket !== null && $originalIncomingMarket !== $incomingMarket) {
+            $this->log("[MARKET NORMALIZE] Reassigned event '{$event['artist_name']}' venue '{$event['venue_name']}' from market '{$originalIncomingMarket}' to '{$incomingMarket}'.");
         }
 
         $incomingStateCode = $this->normalizeStateCode($event['state_code'] ?? null, $incomingMarket);

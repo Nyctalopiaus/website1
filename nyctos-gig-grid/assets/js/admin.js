@@ -93,6 +93,71 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 alert('❌ Error: ' + (res.error || 'Failed'));
             }
+        } else if (target.classList.contains('btn-admin-title')) {
+            const eventId = target.getAttribute('data-event-id') || '';
+            const currTitle = target.getAttribute('data-current-title') || artist;
+            if (!eventId) {
+                alert('Missing event ID for title override.');
+                return;
+            }
+
+            const titleInput = prompt('Enter the exact single banner/title for this card (used as one un-split line):', currTitle);
+            if (!titleInput) return;
+
+            const cleanTitle = titleInput.trim();
+            if (!cleanTitle) {
+                alert('Title cannot be empty.');
+                return;
+            }
+
+            const res = await saveAdminRule('override_event_title', cleanTitle, { event_id: eventId });
+            if (res.success) {
+                alert('✅ Saved card title override. Reloading grid...');
+                reloadPreservingScroll();
+            } else {
+                alert('❌ Error: ' + (res.error || 'Failed'));
+            }
+        } else if (target.classList.contains('btn-admin-artist-override')) {
+            const eventId = target.getAttribute('data-event-id') || '';
+            const currArtists = target.getAttribute('data-current-artists') || artist;
+            if (!eventId) {
+                alert('Missing event ID for artist override.');
+                return;
+            }
+
+            const artistInput = prompt('Enter artist name(s). For multiple bands, separate with " & " (example: Band A & Band B):', currArtists);
+            if (!artistInput) return;
+
+            const cleanArtists = artistInput.trim();
+            if (!cleanArtists) {
+                alert('Artist override cannot be empty.');
+                return;
+            }
+
+            const res = await saveAdminRule('override_event_artists', cleanArtists, { event_id: eventId });
+            if (res.success) {
+                alert('✅ Saved artist override. Reloading grid...');
+                reloadPreservingScroll();
+            } else {
+                alert('❌ Error: ' + (res.error || 'Failed'));
+            }
+        } else if (target.classList.contains('btn-admin-mark-special')) {
+            const eventId = target.getAttribute('data-event-id') || '';
+            if (!eventId) {
+                alert('Missing event ID.');
+                return;
+            }
+
+            const ok = confirm('Mark this card as non-music (Special Event) and hide listen/link buttons?');
+            if (!ok) return;
+
+            const res = await saveAdminRule('override_genre', 'special_event', { event_id: eventId });
+            if (res.success) {
+                alert('✅ Marked as non-music (Special Event). Reloading grid...');
+                reloadPreservingScroll();
+            } else {
+                alert('❌ Error: ' + (res.error || 'Failed'));
+            }
         }
     });
 

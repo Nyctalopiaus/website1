@@ -94,6 +94,13 @@ $marketMetadata = [
     'uk' => ['key' => 'uk', 'name' => 'United Kingdom', 'icon' => '🇬🇧', 'type' => 'intl']
 ];
 
+$marketDisplayLabels = [
+    'colorado' => 'CO',
+    'california' => 'CA',
+    'texas' => 'TX',
+    'uk' => ucfirst($activeCountry)
+];
+
 // Fetch live event counts per market for dropdown labels
 $marketCardCounts = [];
 $marketCardCountsStmt = $db->query("
@@ -182,9 +189,23 @@ $monthsToFetch = $isAllMonths ? $allAvailableMonths : [$requestedMonth];
 
 $countryFilter = $activeMarket === 'uk' ? strtolower(trim($activeCountry)) : '';
 
+$marketGeoBounds = [
+    'colorado' => ['min_lat' => 36.0, 'max_lat' => 42.5, 'min_lng' => -110.5, 'max_lng' => -101.5],
+    'california' => ['min_lat' => 32.0, 'max_lat' => 42.5, 'min_lng' => -125.0, 'max_lng' => -114.0],
+    'texas' => ['min_lat' => 25.0, 'max_lat' => 37.5, 'min_lng' => -107.0, 'max_lng' => -93.0],
+];
+$activeGeoBounds = $marketGeoBounds[$activeMarket] ?? null;
+
 // Group events by active month to prevent DOM overload (Fast 16ms Indexed Query)
 $eventsByMonth = [];
 foreach ($monthsToFetch as $month) {
+    $monthDate = DateTime::createFromFormat('!Y-m', $month);
+    if (!$monthDate) {
+        continue;
+    }
+    $monthStart = $monthDate->format('Y-m-01 00:00:00');
+    $nextMonthStart = (clone $monthDate)->modify('+1 month')->format('Y-m-01 00:00:00');
+
     if ($activeMarket === 'uk' && !empty($countryFilter)) {
         $stmt = $db->prepare("
             SELECT e.*, v.city AS city_name
@@ -193,14 +214,16 @@ foreach ($monthsToFetch as $month) {
             JOIN market_cities mc ON v.city = mc.city_name
             WHERE e.market = :market
                             AND LOWER(TRIM(mc.region)) = :country_filter
-              AND strftime('%Y-%m', e.start_time) = :month 
+              AND e.start_time >= :month_start
+              AND e.start_time < :next_month_start
               AND e.start_time >= datetime('now', '-4 hours') 
             ORDER BY e.start_time ASC
         ");
         $stmt->execute([
             ':market' => $activeMarket,
             ':country_filter' => $countryFilter,
-            ':month' => $month
+            ':month_start' => $monthStart,
+            ':next_month_start' => $nextMonthStart
         ]);
     } else {
         $stmt = $db->prepare("
@@ -208,13 +231,30 @@ foreach ($monthsToFetch as $month) {
             FROM events e
             LEFT JOIN venues v ON e.venue_name = v.venue_name
             WHERE e.market = :market
-              AND strftime('%Y-%m', e.start_time) = :month 
+              AND e.start_time >= :month_start
+              AND e.start_time < :next_month_start
               AND e.start_time >= datetime('now', '-4 hours') 
+              AND (
+                    :geo_enabled = 0
+                    OR v.latitude IS NULL
+                    OR v.longitude IS NULL
+                    OR (
+                        v.latitude BETWEEN :min_lat AND :max_lat
+                        AND v.longitude BETWEEN :min_lng AND :max_lng
+                    )
+                  )
             ORDER BY e.start_time ASC
         ");
+        $geoEnabled = $activeGeoBounds ? 1 : 0;
         $stmt->execute([
             ':market' => $activeMarket,
-            ':month' => $month
+            ':month_start' => $monthStart,
+            ':next_month_start' => $nextMonthStart,
+            ':geo_enabled' => $geoEnabled,
+            ':min_lat' => $activeGeoBounds['min_lat'] ?? 0,
+            ':max_lat' => $activeGeoBounds['max_lat'] ?? 0,
+            ':min_lng' => $activeGeoBounds['min_lng'] ?? 0,
+            ':max_lng' => $activeGeoBounds['max_lng'] ?? 0
         ]);
     }
     $events = $stmt->fetchAll();
@@ -421,14 +461,12 @@ if (file_exists($lastSyncFile)) {
         </div>
     </div>
 
-    <div id="venue-modal" class="modal hidden" style="display:none;">
-        <div class="modal-content" style="max-width:560px; margin:8vh auto; background:#111; border:1px solid rgba(255,255,255,.15); border-radius:10px; padding:1rem; color:#fff;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
-                <h3 id="venue-modal-name" style="margin:0;">Venue</h3>
-                <button type="button" id="btn-close-venue">✕</button>
-            </div>
-            <p id="venue-modal-address" style="margin:.25rem 0 1rem; color:#cbd5e1;"></p>
-            <a id="venue-modal-maps" href="#" target="_blank" rel="noopener noreferrer">Open in Maps</a>
+    <div id="venue-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+        <div class="modal-card modal-card-venue modal-content" role="dialog" aria-modal="true" aria-labelledby="venue-modal-name">
+            <button type="button" id="btn-close-venue" class="modal-close-button" aria-label="Close venue details">✕</button>
+            <h3 id="venue-modal-name" class="modal-title modal-title-venue" style="margin:0;">Venue</h3>
+            <p id="venue-modal-address" class="modal-field-value" style="margin:.25rem 0 1rem;"></p>
+            <a id="venue-modal-maps" class="btn-tickets btn-tickets-compact" href="#" target="_blank" rel="noopener noreferrer">Open in Maps</a>
         </div>
     </div>
 
@@ -469,6 +507,8 @@ if (file_exists($lastSyncFile)) {
 
     <script id="venue-data" type="application/json"><?php echo json_encode($venueData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?></script>
     <script id="genre-buckets-data" type="application/json"><?php echo json_encode($genreBuckets, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?></script>
+
+    <button type="button" id="btn-back-to-top" class="btn-back-to-top" aria-label="Back to top" title="Back to top">Back to Top</button>
 
     <script type="module" src="assets/js/app.js?v=<?php echo filemtime(__DIR__ . '/assets/js/app.js'); ?>"></script>
 </body>

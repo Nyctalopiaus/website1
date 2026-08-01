@@ -1,9 +1,9 @@
-import { setupGlobalErrorLogging, getVenueData, getGenreBucketData } from './utils.js?v=20260731_v10';
-import { getInterestedIds, saveInterestedIds, getIgnoredEventIds, saveIgnoredEventIds } from './store.js?v=20260731_v10';
-import { initEmailModal, initFeatureModal, initVenueModal, initSetlistModal, initContactModal } from './modals.js?v=20260731_v10';
-import { initArtistInsights, initAudioPreview, initArtistLinksDropdown } from './media.js?v=20260731_v10';
-import { initFilters } from './filters.js?v=20260731_v10';
-import { loadWeatherForecasts } from './weather.js?v=20260731_v10';
+import { setupGlobalErrorLogging, getVenueData, getGenreBucketData } from './utils.js?v=20260801_v11';
+import { getInterestedIds, saveInterestedIds, getIgnoredEventIds, saveIgnoredEventIds } from './store.js?v=20260801_v11';
+import { initEmailModal, initFeatureModal, initVenueModal, initSetlistModal, initContactModal } from './modals.js?v=20260801_v11';
+import { initArtistInsights, initAudioPreview, initArtistLinksDropdown } from './media.js?v=20260801_v11';
+import { initFilters } from './filters.js?v=20260801_v11';
+import { loadWeatherForecasts } from './weather.js?v=20260801_v11';
 
 setupGlobalErrorLogging();
 
@@ -121,22 +121,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  initEmailModal(getInterestedIds);
-  initFeatureModal();
-  initVenueModal(venueData);
-  initSetlistModal();
-  initContactModal();
-  initArtistInsights();
-  initAudioPreview();
-  initArtistLinksDropdown();
-  initFilters({
+  const safeInit = (label, fn) => {
+    try {
+      fn();
+    } catch (error) {
+      console.error(`[GigGrid] ${label} init failed`, error);
+    }
+  };
+
+  safeInit('Email modal', () => initEmailModal(getInterestedIds));
+  safeInit('Feature modal', () => initFeatureModal());
+  safeInit('Venue modal', () => initVenueModal(venueData));
+  safeInit('Setlist modal', () => initSetlistModal());
+  safeInit('Contact modal', () => initContactModal());
+  safeInit('Artist insights', () => initArtistInsights());
+  safeInit('Audio preview', () => initAudioPreview());
+  safeInit('Artist links dropdown', () => initArtistLinksDropdown());
+  safeInit('Filters', () => initFilters({
     venueData,
     genreBuckets,
     getInterestedIds,
     saveInterestedIds,
     getIgnoredEventIds,
     saveIgnoredEventIds
-  });
+  }));
   initMarketLinkPrefetching();
 
   if (btnBackToTop) {

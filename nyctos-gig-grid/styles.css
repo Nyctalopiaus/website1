@@ -399,6 +399,36 @@ select option,
     background: rgba(245, 158, 11, 0.24);
 }
 
+.btn-premium-filter--free {
+    color: #f8fafc;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.btn-premium-filter--free .btn-premium-filter-icon {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.btn-premium-filter--free:hover {
+    color: var(--text-bright);
+    border-color: rgba(255, 255, 255, 0.28);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.09) 100%);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.34), 0 0 14px rgba(255, 255, 255, 0.08);
+    transform: translateY(-2px);
+}
+
+.btn-premium-filter--free.is-active {
+    color: #f0fdf4;
+    border-color: rgba(74, 222, 128, 0.56);
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.28) 0%, rgba(5, 150, 105, 0.22) 100%);
+    box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.2), 0 8px 20px rgba(16, 185, 129, 0.24);
+}
+
+.btn-premium-filter--free.is-active .btn-premium-filter-icon {
+    background: rgba(74, 222, 128, 0.24);
+}
+
 .btn-premium-filter--secondary:active {
     transform: translateY(0);
 }
@@ -1252,6 +1282,12 @@ select option,
     animation: none;
 }
 
+.events-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
 .events-content.is-ready .calendar-view.active {
     animation: viewFadeInUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -1653,6 +1689,13 @@ select option,
     color: #fca5a5;
     border: 1px solid rgba(239, 68, 68, 0.2);
     box-shadow: 0 0 6px rgba(239, 68, 68, 0.1);
+}
+
+.price-free {
+    background: rgba(16, 185, 129, 0.16);
+    color: #86efac;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.12);
 }
 
 .badge-price-alert {
@@ -4183,30 +4226,258 @@ select option,
 
 /* Admin Inline Band Tools */
 .admin-artist-inline-tools {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 0.25rem;
-    margin-left: 0.4rem;
+    gap: 0.3rem;
+    margin-top: 0.36rem;
+    margin-left: 0;
+    flex-wrap: wrap;
+    width: 100%;
 }
 
 .admin-artist-inline-tools .btn-admin-act {
-    background: rgba(255, 68, 68, 0.12);
-    border: 1px solid rgba(255, 68, 68, 0.35);
-    color: #ff8888;
-    padding: 0.2rem 0.45rem;
-    font-size: 0.68rem;
-    font-weight: 600;
-    border-radius: 4px;
+    background: rgba(26, 32, 45, 0.72);
+    border: 1px solid rgba(145, 163, 193, 0.4);
+    color: #dce4f3;
+    padding: 0.2rem 0.44rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    border-radius: 6px;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.16s ease;
     white-space: nowrap;
+    letter-spacing: 0.01em;
 }
 
 .admin-artist-inline-tools .btn-admin-act:hover {
-    background: rgba(255, 68, 68, 0.3);
+    background: rgba(62, 75, 101, 0.86);
     color: #ffffff;
-    border-color: rgba(255, 68, 68, 0.6);
+    border-color: rgba(173, 194, 236, 0.74);
     transform: translateY(-1px);
+}
+
+.admin-artist-inline-tools .btn-admin-mini.btn-admin-omit {
+    border-color: rgba(255, 107, 107, 0.42);
+    color: #ffb3b3;
+}
+
+.admin-artist-inline-tools .btn-admin-mini.btn-admin-omit:hover {
+    background: rgba(115, 32, 32, 0.55);
+    border-color: rgba(255, 130, 130, 0.7);
+}
+
+.admin-artist-inline-tools .btn-admin-mini.btn-admin-special {
+    border-color: rgba(245, 158, 11, 0.45);
+    color: #ffdca1;
+}
+
+.admin-artist-inline-tools .btn-admin-mini.btn-admin-special:hover {
+    background: rgba(88, 60, 18, 0.78);
+    border-color: rgba(245, 158, 11, 0.68);
+}
+
+/* Admin Card Management Bar */
+.admin-card-bar {
+    width: 100%;
+    margin-top: 0.55rem;
+    padding: 0.75rem 0.8rem 0.8rem;
+    box-sizing: border-box;
+    display: grid;
+    gap: 0.62rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 119, 119, 0.35);
+    background:
+        radial-gradient(circle at 0% 0%, rgba(255, 102, 102, 0.16), transparent 40%),
+        linear-gradient(145deg, rgba(56, 20, 20, 0.36), rgba(22, 17, 20, 0.46));
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+/* Keep admin override panel visually grouped with main content, not the date stub column. */
+.event-card > .admin-card-bar {
+    grid-column: 2 / 4;
+}
+
+.admin-card-bar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.admin-card-grid {
+    display: grid;
+    grid-template-columns: minmax(150px, 210px) minmax(220px, 1fr) minmax(170px, 220px);
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+.admin-control-card {
+    background: rgba(12, 16, 24, 0.58);
+    border: 1px solid rgba(205, 219, 245, 0.17);
+    border-radius: 9px;
+    padding: 0.5rem;
+    min-height: 62px;
+    display: flex;
+    align-items: center;
+}
+
+.admin-control-card-actions {
+    display: flex;
+    gap: 0.42rem;
+    flex-wrap: wrap;
+    align-content: flex-start;
+}
+
+.admin-card-bar-label {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.21rem 0.56rem;
+    border-radius: 999px;
+    background: rgba(255, 107, 107, 0.17);
+    border: 1px solid rgba(255, 107, 107, 0.42);
+    color: #ffb0b0;
+    font-size: 0.69rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.admin-field {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.34rem;
+    color: #d7dbe2;
+    font-size: 0.74rem;
+    font-weight: 600;
+    margin: 0;
+    width: 100%;
+}
+
+.admin-field-label {
+    color: #d4deef;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 800;
+    opacity: 0.9;
+}
+
+.admin-input {
+    background: rgba(10, 13, 19, 0.88);
+    color: #f7f8fb;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    padding: 0.26rem 0.42rem;
+    font-size: 0.74rem;
+    line-height: 1.2;
+    min-height: 30px;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.admin-input:focus {
+    outline: none;
+    border-color: rgba(255, 161, 161, 0.66);
+    box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
+}
+
+.admin-genre-select.admin-input {
+    width: 100%;
+    min-width: 0;
+}
+
+.admin-city-input.admin-input {
+    width: 100%;
+    min-width: 120px;
+}
+
+.admin-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+    width: 100%;
+}
+
+.admin-card-bar .btn-admin-slim {
+    padding: 0.34rem 0.58rem;
+    font-size: 0.71rem;
+    font-weight: 700;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    background: rgba(255, 255, 255, 0.08);
+    color: #f0f4fb;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.admin-card-bar .btn-admin-slim:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.35);
+    transform: translateY(-1px);
+}
+
+.admin-card-bar .btn-admin-warn {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.38);
+    color: #fde9bc;
+}
+
+.admin-card-bar .btn-admin-warn:hover {
+    background: rgba(245, 158, 11, 0.24);
+    border-color: rgba(245, 158, 11, 0.55);
+}
+
+.admin-card-id {
+    font-size: 0.66rem;
+    color: #bac7db;
+    letter-spacing: 0.01em;
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    opacity: 0.92;
+    padding: 0.18rem 0.42rem;
+    border-radius: 6px;
+    background: rgba(14, 18, 27, 0.55);
+    border: 1px solid rgba(186, 199, 219, 0.22);
+}
+
+@media (max-width: 920px) {
+    .admin-card-bar {
+        gap: 0.55rem;
+        padding: 0.55rem 0.62rem;
+    }
+
+    .admin-card-grid {
+        grid-template-columns: 1fr;
+        gap: 0.42rem;
+    }
+
+    .admin-control-card {
+        min-height: auto;
+    }
+
+    .admin-input-row {
+        flex-wrap: wrap;
+    }
+
+    .admin-input-row .btn-admin-slim {
+        width: 100%;
+    }
+
+    .admin-card-id {
+        width: 100%;
+        text-align: left;
+    }
+}
+
+@media (max-width: 980px) {
+    .event-card > .admin-card-bar {
+        grid-column: 1 / -1;
+    }
 }
 
 /* CLS Layout Shift Stabilization */

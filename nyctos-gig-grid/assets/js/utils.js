@@ -29,12 +29,30 @@ export function setupGlobalErrorLogging() {
 
 export function getVenueData() {
   const venueDataElement = document.getElementById('venue-data');
-  return venueDataElement ? JSON.parse(venueDataElement.textContent) : [];
+  if (!venueDataElement) return [];
+  try {
+    const raw = (venueDataElement.textContent || '').trim();
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.warn('[GigGrid] Failed parsing venue-data JSON, falling back to empty dataset.', error);
+    return [];
+  }
 }
 
 export function getGenreBucketData() {
   const genreBucketDataElement = document.getElementById('genre-buckets-data');
-  return genreBucketDataElement ? JSON.parse(genreBucketDataElement.textContent) : {};
+  if (!genreBucketDataElement) return {};
+  try {
+    const raw = (genreBucketDataElement.textContent || '').trim();
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (error) {
+    console.warn('[GigGrid] Failed parsing genre-buckets-data JSON, falling back to defaults.', error);
+    return {};
+  }
 }
 
 export function escapeHtml(str) {
