@@ -26,6 +26,8 @@ function normalizeLocationToken(value) {
 export function initFilters(opts = {}) {
   const getInterestedIds = opts.getInterestedIds || function() { try { return JSON.parse(localStorage.getItem('gig_grid_interested_events') || '[]'); } catch(e) { return []; } };
   const saveInterestedIds = opts.saveInterestedIds || function(ids) { try { localStorage.setItem('gig_grid_interested_events', JSON.stringify(ids)); } catch(e) {} };
+  const getPurchasedIds = opts.getPurchasedIds || function() { try { return JSON.parse(localStorage.getItem('gig_grid_purchased_events') || '[]'); } catch(e) { return []; } };
+  const savePurchasedIds = opts.savePurchasedIds || function(ids) { try { localStorage.setItem('gig_grid_purchased_events', JSON.stringify(ids)); } catch(e) {} };
   const getIgnoredEventIds = opts.getIgnoredEventIds || function() { try { return JSON.parse(localStorage.getItem('gig_grid_ignored_events') || '[]'); } catch(e) { return []; } };
   const saveIgnoredEventIds = opts.saveIgnoredEventIds || function(ids) { try { localStorage.setItem('gig_grid_ignored_events', JSON.stringify(ids)); } catch(e) {} };
   const venueData = Array.isArray(opts.venueData) ? opts.venueData : [];
@@ -523,55 +525,87 @@ export function initFilters(opts = {}) {
   function updateInterestedCards() {
     const interestedIds = getInterestedIds().map(id => String(id));
     const interestedSet = new Set(interestedIds);
-    const option = document.getElementById('interested-dropdown-option');
+    const purchasedIds = getPurchasedIds().map(id => String(id));
+    const purchasedSet = new Set(purchasedIds);
+
+    const optionInterested = document.getElementById('interested-dropdown-option');
+    const optionPurchased = document.getElementById('purchased-dropdown-option');
     const btnFilter = document.getElementById('btn-interested-filter');
-    const allCards = document.querySelectorAll('.calendar-view:not(#interested-view) .event-card');
-    let count = 0;
+    const allCards = document.querySelectorAll('.calendar-view:not(#interested-view):not(#purchased-view) .event-card');
+    
+    let interestedCount = 0;
+    let purchasedCount = 0;
 
     allCards.forEach(card => {
       const eventId = card.id.replace('card-', '');
-      if (!interestedSet.has(eventId)) return;
       const btnAction = card.querySelector('.btn-interested-toggle');
       const startTimeStr = btnAction ? btnAction.getAttribute('data-start') : '';
       if (isShowActive(startTimeStr)) {
-        count++;
+        if (interestedSet.has(eventId)) interestedCount++;
+        if (purchasedSet.has(eventId)) purchasedCount++;
       }
     });
 
-    if (option) {
-      option.textContent = `${ICONS.star} Interested Shows (${count})`;
+    if (optionInterested) {
+      optionInterested.textContent = `★ Interested Shows (${interestedCount})`;
+    }
+    if (optionPurchased) {
+      optionPurchased.textContent = `🎟️ My Tickets (${purchasedCount})`;
     }
 
     if (btnFilter) {
       const labelSpan = btnFilter.querySelector('.btn-premium-filter-label');
       if (labelSpan) {
-        labelSpan.textContent = count > 0 ? `Interested Only (${count})` : 'Interested Only';
+        labelSpan.textContent = interestedCount > 0 ? `Interested Only (${interestedCount})` : 'Interested Only';
       }
       const iconSpan = btnFilter.querySelector('.btn-premium-filter-icon');
       if (iconSpan) {
         iconSpan.textContent = '⭐';
       }
-      btnFilter.setAttribute('title', count > 0 ? `Show starred favorite shows (${count})` : 'Show starred favorite shows');
-      btnFilter.setAttribute('aria-label', count > 0 ? `Interested only filter (${count} shows)` : 'Interested only filter');
+      btnFilter.setAttribute('title', interestedCount > 0 ? `Show starred favorite shows (${interestedCount})` : 'Show starred favorite shows');
+      btnFilter.setAttribute('aria-label', interestedCount > 0 ? `Interested only filter (${interestedCount} shows)` : 'Interested only filter');
     }
 
     document.querySelectorAll('.event-card').forEach(card => {
       const eventId = card.id.replace('card-', '');
       const btn = card.querySelector('.btn-interested-toggle');
-      if (interestedSet.has(eventId)) {
-        card.classList.add('is-interested');
-        if (btn) {
-          btn.classList.add('active');
-          btn.textContent = ICONS.starFilled;
-          btn.title = 'Interested!';
-        }
-      } else {
+      const badgeInterested = card.querySelector('.badge-status-interested');
+      const badgePurchased = card.querySelector('.badge-status-purchased');
+
+      if (purchasedSet.has(eventId)) {
+        card.setAttribute('data-status-state', 'purchased');
         card.classList.remove('is-interested');
+        card.classList.add('is-purchased');
         if (btn) {
           btn.classList.remove('active');
+          btn.classList.add('purchased');
+          btn.textContent = '🎟️';
+          btn.title = 'Got Tickets! (Click to unmark)';
+        }
+        if (badgeInterested) badgeInterested.style.display = 'none';
+        if (badgePurchased) badgePurchased.style.display = 'inline-flex';
+      } else if (interestedSet.has(eventId)) {
+        card.setAttribute('data-status-state', 'interested');
+        card.classList.add('is-interested');
+        card.classList.remove('is-purchased');
+        if (btn) {
+          btn.classList.add('active');
+          btn.classList.remove('purchased');
+          btn.textContent = ICONS.starFilled;
+          btn.title = 'Interested! (Click to mark Got Tickets)';
+        }
+        if (badgeInterested) badgeInterested.style.display = 'inline-flex';
+        if (badgePurchased) badgePurchased.style.display = 'none';
+      } else {
+        card.setAttribute('data-status-state', 'none');
+        card.classList.remove('is-interested', 'is-purchased');
+        if (btn) {
+          btn.classList.remove('active', 'purchased');
           btn.textContent = ICONS.starEmpty;
           btn.title = 'Mark as Interested';
         }
+        if (badgeInterested) badgeInterested.style.display = 'none';
+        if (badgePurchased) badgePurchased.style.display = 'none';
       }
     });
   }
@@ -583,7 +617,7 @@ export function initFilters(opts = {}) {
 
     const interestedIds = getInterestedIds().map(id => String(id));
     const interestedSet = new Set(interestedIds);
-    const allCards = document.querySelectorAll('.calendar-view:not(#interested-view) .event-card');
+    const allCards = document.querySelectorAll('.calendar-view:not(#interested-view):not(#purchased-view) .event-card');
     let count = 0;
 
     allCards.forEach(card => {
@@ -610,9 +644,51 @@ export function initFilters(opts = {}) {
     if (count === 0) {
       container.innerHTML = `
         <div class="no-events" style="text-align: center; padding: 4rem 1rem; color: var(--text-muted);">
-          <span style="font-size: 3rem; display: block; margin-bottom: 1rem; filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.4));">${ICONS.star}</span>
+          <span style="font-size: 3rem; display: block; margin-bottom: 1rem; filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.4));">★</span>
           <h3 style="color: var(--text-bright); font-family: var(--font-header); font-size: 1.8rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">No Interested Shows</h3>
-          <p style="font-size: 0.9rem; max-width: 400px; margin: 0 auto; line-height: 1.6;">Click the star icon on any show card to save it here and keep track of your schedule.</p>
+          <p style="font-size: 0.9rem; max-width: 400px; margin: 0 auto; line-height: 1.6;">Click the star icon on any show card to save it as interested.</p>
+        </div>
+      `;
+    }
+  }
+
+  function renderPurchasedShows() {
+    const container = document.getElementById('purchased-view');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const purchasedIds = getPurchasedIds().map(id => String(id));
+    const purchasedSet = new Set(purchasedIds);
+    const allCards = document.querySelectorAll('.calendar-view:not(#interested-view):not(#purchased-view) .event-card');
+    let count = 0;
+
+    allCards.forEach(card => {
+      const eventId = card.id.replace('card-', '');
+      if (purchasedSet.has(eventId)) {
+        const btnAction = card.querySelector('.btn-interested-toggle');
+        const startTimeStr = btnAction ? btnAction.getAttribute('data-start') : '';
+        if (isShowActive(startTimeStr)) {
+          const clone = card.cloneNode(true);
+          clone.style.display = 'grid';
+          const delay = Math.min(count, 8) * 0.035;
+          clone.style.setProperty('--stagger-delay', `${delay}s`);
+          clone.classList.add('card-entering');
+          container.appendChild(clone);
+          setTimeout(() => {
+            clone.classList.remove('card-entering');
+            clone.style.removeProperty('--stagger-delay');
+          }, (delay + 0.3) * 1000);
+          count++;
+        }
+      }
+    });
+
+    if (count === 0) {
+      container.innerHTML = `
+        <div class="no-events" style="text-align: center; padding: 4rem 1rem; color: var(--text-muted);">
+          <span style="font-size: 3rem; display: block; margin-bottom: 1rem; filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.4));">🎟️</span>
+          <h3 style="color: var(--text-bright); font-family: var(--font-header); font-size: 1.8rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">No Purchased Tickets Yet</h3>
+          <p style="font-size: 0.9rem; max-width: 400px; margin: 0 auto; line-height: 1.6;">Click the ticket button on an interested show to confirm your purchased tickets!</p>
         </div>
       `;
     }
@@ -1386,24 +1462,72 @@ export function initFilters(opts = {}) {
 
   updateMarketLinksWithSearch();
 
+  // Handle Status Popover Menu Toggles & Item Clicks
   document.addEventListener('click', event => {
-    const btn = event.target.closest('.btn-interested-toggle');
-    if (!btn) return;
+    // 1. Toggle Button Click -> Open/Close Popover Menu
+    const toggleBtn = event.target.closest('.btn-interested-toggle');
+    if (toggleBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      const wrapper = toggleBtn.closest('.status-menu-wrapper');
+      const menu = wrapper ? wrapper.querySelector('.status-popover-menu') : null;
+      const isOpen = menu ? menu.classList.contains('open') : false;
 
-    event.preventDefault();
-    event.stopPropagation();
-    const eventId = btn.getAttribute('data-id');
-    let interestedIds = getInterestedIds();
-    if (interestedIds.includes(eventId)) {
-      interestedIds = interestedIds.filter(id => id !== eventId);
-    } else {
-      interestedIds.push(eventId);
+      // Close all open popover menus first
+      document.querySelectorAll('.status-popover-menu.open').forEach(m => m.classList.remove('open'));
+
+      if (menu && !isOpen) {
+        menu.classList.add('open');
+      }
+      return;
     }
-    saveInterestedIds(interestedIds);
-    updateInterestedCards();
-    renderInterestedShows();
-    animateInterestedBadge();
-    if (filterInterestedOnly) applyFilters();
+
+    // 2. Menu Item Action Click
+    const menuItem = event.target.closest('.status-popover-item');
+    if (menuItem) {
+      event.preventDefault();
+      event.stopPropagation();
+      const action = menuItem.getAttribute('data-action');
+      const eventId = menuItem.getAttribute('data-id');
+
+      let interestedIds = getInterestedIds().map(id => String(id));
+      let purchasedIds = getPurchasedIds().map(id => String(id));
+
+      if (action === 'interested') {
+        if (!interestedIds.includes(String(eventId))) interestedIds.push(String(eventId));
+        purchasedIds = purchasedIds.filter(id => id !== String(eventId));
+      } else if (action === 'purchased') {
+        if (!purchasedIds.includes(String(eventId))) purchasedIds.push(String(eventId));
+        interestedIds = interestedIds.filter(id => id !== String(eventId));
+      } else if (action === 'clear') {
+        interestedIds = interestedIds.filter(id => id !== String(eventId));
+        purchasedIds = purchasedIds.filter(id => id !== String(eventId));
+      }
+
+      saveInterestedIds(interestedIds);
+      savePurchasedIds(purchasedIds);
+      updateInterestedCards();
+      renderInterestedShows();
+      renderPurchasedShows();
+      animateInterestedBadge();
+      applyFilters();
+
+      // Close menu
+      document.querySelectorAll('.status-popover-menu.open').forEach(m => m.classList.remove('open'));
+      return;
+    }
+
+    // 3. Click outside closes popover menus
+    if (!event.target.closest('.status-menu-wrapper')) {
+      document.querySelectorAll('.status-popover-menu.open').forEach(m => m.classList.remove('open'));
+    }
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.status-popover-menu.open').forEach(m => m.classList.remove('open'));
+    }
   });
 
   if (btnInterestedFilter) {
@@ -1543,6 +1667,7 @@ export function initFilters(opts = {}) {
   updateResetIgnoredButton();
   updateInterestedCards();
   renderInterestedShows();
+  renderPurchasedShows();
   syncSearchClearButton();
   applyFilters();
   // Kick off auto-expand on first paint in case no scroll/wheel events fire.
@@ -1552,6 +1677,7 @@ export function initFilters(opts = {}) {
     applyFilters,
     getFilterInterestedOnly: () => filterInterestedOnly,
     updateInterestedCards,
-    renderInterestedShows
+    renderInterestedShows,
+    renderPurchasedShows
   };
 }

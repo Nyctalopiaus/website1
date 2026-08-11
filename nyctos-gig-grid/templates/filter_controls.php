@@ -60,7 +60,8 @@ if (!in_array($activeCountry, $intlMarketKeys, true)) {
                             📅 <?php echo formatMonthName($month); ?>
                         </option>
                     <?php endforeach; ?>
-                    <option id="interested-dropdown-option" value="interested-view">⭐ Favorite Shows (0)</option>
+                    <option id="interested-dropdown-option" value="interested-view">★ Interested Shows (0)</option>
+                    <option id="purchased-dropdown-option" value="purchased-view">🎟️ My Tickets (0)</option>
                 <?php endif; ?>
             </select>
         </div>

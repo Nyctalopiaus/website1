@@ -88,8 +88,13 @@ $priceTextBlob = strtolower(implode(' ', array_filter($priceTextSources, static 
 $hasExplicitFreeSignal = preg_match('/\b(?:free(?:\s+(?:show|event|entry|admission|concert|music|night))?|no cover|no cover charge|complimentary|doors? free)\b/i', $priceTextBlob) === 1;
 $looksFreeByPrice = $pMin !== null && $pMin === 0.0 && ($pMax === null || $pMax <= 0.0);
 $shouldShowFreeBadge = $hasExplicitFreeSignal || $looksFreeByPrice;
+
+// Check if event is within the next 7 days
+$eventTs = strtotime($event['start_time']);
+$nowTs = time();
+$isThisWeek = ($eventTs >= ($nowTs - 4 * 3600) && $eventTs <= ($nowTs + 7 * 86400));
 ?>
-<article class="event-card" data-status="Approved" data-event-ids="<?php echo htmlspecialchars($groupEventIdsStr); ?>" data-city="<?php echo htmlspecialchars(strtolower($resolvedCity)); ?>" data-venue="<?php echo htmlspecialchars(strtolower($event['venue_name'])); ?>" data-genre="<?php echo htmlspecialchars(strtolower($event['genre'] ?? 'all')); ?>" data-tags="<?php echo htmlspecialchars(strtolower($combinedTagsStr)); ?>" data-search="<?php echo htmlspecialchars($searchBlob); ?>" data-free="<?php echo $shouldShowFreeBadge ? '1' : '0'; ?>" data-created-at="<?php echo htmlspecialchars($event['created_at'] ?? ''); ?>" id="card-<?php echo $event['event_id']; ?>">
+<article class="event-card" data-status="Approved" data-event-ids="<?php echo htmlspecialchars($groupEventIdsStr); ?>" data-event-id="<?php echo $event['event_id']; ?>" data-is-this-week="<?php echo $isThisWeek ? 'true' : 'false'; ?>" data-status-state="none" data-city="<?php echo htmlspecialchars(strtolower($resolvedCity)); ?>" data-venue="<?php echo htmlspecialchars(strtolower($event['venue_name'])); ?>" data-genre="<?php echo htmlspecialchars(strtolower($event['genre'] ?? 'all')); ?>" data-tags="<?php echo htmlspecialchars(strtolower($combinedTagsStr)); ?>" data-search="<?php echo htmlspecialchars($searchBlob); ?>" data-free="<?php echo $shouldShowFreeBadge ? '1' : '0'; ?>" data-created-at="<?php echo htmlspecialchars($event['created_at'] ?? ''); ?>" id="card-<?php echo $event['event_id']; ?>">
     <!-- Left Stub -->
     <div class="date-stub">
         <div class="date-block-vertical">
@@ -365,7 +370,15 @@ $shouldShowFreeBadge = $hasExplicitFreeSignal || $looksFreeByPrice;
                  </span>
              <?php endif; ?>
              
-             <?php if (!empty($group['tags'])): ?>
+             <div class="status-pills-container">
+                  <?php if (!empty($isThisWeek)): ?>
+                      <span class="badge-status-pill badge-status-this-week" title="Concert occurs within the next 7 days">⚡ THIS WEEK</span>
+                  <?php endif; ?>
+                  <span class="badge-status-pill badge-status-interested" style="display: none;">★ INTERESTED</span>
+                  <span class="badge-status-pill badge-status-purchased" style="display: none;">🎟️ GOT TICKETS</span>
+              </div>
+              
+              <?php if (!empty($group['tags'])): ?>
                  <?php foreach ($group['tags'] as $tag): 
                      $tag = trim($tag);
                      if (empty($tag)) continue;
@@ -506,17 +519,31 @@ $shouldShowFreeBadge = $hasExplicitFreeSignal || $looksFreeByPrice;
                      title="View Setlist">
                  🎵
              </button>
-             <button type="button" 
-                     class="btn-ticket-action btn-interested-toggle" 
-                     data-id="<?php echo $event['event_id']; ?>"
-                     data-artist="<?php echo htmlspecialchars($event['artist_name']); ?>"
-                     data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>"
-                    data-city="<?php echo htmlspecialchars($resolvedCity); ?>"
-                     data-start="<?php echo htmlspecialchars($event['start_time']); ?>"
-                     data-tags="<?php echo htmlspecialchars($combinedTagsStr); ?>"
-                     title="Mark as Interested">
-                 ☆
-             </button>
+              <div class="status-menu-wrapper">
+                 <button type="button" 
+                         class="btn-ticket-action btn-interested-toggle" 
+                         data-id="<?php echo $event['event_id']; ?>"
+                         data-artist="<?php echo htmlspecialchars($event['artist_name']); ?>"
+                         data-venue="<?php echo htmlspecialchars($event['venue_name']); ?>"
+                         data-city="<?php echo htmlspecialchars($resolvedCity); ?>"
+                         data-start="<?php echo htmlspecialchars($event['start_time']); ?>"
+                         data-tags="<?php echo htmlspecialchars($combinedTagsStr); ?>"
+                         title="Update Show Status">
+                     ☆
+                 </button>
+                 <div class="status-popover-menu" style="display: none;">
+                     <div class="status-popover-header">Show Tracker</div>
+                     <button type="button" class="status-popover-item item-interested" data-action="interested" data-id="<?php echo $event['event_id']; ?>">
+                         <span class="status-item-icon">★</span> Interested
+                     </button>
+                     <button type="button" class="status-popover-item item-purchased" data-action="purchased" data-id="<?php echo $event['event_id']; ?>">
+                         <span class="status-item-icon">🎟️</span> Got Tickets!
+                     </button>
+                     <button type="button" class="status-popover-item item-clear" data-action="clear" data-id="<?php echo $event['event_id']; ?>">
+                         <span class="status-item-icon">✕</span> Clear Status
+                     </button>
+                 </div>
+              </div>
           </div>
     </div>
     <!-- Audio Preview Drawer -->

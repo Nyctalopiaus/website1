@@ -421,6 +421,10 @@ if (file_exists($lastSyncFile)) {
                 <div id="interested-view" class="calendar-view">
                     <div class="events-grid" id="interested-grid"></div>
                 </div>
+
+                <div id="purchased-view" class="calendar-view">
+                    <div class="events-grid" id="purchased-grid"></div>
+                </div>
             <?php endif; ?>
         </section>
     </main>
