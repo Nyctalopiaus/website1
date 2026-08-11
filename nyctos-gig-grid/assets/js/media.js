@@ -286,18 +286,21 @@ export function initAudioPreview() {
 
 export function initArtistLinksDropdown() {
   const closeAllPopovers = () => {
-    document.querySelectorAll('.links-popover').forEach(p => {
+    document.querySelectorAll('.links-popover, .calendar-popover').forEach(p => {
       p.style.display = 'none';
       p.classList.remove('open');
     });
-    document.querySelectorAll('.btn-links-toggle').forEach(b => {
+    document.querySelectorAll('.btn-links-toggle.active, .btn-calendar-toggle.active').forEach(b => {
       b.classList.remove('active');
+    });
+    document.querySelectorAll('.event-card.has-open-popover').forEach(c => {
+      c.classList.remove('has-open-popover');
     });
   };
 
-  // Main delegated click listener for toggles, links, and click-outside
   document.addEventListener('click', event => {
     const toggleBtn = event.target.closest('.btn-links-toggle');
+    const calToggleBtn = event.target.closest('.btn-calendar-toggle');
 
     if (toggleBtn) {
       event.preventDefault();
@@ -308,27 +311,47 @@ export function initArtistLinksDropdown() {
       if (!popover) return;
 
       const isCurrentlyOpen = popover.style.display === 'block' || popover.classList.contains('open');
-
-      // Close all open popovers across all cards first
       closeAllPopovers();
 
-      // Toggle open if it wasn't open previously
       if (!isCurrentlyOpen) {
         popover.style.display = 'block';
         popover.classList.add('open');
         toggleBtn.classList.add('active');
+        const card = toggleBtn.closest('.event-card');
+        if (card) card.classList.add('has-open-popover');
       }
       return;
     }
 
-    // If clicking a streaming link item inside popover
-    if (event.target.closest('.link-item')) {
+    if (calToggleBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      const dropdown = calToggleBtn.closest('.calendar-dropdown');
+      if (!dropdown) return;
+      const popover = dropdown.querySelector('.calendar-popover');
+      if (!popover) return;
+
+      const isCurrentlyOpen = popover.style.display === 'block' || popover.classList.contains('open');
+      closeAllPopovers();
+
+      if (!isCurrentlyOpen) {
+        popover.style.display = 'block';
+        popover.classList.add('open');
+        calToggleBtn.classList.add('active');
+        const card = calToggleBtn.closest('.event-card');
+        if (card) card.classList.add('has-open-popover');
+      }
+      return;
+    }
+
+    // If clicking a link item inside popover
+    if (event.target.closest('.link-item, .calendar-link-item')) {
       closeAllPopovers();
       return;
     }
 
-    // If clicking anywhere outside any artist-links-dropdown
-    if (!event.target.closest('.artist-links-dropdown')) {
+    // If clicking anywhere outside any artist-links-dropdown or calendar-dropdown
+    if (!event.target.closest('.artist-links-dropdown') && !event.target.closest('.calendar-dropdown')) {
       closeAllPopovers();
     }
   });

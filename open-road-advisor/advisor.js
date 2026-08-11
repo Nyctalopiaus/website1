@@ -1378,4 +1378,34 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     hudFuelCost: document.getElementById('hud-fuel-cost')
   });
+
+  // Features Modal Toggle
+  const btnOpenFeatures = document.getElementById('btn-open-features');
+  const featuresModal = document.getElementById('features-modal');
+  const btnCloseFeatures = document.getElementById('btn-close-features');
+
+  if (btnOpenFeatures && featuresModal) {
+    const openFeaturesModal = () => {
+      featuresModal.style.display = 'flex';
+      featuresModal.classList.remove('hidden');
+      featuresModal.setAttribute('aria-hidden', 'false');
+    };
+    const closeFeaturesModal = () => {
+      featuresModal.style.display = 'none';
+      featuresModal.classList.add('hidden');
+      featuresModal.setAttribute('aria-hidden', 'true');
+    };
+
+    btnOpenFeatures.addEventListener('click', openFeaturesModal);
+    if (btnCloseFeatures) btnCloseFeatures.addEventListener('click', closeFeaturesModal);
+    featuresModal.addEventListener('click', (e) => {
+      if (e.target === featuresModal) closeFeaturesModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !featuresModal.classList.contains('hidden')) {
+        closeFeaturesModal();
+      }
+    });
+  }
 });
+

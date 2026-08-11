@@ -2,10 +2,13 @@
 /**
  * Filter Controls Template Component
  */
-if (!isset($activeCountry) || !in_array($activeCountry, ['scotland', 'england', 'wales', 'ireland'], true)) {
-    $activeCountry = strtolower($_GET['region'] ?? $_COOKIE['active_country_uk'] ?? $_COOKIE['active_country_market'] ?? 'england');
+$intlMarketKeys = ['scotland', 'england', 'wales', 'ireland'];
+if (in_array($activeMarket, $intlMarketKeys, true)) {
+    $activeCountry = $activeMarket;
+} elseif (!isset($activeCountry) || !in_array($activeCountry, $intlMarketKeys, true)) {
+    $activeCountry = strtolower($_GET['region'] ?? $_COOKIE['active_country_market'] ?? 'england');
 }
-if (!in_array($activeCountry, ['scotland', 'england', 'wales', 'ireland'], true)) {
+if (!in_array($activeCountry, $intlMarketKeys, true)) {
     $activeCountry = 'england';
 }
 ?>
@@ -19,7 +22,7 @@ if (!in_array($activeCountry, ['scotland', 'england', 'wales', 'ireland'], true)
                 <a class="region-toggle-btn <?php echo $activeRegionCategory === 'us' ? 'active' : ''; ?>" data-target-group="us" href="<?php echo htmlspecialchars(buildMarketLink('colorado', null, false)); ?>">
                     🗽 America
                 </a>
-                <a class="region-toggle-btn <?php echo $activeRegionCategory === 'intl' ? 'active' : ''; ?>" data-target-group="intl" href="<?php echo htmlspecialchars(buildMarketLink('uk', $activeCountry, false)); ?>">
+                <a class="region-toggle-btn <?php echo $activeRegionCategory === 'intl' ? 'active' : ''; ?>" data-target-group="intl" href="<?php echo htmlspecialchars(buildMarketLink($activeCountry ?: 'england', null, false)); ?>">
                     🌐 International
                 </a>
             </div>
@@ -39,7 +42,7 @@ if (!in_array($activeCountry, ['scotland', 'england', 'wales', 'ireland'], true)
             <div id="intl-countries-select-container" class="market-select-wrapper" style="display: <?php echo $activeRegionCategory === 'intl' ? 'inline-block' : 'none'; ?>;">
                 <select id="intl-country-dropdown-select" class="market-dropdown-select">
                     <?php foreach ($intlCountryMarkets as $co): ?>
-                        <option value="<?php echo htmlspecialchars($co['link']); ?>" <?php echo (($activeMarket === 'uk' && $activeCountry === $co['key']) || $activeMarket === $co['key']) ? 'selected' : ''; ?>>
+                        <option value="<?php echo htmlspecialchars($co['link']); ?>" <?php echo ($activeMarket === $co['key']) ? 'selected' : ''; ?>>
                             <?php echo htmlspecialchars($co['name'] . ' (' . number_format($co['count']) . ')'); ?>
                         </option>
                     <?php endforeach; ?>
@@ -77,7 +80,7 @@ if (!in_array($activeCountry, ['scotland', 'england', 'wales', 'ireland'], true)
                 <button class="region-btn" data-region="la">Los Angeles</button>
                 <button class="region-btn" data-region="oc">Orange County</button>
                 <button class="region-btn" data-region="sd">San Diego</button>
-            <?php elseif ($activeMarket === 'uk' || in_array($activeMarket, ['england', 'scotland', 'wales', 'ireland'], true)): ?>
+            <?php elseif (in_array($activeMarket, $intlMarketKeys, true)): ?>
                 <?php if ($activeCountry === 'scotland'): ?>
                     <button class="region-btn" data-region="glasgow">Glasgow / West</button>
                     <button class="region-btn" data-region="edinburgh">Edinburgh / East</button>
@@ -127,17 +130,13 @@ if (!in_array($activeCountry, ['scotland', 'england', 'wales', 'ireland'], true)
         </div>
     </div>
 
-    <!-- Row 3: Search Input Expanded to 50% Width -->
+    <!-- Row 3: Search Input (50%) + Genre Dropdown (right-aligned) -->
     <div class="controls-row-actions" style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 0.75rem; margin-top: 0.4rem; flex-wrap: nowrap;">
         <div class="search-input-wrap" style="flex: 0 0 50%; width: 50%; max-width: 50%; min-width: 220px; margin-right: 0.5rem;">
             <input type="text" id="artist-search-input" style="width: 100%; height: 36px; box-sizing: border-box;" placeholder="🔍 Search band, venue, subgenre..." />
             <button type="button" id="btn-clear-search" aria-label="Clear search" title="Clear search">&times;</button>
         </div>
-    </div>
-
-    <!-- Row 4: Genres (Left) + Action Buttons (Right) -->
-    <div class="controls-row-actions-secondary" style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 0.45rem; margin-top: 0.4rem; flex-wrap: wrap;">
-        <div class="genre-filter-group" style="flex: 0 0 auto;">
+        <div class="genre-filter-group" style="flex: 0 0 auto; margin-left: auto;">
             <select id="genre-select">
                 <?php foreach ($genreBuckets as $bucketKey => $bucket): ?>
                     <option value="<?php echo htmlspecialchars($bucketKey); ?>"><?php echo htmlspecialchars($bucket['label']); ?></option>
@@ -149,10 +148,17 @@ if (!in_array($activeCountry, ['scotland', 'england', 'wales', 'ireland'], true)
                 <div id="genre-help-text" class="genre-help-text"><?php echo htmlspecialchars($genreBuckets['all']['title']); ?></div>
             </div>
         </div>
+    </div>
 
-        <div class="filter-actions-group" style="display: flex; align-items: center; gap: 0.45rem; flex: 0 0 auto; margin-left: auto;">
+    <!-- Row 4: Action Buttons (Centered) -->
+    <div class="controls-row-actions-secondary" style="display: flex; align-items: center; justify-content: center; width: 100%; gap: 0.45rem; margin-top: 0.4rem; flex-wrap: wrap;">
+        <div class="filter-actions-group" style="display: flex; align-items: center; gap: 0.45rem; flex: 0 0 auto;">
+            <button type="button" id="btn-just-announced" class="btn-premium-filter btn-premium-filter--secondary" title="Show only shows added in the last 7 days">
+                <span class="btn-premium-filter-icon">📣</span>
+                <span class="btn-premium-filter-label">Just Announced</span>
+            </button>
             <button type="button" id="btn-free-filter" class="btn-premium-filter btn-premium-filter--secondary btn-premium-filter--free" title="Show only free events">
-                <span class="btn-premium-filter-icon">🆓</span>
+                <span class="btn-premium-filter-icon">🎫</span>
                 <span class="btn-premium-filter-label">Free Events</span>
             </button>
             <button type="button" id="btn-interested-filter" class="btn-premium-filter btn-premium-filter--secondary" title="Show starred favorite shows">
@@ -160,11 +166,11 @@ if (!in_array($activeCountry, ['scotland', 'england', 'wales', 'ireland'], true)
                 <span class="btn-premium-filter-label">Interested Only</span>
             </button>
             <button type="button" id="btn-email-passport" class="btn-premium-filter btn-premium-filter--secondary" title="Email favorite shows (100% Private & Dispatch-Only)">
-                <span class="btn-premium-filter-icon">✉️</span>
+                <span class="btn-premium-filter-icon">📧</span>
                 <span class="btn-premium-filter-label">Email Me My Favs</span>
             </button>
             <button type="button" id="btn-reset-ignored" class="btn-premium-filter btn-premium-filter--secondary btn-reset-ignored" title="Reset ignored shows">
-                <span class="btn-premium-filter-icon">🔄</span>
+                <span class="btn-premium-filter-icon">🔓</span>
                 <span class="btn-premium-filter-label" id="reset-ignored-label">Reset Ignored (0)</span>
             </button>
             <?php if (!empty($isAdmin)): ?>

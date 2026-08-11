@@ -46,7 +46,7 @@ class EventAggregator {
         $this->initRunMetrics();
 
         // Rotate daily logs and purge log files older than 14 days (2 weeks)
-        $rotationMsgs = LogRotatorService::rotateAndPurge(__DIR__ . '/../logs', 14);
+        $rotationMsgs = LogRotatorService::rotateAndPurge(__DIR__ . '/../logs/cron-sync-log', 14);
         foreach ($rotationMsgs as $msg) {
             $this->log($msg);
         }
@@ -668,10 +668,18 @@ class EventAggregator {
             'southern-california' => 'california',
             'southern california' => 'california',
             'la' => 'california',
-            'scotland' => 'uk',
-            'uk' => 'uk',
-            'uk-scotland' => 'uk',
-            'gb' => 'uk',
+            'uk' => 'england',
+            'gb' => 'england',
+            'great britain' => 'england',
+            'united kingdom' => 'england',
+            'uk-scotland' => 'scotland',
+            'england' => 'england',
+            'scotland' => 'scotland',
+            'wales' => 'wales',
+            'ireland' => 'ireland',
+            'republic of ireland' => 'ireland',
+            'northern ireland' => 'ireland',
+            'ie' => 'ireland',
             'texas' => 'texas',
             'tx' => 'texas'
         ];
@@ -692,8 +700,11 @@ class EventAggregator {
         if ($market === 'california') {
             return 'CA';
         }
-        if ($market === 'uk') {
-            return 'UK';
+        if (in_array($market, ['england', 'scotland', 'wales'], true)) {
+            return 'GB';
+        }
+        if ($market === 'ireland') {
+            return 'IE';
         }
         if ($market === 'texas') {
             return 'TX';
@@ -712,8 +723,6 @@ class EventAggregator {
                 $marketGroup = ['colorado', 'front-range'];
             } elseif ($mLow === 'california') {
                 $marketGroup = ['california', 'socal', 'norcal'];
-            } elseif ($mLow === 'uk') {
-                $marketGroup = ['uk', 'scotland', 'england', 'wales', 'ireland'];
             }
 
             $inClause = [];
@@ -774,48 +783,27 @@ class EventAggregator {
             $byMarket[$m]['cities'][] = $r;
         }
 
-        $profiles = array_values($byMarket);
+        return array_values($byMarket);
+    }
 
-        $targetLow = strtolower(trim((string)($targetMarket ?? '')));
-        if ($targetLow === 'uk') {
-            $merged = [
-                'market' => 'uk',
-                'stateCode' => null,
-                'points' => [],
-                'bandsintown_locations' => [],
-                'cities' => []
-            ];
-            $seenPt = [];
-            $seenLoc = [];
-
-            foreach ($profiles as $profile) {
-                foreach (($profile['points'] ?? []) as $pt) {
-                    $key = round((float)($pt['lat'] ?? 0), 3) . ',' . round((float)($pt['lon'] ?? 0), 3) . ',' . (int)($pt['radius'] ?? 0);
-                    if (isset($seenPt[$key])) {
-                        continue;
-                    }
-                    $seenPt[$key] = true;
-                    $merged['points'][] = $pt;
-                }
-
-                foreach (($profile['bandsintown_locations'] ?? []) as $loc) {
-                    $locKey = strtolower(trim((string)$loc));
-                    if ($locKey === '' || isset($seenLoc[$locKey])) {
-                        continue;
-                    }
-                    $seenLoc[$locKey] = true;
-                    $merged['bandsintown_locations'][] = $loc;
-                }
-
-                foreach (($profile['cities'] ?? []) as $cityRow) {
-                    $merged['cities'][] = $cityRow;
-                }
-            }
-
-            return [$merged];
+    private function inferIntlMarketFromCity($cityName) {
+        $cityNorm = strtolower(trim((string)$cityName));
+        if ($cityNorm === '') {
+            return null;
         }
 
-        return $profiles;
+        try {
+            $stmt = $this->db->prepare("SELECT LOWER(TRIM(market)) AS market_key FROM market_cities WHERE LOWER(TRIM(city_name)) = :city AND is_active = 1 AND LOWER(TRIM(market)) IN ('england','scotland','wales','ireland') LIMIT 1");
+            $stmt->execute([':city' => $cityNorm]);
+            $market = $stmt->fetchColumn();
+            if ($market !== false && $market !== null) {
+                return strtolower(trim((string)$market));
+            }
+        } catch (Exception $e) {
+            return null;
+        }
+
+        return null;
     }
 
     public function getConfiguredMarkets() {
@@ -1105,8 +1093,19 @@ class EventAggregator {
                 if (!in_array($countryNorm, ['united states', 'us', 'usa', 'united states of america'], true)) {
                     return false;
                 }
-            } elseif ($marketNorm === 'uk') {
-                if (!in_array($countryNorm, ['united kingdom', 'uk', 'gb', 'scotland', 'great britain', 'england', 'wales', 'ireland'], true)) {
+            } elseif (in_array($marketNorm, ['england', 'scotland', 'wales', 'ireland'], true)) {
+                // Country-first validation for standalone intl markets.
+                if ($marketNorm === 'england') {
+                    $allowedCountries = ['england', 'united kingdom', 'uk', 'gb', 'great britain'];
+                } elseif ($marketNorm === 'scotland') {
+                    $allowedCountries = ['scotland', 'united kingdom', 'uk', 'gb', 'great britain'];
+                } elseif ($marketNorm === 'wales') {
+                    $allowedCountries = ['wales', 'united kingdom', 'uk', 'gb', 'great britain'];
+                } else {
+                    // Ireland market includes both Republic and Northern Ireland metros.
+                    $allowedCountries = ['ireland', 'republic of ireland', 'ie', 'united kingdom', 'uk', 'gb', 'great britain', 'northern ireland'];
+                }
+                if (!in_array($countryNorm, $allowedCountries, true)) {
                     return false;
                 }
             }
@@ -1127,7 +1126,7 @@ class EventAggregator {
             if ($regionNorm !== '' && !in_array($regionNorm, ['tx', 'texas', 'tx.'], true)) {
                 return false;
             }
-        } elseif ($marketNorm === 'uk') {
+        } elseif (in_array($marketNorm, ['england', 'scotland', 'wales', 'ireland'], true)) {
             if ($regionNorm !== '' && in_array($regionNorm, ['co', 'colorado', 'ca', 'california', 'wa', 'washington', 'or', 'oregon', 'tx', 'texas', 'mo', 'missouri', 'ne', 'nebraska', 'il', 'illinois', 'ny', 'new york'], true)) {
                 return false;
             }
@@ -1182,26 +1181,47 @@ class EventAggregator {
                 }
             }
 
+            $hCityNorm = is_array($locationHint) ? strtolower(trim((string)($locationHint['city'] ?? ''))) : '';
+
             foreach ($this->venuesByMarket[$market] as $entry) {
                 $score = -1;
                 $candidate = $entry['name_lower'];
                 $candidateSimple = $entry['name_simple'];
+                $candidateCity = strtolower(trim((string)($entry['city'] ?? '')));
+
+                $cityMatches = ($hCityNorm !== '' && $candidateCity !== '' && $hCityNorm === $candidateCity);
+                $cityMismatches = ($hCityNorm !== '' && $candidateCity !== '' && $hCityNorm !== $candidateCity);
 
                 if ($cleanVenue === $candidate) {
                     $score = 1000 + strlen($candidate);
+                    if ($cityMatches) {
+                        $score += 200;
+                    }
+                    if ($cityMismatches) {
+                        $score -= 400;
+                    }
                 } elseif (strlen($candidate) >= 6 && (strpos($cleanVenue, $candidate) !== false || strpos($candidate, $cleanVenue) !== false)) {
                     $lenDiff = abs(strlen($cleanVenue) - strlen($candidate));
-                    if ($lenDiff <= 10) {
+                    if ($lenDiff <= 10 && !$cityMismatches) {
                         $score = 800 + min(strlen($candidate), strlen($cleanVenue)) - $lenDiff;
+                        if ($cityMatches) {
+                            $score += 200;
+                        }
                     }
                 } elseif ($cleanSimple !== '' && $candidateSimple !== '') {
-                    if ($cleanSimple === $candidateSimple) {
+                    if ($cleanSimple === $candidateSimple && !$cityMismatches) {
                         $score = 700 + strlen($candidateSimple);
+                        if ($cityMatches) {
+                            $score += 200;
+                        }
                     } elseif (strlen($candidateSimple) >= 6 && strlen($cleanSimple) >= 6) {
-                        if (strpos($cleanSimple, $candidateSimple) !== false || strpos($candidateSimple, $cleanSimple) !== false) {
+                        if ((strpos($cleanSimple, $candidateSimple) !== false || strpos($candidateSimple, $cleanSimple) !== false) && !$cityMismatches) {
                             $lenDiff = abs(strlen($cleanSimple) - strlen($candidateSimple));
                             if ($lenDiff <= 8) {
-                                $score = 600 + min(strlen($candidateSimple), strlen($cleanSimple)) - $lenDiff;
+                                $score = 600 + min(strlen($cleanSimple), strlen($candidateSimple)) - $lenDiff;
+                                if ($cityMatches) {
+                                    $score += 200;
+                                }
                             }
                         }
                     }
@@ -1233,14 +1253,17 @@ class EventAggregator {
             $country = strtoupper(trim($locationHint['country'] ?? ''));
 
             $targetMarket = null;
+            if (in_array((string)$hintMarket, ['england', 'scotland', 'wales', 'ireland'], true)) {
+                $targetMarket = $hintMarket;
+            }
             if ($region === 'CO' || strtolower($region) === 'colorado') {
                 $targetMarket = 'colorado';
             } elseif ($region === 'CA' || strtolower($region) === 'california') {
                 $targetMarket = 'california';
             } elseif ($region === 'TX' || strtolower($region) === 'texas') {
                 $targetMarket = 'texas';
-            } elseif (in_array($country, ['GB', 'UK', 'SCOTLAND', 'GREAT BRITAIN', 'UNITED KINGDOM', 'IRELAND'], true) || in_array(strtolower($region), ['scotland', 'uk', 'england', 'wales', 'ireland'], true)) {
-                $targetMarket = 'uk';
+            } elseif (in_array($country, ['GB', 'UK', 'GREAT BRITAIN', 'UNITED KINGDOM', 'IRELAND'], true) || in_array(strtolower($region), ['scotland', 'england', 'wales', 'ireland'], true)) {
+                $targetMarket = $this->inferIntlMarketFromCity($city) ?? 'england';
             }
 
             if ($targetMarket !== null) {
@@ -1308,7 +1331,7 @@ class EventAggregator {
             $marketKey = $profile['market'];
             $marketIngested = 0;
             $this->log("[TICKETMASTER] Querying market '{$marketKey}'...");
-            $skipTicketPageTimeScrape = in_array(strtolower((string)$marketKey), ['uk', 'scotland', 'england', 'wales', 'ireland'], true);
+            $skipTicketPageTimeScrape = in_array(strtolower((string)$marketKey), ['scotland', 'england', 'wales', 'ireland'], true);
 
             $queries = [];
             if (!empty($profile['stateCode'])) {

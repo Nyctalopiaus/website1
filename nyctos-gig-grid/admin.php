@@ -27,8 +27,9 @@ function logAdminSecurityEvent($eventType, $details = '') {
 
     $baseDir = __DIR__;
     $targetFiles = [
-        $baseDir . '/cache/security_audit.log',
-        $baseDir . '/logs/security_audit.log'
+        $baseDir . '/logs/cron-sync-log/security_audit.log',
+        $baseDir . '/logs/security_audit.log',
+        $baseDir . '/cache/security_audit.log'
     ];
     foreach ($targetFiles as $file) {
         $dir = dirname($file);

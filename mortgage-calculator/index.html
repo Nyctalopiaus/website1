@@ -18,6 +18,9 @@
       <a href="../index.html" class="btn-back">← Back to Lab</a>
       <h1>Nycto's Housing Cost Calculator</h1>
     </div>
+    <button type="button" id="btn-open-features" class="btn-feature-mortgage" title="View Calculator Features">
+      <span>🏠</span> <span>Features</span>
+    </button>
   </header>
 
   <main class="container">
@@ -412,6 +415,30 @@
   <footer class="main-footer">
     <p>&copy; 2026 Nycto. Nycto's Housing Cost Calculator. All calculations are estimates.</p>
   </footer>
+
+  <!-- Features Modal -->
+  <div id="features-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
+      <button id="btn-close-features" class="modal-close-button" aria-label="Close feature overview">&times;</button>
+      <h2 id="feature-modal-title" class="feature-modal-title">Nycto's Housing Cost Calculator Features</h2>
+      <p class="feature-modal-intro">A fast, comprehensive real estate & mortgage planning tool designed to analyze home purchase costs, amortization schedules, and loan payoff strategies.</p>
+      <ul class="feature-modal-list">
+        <li><strong>Redfin Property Auto-Fill:</strong> Paste any Redfin listing URL to automatically extract price, property tax rate, and monthly HOA fees.</li>
+        <li><strong>Live Mortgage Rate Sync:</strong> Fetch current 30-year and 15-year fixed interest rates in real time.</li>
+        <li><strong>30-Yr vs 15-Yr Side-by-Side Comparison:</strong> Compare monthly payments, total interest costs, and lifetime savings across loan terms.</li>
+        <li><strong>Accelerated Payoff Simulator:</strong> Test monthly extra principal payments and recurring lump-sum boosts to calculate exact time and interest saved.</li>
+        <li><strong>Interactive Visualizations:</strong> Explore SVG payment breakdown donut charts and interactive loan burndown curves.</li>
+        <li><strong>DTI Affordability Analysis:</strong> Check front-end Debt-to-Income ratios against standard 28%/36% underwriting benchmarks.</li>
+      </ul>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon">🔒</span>
+        <div>
+          <strong>100% Private & Client-Side</strong>
+          All home prices, incomes, and loan calculations remain strictly inside your browser. No financial data is ever transmitted or stored remotely.
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="app.js?v=6"></script>
 </body>

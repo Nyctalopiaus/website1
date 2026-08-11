@@ -2,8 +2,8 @@
 
 class LogRotatorService {
     /**
-     * Rotates active log file daily, caps size at 2MB, and purges logs older than $maxDays.
-     * Checks logs/, cache/, and root directories for cron_sync.log.
+     * Rotates all active cron_*_sync.log files daily, caps size at 2MB, and purges archived logs older than $maxDays.
+     * Checks logs/cron-sync-log/, logs/, cache/, and root directories for cron_*_sync.log pattern.
      *
      * @param string $logDir Target logs directory path
      * @param int $maxDays Maximum retention in days (default 14)
@@ -18,6 +18,7 @@ class LogRotatorService {
         $baseDir = dirname(__DIR__);
         $targetDirs = array_unique([
             realpath($logDir) ?: $logDir,
+            $baseDir . '/logs/cron-sync-log',
             $baseDir . '/logs',
             $baseDir . '/cache',
             $baseDir
@@ -28,12 +29,22 @@ class LogRotatorService {
                 continue;
             }
 
-            $mainLogFile = rtrim($dir, '/\\') . '/cron_sync.log';
+            // Rotate all active cron_*_sync.log files (one per market)
+            $activeLogFiles = glob(rtrim($dir, '/\\') . '/cron_*_sync.log') ?: [];
+            // Also include legacy cron_sync.log if present
+            $legacyLog = rtrim($dir, '/\\') . '/cron_sync.log';
+            if (file_exists($legacyLog)) {
+                $activeLogFiles[] = $legacyLog;
+            }
 
-            // 1. Check active cron_sync.log for daily rotation or size cap
-            if (file_exists($mainLogFile) && filesize($mainLogFile) > 0) {
+            foreach ($activeLogFiles as $mainLogFile) {
+                if (!file_exists($mainLogFile) || filesize($mainLogFile) === 0) {
+                    continue;
+                }
+
                 $fileSize = filesize($mainLogFile);
                 $logDateStr = null;
+                $baseName = basename($mainLogFile, '.log');
 
                 // Read first 20 lines to find earliest date stamp
                 $handle = @fopen($mainLogFile, 'r');
@@ -61,12 +72,10 @@ class LogRotatorService {
 
                 if ($shouldRotateDate || $shouldRotateSize) {
                     $archiveTag = $logDateStr ?: date('Y-m-d_His');
-                    $archivedName = sprintf('%s/cron_sync_%s.log', $dir, $archiveTag);
+                    $archivedName = sprintf('%s/%s_%s.log', $dir, $baseName, $archiveTag);
 
-                    // Attempt archive copy
                     @copy($mainLogFile, $archivedName);
 
-                    // Truncate active log file safely at OS level
                     $f = @fopen($mainLogFile, 'r+');
                     if ($f) {
                         @ftruncate($f, 0);
@@ -77,7 +86,7 @@ class LogRotatorService {
                     }
 
                     $reason = $shouldRotateDate ? "Daily ($logDateStr)" : "Size cap (>2MB)";
-                    $messages[] = "[LOG ROTATOR] Rotated active log file [{$reason}] -> " . basename($archivedName);
+                    $messages[] = "[LOG ROTATOR] Rotated {$baseName} [{$reason}] -> " . basename($archivedName);
                 }
             }
 
@@ -85,7 +94,8 @@ class LogRotatorService {
             $files = glob(rtrim($dir, '/\\') . '/*.log*');
             if (is_array($files)) {
                 foreach ($files as $filePath) {
-                    if (basename($filePath) === 'cron_sync.log') {
+                    // Skip all active (non-archived) cron log files
+                    if (preg_match('/cron_[^.]+_sync\.log$/', $filePath) || basename($filePath) === 'cron_sync.log') {
                         continue;
                     }
 

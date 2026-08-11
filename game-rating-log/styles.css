@@ -529,3 +529,135 @@ select option {
   font-weight: 500;
   margin-left: 0.15rem;
 }
+
+/* Feature Gaming Button & Modal Styling */
+.btn-feature-gaming {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c084fc;
+  background: rgba(192, 132, 252, 0.1);
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+.btn-feature-gaming:hover {
+  background: rgba(192, 132, 252, 0.2);
+  border-color: #c084fc;
+  box-shadow: 0 0 12px rgba(192, 132, 252, 0.3);
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+.modal-overlay.hidden {
+  display: none !important;
+}
+
+.feature-modal-content {
+  background: #120e24;
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  border-radius: 12px;
+  max-width: 620px;
+  width: min(92vw, 620px);
+  padding: 2rem;
+  position: relative;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 25px rgba(192, 132, 252, 0.2);
+  color: #e9d5ff;
+  font-family: 'Outfit', sans-serif;
+}
+.feature-modal-content::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #c084fc, #38bdf8, #f43f5e);
+  border-radius: 12px 12px 0 0;
+}
+.modal-close-button {
+  position: absolute;
+  top: 1rem; right: 1rem;
+  background: transparent;
+  border: none;
+  color: #a855f7;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  line-height: 1;
+}
+.modal-close-button:hover {
+  color: #fff;
+}
+.feature-modal-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.35rem;
+  color: #fff;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+.feature-modal-intro {
+  font-size: 0.9rem;
+  color: #c084fc;
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+.feature-modal-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.feature-modal-list li {
+  font-size: 0.88rem;
+  color: #f3e8ff;
+  padding-left: 1.4rem;
+  position: relative;
+  line-height: 1.45;
+}
+.feature-modal-list li::before {
+  content: '🎮';
+  position: absolute;
+  left: 0;
+  font-size: 0.8rem;
+}
+.feature-modal-list strong {
+  color: #fff;
+}
+.modal-privacy-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: rgba(192, 132, 252, 0.08);
+  border: 1px solid rgba(192, 132, 252, 0.25);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  font-size: 0.82rem;
+  color: #e9d5ff;
+  line-height: 1.4;
+}
+.modal-privacy-notice strong {
+  display: block;
+  color: #c084fc;
+  margin-bottom: 0.2rem;
+}
+.modal-privacy-icon {
+  font-size: 1.2rem;
+}
+

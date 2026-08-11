@@ -143,8 +143,11 @@ function normalizeMarketKeyForQa($market) {
     if ($m === 'tx' || $m === 'texas') {
         return 'texas';
     }
-    if ($m === 'uk' || $m === 'england' || $m === 'scotland' || $m === 'wales' || $m === 'ireland') {
-        return 'uk';
+    if ($m === 'uk' || $m === 'united kingdom' || $m === 'gb') {
+        return 'england';
+    }
+    if ($m === 'england' || $m === 'scotland' || $m === 'wales' || $m === 'ireland') {
+        return $m;
     }
     return $m;
 }

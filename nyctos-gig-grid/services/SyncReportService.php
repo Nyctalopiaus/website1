@@ -39,9 +39,14 @@ function marketLabelForReport(string $market): string {
         case 'california':
         case 'socal':
             return 'California';
-        case 'uk':
+        case 'england':
+            return 'England';
         case 'scotland':
-            return 'UK';
+            return 'Scotland';
+        case 'wales':
+            return 'Wales';
+        case 'ireland':
+            return 'Ireland';
         case 'texas':
             return 'Texas';
         default:
@@ -238,8 +243,6 @@ function getSourceRunTallyData(array $report): array {
                 $marketGroup = ['colorado', 'front-range'];
             } elseif ($singleMarket === 'california') {
                 $marketGroup = ['california', 'socal', 'norcal'];
-            } elseif ($singleMarket === 'uk') {
-                $marketGroup = ['uk', 'scotland', 'england', 'wales', 'ireland'];
             }
             $inClause = implode(',', array_map(function($i) { return ":m{$i}"; }, array_keys($marketGroup)));
             $sqlV .= " AND LOWER(market) IN ({$inClause})";
@@ -329,8 +332,9 @@ function renderStatusBadgeHtml(string $status): string {
 function getSecurityAuditSummary(int $maxHours = 24): array {
     $baseDir = dirname(__DIR__);
     $logFiles = [
-        $baseDir . '/cache/security_audit.log',
-        $baseDir . '/logs/security_audit.log'
+        $baseDir . '/logs/cron-sync-log/security_audit.log',
+        $baseDir . '/logs/security_audit.log',
+        $baseDir . '/cache/security_audit.log'
     ];
 
     $failedCount = 0;
@@ -525,6 +529,9 @@ function buildSyncReportHtml(array $report): string {
 
             if (!empty($groups)) {
                 $html .= '<div style="font-size:13px;font-weight:600;color:#111827;margin-bottom:6px;">API HTTP non-200 responses (grouped)</div>';
+                $html .= '<div style="padding:8px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;color:#475569;margin-bottom:10px;">';
+                $html .= 'ℹ️ <strong>Note on Bandsintown 404s:</strong> Bandsintown returns <code>HTTP 404</code> whenever an artist has no active upcoming tour dates. High 404 counts represent non-touring bands, while active touring artists are successfully ingested above in <strong>Section 2 (Event Sources Tally)</strong>.';
+                $html .= '</div>';
                 $html .= '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:12px;margin-bottom:10px;">';
                 $html .= '<tr><th align="left" style="padding:7px;border:1px solid #e5e7eb;background:#f3f4f6;">Source</th><th align="left" style="padding:7px;border:1px solid #e5e7eb;background:#f3f4f6;">Market</th><th align="left" style="padding:7px;border:1px solid #e5e7eb;background:#f3f4f6;">HTTP</th><th align="right" style="padding:7px;border:1px solid #e5e7eb;background:#f3f4f6;">Count</th><th align="left" style="padding:7px;border:1px solid #e5e7eb;background:#f3f4f6;">Locations (sample)</th></tr>';
                 foreach ($groups as $g) {
@@ -667,6 +674,7 @@ function buildSyncReportText(array $report): string {
     } else {
         if (!empty($httpErrors)) {
             $lines[] = '- API HTTP non-200 responses (grouped):';
+            $lines[] = '  (Note: Bandsintown 404s indicate non-touring artists; active touring bands are ingested in Section 2)';
             $httpSummary = summarizeHttpErrors($httpErrors);
             foreach ($httpSummary['groups'] as $group) {
                 $locationText = empty($group['locations']) ? 'locations: n/a' : 'locations: ' . implode(', ', array_slice($group['locations'], 0, 6));
@@ -731,6 +739,7 @@ function sendSyncReportEmail(array $report, callable $logger = null): bool {
     $bodyHtml = buildSyncReportHtml($report);
 
     $mail = new PHPMailer(true);
+    $mail->CharSet = 'UTF-8';
 
     try {
         $mail->isSMTP();

@@ -70,8 +70,10 @@ export function initFilters(opts = {}) {
     }
   }
   const activeMarket = document.body?.dataset?.market || 'colorado';
-  const INTL_MARKETS = new Set(['uk', 'england', 'scotland', 'wales', 'ireland']);
-  const activeCountry = document.body?.dataset?.country || (INTL_MARKETS.has(activeMarket) ? activeMarket : '');
+  const INTL_MARKETS = new Set(['england', 'scotland', 'wales', 'ireland']);
+  const activeCountry = INTL_MARKETS.has(activeMarket)
+    ? activeMarket
+    : (document.body?.dataset?.country || '');
   const eventsApiUrl = document.body?.dataset?.eventsApi || 'api/events.php';
   const marketRegionStorageKey = `gig_grid_active_regions_${activeMarket}`;
   const navigateTo = (nextUrl) => {
@@ -108,12 +110,7 @@ export function initFilters(opts = {}) {
     }) || null;
   }
 
-  if (activeMarket === 'uk' && intlCountrySelect) {
-    const matchedCountryOption = findOptionByParam(intlCountrySelect, 'region', activeCountry || 'england');
-    if (matchedCountryOption) {
-      intlCountrySelect.value = matchedCountryOption.value;
-    }
-  } else if (INTL_MARKETS.has(activeMarket) && intlCountrySelect) {
+  if (INTL_MARKETS.has(activeMarket) && intlCountrySelect) {
     const matchedCountryOption = findOptionByParam(intlCountrySelect, 'market', activeMarket);
     if (matchedCountryOption) {
       intlCountrySelect.value = matchedCountryOption.value;
@@ -360,17 +357,13 @@ export function initFilters(opts = {}) {
     }
   };
 
-  const effectiveMarket = activeMarket === 'uk' ? (activeCountry || 'england') : activeMarket;
+  const effectiveMarket = activeMarket;
   const regionCities = regionCitiesByMarket[effectiveMarket] || regionCitiesByMarket['colorado'];
 
   function getMarketLabel(marketKey) {
     if (marketKey === 'colorado') return 'CO';
     if (marketKey === 'california') return 'CA';
     if (marketKey === 'texas') return 'TX';
-    if (marketKey === 'uk') {
-      const c = (document.body?.dataset?.country || 'england').toLowerCase();
-      return c.charAt(0).toUpperCase() + c.slice(1);
-    }
     if (marketKey === 'england') return 'England';
     if (marketKey === 'scotland') return 'Scotland';
     if (marketKey === 'wales') return 'Wales';
@@ -552,7 +545,7 @@ export function initFilters(opts = {}) {
     if (btnFilter) {
       const labelSpan = btnFilter.querySelector('.btn-premium-filter-label');
       if (labelSpan) {
-        labelSpan.textContent = 'Interested Only';
+        labelSpan.textContent = count > 0 ? `Interested Only (${count})` : 'Interested Only';
       }
       const iconSpan = btnFilter.querySelector('.btn-premium-filter-icon');
       if (iconSpan) {

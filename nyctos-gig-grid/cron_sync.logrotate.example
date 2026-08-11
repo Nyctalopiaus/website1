@@ -1,4 +1,4 @@
-/home/nyctltlc/public_html/nyctos-gig-grid/cache/cron_sync.log {
+/home/nyctltlc/public_html/nyctos-gig-grid/logs/cron-sync-log/*.log {
     daily
     rotate 14
     dateext

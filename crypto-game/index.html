@@ -19,10 +19,14 @@
       <a href="../" class="btn-back">← BACK TO LAB</a>
       <span class="logo-text font-mono">CRYPTO // MATRIX DECODER</span>
     </div>
-    <!-- Shannon Entropy Display -->
-    <div class="entropy-header font-mono" title="Shannon Entropy Formula">
-      <span class="entropy-label">Entropy Definition:</span>
-      <span class="entropy-formula">H(X) = - &sum; P(x<sub>i</sub>) log<sub>2</sub> P(x<sub>i</sub>)</span>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <div class="entropy-header font-mono" title="Shannon Entropy Formula">
+        <span class="entropy-label">Entropy Definition:</span>
+        <span class="entropy-formula">H(X) = - &sum; P(x<sub>i</sub>) log<sub>2</sub> P(x<sub>i</sub>)</span>
+      </div>
+      <button type="button" id="btn-open-features" class="btn-feature-matrix font-mono" title="View Matrix Capabilities">
+        [SYS_FEATURES]
+      </button>
     </div>
   </header>
 
@@ -174,6 +178,30 @@
   <footer class="main-footer">
     <p class="font-mono">&copy; 2026 CRYPTO MATRIX CONSOLE. ALL SHANNON DATA INTEGRITY VERIFIED.</p>
   </footer>
+
+  <!-- Features Modal -->
+  <div id="features-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content font-mono" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
+      <button id="btn-close-features" class="modal-close-button" aria-label="Close feature overview">&times;</button>
+      <h2 id="feature-modal-title" class="feature-modal-title text-green">[SYS_SPECIFICATIONS] CRYPTO MATRIX DECODER</h2>
+      <p class="feature-modal-intro">An interactive cryptographic laboratory & signal intelligence console for encoding, decoding, and reverse-engineering ciphers in real time.</p>
+      <ul class="feature-modal-list">
+        <li><strong>Multi-Cipher Support:</strong> Real-time processing for Caesar (Substitution), Vigenère (Polyalphabetic), Rail Fence (Transposition), and Repeating XOR byte ciphers.</li>
+        <li><strong>Scramble Animation Display:</strong> Visual 800ms matrix scramble effect on output decryption sequences.</li>
+        <li><strong>Hex Dump Memory Inspection:</strong> Toggle raw hexadecimal byte array output for granular memory analysis.</li>
+        <li><strong>Shannon Entropy Gauge:</strong> Live entropy measurement (H(X) in bits/char) to analyze cipher randomness and compression boundaries.</li>
+        <li><strong>Character Frequency Spectrum:</strong> Real-time A-Z character distribution histogram for frequency analysis attacks.</li>
+        <li><strong>CTF Challenge Mode:</strong> Intercept encrypted packets, analyze telemetry signals, identify cipher types, and harvest flag credentials.</li>
+      </ul>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon">🔒</span>
+        <div>
+          <strong>100% PRIVATE CLIENT-SIDE MATRIX</strong>
+          All payload encryption, hash operations, and CTF challenges execute entirely within your browser's RAM sandbox. Zero data transmitted externally.
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js?v=1"></script>
 </body>

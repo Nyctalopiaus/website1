@@ -28,7 +28,10 @@ if (isRateLimited('email-passport', 3, 900, $retryAfter)) {
 }
 
 $inputJSON = file_get_contents('php://input');
-$input = json_decode($inputJSON, true);
+if (empty($inputJSON)) {
+    $inputJSON = @file_get_contents('php://stdin');
+}
+$input = json_decode((string)$inputJSON, true);
 
 $email = trim($input['email'] ?? $_POST['email'] ?? '');
 $eventIds = $input['event_ids'] ?? $_POST['event_ids'] ?? [];
@@ -56,7 +59,7 @@ if (empty($eventIds)) {
 try {
     $db = getDbConnection();
     $placeholders = implode(',', array_fill(0, count($eventIds), '?'));
-    $stmt = $db->prepare("SELECT e.*, v.city FROM events e INNER JOIN venues v ON e.venue_id = v.venue_id WHERE e.event_id IN ($placeholders) AND (e.is_approved = 1 OR e.status = 'Approved') ORDER BY e.start_time ASC");
+    $stmt = $db->prepare("SELECT e.*, v.city FROM events e LEFT JOIN venues v ON e.venue_id = v.venue_id WHERE e.event_id IN ($placeholders) AND (e.is_approved = 1 OR e.status = 'Approved') ORDER BY e.start_time ASC");
     $stmt->execute(array_values($eventIds));
     $events = $stmt->fetchAll();
 } catch (Exception $e) {
@@ -162,45 +165,95 @@ $emailBody .= '
 </html>';
 
 $mail = new PHPMailer(true);
+$mail->CharSet = 'UTF-8';
 
-try {
-    $mail->isSMTP();
-    $mail->Host = SMTP_HOST;
-    $mail->SMTPAuth = !empty(SMTP_PASSWORD);
+$fromEmail = defined('SYNC_REPORT_EMAIL_FROM') && !empty(SYNC_REPORT_EMAIL_FROM) && strpos(SYNC_REPORT_EMAIL_FROM, '@') !== false
+    ? trim((string)SYNC_REPORT_EMAIL_FROM)
+    : 'noreply@nycto.ninja';
 
-    if (!empty(SMTP_PASSWORD)) {
-        $mail->Username = SMTP_USERNAME;
-        $mail->Password = SMTP_PASSWORD;
+$fromName = defined('SYNC_REPORT_EMAIL_FROM_NAME') && !empty(SYNC_REPORT_EMAIL_FROM_NAME)
+    ? trim((string)SYNC_REPORT_EMAIL_FROM_NAME)
+    : "Nycto's Gig Grid";
+
+$mail->setFrom($fromEmail, $fromName);
+$mail->addAddress($email);
+$mail->isHTML(true);
+$mail->Subject = "Your Nycto's Gig Grid Interested Shows";
+$mail->Body = $emailBody;
+
+$httpHost = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '';
+$domainName = preg_replace('/^www\./i', '', $httpHost);
+
+$hostsToTry = array_values(array_unique(array_filter([
+    (defined('SMTP_HOST') && !empty(SMTP_HOST)) ? trim((string)SMTP_HOST) : null,
+    !empty($domainName) ? 'mail.' . $domainName : null,
+    !empty($domainName) ? $domainName : null,
+    !empty($_SERVER['SERVER_NAME']) ? trim((string)$_SERVER['SERVER_NAME']) : null,
+    function_exists('gethostname') ? gethostname() : null,
+    '127.0.0.1',
+    'localhost'
+])));
+
+$portsToTry = [
+    ['port' => (defined('SMTP_PORT') && SMTP_PORT > 0) ? (int)SMTP_PORT : 25, 'secure' => (defined('SMTP_ENCRYPTION') ? strtolower(SMTP_ENCRYPTION) : '')],
+    ['port' => 465, 'secure' => PHPMailer::ENCRYPTION_SMTPS],
+    ['port' => 587, 'secure' => PHPMailer::ENCRYPTION_STARTTLS],
+    ['port' => 25, 'secure' => '']
+];
+
+$sent = false;
+$attemptLogs = [];
+
+foreach ($hostsToTry as $hostCandidate) {
+    foreach ($portsToTry as $pConfig) {
+        $secType = $pConfig['secure'];
+        if ($secType === 'ssl') $secType = PHPMailer::ENCRYPTION_SMTPS;
+        if ($secType === 'tls') $secType = PHPMailer::ENCRYPTION_STARTTLS;
+
+        try {
+            $testMail = clone $mail;
+            $testMail->isSMTP();
+            $testMail->Host = $hostCandidate;
+            $testMail->Port = $pConfig['port'];
+            $testMail->SMTPSecure = $secType;
+            $smtpPass = defined('SMTP_PASSWORD') ? SMTP_PASSWORD : '';
+            $testMail->SMTPAuth = !empty($smtpPass);
+            if (!empty($smtpPass)) {
+                $testMail->Username = defined('SMTP_USERNAME') ? SMTP_USERNAME : '';
+                $testMail->Password = $smtpPass;
+            }
+            $testMail->SMTPOptions = [
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true
+                ]
+            ];
+            $testMail->Timeout = 3;
+            $testMail->send();
+            $sent = true;
+            break 2;
+        } catch (Exception $eConn) {
+            $attemptLogs[] = $hostCandidate . ':' . $pConfig['port'] . ' (' . ($secType ?: 'none') . ') -> ' . $testMail->ErrorInfo;
+        }
     }
+}
 
-    if (defined('SMTP_ENCRYPTION') && SMTP_ENCRYPTION === 'ssl') {
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port = defined('SMTP_PORT') ? SMTP_PORT : 465;
-    } elseif (defined('SMTP_ENCRYPTION') && SMTP_ENCRYPTION === 'tls') {
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = defined('SMTP_PORT') ? SMTP_PORT : 587;
-    } else {
-        $mail->SMTPSecure = '';
-        $mail->Port = defined('SMTP_PORT') ? SMTP_PORT : 25;
-        $mail->SMTPOptions = [
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true
-            ]
-        ];
+if (!$sent) {
+    try {
+        $mail->isMail();
+        $mail->send();
+        $sent = true;
+    } catch (Exception $eMail) {
+        $attemptLogs[] = 'isMail() -> ' . $mail->ErrorInfo;
     }
+}
 
-    $mail->setFrom('ConcertPassport@nycto.ninja', "Nycto's Gig Grid");
-    $mail->addAddress($email);
-    $mail->isHTML(true);
-    $mail->Subject = "Your Nycto's Gig Grid Interested Shows";
-    $mail->Body = $emailBody;
-
-    $mail->send();
+if ($sent) {
     echo json_encode(['status' => 'success', 'message' => 'Interested shows emailed successfully! Check your inbox (and spam folder).']);
-} catch (Exception $e) {
-    logServerException('email-passport-mail', $e);
-    error_log('[email-passport] Mailer error: ' . $mail->ErrorInfo);
-    echo json_encode(['status' => 'error', 'message' => 'Mail delivery failed. Please try again later.']);
+} else {
+    $errSummary = implode(' | ', array_slice($attemptLogs, 0, 3));
+    logServerException('email-passport-mail', new Exception($errSummary));
+    error_log('[email-passport] Mailer error: ' . $errSummary);
+    echo json_encode(['status' => 'error', 'message' => 'Mail delivery failed: ' . $errSummary]);
 }

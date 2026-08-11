@@ -150,6 +150,17 @@ body {
   box-shadow: 0 0 10px rgba(6, 182, 212, 0.15);
 }
 
+a.system-status {
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+a.system-status:hover {
+  background: rgba(6, 182, 212, 0.12);
+  border-color: rgba(6, 182, 212, 0.4);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+}
+
 .status-indicator {
   width: 6px;
   height: 6px;

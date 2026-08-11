@@ -35,7 +35,8 @@ function fetchHttpResource($url, array $options = []) {
         $body = curl_exec($ch);
         $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
-        curl_close($ch);
+        // curl_close() is a no-op since PHP 8.0
+        if (PHP_MAJOR_VERSION < 8) { curl_close($ch); }
 
         if ($body === false) {
             return [
@@ -71,13 +72,15 @@ function fetchHttpResource($url, array $options = []) {
         'ssl' => [
             'verify_peer' => true,
             'verify_peer_name' => true,
+            'cafile' => defined('SSL_CA_BUNDLE') && file_exists(SSL_CA_BUNDLE) ? SSL_CA_BUNDLE : (file_exists('C:\\php\\cacert.pem') ? 'C:\\php\\cacert.pem' : null),
         ]
     ]);
 
     $body = @file_get_contents($url, false, $context);
     $status = 0;
-    if (!empty($http_response_header) && is_array($http_response_header)) {
-        foreach ($http_response_header as $headerLine) {
+    $responseHeaders = function_exists('http_get_last_response_headers') ? http_get_last_response_headers() : ($http_response_header ?? []);
+    if (!empty($responseHeaders) && is_array($responseHeaders)) {
+        foreach ($responseHeaders as $headerLine) {
             if (preg_match('/^HTTP\/\S+\s+(\d{3})/', $headerLine, $matches)) {
                 $status = (int)$matches[1];
             }

@@ -33,6 +33,9 @@
         <span class="toggle-label active" id="purchasing-power-label">Show Today's Purchasing Power</span>
         <span class="tooltip-icon" data-tooltip="Nominal = actual future dollars&#10;Today's Purchasing Power = adjusted for inflation">?</span>
       </div>
+      <button type="button" id="btn-open-features" class="btn-feature-retire" title="View Forecaster Features">
+        <span>📈</span> <span>Features</span>
+      </button>
     </div>
   </header>
 
@@ -399,6 +402,30 @@
   <footer class="app-footer">
     <p>&copy; 2026 Nycto. Nycto's Retirement Forecaster. All calculations are estimates.</p>
   </footer>
+
+  <!-- Features Modal -->
+  <div id="features-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
+      <button id="btn-close-features" class="modal-close-button" aria-label="Close feature overview">&times;</button>
+      <h2 id="feature-modal-title" class="feature-modal-title">Retirement Forecaster Features</h2>
+      <p class="feature-modal-intro">A client-side wealth forecasting simulator designed to model multi-bucket accumulation strategies and tax-optimized drawdown dynamics through retirement.</p>
+      <ul class="feature-modal-list">
+        <li><strong>Three-Bucket Strategy Engine:</strong> Model growth and tax treatments across Traditional (Pre-Tax 401k/IRA), Roth (Tax-Free), and Taxable (Brokerage & HYSA) accounts.</li>
+        <li><strong>Nominal vs Today's Purchasing Power:</strong> Toggle instantly between inflation-adjusted real purchasing power and future nominal dollar values.</li>
+        <li><strong>Optimal Retirement Age Finder:</strong> Automatically solves for the earliest age you can retire while maintaining a fully funded portfolio through life expectancy.</li>
+        <li><strong>Max Monthly Income Calculator:</strong> Computes the exact maximum sustainable monthly withdrawal before portfolio exhaustion.</li>
+        <li><strong>Interactive SVG Visualizations:</strong> Track accumulation stacked area curves and retirement burndown trajectories with real-time hover tooltips.</li>
+        <li><strong>Annual Projection Ledger:</strong> Expandable table detailing year-by-year bucket balances, employer matches, and inflation-adjusted withdrawals.</li>
+      </ul>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon">🔒</span>
+        <div>
+          <strong>100% Private Client-Side Calculation</strong>
+          All account balances, salaries, and retirement goals remain 100% private inside your browser. No financial data is ever stored, tracked, or transmitted.
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>

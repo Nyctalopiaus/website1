@@ -174,6 +174,24 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 alert('❌ Error: ' + (res.error || 'Failed'));
             }
+        } else if (target.classList.contains('btn-admin-purge-event')) {
+            const eventId = target.getAttribute('data-event-id') || '';
+            const artist = target.getAttribute('data-artist') || 'this show';
+            if (!eventId) {
+                alert('Missing event ID.');
+                return;
+            }
+
+            const ok = confirm(`⚠️ Are you sure you want to PERMANENTLY PURGE "${artist}" (ID: ${eventId}) from the database? This cannot be undone.`);
+            if (!ok) return;
+
+            const res = await saveAdminRule('purge_event', '1', { event_id: eventId });
+            if (res.success) {
+                alert('🔥 Event permanently purged from database! Reloading grid...');
+                reloadPreservingScroll();
+            } else {
+                alert('❌ Error purging event: ' + (res.error || 'Failed'));
+            }
         } else if (target.classList.contains('btn-admin-edit-artists')) {
             const eventId = target.getAttribute('data-event-id') || '';
             const artistsStr = target.getAttribute('data-artists') || '';
@@ -182,8 +200,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // Parse artists (separated by " & " or "," or " and ")
-            const artists = artistsStr.split(/\s*&\s*|\s*,\s*|\s+and\s+/i).map(a => a.trim()).filter(a => a);
+            // Parse artists (check if explicitly joined by || first, else split by delimiters)
+            let artists = [];
+            if (artistsStr.includes('||')) {
+                artists = artistsStr.split(/\s*\|\|\s*/).map(a => a.trim()).filter(a => a);
+            } else {
+                artists = artistsStr.split(/\s*&\s*|\s*,\s*|\s+and\s+/i).map(a => a.trim()).filter(a => a);
+            }
             
             // Find the modal for this card
             const card = target.closest('.event-card');
@@ -192,20 +215,101 @@ document.addEventListener('DOMContentLoaded', () => {
             const modal = card.querySelector('.modal-edit-artists-overlay');
             if (!modal) return;
             
-            // Populate modal with input fields
             const listContainer = modal.querySelector('.artists-edit-list');
             listContainer.innerHTML = '';
             
-            artists.forEach((artist, index) => {
-                const inputWrapper = document.createElement('div');
-                inputWrapper.className = 'artist-edit-item';
-                inputWrapper.innerHTML = `
-                    <label class="artist-edit-label">Artist ${index + 1}</label>
-                    <input type="text" class="artist-edit-input" value="${artist.replace(/"/g, '&quot;')}" />
+            let draggedItem = null;
+
+            function updateLabels() {
+                const items = listContainer.querySelectorAll('.artist-edit-item');
+                items.forEach((item, idx) => {
+                    const label = item.querySelector('.artist-edit-label');
+                    if (label) {
+                        label.textContent = `Artist ${idx + 1}`;
+                    }
+                });
+            }
+
+            function renderArtistRow(artistName = '') {
+                const item = document.createElement('div');
+                item.className = 'artist-edit-item';
+                item.setAttribute('draggable', 'false');
+                item.innerHTML = `
+                    <span class="drag-handle" title="Click and drag to reorder artist">⣿</span>
+                    <label class="artist-edit-label">Artist</label>
+                    <input type="text" class="artist-edit-input" value="${artistName.replace(/"/g, '&quot;')}" placeholder="Artist / band name..." />
+                    <button type="button" class="btn-remove-artist" title="Delete artist row">🗑️</button>
                 `;
-                listContainer.appendChild(inputWrapper);
-            });
-            
+
+                // Handle remove button click
+                const btnRemove = item.querySelector('.btn-remove-artist');
+                btnRemove.onclick = () => {
+                    item.remove();
+                    updateLabels();
+                };
+
+                const handle = item.querySelector('.drag-handle');
+                const input = item.querySelector('.artist-edit-input');
+
+                if (handle) {
+                    handle.addEventListener('mousedown', () => {
+                        item.setAttribute('draggable', 'true');
+                    });
+                    handle.addEventListener('mouseup', () => {
+                        item.setAttribute('draggable', 'false');
+                    });
+                }
+
+                if (input) {
+                    input.addEventListener('mousedown', (e) => {
+                        item.setAttribute('draggable', 'false');
+                    });
+                }
+
+                // Bind HTML5 drag and drop
+                item.addEventListener('dragstart', (e) => {
+                    draggedItem = item;
+                    item.classList.add('is-dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', '');
+                });
+
+                item.addEventListener('dragend', () => {
+                    item.classList.remove('is-dragging');
+                    item.setAttribute('draggable', 'false');
+                    draggedItem = null;
+                    updateLabels();
+                });
+
+                item.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (!draggedItem || draggedItem === item) return;
+
+                    const rect = item.getBoundingClientRect();
+                    const isAfter = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+                    listContainer.insertBefore(draggedItem, isAfter ? item.nextSibling : item);
+                });
+
+                listContainer.appendChild(item);
+                updateLabels();
+            }
+
+            // Populate initial artist rows
+            artists.forEach(art => renderArtistRow(art));
+
+            // Handle "+ Add Artist" button
+            const addBtn = modal.querySelector('.btn-modal-add-artist');
+            if (addBtn) {
+                addBtn.onclick = () => {
+                    renderArtistRow('');
+                    const inputs = listContainer.querySelectorAll('.artist-edit-input');
+                    if (inputs.length) {
+                        inputs[inputs.length - 1].focus();
+                    }
+                };
+            }
+
             // Show modal
             modal.style.display = 'flex';
             
@@ -230,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 
-                const joinedArtists = editedArtists.join(' & ');
+                const joinedArtists = editedArtists.join(' || ');
                 const res = await saveAdminRule('override_event_artists', joinedArtists, { event_id: eventId });
                 
                 if (res.success) {
@@ -264,6 +368,80 @@ document.addEventListener('DOMContentLoaded', () => {
             reloadPreservingScroll();
         } else {
             alert('❌ Error updating genre: ' + (res.error || 'Failed'));
+        }
+    });
+
+    // Click to copy Event ID
+    document.addEventListener('click', (e) => {
+        const copyBadge = e.target.closest('.admin-card-id');
+        if (!copyBadge) return;
+        const eventId = copyBadge.getAttribute('data-event-id');
+        if (!eventId) return;
+
+        navigator.clipboard.writeText(eventId).then(() => {
+            const btnCopy = copyBadge.querySelector('.btn-copy-id');
+            if (btnCopy) {
+                const orig = btnCopy.textContent;
+                btnCopy.textContent = '✅ Copied!';
+                setTimeout(() => { btnCopy.textContent = orig; }, 1500);
+            }
+        }).catch(err => {
+            console.error('Failed to copy Event ID:', err);
+        });
+    });
+
+    // Open Merge Event Modal
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-admin-merge-event');
+        if (!btn) return;
+        const card = btn.closest('.event-card');
+        if (!card) return;
+        const modal = card.querySelector('.modal-merge-event-overlay');
+        if (modal) {
+            modal.style.display = 'flex';
+            const input = modal.querySelector('.merge-target-id-input');
+            if (input) input.focus();
+        }
+    });
+
+    // Handle Merge Event Modal Actions (Cancel, Close, Confirm)
+    document.addEventListener('click', async (e) => {
+        const cancelBtn = e.target.closest('.modal-merge-event .btn-modal-cancel, .modal-merge-event .modal-close-btn');
+        if (cancelBtn) {
+            const modal = cancelBtn.closest('.modal-merge-event-overlay');
+            if (modal) modal.style.display = 'none';
+            return;
+        }
+
+        const confirmBtn = e.target.closest('.btn-modal-confirm-merge');
+        if (!confirmBtn) return;
+
+        const modal = confirmBtn.closest('.modal-merge-event-overlay');
+        const sourceId = confirmBtn.getAttribute('data-source-id');
+        const targetInput = modal.querySelector('.merge-target-id-input');
+        const targetId = targetInput ? targetInput.value.trim() : '';
+
+        if (!targetId) {
+            alert('Please enter or paste a valid Target Event ID.');
+            return;
+        }
+        if (sourceId === targetId) {
+            alert('Target Event ID cannot be the same as the Source Event ID.');
+            return;
+        }
+
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Merging...';
+
+        const res = await saveAdminRule('merge_events', targetId, { event_id: sourceId });
+        if (res.success) {
+            alert('✅ Successfully merged event card into target event!');
+            if (modal) modal.style.display = 'none';
+            reloadPreservingScroll();
+        } else {
+            alert('❌ Error merging events: ' + (res.error || 'Failed'));
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Confirm & Merge';
         }
     });
 

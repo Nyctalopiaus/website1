@@ -53,8 +53,6 @@ function importScrapedVenueEvents(EventAggregator $aggregator, PDO $db, ?string 
                 $marketGroup = ['colorado', 'front-range'];
             } elseif ($mLow === 'california') {
                 $marketGroup = ['california', 'socal', 'norcal'];
-            } elseif ($mLow === 'uk') {
-                $marketGroup = ['uk', 'scotland', 'england', 'wales', 'ireland'];
             }
             $inClause = implode(',', array_map(function($i) { return ":m{$i}"; }, array_keys($marketGroup)));
             $sqlV .= " AND LOWER(market) IN ({$inClause})";

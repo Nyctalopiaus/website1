@@ -10,10 +10,10 @@ error_reporting(E_ALL);
 register_shutdown_function(function() {
     $error = error_get_last();
     if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR])) {
-        $cacheDir = __DIR__ . '/cache';
-        if (!is_dir($cacheDir)) @mkdir($cacheDir, 0755, true);
+        $logDir = __DIR__ . '/logs/cron-sync-log';
+        if (!is_dir($logDir)) @mkdir($logDir, 0755, true);
         $logMsg = "[" . date('Y-m-d H:i:s') . "] FATAL ERROR: " . $error['message'] . " in " . $error['file'] . " on line " . $error['line'] . "\n";
-        @file_put_contents($cacheDir . '/sync_fatal_errors.log', $logMsg, FILE_APPEND);
+        @file_put_contents($logDir . '/sync_fatal_errors.log', $logMsg, FILE_APPEND);
     }
 });
 
@@ -32,7 +32,14 @@ require_once __DIR__ . '/actions/log-js-error.php';
 @set_time_limit(0);
 
 $isCli = (php_sapi_name() === 'cli' || empty($_SERVER['REMOTE_ADDR']));
-$argvList = $_SERVER['argv'] ?? $argv ?? [];
+$argvList = $_SERVER['argv'] ?? $GLOBALS['argv'] ?? $argv ?? [];
+if (empty($argvList) && file_exists('/proc/self/cmdline')) {
+    $rawCmd = @file_get_contents('/proc/self/cmdline');
+    if (!empty($rawCmd)) {
+        $argvList = explode("\0", $rawCmd);
+    }
+}
+
 $cliSync = false;
 $targetMarket = null;
 
@@ -40,8 +47,8 @@ foreach ($argvList as $arg) {
     if (strpos($arg, 'cli-sync') !== false) {
         $cliSync = true;
     }
-    if (strpos($arg, 'market=') === 0) {
-        $targetMarket = strtolower(trim(substr($arg, 7)));
+    if (preg_match('/(?:--)?market=([a-z0-9_-]+)/i', $arg, $matches)) {
+        $targetMarket = strtolower(trim($matches[1]));
     }
 }
 

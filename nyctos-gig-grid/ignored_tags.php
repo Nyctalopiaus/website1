@@ -49,7 +49,7 @@ function getIgnoredTagsNormalized() {
     return $cached;
 }
 
-function isTagIgnored($tag, array $ignoredTags = null) {
+function isTagIgnored($tag, ?array $ignoredTags = null) {
     if ($ignoredTags === null) {
         $ignoredTags = getIgnoredTagsNormalized();
     }
@@ -85,7 +85,7 @@ function splitNormalizedTags($tagsStr) {
     return array_values(array_unique($tags));
 }
 
-function filterIgnoredTagsArray(array $tags, array $ignoredTags = null) {
+function filterIgnoredTagsArray(array $tags, ?array $ignoredTags = null) {
     if ($ignoredTags === null) {
         $ignoredTags = getIgnoredTagsNormalized();
     }
@@ -109,7 +109,7 @@ function filterIgnoredTagsArray(array $tags, array $ignoredTags = null) {
     return array_values(array_unique($visible));
 }
 
-function filterIgnoredTagsFromString($tagsStr, array $ignoredTags = null) {
+function filterIgnoredTagsFromString($tagsStr, ?array $ignoredTags = null) {
     $tags = splitNormalizedTags($tagsStr);
     $visible = filterIgnoredTagsArray($tags, $ignoredTags);
     return implode(', ', $visible);
@@ -121,7 +121,7 @@ function filterIgnoredTagsFromString($tagsStr, array $ignoredTags = null) {
  * 1. The event has NO tag matching an active bucket in genre_buckets.php, AND
  * 2. At least ONE of the event's tags exists in ignored_tags.txt (or singular/plural form).
  */
-function areAllTagsIgnored($tagsStr, array $ignoredTags = null) {
+function areAllTagsIgnored($tagsStr, ?array $ignoredTags = null) {
     if (empty($tagsStr)) {
         return false;
     }

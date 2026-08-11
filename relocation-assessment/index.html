@@ -18,6 +18,9 @@
       <a href="../" class="btn-back">← BACK TO LAB</a>
       <span class="logo-text">Relocation Analytics Dashboard</span>
     </div>
+    <button type="button" id="btn-open-features" class="btn-feature-relo" title="View Dashboard Capabilities">
+      <span>📍</span> <span>Features</span>
+    </button>
   </header>
 
   <main class="container">
@@ -206,6 +209,30 @@
   <footer class="main-footer">
     <p>&copy; 2026 Relocation Analytics Dashboard</p>
   </footer>
+
+  <!-- Features Modal -->
+  <div id="features-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
+      <button id="btn-close-features" class="modal-close-button" aria-label="Close feature overview">&times;</button>
+      <h2 id="feature-modal-title" class="feature-modal-title">Relocation Analytics Features</h2>
+      <p class="feature-modal-intro">A spatial analytics & livability assessment tool designed to evaluate street addresses against custom transit radii and real-world amenities.</p>
+      <ul class="feature-modal-list">
+        <li><strong>Street Address Geocoding:</strong> Real-time location lookup with automatic address autocomplete and spatial coordinate mapping.</li>
+        <li><strong>100-Point Match Score Engine:</strong> Custom scoring matrix comparing nearby amenities (grocery stores, cycling trails, gyms, parks, pharmacies) against personalized goals.</li>
+        <li><strong>Side-by-Side Location Comparison:</strong> Compare two street addresses simultaneously to evaluate relative livability scores and amenity density.</li>
+        <li><strong>Dynamic Transit Radius:</strong> Adjust transit time boundaries (2 to 30 minutes) to recalculate amenity counts instantly.</li>
+        <li><strong>Cuisine Matching:</strong> Specify custom cuisine tags (e.g. Thai, Vietnamese, Indian) to evaluate dining relevance.</li>
+        <li><strong>Interactive GIS Map:</strong> View surrounding POIs (Points of Interest) mapped on interactive Leaflet tile previews.</li>
+      </ul>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon">🔒</span>
+        <div>
+          <strong>100% Private Spatial Processing</strong>
+          All address searches, amenity scoring, and location comparisons run entirely inside your browser. No addresses or search histories are stored on external servers.
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="keywords.js?v=141"></script>

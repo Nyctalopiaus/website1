@@ -17,17 +17,22 @@ try {
     $db = getDbConnection();
     $ignoredTags = getIgnoredTagsNormalized();
 
-    $allowedMarkets = ['colorado', 'california', 'texas', 'uk'];
+    $allowedMarkets = ['colorado', 'california', 'texas', 'england', 'scotland', 'wales', 'ireland'];
     $marketAliases = [
         'co' => 'colorado',
         'ca' => 'california',
         'tx' => 'texas',
-        'uk' => 'uk',
-        'united kingdom' => 'uk',
-        'england' => 'uk',
-        'scotland' => 'uk',
-        'wales' => 'uk',
-        'ireland' => 'uk'
+        'uk' => 'england',
+        'gb' => 'england',
+        'great britain' => 'england',
+        'united kingdom' => 'england',
+        'england' => 'england',
+        'scotland' => 'scotland',
+        'wales' => 'wales',
+        'ireland' => 'ireland',
+        'republic of ireland' => 'ireland',
+        'northern ireland' => 'ireland',
+        'ie' => 'ireland'
     ];
 
     $requestedMarketRaw = strtolower(trim((string)($_GET['market'] ?? 'colorado')));
@@ -37,12 +42,7 @@ try {
     }
     $activeMarket = $requestedMarket;
 
-    $allowedCountries = ['england', 'ireland', 'scotland', 'wales'];
-    $requestedCountryRaw = strtolower(trim((string)($_GET['region'] ?? 'scotland')));
-    if (!in_array($requestedCountryRaw, $allowedCountries, true)) {
-        $requestedCountryRaw = 'scotland';
-    }
-    $activeCountry = $activeMarket === 'uk' ? $requestedCountryRaw : '';
+    $activeCountry = in_array($activeMarket, ['england', 'scotland', 'wales', 'ireland'], true) ? $activeMarket : '';
 
     $marketGeoBounds = [
         'colorado' => ['min_lat' => 36.0, 'max_lat' => 42.5, 'min_lng' => -110.5, 'max_lng' => -101.5],
@@ -70,28 +70,18 @@ try {
     $offset = max(0, (int)($_GET['offset'] ?? 0));
     $limit = max(1, min(50, (int)($_GET['limit'] ?? 8)));
 
-    if ($activeMarket === 'uk') {
-        $stmt = $db->prepare("\n            SELECT e.*, v.city AS city_name\n            FROM events e\n            JOIN venues v ON e.venue_name = v.venue_name\n            JOIN market_cities mc ON v.city = mc.city_name\n            WHERE e.market = :market\n              AND LOWER(TRIM(mc.region)) = :country_filter\n              AND e.start_time >= :month_start\n              AND e.start_time < :next_month_start\n              AND e.start_time >= datetime('now', '-4 hours')\n            ORDER BY e.start_time ASC\n        ");
-        $stmt->execute([
-            ':market' => $activeMarket,
-            ':country_filter' => $activeCountry,
-            ':month_start' => $monthStart,
-            ':next_month_start' => $nextMonthStart
-        ]);
-    } else {
-        $stmt = $db->prepare("\n            SELECT e.*, COALESCE(v.city, '') AS city_name\n            FROM events e\n            LEFT JOIN venues v ON e.venue_name = v.venue_name\n            WHERE e.market = :market\n              AND e.start_time >= :month_start\n              AND e.start_time < :next_month_start\n              AND e.start_time >= datetime('now', '-4 hours')\n              AND (\n                    :geo_enabled = 0\n                    OR v.latitude IS NULL\n                    OR v.longitude IS NULL\n                    OR (\n                        v.latitude BETWEEN :min_lat AND :max_lat\n                        AND v.longitude BETWEEN :min_lng AND :max_lng\n                    )\n                  )\n            ORDER BY e.start_time ASC\n        ");
-        $geoEnabled = $activeGeoBounds ? 1 : 0;
-        $stmt->execute([
-            ':market' => $activeMarket,
-            ':month_start' => $monthStart,
-            ':next_month_start' => $nextMonthStart,
-            ':geo_enabled' => $geoEnabled,
-            ':min_lat' => $activeGeoBounds['min_lat'] ?? 0,
-            ':max_lat' => $activeGeoBounds['max_lat'] ?? 0,
-            ':min_lng' => $activeGeoBounds['min_lng'] ?? 0,
-            ':max_lng' => $activeGeoBounds['max_lng'] ?? 0
-        ]);
-    }
+    $stmt = $db->prepare("\n        SELECT e.*, COALESCE(v.city, '') AS city_name\n        FROM events e\n        LEFT JOIN venues v ON e.venue_name = v.venue_name\n        WHERE e.market = :market\n          AND e.start_time >= :month_start\n          AND e.start_time < :next_month_start\n          AND e.start_time >= datetime('now', '-4 hours')\n          AND (\n                :geo_enabled = 0\n                OR v.latitude IS NULL\n                OR v.longitude IS NULL\n                OR (\n                    v.latitude BETWEEN :min_lat AND :max_lat\n                    AND v.longitude BETWEEN :min_lng AND :max_lng\n                )\n              )\n        ORDER BY e.start_time ASC\n    ");
+    $geoEnabled = $activeGeoBounds ? 1 : 0;
+    $stmt->execute([
+        ':market' => $activeMarket,
+        ':month_start' => $monthStart,
+        ':next_month_start' => $nextMonthStart,
+        ':geo_enabled' => $geoEnabled,
+        ':min_lat' => $activeGeoBounds['min_lat'] ?? 0,
+        ':max_lat' => $activeGeoBounds['max_lat'] ?? 0,
+        ':min_lng' => $activeGeoBounds['min_lng'] ?? 0,
+        ':max_lng' => $activeGeoBounds['max_lng'] ?? 0
+    ]);
     $events = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $groupedEvents = [];

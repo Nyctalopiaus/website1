@@ -74,6 +74,82 @@ if (!function_exists('getEventDateDetails')) {
     }
 }
 
+if (!function_exists('buildGoogleCalendarUrl')) {
+    function buildGoogleCalendarUrl($event, $resolvedCity = '') {
+        $artist = trim((string)($event['artist_name'] ?? 'Concert'));
+        $venue = trim((string)($event['venue_name'] ?? ''));
+        $title = $artist . ($venue !== '' ? ' @ ' . $venue : '');
+
+        $startTime = strtotime($event['start_time'] ?? 'now');
+        if ($startTime === false) {
+            $startTime = time();
+        }
+        $endTime = $startTime + (3 * 3600);
+
+        $startUtc = gmdate('Ymd\THis\Z', $startTime);
+        $endUtc = gmdate('Ymd\THis\Z', $endTime);
+
+        $locationParts = array_filter([$venue, $resolvedCity]);
+        $location = implode(', ', $locationParts);
+
+        $detailsParts = ["Live Show: " . $artist];
+        if (!empty($venue)) {
+            $detailsParts[] = "Venue: " . $venue;
+        }
+        if (!empty($event['ticket_url'])) {
+            $detailsParts[] = "Tickets: " . $event['ticket_url'];
+        }
+        $details = implode("\n", $detailsParts);
+
+        return 'https://calendar.google.com/calendar/render?' . http_build_query([
+            'action' => 'TEMPLATE',
+            'text' => $title,
+            'dates' => $startUtc . '/' . $endUtc,
+            'details' => $details,
+            'location' => $location
+        ]);
+    }
+}
+
+if (!function_exists('buildOutlookCalendarUrl')) {
+    function buildOutlookCalendarUrl($event, $resolvedCity = '') {
+        $artist = trim((string)($event['artist_name'] ?? 'Concert'));
+        $venue = trim((string)($event['venue_name'] ?? ''));
+        $title = $artist . ($venue !== '' ? ' @ ' . $venue : '');
+
+        $startTime = strtotime($event['start_time'] ?? 'now');
+        if ($startTime === false) {
+            $startTime = time();
+        }
+        $endTime = $startTime + (3 * 3600);
+
+        $startIso = date('Y-m-d\TH:i:s\Z', $startTime);
+        $endIso = date('Y-m-d\TH:i:s\Z', $endTime);
+
+        $locationParts = array_filter([$venue, $resolvedCity]);
+        $location = implode(', ', $locationParts);
+
+        $detailsParts = ["Live Show: " . $artist];
+        if (!empty($venue)) {
+            $detailsParts[] = "Venue: " . $venue;
+        }
+        if (!empty($event['ticket_url'])) {
+            $detailsParts[] = "Tickets: " . $event['ticket_url'];
+        }
+        $details = implode("\n", $detailsParts);
+
+        return 'https://outlook.live.com/calendar/0/deeplink/compose?' . http_build_query([
+            'path' => '/calendar/action/compose',
+            'rru' => 'addevent',
+            'subject' => $title,
+            'startdt' => $startIso,
+            'enddt' => $endIso,
+            'body' => $details,
+            'location' => $location
+        ]);
+    }
+}
+
 if (!function_exists('splitArtistListNames')) {
     function splitArtistListNames($artistNameStr) {
         $ignoredPromos = getAdminIgnoredPromos();
@@ -136,9 +212,18 @@ if (!function_exists('renderEventCard')) {
             }
         }
 
-        $artists = $hasTitleOverride
-            ? [(string)($eventRow['artist_name'] ?? 'Unknown Artist')]
-            : splitArtistListNames((string)($eventRow['artist_name'] ?? 'Unknown Artist'));
+        if ($hasTitleOverride) {
+            $artists = [(string)($eventRow['artist_name'] ?? 'Unknown Artist')];
+        } elseif ($hasArtistOverride) {
+            $rawOverride = (string)($eventRow['artist_name'] ?? '');
+            if (strpos($rawOverride, '||') !== false) {
+                $artists = array_values(array_filter(array_map('trim', explode('||', $rawOverride))));
+            } else {
+                $artists = array_values(array_filter(array_map('trim', explode('&', $rawOverride))));
+            }
+        } else {
+            $artists = splitArtistListNames((string)($eventRow['artist_name'] ?? 'Unknown Artist'));
+        }
         $tags = [];
         $tagsRaw = (string)($eventRow['tags'] ?? '');
         if ($tagsRaw !== '') {

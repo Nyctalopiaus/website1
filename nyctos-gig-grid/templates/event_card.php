@@ -89,7 +89,7 @@ $hasExplicitFreeSignal = preg_match('/\b(?:free(?:\s+(?:show|event|entry|admissi
 $looksFreeByPrice = $pMin !== null && $pMin === 0.0 && ($pMax === null || $pMax <= 0.0);
 $shouldShowFreeBadge = $hasExplicitFreeSignal || $looksFreeByPrice;
 ?>
-<article class="event-card" data-status="Approved" data-event-ids="<?php echo htmlspecialchars($groupEventIdsStr); ?>" data-city="<?php echo htmlspecialchars(strtolower($resolvedCity)); ?>" data-venue="<?php echo htmlspecialchars(strtolower($event['venue_name'])); ?>" data-genre="<?php echo htmlspecialchars(strtolower($event['genre'] ?? 'all')); ?>" data-tags="<?php echo htmlspecialchars(strtolower($combinedTagsStr)); ?>" data-search="<?php echo htmlspecialchars($searchBlob); ?>" data-free="<?php echo $shouldShowFreeBadge ? '1' : '0'; ?>" id="card-<?php echo $event['event_id']; ?>">
+<article class="event-card" data-status="Approved" data-event-ids="<?php echo htmlspecialchars($groupEventIdsStr); ?>" data-city="<?php echo htmlspecialchars(strtolower($resolvedCity)); ?>" data-venue="<?php echo htmlspecialchars(strtolower($event['venue_name'])); ?>" data-genre="<?php echo htmlspecialchars(strtolower($event['genre'] ?? 'all')); ?>" data-tags="<?php echo htmlspecialchars(strtolower($combinedTagsStr)); ?>" data-search="<?php echo htmlspecialchars($searchBlob); ?>" data-free="<?php echo $shouldShowFreeBadge ? '1' : '0'; ?>" data-created-at="<?php echo htmlspecialchars($event['created_at'] ?? ''); ?>" id="card-<?php echo $event['event_id']; ?>">
     <!-- Left Stub -->
     <div class="date-stub">
         <div class="date-block-vertical">
@@ -388,7 +388,7 @@ $shouldShowFreeBadge = $hasExplicitFreeSignal || $looksFreeByPrice;
             <span>⏱️</span>
             <span>
                 <?php if (!empty($event['doors_time']) && strtotime($event['doors_time']) !== false && strtotime($event['doors_time']) !== strtotime($event['start_time'])): ?>
-                    <?php echo 'Doors ' . date('g:i A', strtotime($event['doors_time'])) . ' // Show ' . $dateInfo['time']; ?>
+                    <?php echo 'Doors ' . date('g:i A', strtotime($event['doors_time'])) . ' / Show ' . $dateInfo['time']; ?>
                 <?php else: ?>
                     <?php echo 'Show starts at ' . $dateInfo['time']; ?>
                 <?php endif; ?>
@@ -475,9 +475,27 @@ $shouldShowFreeBadge = $hasExplicitFreeSignal || $looksFreeByPrice;
         </div>
          
          <div class="ticket-action-row">
-             <a href="ical.php?event_id=<?php echo $event['event_id']; ?>" class="btn-ticket-action" title="Add to Calendar">
-                 📅
-             </a>
+              <?php 
+                  $gCalUrl = function_exists('buildGoogleCalendarUrl') ? buildGoogleCalendarUrl($event, $resolvedCity) : '#';
+                  $outlookUrl = function_exists('buildOutlookCalendarUrl') ? buildOutlookCalendarUrl($event, $resolvedCity) : '#';
+                  $icalUrl = 'ical.php?event_id=' . urlencode($event['event_id']);
+              ?>
+              <div class="calendar-dropdown">
+                  <button type="button" class="btn-ticket-action btn-calendar-toggle" title="Add to Calendar">
+                      📅
+                  </button>
+                  <div class="calendar-popover">
+                      <a href="<?php echo htmlspecialchars($gCalUrl); ?>" target="_blank" rel="noopener noreferrer" class="calendar-link-item google">
+                          <span class="calendar-link-icon">🔴</span> Google Calendar
+                      </a>
+                      <a href="<?php echo htmlspecialchars($outlookUrl); ?>" target="_blank" rel="noopener noreferrer" class="calendar-link-item outlook">
+                          <span class="calendar-link-icon">💻</span> Outlook Web
+                      </a>
+                      <a href="<?php echo htmlspecialchars($icalUrl); ?>" class="calendar-link-item apple">
+                          <span class="calendar-link-icon">🍎</span> Apple / iCal (.ics)
+                      </a>
+                  </div>
+              </div>
              <button type="button" 
                      class="btn-ticket-action btn-view-setlist" 
                      data-id="<?php echo $event['event_id']; ?>"
@@ -513,7 +531,9 @@ $shouldShowFreeBadge = $hasExplicitFreeSignal || $looksFreeByPrice;
         <div class="admin-card-bar">
             <div class="admin-card-bar-header">
                 <span class="admin-card-bar-label">Card Overrides</span>
-                <span class="admin-card-id">ID: <?php echo htmlspecialchars($event['event_id']); ?></span>
+                <span class="admin-card-id" title="Click to Copy Event ID" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" style="cursor: pointer; user-select: all;">
+                    ID: <?php echo htmlspecialchars($event['event_id']); ?> <span class="btn-copy-id" style="font-size: 10px; opacity: 0.85; margin-left: 4px; border: 1px solid rgba(255,255,255,0.3); padding: 1px 4px; border-radius: 3px;">📋 Copy</span>
+                </span>
             </div>
 
             <div class="admin-card-grid">
@@ -564,11 +584,11 @@ $shouldShowFreeBadge = $hasExplicitFreeSignal || $looksFreeByPrice;
                 </div>
 
                 <div class="admin-control-card admin-control-card-actions">
-                    <?php if ($isCoheadliner): ?>
-                        <button type="button" class="btn-admin-act btn-admin-edit-artists btn-admin-slim" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" data-artists="<?php echo htmlspecialchars($event['artist_name'] ?? ''); ?>" title="Edit individual artist names on this multi-band card">✏️ Edit Artists</button>
-                    <?php endif; ?>
+                    <button type="button" class="btn-admin-act btn-admin-edit-artists btn-admin-slim" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" data-artists="<?php echo htmlspecialchars($event['artist_name'] ?? ''); ?>" title="Edit individual artist names on this card">✏️ Edit Artists</button>
                     <button type="button" class="btn-admin-act btn-admin-title btn-admin-slim" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" data-current-title="<?php echo htmlspecialchars($event['artist_name'] ?? ''); ?>" title="Override how the artist name displays on this card (disables splitting)">Override Display Name</button>
+                    <button type="button" class="btn-admin-act btn-admin-merge-event btn-admin-slim" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" data-artist="<?php echo htmlspecialchars($event['artist_name'] ?? ''); ?>" title="Merge this event into another event card">🔀 Merge Event</button>
                     <button type="button" class="btn-admin-act btn-admin-mark-special btn-admin-slim btn-admin-warn" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" title="Mark this event as non-music and hide listen/link buttons">Mark Non-Music</button>
+                    <button type="button" class="btn-admin-act btn-admin-purge-event btn-admin-slim btn-admin-danger" data-event-id="<?php echo htmlspecialchars($event['event_id']); ?>" data-artist="<?php echo htmlspecialchars($event['artist_name'] ?? ''); ?>" title="Permanently delete this event from database">🔥 Purge Event</button>
                 </div>
             </div>
         </div>
@@ -587,8 +607,32 @@ $shouldShowFreeBadge = $hasExplicitFreeSignal || $looksFreeByPrice;
                 </div>
             </div>
             <div class="modal-footer">
+                <button type="button" class="btn-modal-action btn-modal-add-artist" style="margin-right: auto;">➕ Add Artist</button>
                 <button type="button" class="btn-modal-action btn-modal-cancel">Cancel</button>
                 <button type="button" class="btn-modal-action btn-modal-save">Save Artists</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Merge Event Modal -->
+    <div class="modal-overlay modal-merge-event-overlay" style="display: none;">
+        <div class="modal-card modal-merge-event">
+            <div class="modal-header">
+                <h3 class="modal-title">🔀 Merge Event Card</h3>
+                <button type="button" class="modal-close-btn" aria-label="Close modal">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 13px; color: var(--text-muted, #94a3b8); margin-bottom: 12px; line-height: 1.4;">
+                    Merge <strong><?php echo htmlspecialchars($event['artist_name'] ?? ''); ?></strong> into another card. Vendor ticket links and sources will be combined into the target event card, and this duplicate card will be removed.
+                </p>
+                <label class="admin-field" style="display: block; margin-bottom: 8px;">
+                    <span class="admin-field-label">Target Event ID (Destination Card ID)</span>
+                    <input type="text" class="admin-input merge-target-id-input" placeholder="Paste Target Event ID (e.g. c3ebf3daf...)" style="width: 100%; box-sizing: border-box; margin-top: 4px; font-family: monospace;" />
+                </label>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-modal-action btn-modal-cancel">Cancel</button>
+                <button type="button" class="btn-modal-action btn-modal-confirm-merge" data-source-id="<?php echo htmlspecialchars($event['event_id']); ?>">Confirm & Merge</button>
             </div>
         </div>
     </div>

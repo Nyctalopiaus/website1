@@ -374,24 +374,21 @@ if (!function_exists('getMarketLocationSuffix')) {
             case 'socal':
                 return 'CA';
             case 'uk':
-            case 'scotland':
-                $cLower = strtolower(trim((string)$cityName));
-                if ($cLower === '') return 'England';
-
-                $scottishKeywords = ['glasgow', 'edinburgh', 'dundee', 'aberdeen', 'stirling', 'perth', 'falkirk', 'paisley', 'inverness', 'kinross', 'dunfermline', 'bathgate', 'highlands', 'scotland', 'orkney', 'greenock', 'ayr', 'kilmarnock', 'inverurie', 'fort william', 'elgin', 'dumfries', 'arbroath', 'st andrews', 'kirkcaldy', 'motherwell', 'hamilton', 'coatbridge', 'livingston', 'glenrothes', 'cumbernauld', 'irvine', 'caird', 'strathaven', 'galashiels', 'hawick', 'kelso', 'selkirk', 'peebles', 'dumbarton', 'helensburgh', 'oban', 'campbeltown', 'wick', 'thurso', 'lerwick', 'stornoway'];
-                $welshKeywords = ['cardiff', 'swansea', 'newport', 'wrexham', 'wales', 'abertillery', 'merthyr tydfil', 'llandudno', 'bangor', 'rhyl', 'aberystwyth', 'bridgend', 'barry', 'neath', 'port talbot', 'cwmbran', 'pontypridd', 'caerphilly', 'llanelli', 'colwyn bay'];
-                $irishKeywords = ['belfast', 'dublin', 'cork', 'galway', 'limerick', 'derry', 'londonderry', 'ireland', 'kilkenny', 'waterford', 'drogheda', 'dundalk', 'sligo', 'wexford', 'athlone', 'letterkenny', 'killarney', 'tralee', 'bray', 'navan', 'ennis', 'carlow'];
-
-                foreach ($scottishKeywords as $kw) {
-                    if (strpos($cLower, $kw) !== false) return 'Scotland';
-                }
-                foreach ($welshKeywords as $kw) {
-                    if (strpos($cLower, $kw) !== false) return 'Wales';
-                }
-                foreach ($irishKeywords as $kw) {
-                    if (strpos($cLower, $kw) !== false) return 'Ireland';
-                }
+            case 'gb':
+            case 'great britain':
+            case 'united kingdom':
                 return 'England';
+            case 'england':
+                return 'England';
+            case 'scotland':
+                return 'Scotland';
+            case 'wales':
+                return 'Wales';
+            case 'ireland':
+            case 'republic of ireland':
+            case 'northern ireland':
+            case 'ie':
+                return 'Ireland';
             case 'colorado':
             case 'front-range':
             default:

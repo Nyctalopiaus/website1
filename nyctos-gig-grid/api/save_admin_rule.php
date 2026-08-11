@@ -116,6 +116,76 @@ switch ($action) {
             }
         }
         break;
+    case 'merge_events':
+        $sourceEventId = trim((string)($input['event_id'] ?? ''));
+        $targetEventId = trim((string)($input['value'] ?? ''));
+        if (!empty($sourceEventId) && !empty($targetEventId) && $sourceEventId !== $targetEventId) {
+            $db = getDbConnection();
+            $stmtSrc = $db->prepare("SELECT * FROM events WHERE event_id = :id");
+            $stmtSrc->execute([':id' => $sourceEventId]);
+            $srcEvent = $stmtSrc->fetch(PDO::FETCH_ASSOC);
+
+            $stmtTgt = $db->prepare("SELECT * FROM events WHERE event_id = :id");
+            $stmtTgt->execute([':id' => $targetEventId]);
+            $tgtEvent = $stmtTgt->fetch(PDO::FETCH_ASSOC);
+
+            if ($srcEvent && $tgtEvent) {
+                require_once __DIR__ . '/../includes/template_helpers.php';
+                $tgtArtists = splitArtistListNames($tgtEvent['artist_name'] ?? '');
+                $srcArtists = splitArtistListNames($srcEvent['artist_name'] ?? '');
+
+                $mergedArtists = $tgtArtists;
+                foreach ($srcArtists as $sa) {
+                    $saClean = trim($sa);
+                    if ($saClean === '') continue;
+                    $saLower = strtolower($saClean);
+                    $found = false;
+                    foreach ($mergedArtists as $ma) {
+                        if (strtolower(trim($ma)) === $saLower) {
+                            $found = true;
+                            break;
+                        }
+                    }
+                    if (!$found) {
+                        $mergedArtists[] = $saClean;
+                    }
+                }
+                $mergedArtistStr = implode(' & ', $mergedArtists);
+
+                $srcSources = array_map('trim', explode(',', (string)($srcEvent['source'] ?? '')));
+                $tgtSources = array_map('trim', explode(',', (string)($tgtEvent['source'] ?? '')));
+                $allSources = array_unique(array_filter(array_merge($tgtSources, $srcSources)));
+                $mergedSourceStr = implode(',', $allSources);
+
+                $tmUrl = !empty($tgtEvent['ticketmaster_url']) ? $tgtEvent['ticketmaster_url'] : ($srcEvent['ticketmaster_url'] ?? null);
+                $ebUrl = !empty($tgtEvent['eventbrite_url']) ? $tgtEvent['eventbrite_url'] : ($srcEvent['eventbrite_url'] ?? null);
+                $bitUrl = !empty($tgtEvent['bandsintown_url']) ? $tgtEvent['bandsintown_url'] : ($srcEvent['bandsintown_url'] ?? null);
+                $vUrl = !empty($tgtEvent['venue_url']) ? $tgtEvent['venue_url'] : ($srcEvent['venue_url'] ?? null);
+
+                $stmtUpdate = $db->prepare("UPDATE events SET artist_name = :artist_name, source = :source, ticketmaster_url = :tm, eventbrite_url = :eb, bandsintown_url = :bit, venue_url = :v WHERE event_id = :tgt_id");
+                $stmtUpdate->execute([
+                    ':artist_name' => $mergedArtistStr,
+                    ':source' => $mergedSourceStr,
+                    ':tm' => $tmUrl,
+                    ':eb' => $ebUrl,
+                    ':bit' => $bitUrl,
+                    ':v' => $vUrl,
+                    ':tgt_id' => $targetEventId
+                ]);
+
+                $stmtDel = $db->prepare("DELETE FROM events WHERE event_id = :src_id");
+                $success = $stmtDel->execute([':src_id' => $sourceEventId]);
+            }
+        }
+        break;
+    case 'purge_event':
+        $eventId = trim((string)($input['event_id'] ?? ''));
+        if (!empty($eventId)) {
+            $db = getDbConnection();
+            $stmtDel = $db->prepare("DELETE FROM events WHERE event_id = :id");
+            $success = $stmtDel->execute([':id' => $eventId]);
+        }
+        break;
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
         exit;

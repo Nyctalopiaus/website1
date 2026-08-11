@@ -119,6 +119,51 @@ class VenueScraper {
         @$dom->loadHTML($html);
         $xpath = new DOMXPath($dom);
         
+        // Dedicated parser for AEG JSON feeds (Gothic Theatre, etc.)
+        if (strpos($url, 'aegwebprod.blob.core.windows.net') !== false || strpos($url, 'gothictheatre.com') !== false) {
+            $jsonData = json_decode($html, true);
+            if (is_array($jsonData) && isset($jsonData['events'])) {
+                $events = [];
+                foreach ($jsonData['events'] as $ev) {
+                    $assoc = $ev['associations'] ?? [];
+                    $headliners = [];
+                    foreach (($assoc['headliners'] ?? []) as $h) {
+                        $hTitle = trim((string)($h['title'] ?? $h['name'] ?? ''));
+                        if ($hTitle !== '') $headliners[] = $hTitle;
+                    }
+                    $rawTitle = $ev['title'] ?? '';
+                    $fallbackTitle = is_array($rawTitle) ? ($rawTitle['headlinersText'] ?? $rawTitle['eventTitleText'] ?? '') : (string)$rawTitle;
+                    $artistName = !empty($headliners) ? implode(' & ', $headliners) : trim($fallbackTitle);
+                    if (empty($artistName)) continue;
+
+                    $startIso = $ev['eventDateTime'] ?? $ev['eventDate'] ?? '';
+                    $timeSql = date('Y-m-d H:i:s');
+                    if (!empty($startIso)) {
+                        $timeSql = date('Y-m-d H:i:s', strtotime($startIso));
+                    }
+                    $doorsIso = $ev['doorDateTime'] ?? null;
+                    $doorsSql = !empty($doorsIso) ? date('Y-m-d H:i:s', strtotime($doorsIso)) : null;
+
+                    $ticketUrl = $ev['ticketing']['url'] ?? $ev['url'] ?? $ev['link'] ?? 'https://www.gothictheatre.com/calendar/';
+
+                    $events[] = [
+                        'artist_name' => $artistName,
+                        'venue_name' => 'Gothic Theatre',
+                        'city_name' => 'Englewood',
+                        'market' => 'colorado',
+                        'start_time' => $timeSql,
+                        'doors_time' => $doorsSql,
+                        'ticket_url' => $ticketUrl,
+                        'source' => 'VenueScraper: Gothic Theatre'
+                    ];
+                }
+                if (!empty($events)) {
+                    $this->logs[] = "[AEG-JSON] Extracted " . count($events) . " live events for Gothic Theatre";
+                    return $events;
+                }
+            }
+        }
+
         // Dedicated parser for Do303 venue feeds (Hi-Dive, Skylark Lounge)
         if (strpos($url, 'do303.com') !== false) {
             preg_match_all('/<a[^>]+href="(\/events\/(20\d\d)\/(\d+)\/(\d+)[^"]*)"[^>]*>(.*?)<\/a>/s', $html, $matches, PREG_SET_ORDER);
