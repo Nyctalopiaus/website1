@@ -76,9 +76,12 @@ class LastFmNormalizer {
         if (!empty($data['toptags']['tag']) && is_array($data['toptags']['tag'])) {
             foreach ($data['toptags']['tag'] as $t) {
                 if (isset($t['name']) && trim((string)$t['name']) !== '') {
-                    $tagsList[] = trim((string)$t['name']);
-                    if (count($tagsList) >= 6) {
-                        break;
+                    $rawTag = trim((string)$t['name']);
+                    if (!isTagIgnored($rawTag)) {
+                        $tagsList[] = ucwords($rawTag);
+                        if (count($tagsList) >= 6) {
+                            break;
+                        }
                     }
                 }
             }

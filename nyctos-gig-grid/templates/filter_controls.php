@@ -112,6 +112,9 @@ if (!in_array($activeCountry, $intlMarketKeys, true)) {
         </div>
 
         <div class="dropdown-filters-group" style="display: flex; align-items: center; gap: 0.5rem; margin-left: auto; flex: 0 0 auto;">
+            <button type="button" id="btn-group-by-venue" class="region-btn btn-venue-group-toggle" title="Group shows by venue">
+                🏛️ Group by Venue
+            </button>
             <div class="dropdown-wrapper">
                 <button id="venue-dropdown-toggle">
                     <span id="venue-selected-count">All Venues</span>

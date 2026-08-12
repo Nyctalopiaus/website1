@@ -174,6 +174,26 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 alert('❌ Error: ' + (res.error || 'Failed'));
             }
+        } else if (target.classList.contains('btn-admin-resync-lastfm')) {
+            const eventId = target.getAttribute('data-event-id') || '';
+            const artist = target.getAttribute('data-artist') || 'this show';
+            if (!eventId) {
+                alert('Missing event ID.');
+                return;
+            }
+
+            target.disabled = true;
+            target.textContent = '🔄 Fetching Last.fm...';
+
+            const res = await saveAdminRule('resync_lastfm', '1', { event_id: eventId });
+            if (res.success) {
+                alert(`✅ Last.fm Resync Complete!\n\nArtist: ${res.artist_name || artist}\nNew Genre: ${(res.new_genre || 'all').toUpperCase()}\nNew Tags: ${res.new_tags || '(none)'}\n\nReloading grid...`);
+                reloadPreservingScroll();
+            } else {
+                alert('❌ Error resynching Last.fm: ' + (res.error || 'Failed'));
+                target.disabled = false;
+                target.textContent = '🔄 Resync Last.fm';
+            }
         } else if (target.classList.contains('btn-admin-purge-event')) {
             const eventId = target.getAttribute('data-event-id') || '';
             const artist = target.getAttribute('data-artist') || 'this show';

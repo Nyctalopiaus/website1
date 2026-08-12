@@ -1495,6 +1495,126 @@ select option,
     background: rgba(16, 185, 129, 0.15) !important;
 }
 
+/* Group by Venue Toggle & Layout Styles */
+.btn-venue-group-toggle {
+    transition: all 0.25s ease !important;
+}
+
+.btn-venue-group-toggle.active {
+    background: rgba(6, 182, 212, 0.18) !important;
+    color: #06b6d4 !important;
+    border-color: rgba(6, 182, 212, 0.5) !important;
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.25) !important;
+}
+
+.venue-grouped-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    width: 100%;
+}
+
+.venue-group-section {
+    background: rgba(18, 20, 26, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius);
+    padding: 1.25rem;
+    backdrop-filter: blur(8px);
+}
+
+.venue-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.12);
+}
+
+.venue-group-title {
+    font-family: var(--font-header);
+    font-size: 1.5rem;
+    color: var(--text-bright);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.venue-group-count {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #06b6d4;
+    background: rgba(6, 182, 212, 0.12);
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    padding: 0.25rem 0.65rem;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Tailored & Smooth Empty State Component */
+.filter-empty-state {
+    text-align: center;
+    padding: 3.5rem 1.5rem;
+    margin: 2rem auto;
+    width: 100%;
+    max-width: 520px;
+    background: rgba(18, 20, 26, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    animation: emptyStateFadeInUp 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes emptyStateFadeInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(12px) scale(0.97);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.filter-empty-state .no-events-icon {
+    font-size: 3.2rem;
+    line-height: 1;
+    margin-bottom: 1rem;
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+.filter-empty-state:hover .no-events-icon {
+    transform: scale(1.1) rotate(-5deg);
+}
+
+.filter-empty-state .btn-empty-action {
+    margin-top: 1.25rem;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #fff;
+    padding: 0.65rem 1.4rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.filter-empty-state .btn-empty-action:hover {
+    background: var(--accent-orange, #ff5500);
+    border-color: var(--accent-orange, #ff5500);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 85, 0, 0.35);
+}
+
 /* Glassmorphic Status Popover Menu */
 .status-popover-menu {
     position: absolute;

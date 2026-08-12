@@ -327,8 +327,8 @@ class VenueScraper {
             }
         }
 
-        // Dedicated parser for RHP venue feeds (Globe Hall, Larimer Lounge, Lost Lake, Goosetown Tavern)
-        if (strpos($url, 'globehall.com') !== false || strpos($url, 'larimerlounge.com') !== false || strpos($url, 'lost-lake.com') !== false || strpos($url, 'goosetowntavern.com') !== false) {
+        // Dedicated parser for RHP venue feeds (Globe Hall, Larimer Lounge, Lost Lake, Goosetown Tavern, Cervantes)
+        if (strpos($url, 'globehall.com') !== false || strpos($url, 'larimerlounge.com') !== false || strpos($url, 'lost-lake.com') !== false || strpos($url, 'goosetowntavern.com') !== false || strpos($url, 'cervantes') !== false) {
             $blocks = explode('rhpSingleEvent', $html);
             $events = [];
             $venueName = $this->getVenueNameFromUrl($url);
@@ -419,7 +419,11 @@ class VenueScraper {
                 }
                 
                 if (!empty($artistName) && !empty($startTime)) {
-                    $timeSql = date('Y-m-d H:i:s', strtotime($startTime));
+                    $parsedTs = strtotime($startTime);
+                    if ($parsedTs === false || empty(trim($startTime))) {
+                        continue;
+                    }
+                    $timeSql = date('Y-m-d H:i:s', $parsedTs);
                     $resolvedVenueName = $this->getVenueNameFromUrl($ticketUrl);
                     if ($resolvedVenueName === 'Unknown Venue' || $resolvedVenueName === "Cervantes' Other Side") {
                         $testFallback = $this->getVenueNameFromUrl($url);

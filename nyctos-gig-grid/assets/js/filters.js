@@ -53,12 +53,14 @@ export function initFilters(opts = {}) {
   const genreHelpTitle = document.getElementById('genre-help-title');
   const genreHelpText = document.getElementById('genre-help-text');
   const btnJustAnnounced = document.getElementById('btn-just-announced');
+  const btnGroupByVenue = document.getElementById('btn-group-by-venue');
 
   let activeRegions = new Set(['all']);
   let activeGenre = 'all';
   let filterInterestedOnly = false;
   let filterFreeOnly = false;
   let filterJustAnnounced = false;
+  let groupByVenue = false;
   let lastActiveMonthView = (monthSelect && monthSelect.value !== 'interested-view') ? monthSelect.value : null;
 
   // Keep dropdown in sync with SSR-selected month to avoid browser-restored stale selection.
@@ -694,6 +696,173 @@ export function initFilters(opts = {}) {
     }
   }
 
+  function renderVenueGroupedShows(activeMonthTargetId) {
+    const container = document.getElementById('venue-grouped-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const checkedVenues = Array.from(document.querySelectorAll('.venue-filter-checkbox:checked')).map(cb => cb.value);
+    const checkedVenueSet = new Set(checkedVenues);
+    const totalVenueCount = document.querySelectorAll('.venue-filter-checkbox').length;
+    const isAllVenuesChecked = checkedVenues.length === 0 || checkedVenues.length >= totalVenueCount;
+
+    const searchQuery = artistSearchInput ? artistSearchInput.value.toLowerCase().trim() : '';
+    const ignoredSet = new Set((getIgnoredEventIds ? getIgnoredEventIds() : []).map(id => String(id)));
+    const interestedSet = filterInterestedOnly ? new Set(getInterestedIds().map(id => String(id))) : null;
+
+    const regionTokenMap = {};
+    if (!activeRegions.has('all')) {
+      activeRegions.forEach(rKey => {
+        regionTokenMap[rKey] = (regionCities[rKey] || []).map(normalizeLocationToken);
+      });
+    }
+
+    const monthViews = Array.from(views).filter(v => v.id !== 'interested-view' && v.id !== 'purchased-view' && v.id !== 'venue-grouped-view' && v.id !== 'empty-view');
+    
+    // Unpack only the active target month view lazily if not unpacked yet
+    const activeViewEl = monthViews.find(v => v.id === activeMonthTargetId) || monthViews[0];
+    if (activeViewEl) {
+      unpackDeferredCards(activeViewEl);
+    }
+
+    const venueGroupMap = new Map();
+
+    monthViews.forEach(view => {
+      // Skip views that have not been unpacked yet unless it's activeViewEl
+      if (view !== activeViewEl && view.querySelector('template.deferred-cards-template')) {
+        return;
+      }
+
+      view.querySelectorAll('.event-card').forEach(card => {
+        const cardCity = card.dataset.city || card.getAttribute('data-city') || '';
+        const cardVenue = (card.dataset.venue || card.getAttribute('data-venue') || '').toLowerCase().trim();
+        const cardEventId = card.id.replace('card-', '');
+
+        if (ignoredSet.has(cardEventId)) return;
+
+        let show = true;
+        const btnAction = card.querySelector('.btn-interested-toggle');
+        const startTimeStr = btnAction ? btnAction.getAttribute('data-start') : '';
+        if (startTimeStr && !isShowActive(startTimeStr)) show = false;
+
+        if (show && !activeRegions.has('all')) {
+          let matchesAnyRegion = false;
+          const normalizedCardCity = normalizeLocationToken(cardCity);
+          for (const rKey of activeRegions) {
+            const targetCities = regionTokenMap[rKey] || [];
+            if (containsAnyKeyword(normalizedCardCity, targetCities)) {
+              matchesAnyRegion = true;
+              break;
+            }
+          }
+          if (!matchesAnyRegion) show = false;
+        }
+
+        if (show && !isAllVenuesChecked && !checkedVenueSet.has(cardVenue)) show = false;
+
+        if (show && filterInterestedOnly) {
+          if (!interestedSet || !interestedSet.has(cardEventId)) show = false;
+        }
+
+        if (show && filterFreeOnly) {
+          const freeFlag = String(card.getAttribute('data-free') || '0') === '1';
+          if (!freeFlag) show = false;
+        }
+
+        if (show && filterJustAnnounced) {
+          const createdAtStr = card.getAttribute('data-created-at');
+          if (createdAtStr) {
+            const createdDate = new Date(createdAtStr);
+            const now = new Date();
+            const diffDays = (now - createdDate) / (1000 * 60 * 60 * 24);
+            if (diffDays > 7) show = false;
+          }
+        }
+
+        if (show && searchQuery !== '') {
+          const searchBlob = (card.dataset.search || card.dataset.searchTextCache || (card.dataset.searchTextCache = card.textContent.toLowerCase())).toLowerCase();
+          if (!searchBlob.includes(searchQuery)) show = false;
+        }
+
+        if (show && activeGenre !== 'all') {
+          const genre = (card.getAttribute('data-genre') || 'all').toLowerCase();
+          const tagsStr = (card.getAttribute('data-tags') || '').toLowerCase();
+          const cardTags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
+          const renderedTagsCache = card.dataset.renderedTagsCache || (card.dataset.renderedTagsCache = Array.from(card.querySelectorAll('.tag-pill')).map(pill => pill.textContent.toLowerCase().trim()).join('|'));
+          const renderedTags = renderedTagsCache ? renderedTagsCache.split('|').filter(Boolean) : [];
+
+          const checkBucketMatch = (bKey) => {
+            if (genre === bKey) return true;
+            const bTags = genreBuckets[bKey]?.tags || [];
+            return cardTags.some(tag => bTags.includes(tag)) || renderedTags.some(tag => bTags.includes(tag));
+          };
+
+          if (!checkBucketMatch(activeGenre)) show = false;
+        }
+
+        if (show) {
+          const venueKey = cardVenue || 'other venue';
+          if (!venueGroupMap.has(venueKey)) {
+            const matchedObj = Array.isArray(venueData) ? venueData.find(v => String(v?.venue_name || '').toLowerCase() === venueKey) : null;
+            const displayName = matchedObj ? matchedObj.venue_name : venueKey.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+            venueGroupMap.set(venueKey, { name: displayName, cards: [] });
+          }
+          venueGroupMap.get(venueKey).cards.push(card);
+        }
+      });
+    });
+
+    const sortedGroups = Array.from(venueGroupMap.values()).sort((a, b) => {
+      if (b.cards.length !== a.cards.length) return b.cards.length - a.cards.length;
+      return a.name.localeCompare(b.name);
+    });
+
+    if (sortedGroups.length === 0) {
+      container.innerHTML = `
+        <div class="no-events" style="text-align: center; padding: 4rem 1rem; color: var(--text-muted);">
+          <span style="font-size: 3rem; display: block; margin-bottom: 1rem; filter: drop-shadow(0 0 10px rgba(6, 182, 212, 0.4));">🏛️</span>
+          <h3 style="color: var(--text-bright); font-family: var(--font-header); font-size: 1.8rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">No Venues Found</h3>
+          <p style="font-size: 0.9rem; max-width: 400px; margin: 0 auto; line-height: 1.6;">Try adjusting your venue filters, region selection, or search query.</p>
+        </div>
+      `;
+      return;
+    }
+
+    let globalIndex = 0;
+    sortedGroups.forEach(group => {
+      const section = document.createElement('div');
+      section.className = 'venue-group-section';
+
+      const header = document.createElement('div');
+      header.className = 'venue-group-header';
+      header.innerHTML = `
+        <h3 class="venue-group-title">🏛️ ${group.name}</h3>
+        <span class="venue-group-count">${group.cards.length} ${group.cards.length === 1 ? 'Show' : 'Shows'}</span>
+      `;
+      section.appendChild(header);
+
+      const grid = document.createElement('div');
+      grid.className = 'events-grid';
+
+      group.cards.forEach(card => {
+        const clone = card.cloneNode(true);
+        clone.style.display = 'grid';
+        const delay = Math.min(globalIndex, 10) * 0.03;
+        clone.style.setProperty('--stagger-delay', `${delay}s`);
+        clone.classList.add('card-entering');
+        grid.appendChild(clone);
+        setTimeout(() => {
+          clone.classList.remove('card-entering');
+          clone.style.removeProperty('--stagger-delay');
+        }, (delay + 0.3) * 1000);
+        globalIndex++;
+      });
+
+      section.appendChild(grid);
+      container.appendChild(section);
+    });
+  }
+
   function unpackDeferredCards(view) {
     if (!view) return;
     const template = view.querySelector('template.deferred-cards-template');
@@ -719,6 +888,12 @@ export function initFilters(opts = {}) {
       });
     }
     let targetId = monthSelect ? monthSelect.value : '';
+
+    if (groupByVenue) {
+      const activeMonthTargetId = targetId;
+      targetId = 'venue-grouped-view';
+      renderVenueGroupedShows(activeMonthTargetId);
+    }
 
     const needsFullUnpack = (searchQuery !== '' || activeGenre !== 'all' || !activeRegions.has('all') || checkedVenues.length < totalCount || filterInterestedOnly || filterJustAnnounced || visibleChunkLimit > CHUNK_SIZE);
     views.forEach(v => {
@@ -754,6 +929,13 @@ export function initFilters(opts = {}) {
     const viewTotalMatchingCounts = {};
 
     views.forEach(view => {
+      if (view.id === 'venue-grouped-view') {
+        const totalCardsInGrouped = view.querySelectorAll('.event-card').length;
+        viewVisibleCounts[view.id] = totalCardsInGrouped;
+        viewTotalMatchingCounts[view.id] = totalCardsInGrouped;
+        return;
+      }
+
       let visibleCount = 0;
       let visibleIndexInView = 0;
 
@@ -970,27 +1152,105 @@ export function initFilters(opts = {}) {
 
       let emptyStateEl = view.querySelector('.filter-empty-state');
       if (isActiveView && visibleCount === 0 && view.id !== 'interested-view' && view.id !== 'empty-view') {
+        const is0Venues = checkedVenues.length === 0;
+        const hasSearch = searchQuery !== '';
+        const hasGenre = activeGenre !== 'all';
+        const hasRegion = !activeRegions.has('all');
+        const genreLabel = genreSelect ? (genreSelect.options[genreSelect.selectedIndex]?.textContent || activeGenre) : activeGenre;
+
+        let emptyCfg = {
+          icon: '🎛️',
+          title: 'No Filter Matches',
+          message: 'No shows match this exact filter combination—try expanding your venue & genre selections or resetting filters.',
+          btnText: '🔄 Reset All Filters',
+          btnAction: 'reset_all'
+        };
+
+        if (is0Venues && !hasSearch && !hasGenre) {
+          emptyCfg = {
+            icon: '🏛️',
+            title: 'No Venues Selected',
+            message: 'You have unchecked all venue filters. Try checking your favorite venues or clicking "Select All" below.',
+            btnText: '🏛️ Select All Venues',
+            btnAction: 'select_all_venues'
+          };
+        } else if (hasGenre && !hasSearch && !is0Venues) {
+          emptyCfg = {
+            icon: '🎵',
+            title: `No ${genreLabel} Shows Found`,
+            message: `No shows match the "${genreLabel}" filter in this month. Try expanding your genre selection or checking other months.`,
+            btnText: '🎵 Show All Genres',
+            btnAction: 'reset_genre'
+          };
+        } else if (hasSearch) {
+          emptyCfg = {
+            icon: '🔍',
+            title: `No Matches for "${searchQuery}"`,
+            message: `We couldn't find any shows matching "${searchQuery}". Try checking for typos or clearing your search.`,
+            btnText: '✕ Clear Search',
+            btnAction: 'clear_search'
+          };
+        } else if (hasRegion && !hasGenre && !hasSearch) {
+          emptyCfg = {
+            icon: '📍',
+            title: 'No Shows in Selected Sub-Area',
+            message: 'No shows match your currently active sub-area filter. Try expanding to All Sub-Areas.',
+            btnText: '📍 All Sub-Areas',
+            btnAction: 'reset_region'
+          };
+        }
+
         if (!emptyStateEl) {
           emptyStateEl = document.createElement('div');
           emptyStateEl.className = 'filter-empty-state';
-          emptyStateEl.innerHTML = `
-            <div class="no-events-icon" style="filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.3));">🔍</div>
-            <h3 style="color: var(--text-bright); font-family: var(--font-header); font-size: 1.6rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.04em;">No Matches Found</h3>
-            <p style="color: var(--text-muted); max-width: 440px; margin: 0 auto; font-size: 0.9rem; line-height: 1.6;">
-              No shows match this exact filter combination. Try clearing your search query or expanding your venue & genre selections.
-            </p>
-            <button type="button" class="btn-reset-filters" style="margin-top: 1.25rem; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.15); color: #fff; padding: 0.5rem 1.2rem; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
-              🔄 Reset Filters
-            </button>
-          `;
           view.appendChild(emptyStateEl);
+        }
 
-          emptyStateEl.querySelector('.btn-reset-filters').addEventListener('click', e => {
+        emptyStateEl.innerHTML = `
+          <div class="no-events-icon">${emptyCfg.icon}</div>
+          <h3 style="color: var(--text-bright); font-family: var(--font-header); font-size: 1.6rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.04em;">${emptyCfg.title}</h3>
+          <p style="color: var(--text-muted); max-width: 440px; margin: 0 auto; font-size: 0.9rem; line-height: 1.6;">
+            ${emptyCfg.message}
+          </p>
+          <button type="button" class="btn-empty-action" data-action="${emptyCfg.btnAction}">
+            ${emptyCfg.btnText}
+          </button>
+        `;
+        emptyStateEl.style.display = 'block';
+
+        const actionBtn = emptyStateEl.querySelector('.btn-empty-action');
+        if (actionBtn) {
+          actionBtn.addEventListener('click', e => {
             e.preventDefault();
-            resetAllFilters();
+            const act = actionBtn.getAttribute('data-action');
+            if (act === 'select_all_venues') {
+              if (venueList) {
+                venueList.querySelectorAll('.venue-filter-checkbox').forEach(cb => cb.checked = true);
+              }
+              applyFilters();
+            } else if (act === 'reset_genre') {
+              activeGenre = 'all';
+              if (genreSelect) {
+                genreSelect.value = 'all';
+                genreSelect.dispatchEvent(new Event('change'));
+              }
+              applyFilters();
+            } else if (act === 'clear_search') {
+              if (artistSearchInput) artistSearchInput.value = '';
+              syncSearchClearButton();
+              applyFilters();
+            } else if (act === 'reset_region') {
+              activeRegions.clear();
+              activeRegions.add('all');
+              document.querySelectorAll('.region-btn').forEach(b => {
+                b.classList.toggle('active', b.getAttribute('data-region') === 'all');
+              });
+              saveActiveRegions();
+              applyFilters();
+            } else {
+              resetAllFilters();
+            }
           });
-        } else {
-          emptyStateEl.style.display = 'block';
         }
       } else if (emptyStateEl) {
         emptyStateEl.style.display = 'none';
@@ -1111,9 +1371,10 @@ export function initFilters(opts = {}) {
     });
   }
 
-  document.querySelectorAll('.region-btn').forEach(btn => {
+  document.querySelectorAll('.region-btn[data-region]').forEach(btn => {
     btn.addEventListener('click', () => {
       const regionVal = btn.getAttribute('data-region');
+      if (!regionVal) return;
 
       if (regionVal === 'all') {
         activeRegions.clear();
@@ -1289,6 +1550,15 @@ export function initFilters(opts = {}) {
       filterJustAnnounced = !filterJustAnnounced;
       btnJustAnnounced.classList.toggle('active', filterJustAnnounced);
       btnJustAnnounced.classList.toggle('is-active', filterJustAnnounced);
+      resetChunkLimit();
+      applyFilters();
+    });
+  }
+
+  if (btnGroupByVenue) {
+    btnGroupByVenue.addEventListener('click', () => {
+      groupByVenue = !groupByVenue;
+      btnGroupByVenue.classList.toggle('active', groupByVenue);
       resetChunkLimit();
       applyFilters();
     });
@@ -1678,6 +1948,7 @@ export function initFilters(opts = {}) {
     getFilterInterestedOnly: () => filterInterestedOnly,
     updateInterestedCards,
     renderInterestedShows,
-    renderPurchasedShows
+    renderPurchasedShows,
+    renderVenueGroupedShows
   };
 }

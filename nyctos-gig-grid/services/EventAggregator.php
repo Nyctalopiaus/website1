@@ -2017,8 +2017,9 @@ class EventAggregator {
 
         // Construct tags dynamically from event input or artist cache
         $tags = [];
+        $rawTagsPool = [];
         if (!empty($event['tags'])) {
-            $tags[] = $event['tags'];
+            $rawTagsPool[] = $event['tags'];
         }
         
         $parts = $this->splitPerformerNames($event['artist_name']);
@@ -2032,14 +2033,18 @@ class EventAggregator {
             if (!empty($cachedTags)) {
                 $cTags = explode(',', $cachedTags);
                 foreach ($cTags as $ct) {
-                    $ct = trim($ct);
-                    if (!empty($ct) && !in_array($ct, $tags)) {
-                        $tags[] = $ct;
-                    }
+                    $rawTagsPool[] = trim($ct);
                 }
             }
         }
-        $tags = array_slice($tags, 0, 2);
+
+        foreach ($rawTagsPool as $rt) {
+            $rtClean = ucwords(trim($rt));
+            if (!empty($rtClean) && !isTagIgnored($rtClean) && !in_array($rtClean, $tags, true)) {
+                $tags[] = $rtClean;
+            }
+        }
+        $tags = array_slice($tags, 0, 5);
         $tagsStr = !empty($tags) ? implode(', ', $tags) : null;
 
         // Check if event already exists

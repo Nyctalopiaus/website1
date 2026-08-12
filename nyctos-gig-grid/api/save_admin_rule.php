@@ -186,6 +186,58 @@ switch ($action) {
             $success = $stmtDel->execute([':id' => $eventId]);
         }
         break;
+    case 'resync_lastfm':
+        $eventId = trim((string)($input['event_id'] ?? ''));
+        if (!empty($eventId)) {
+            $db = getDbConnection();
+            $stmtSelect = $db->prepare("SELECT artist_name FROM events WHERE event_id = :id");
+            $stmtSelect->execute([':id' => $eventId]);
+            $artistName = $stmtSelect->fetchColumn();
+
+            if ($artistName) {
+                require_once __DIR__ . '/../services/LastFmNormalizer.php';
+                
+                // Clear cached tags for this artist and components to force fresh Last.fm query
+                $parts = preg_split('/\s+(?:and|with)\s+|\s+w\/\s+|\s*&\s*|\s*,\s*/i', $artistName);
+                $stmtClearCache = $db->prepare("DELETE FROM artist_genre_cache WHERE LOWER(artist_name) = LOWER(:art)");
+                foreach ($parts as $p) {
+                    $pClean = trim($p);
+                    if ($pClean !== '') {
+                        $stmtClearCache->execute([':art' => $pClean]);
+                    }
+                }
+                $stmtClearCache->execute([':art' => trim($artistName)]);
+
+                // Reset event normalization state
+                $stmtReset = $db->prepare("UPDATE events SET lastfm_normalized_at = NULL, genre_locked = 0 WHERE event_id = :id");
+                $stmtReset->execute([':id' => $eventId]);
+
+                // Run LastFmNormalizer quietly with output buffering and silent logger
+                ob_start();
+                $normalizer = new LastFmNormalizer($db, [], function($msg) {});
+                $normalizer->normalizeAllEvents(100);
+                ob_end_clean();
+
+                // Fetch updated row
+                $stmtRow = $db->prepare("SELECT genre, tags, genre_source FROM events WHERE event_id = :id");
+                $stmtRow->execute([':id' => $eventId]);
+                $updatedRow = $stmtRow->fetch(PDO::FETCH_ASSOC);
+
+                if ($updatedRow) {
+                    echo json_encode([
+                        'success' => true,
+                        'action' => $action,
+                        'artist_name' => $artistName,
+                        'new_genre' => $updatedRow['genre'],
+                        'new_tags' => $updatedRow['tags'],
+                        'genre_source' => $updatedRow['genre_source']
+                    ]);
+                    exit;
+                }
+                $success = true;
+            }
+        }
+        break;
     default:
         echo json_encode(['success' => false, 'error' => 'Unknown action']);
         exit;
