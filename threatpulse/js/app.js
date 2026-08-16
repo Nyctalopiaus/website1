@@ -150,11 +150,7 @@
     if (State.viewScope === 'briefing') {
       const publishedMs = item.published_at ? new Date(item.published_at).getTime() : 0;
       const isWithin24h = publishedMs > 0 && !isNaN(publishedMs) && (nowMs - publishedMs <= maxAgeMs);
-      if (!isWithin24h) {
-        const fallbackMs = 72 * 60 * 60 * 1000;
-        const isRecent = publishedMs > 0 && !isNaN(publishedMs) && (nowMs - publishedMs <= fallbackMs);
-        if (!isRecent) return false;
-      }
+      if (!isWithin24h) return false;
     }
 
     // 2. Primary Category Filter
@@ -368,12 +364,16 @@
       if (rawCat === 'platform_infrastructure') rawCat = 'security_advisories';
       if (rawCat === 'engineering_homelab') rawCat = 'informational';
 
-      if (rawCat === 'security_advisories') {
-        advisoryItems.push({ item, idx });
-      } else if (rawCat === 'informational') {
-        infoItems.push({ item, idx });
-      } else {
+      const hasCve = item.tags && item.tags.some(t => t.startsWith('CVE-'));
+      const isCritical = Components.getItemSeverity(item) === 'critical';
+
+      // ANY item with a CVE tag or critical exploit ALWAYS routes to Active Threat Intel & CVEs!
+      if (hasCve || isCritical || rawCat === 'active_threats') {
         activeItems.push({ item, idx });
+      } else if (rawCat === 'security_advisories') {
+        advisoryItems.push({ item, idx });
+      } else {
+        infoItems.push({ item, idx });
       }
     });
 
@@ -1117,4 +1117,4 @@
     fetchFeedData();
     setupAutoRefresh();
   });
-})(window);
+  })(window);

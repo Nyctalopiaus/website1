@@ -4,8 +4,6 @@
 (function(window) {
   'use strict';
 
-  const FILTER_STATE_VERSION = '20260816-3';
-
   const Storage = {
     getReadItems: () => new Set(JSON.parse(localStorage.getItem('tp_read_items') || '[]')),
     saveReadItems: (set) => localStorage.setItem('tp_read_items', JSON.stringify(Array.from(set))),
@@ -25,22 +23,8 @@
     getViewScope: () => localStorage.getItem('tp_view_scope') || 'briefing',
     setViewScope: (scope) => localStorage.setItem('tp_view_scope', scope),
 
-    getSelectedTags: () => {
-      if (localStorage.getItem('tp_filter_state_version') !== FILTER_STATE_VERSION) {
-        localStorage.removeItem('tp_selected_tags');
-        localStorage.setItem('tp_filter_state_version', FILTER_STATE_VERSION);
-        return new Set();
-      }
-      try {
-        return new Set(JSON.parse(localStorage.getItem('tp_selected_tags') || '[]'));
-      } catch (e) {
-        return new Set();
-      }
-    },
-    saveSelectedTags: (set) => {
-      localStorage.setItem('tp_filter_state_version', FILTER_STATE_VERSION);
-      localStorage.setItem('tp_selected_tags', JSON.stringify(Array.from(set)));
-    },
+    getSelectedTags: () => new Set(JSON.parse(localStorage.getItem('tp_selected_tags') || '[]')),
+    saveSelectedTags: (set) => localStorage.setItem('tp_selected_tags', JSON.stringify(Array.from(set))),
 
     getTagsCollapsed: () => localStorage.getItem('tp_tags_collapsed') !== 'false',
     setTagsCollapsed: (collapsed) => localStorage.setItem('tp_tags_collapsed', collapsed ? 'true' : 'false'),
@@ -69,7 +53,6 @@
       localStorage.removeItem('tp_metrics_collapsed');
       localStorage.removeItem('tp_view_scope');
       localStorage.removeItem('tp_selected_tags');
-      localStorage.removeItem('tp_filter_state_version');
       localStorage.removeItem('tp_tags_collapsed');
       localStorage.removeItem('tp_summary_collapsed');
       localStorage.removeItem('tp_visible_columns');
