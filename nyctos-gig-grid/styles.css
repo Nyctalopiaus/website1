@@ -2196,7 +2196,7 @@ select option,
     display: none;
     position: absolute;
     bottom: calc(100% + 6px);
-    right: 0;
+    left: 0;
     width: 180px;
     background: #14161a;
     border: 1px solid rgba(255, 255, 255, 0.14);

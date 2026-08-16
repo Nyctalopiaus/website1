@@ -47,7 +47,8 @@ RewriteRule ^(.*?)/?$ $1.html [L]
   ExpiresByType font/woff2 "access plus 1 year"
 </IfModule>
 
-# 5. Custom Directory Listings (mod_autoindex)
+# 5. Disable Directory Indexes (mod_autoindex)
+Options -Indexes
 IndexOptions FancyIndexing HTMLTable VersionSort FoldersFirst NameWidth=* DescriptionWidth=*
 IndexHeadInsert "<link rel='stylesheet' href='/.index.css'>"
 IndexIgnore .htaccess .index.css backend
@@ -58,10 +59,13 @@ IndexIgnore .htaccess .index.css backend
   Header set X-Frame-Options "DENY"
   Header set Referrer-Policy "strict-origin-when-cross-origin"
   Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  Header set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
+  Header set Cross-Origin-Opener-Policy "same-origin"
+  Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org https://widgets.mortgagenewsdaily.com https://router.project-osrm.org https://photon.komoot.io https://huggingface.co https://api-inference.huggingface.co;"
 </IfModule>
 
 # 7. Block Direct Access to Database, Log, and Config Files
-<FilesMatch "\.(db|sqlite|sqlite3|log|sql|env|py|sh)$">
+<FilesMatch "\.(db|sqlite|sqlite3|log|sql|env|py|sh|bak|config)$">
   <IfModule mod_authz_core.c>
     Require all denied
   </IfModule>
@@ -73,6 +77,6 @@ IndexIgnore .htaccess .index.css backend
 
 # 8. Anti-Scraping: Block Automated Scraping Bots & User-Agents
 <IfModule mod_rewrite.c>
-  RewriteCond %{HTTP_USER_AGENT} (python-requests|curl|wget|scrapy|libwww-perl|go-http-client|bytespider|gptbot|claudebot|ccbot|ahrefsbot|semrushbot) [NC]
+  RewriteCond %{HTTP_USER_AGENT} (python-requests|wget|scrapy|libwww-perl|bytespider|gptbot|claudebot|ccbot|ahrefsbot|semrushbot) [NC]
   RewriteRule ^ - [F,L]
 </IfModule>

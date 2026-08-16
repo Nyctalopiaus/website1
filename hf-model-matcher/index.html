@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hugging Face Model Matcher | Hardware-Aware AI Discovery Engine</title>
+    <meta name="description" content="Discover the best local or hosted AI models on Hugging Face that run effectively on your specific VRAM & RAM hardware setup without OOM errors.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://huggingface.co https://api-inference.huggingface.co;">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤗</text></svg>">
+</head>
+<body>
+    <div class="mesh-glow nebula-1"></div>
+    <div class="mesh-glow nebula-2"></div>
+    <div class="mesh-glow nebula-3"></div>
+
+    <!-- Navigation Header -->
+    <header class="header">
+        <div class="container header-content">
+            <div class="logo">
+                <a href="../" class="btn-back">← Back to Lab</a>
+                <span class="logo-text">Hugging Face Model Matcher</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.6rem; margin-left: auto;">
+                <button type="button" id="btn-open-onboarding" class="btn-header-action primary-glow" title="Runner Setup Guide">
+                    <span>🚀</span> <span>Need Runner Software?</span>
+                </button>
+                <button type="button" id="btn-open-quant-matrix" class="btn-header-action" title="GGUF Quantization Matrix">
+                    <span>📊</span> <span>Quant Matrix</span>
+                </button>
+                <button type="button" id="btn-open-quickstart" class="btn-header-action" title="Show Quick Start Guide">
+                    <span>ℹ️</span> <span>Quick Start</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Hero Title Banner -->
+        <section class="hero">
+            <h1 class="hero-title">Discover AI Models Perfectly Sized for <span>Your Hardware</span></h1>
+            <p class="hero-subtitle">Input your GPU VRAM & system specs. Our strict 4-Tier engine discards OOM risks and ranks the highest performing Hugging Face models for your exact goal.</p>
+        </section>
+
+        <!-- Main Layout: Sidebar & Content -->
+        <div class="main-grid">
+            
+            <!-- Left Sidebar: Hardware Profiler -->
+            <aside class="panel">
+                <div class="panel-title">
+                    <span>💻 Hardware Profiler</span>
+                </div>
+
+                <!-- 1. Auto-Detect Control & Inline Status Alert -->
+                <div class="control-group">
+                    <button id="btn-auto-detect" class="btn-auto-detect">⚡ Auto-Detect My Hardware</button>
+                    
+                    <!-- Inline Auto-Detect Status Alert Box right under the button -->
+                    <div id="auto-detect-inline-notice" class="auto-detect-notice-box" style="display: none; margin-top: 10px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 12px; line-height: 1.4; color: #FCD34D;">
+                        <div style="display: flex; gap: 8px; align-items: flex-start;">
+                            <span id="auto-detect-notice-icon" style="font-size: 15px;">⚠️</span>
+                            <div id="auto-detect-notice-text">
+                                <strong>Auto-Detect Notice:</strong> Browser privacy settings prevented hardware auto-detection. Please select your GPU model or adjust sliders manually below.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Organised Vendor & Model Selector -->
+                <div class="control-group">
+                    <div class="label-row">
+                        <span class="control-label">GPU Vendor</span>
+                        <span class="control-value" style="font-size: 11px; color: var(--accent-blue);">Step 1: Choose Brand</span>
+                    </div>
+                    <select id="gpu-vendor-select" class="input-search" style="width: 100%; margin-bottom: 12px;">
+                        <option value="nvidia" selected>🟢 NVIDIA GeForce & Datacenter</option>
+                        <option value="amd">🔴 AMD Radeon & Instinct</option>
+                        <option value="apple">🍏 Apple Silicon (Mac Unified Memory)</option>
+                        <option value="intel">🔵 Intel Arc & Battlemage</option>
+                        <option value="custom">✏️ Custom / Manual Slider Mode</option>
+                    </select>
+
+                    <div class="label-row">
+                        <span class="control-label">Card Model</span>
+                        <span id="gpu-vram-calc-badge" class="control-value">24 GB per GPU</span>
+                    </div>
+                    <select id="gpu-model-select" class="input-search" style="width: 100%; margin-bottom: 12px;">
+                        <!-- Dynamically populated by JS based on Vendor selection -->
+                    </select>
+
+                    <div class="label-row">
+                        <span class="control-label">GPU Quantity (Multi-GPU Rigs)</span>
+                        <span id="gpu-count-val" class="control-value">1x Single GPU</span>
+                    </div>
+                    <div class="presets-grid" style="grid-template-columns: repeat(4, 1fr);">
+                        <button class="btn-gpu-count active" data-count="1">1x GPU</button>
+                        <button class="btn-gpu-count" data-count="2">2x Dual</button>
+                        <button class="btn-gpu-count" data-count="4">4x Quad</button>
+                        <button class="btn-gpu-count" data-count="8">8x Rig</button>
+                    </div>
+                </div>
+
+                <!-- 3. Grouped Memory & Context Allocations (STAGE 1 & STAGE 4) -->
+                <div class="control-group" style="background: rgba(255, 255, 255, 0.015); border: 1px solid rgba(255, 255, 255, 0.06); padding: 14px; border-radius: var(--radius-md);">
+                    <div style="font-weight: 700; font-size: 13px; color: var(--accent-blue); margin-bottom: 14px; display: flex; align-items: center; gap: 6px;">
+                        <span>🧠 Memory & Context Allocations</span>
+                    </div>
+
+                    <!-- Total Effective VRAM Slider -->
+                    <div class="label-row">
+                        <span class="control-label">Total Effective VRAM</span>
+                        <span id="vram-val" class="control-value">24 GB</span>
+                    </div>
+                    <input type="range" id="vram-slider" class="range-slider" min="2" max="192" step="1" value="24" style="margin-bottom: 12px;">
+
+                    <!-- STAGE 1: Target Context Window Selector -->
+                    <div class="label-row">
+                        <span class="control-label">Target Context Window</span>
+                        <span id="context-val" class="control-value" style="color: #38BDF8;">16k Tokens</span>
+                    </div>
+                    <select id="context-select" class="input-search" style="width: 100%; margin-bottom: 14px; background: rgba(15, 23, 42, 0.8);">
+                        <option value="4">4k Tokens (~0.4 GB KV-Cache)</option>
+                        <option value="8">8k Tokens (~0.8 GB KV-Cache)</option>
+                        <option value="16" selected>16k Tokens (~1.5 GB KV-Cache - Standard)</option>
+                        <option value="32">32k Tokens (~3.5 GB KV-Cache - RAG / Docs)</option>
+                        <option value="64">64k Tokens (~5.5 GB KV-Cache - Heavy RAG)</option>
+                        <option value="128">128k Tokens (~8.0 GB KV-Cache - Ultra Long)</option>
+                    </select>
+
+                    <!-- System RAM Slider -->
+                    <div class="label-row">
+                        <span class="control-label">System RAM</span>
+                        <span id="ram-val" class="control-value">64 GB</span>
+                    </div>
+                    <input type="range" id="ram-slider" class="range-slider" min="4" max="256" step="4" value="64">
+                </div>
+
+                <!-- Engine Tier Explanation Box -->
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px; margin-top: 20px; font-size: 12px; color: var(--text-muted);">
+                    <strong style="color: var(--text-secondary);">Strict 4-Tier Engine:</strong>
+                    <ul style="padding-left: 16px; margin-top: 6px;">
+                        <li><strong>T1: Hardware & Context Cap:</strong> Model + KV-Cache overhead</li>
+                        <li><strong>T2: Task Mapping:</strong> Filters target HF pipeline_tag</li>
+                        <li><strong>T3: Community Score:</strong> 0.4*DL + 0.4*Likes + 0.2*Trend</li>
+                        <li><strong>T4: Categorization:</strong> Best, Speed & Max cards</li>
+                    </ul>
+                </div>
+            </aside>
+
+            <!-- Right Content Area: Goal Selection & Recommendations -->
+            <section>
+                
+                <!-- Goal Selector Grid -->
+                <div style="margin-bottom: 24px;">
+                    <div class="panel-title" style="margin-bottom: 12px;">🎯 Select Primary Goal</div>
+                    <div class="goals-grid">
+                        <div class="goal-card active" data-goal="coding">
+                            <div class="goal-icon">💻</div>
+                            <div class="goal-title">Coding & Software Dev</div>
+                            <div class="goal-desc">Code generation, refactoring, Python, Rust, SQL</div>
+                        </div>
+
+                        <div class="goal-card" data-goal="image-gen">
+                            <div class="goal-icon">🎨</div>
+                            <div class="goal-title">Image Generation</div>
+                            <div class="goal-desc">FLUX.1, SDXL, Stable Diffusion visual generation</div>
+                        </div>
+
+                        <div class="goal-card" data-goal="vision">
+                            <div class="goal-icon">👁️</div>
+                            <div class="goal-title">Multimodal / Vision</div>
+                            <div class="goal-desc">Image analysis, OCR, visual document Q&A</div>
+                        </div>
+
+                        <div class="goal-card" data-goal="chat">
+                            <div class="goal-icon">🧠</div>
+                            <div class="goal-title">General Chat & Reasoning</div>
+                            <div class="goal-desc">DeepSeek-R1, Llama 3, Qwen instruct chat</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tier 4 Output: Hero 3-Card Grid -->
+                <div class="hero-cards-section">
+                    <div class="section-header">
+                        <div class="section-title">🏆 Top Recommended Models</div>
+                    </div>
+                    <div id="hero-cards-container" class="hero-cards-grid">
+                        <!-- Hero cards rendered dynamically by app.js -->
+                    </div>
+                </div>
+
+                <!-- Candidates Table & Filter -->
+                <div class="candidates-table-container">
+                    <div class="section-header">
+                        <div class="section-title">
+                            Candidate Pool (<span id="total-candidates-count">0</span> models fit budget)
+                        </div>
+                    </div>
+
+                    <div class="search-bar-row">
+                        <input type="text" id="search-input" class="input-search" placeholder="Search model name or tag (e.g. llama, qwen, flux)...">
+                        <button id="btn-refresh" class="btn-action" style="padding: 0 16px;">Refresh 🔄</button>
+                    </div>
+
+                    <div id="candidates-container">
+                        <!-- Candidate items rendered dynamically by app.js -->
+                    </div>
+                </div>
+
+            </section>
+        </div>
+    </main>
+
+    <!-- STAGE 2: Enhanced App-Specific Launchers Modal -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-box" style="max-width: 680px;">
+            <button id="modal-close" class="modal-close">✕</button>
+            <h2 id="modal-title" style="font-family: var(--font-heading); font-size: 19px; margin-bottom: 14px; color: #F8FAFC;">Run Instructions & Integration Launcher</h2>
+
+            <!-- Launcher Tabs -->
+            <div class="modal-tabs">
+                <button class="modal-tab active" data-tab="lmstudio">🖥️ LM Studio</button>
+                <button class="modal-tab" data-tab="ollama">⚡ Ollama + WebUI</button>
+                <button class="modal-tab" data-tab="cline">🧩 VS Code / Cline</button>
+            </div>
+
+            <!-- Tab Content 1: LM Studio -->
+            <div id="tab-content-lmstudio" class="tab-pane active">
+                <div style="background: rgba(59,130,246,0.1); border: 1px solid var(--accent-blue); padding: 14px; border-radius: 10px; margin-bottom: 16px;">
+                    <div style="font-size: 12px; font-weight: 700; color: #38BDF8; margin-bottom: 4px;">LM Studio Search String & Offload Settings</div>
+                    <code id="code-lmstudio-search" style="font-size: 13px; color: #F8FAFC; word-break: break-all; display: block; padding: 6px 10px; background: rgba(0,0,0,0.3); border-radius: 6px; margin: 6px 0;">lmstudio-search-string</code>
+                    <div style="font-size: 12px; color: #94A3B8; margin-top: 8px; line-height: 1.5;">
+                        • <strong>GPU Offload:</strong> Set to <span id="lmstudio-offload-pct" style="color: #34D399; font-weight: 700;">100% (Max Performance)</span><br>
+                        • <strong>KV-Cache Quantization:</strong> Select <span style="color: #F8FAFC;">Q8_0 or FP16</span> in LM Studio settings for maximum precision.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content 2: Ollama -->
+            <div id="tab-content-ollama" class="tab-pane">
+                <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">Ollama Single-Line CLI Launcher</div>
+                <div class="code-block" style="margin-bottom: 14px;">
+                    <button class="btn-copy" data-target="code-ollama">Copy</button>
+                    <span id="code-ollama">ollama run model</span>
+                </div>
+                <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">Open WebUI / Modelfile Config</div>
+                <div class="code-block" style="white-space: pre-wrap; font-size: 12px;">
+                    <button class="btn-copy" data-target="code-modelfile">Copy</button>
+                    <span id="code-modelfile">FROM model\nPARAMETER num_ctx 16384</span>
+                </div>
+            </div>
+
+            <!-- Tab Content 3: VS Code / Cline -->
+            <div id="tab-content-cline" class="tab-pane">
+                <div style="background: rgba(139,92,246,0.1); border: 1px solid var(--accent-purple); padding: 14px; border-radius: 10px; margin-bottom: 14px;">
+                    <div style="font-size: 12px; font-weight: 700; color: #C084FC; margin-bottom: 6px;">VS Code / Cline Extension Configuration</div>
+                    <div style="font-size: 12px; color: #94A3B8; line-height: 1.6;">
+                        • <strong>API Provider:</strong> OpenAI Compatible<br>
+                        • <strong>Base URL:</strong> <code style="color: #F8FAFC; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">http://localhost:1234/v1</code> (LM Studio) or <code style="color: #F8FAFC; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">http://localhost:11434/v1</code> (Ollama)<br>
+                        • <strong>Model ID:</strong> <code id="cline-model-id" style="color: #F8FAFC; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">model-id</code>
+                    </div>
+                </div>
+                <div class="code-block" style="white-space: pre-wrap; font-size: 12px;">
+                    <button class="btn-copy" data-target="code-cline-config">Copy Base URL</button>
+                    <span id="code-cline-config">http://localhost:1234/v1</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STAGE 3: Quantization Quality Matrix Modal -->
+    <div id="modal-quant-overlay" class="modal-overlay">
+        <div class="modal-box" style="max-width: 620px;">
+            <button id="modal-quant-close" class="modal-close">✕</button>
+            <h2 style="font-family: var(--font-heading); font-size: 20px; margin-bottom: 14px; color: #F8FAFC;">📊 GGUF Quantization Quality Matrix</h2>
+            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
+                <p style="margin-bottom: 14px;">GGUF quantization balances LLM parameter size against GPU VRAM footprint:</p>
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+                    <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); padding: 12px; border-radius: 8px;">
+                        <strong style="color: #34D399;">Q8_0 / Q5_K_M — Maximum Logic & Accuracy</strong>
+                        <div style="font-size: 12px; color: #94A3B8; margin-top: 4px;">Near FP16 baseline quality. Best for complex coding, math, and strict instruction following. Higher VRAM footprint.</div>
+                    </div>
+                    <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); padding: 12px; border-radius: 8px;">
+                        <strong style="color: #60A5FA;">Q4_K_M — The Sweet Spot (Default)</strong>
+                        <div style="font-size: 12px; color: #94A3B8; margin-top: 4px;">Negligible quality loss (~0.1 perplexity drop) with ~50% VRAM reduction. Recommended for almost all setups.</div>
+                    </div>
+                    <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); padding: 12px; border-radius: 8px;">
+                        <strong style="color: #FBBF24;">Q3_K_M / IQ3 — VRAM Saver</strong>
+                        <div style="font-size: 12px; color: #94A3B8; margin-top: 4px;">Extreme compression to fit large parameter models (32B / 70B) onto mid-tier GPUs. Slight quality loss.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STAGE 4: Onboarding Runner Assistant Modal -->
+    <div id="modal-onboarding-overlay" class="modal-overlay">
+        <div class="modal-box" style="max-width: 640px;">
+            <button id="modal-onboarding-close" class="modal-close">✕</button>
+            <h2 style="font-family: var(--font-heading); font-size: 20px; margin-bottom: 12px; color: #F8FAFC;">🚀 Don't Have a Runner Yet?</h2>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">Choose the desktop application that best fits your workflow:</p>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 16px;">
+                <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); padding: 16px; border-radius: 10px;">
+                    <div style="font-size: 15px; font-weight: 700; color: #60A5FA; margin-bottom: 6px;">🖥️ LM Studio / Jan.ai</div>
+                    <div style="font-size: 12px; color: #94A3B8; margin-bottom: 12px; line-height: 1.5;">Best for users wanting a sleek visual chat app with 1-click model downloads and local search.</div>
+                    <a href="https://lmstudio.ai" target="_blank" class="btn-action primary" style="font-size: 12px; text-decoration: none; padding: 6px 12px; display: inline-block;">Download LM Studio ↗</a>
+                </div>
+                <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.3); padding: 16px; border-radius: 10px;">
+                    <div style="font-size: 15px; font-weight: 700; color: #C084FC; margin-bottom: 6px;">⚡ Ollama CLI</div>
+                    <div style="font-size: 12px; color: #94A3B8; margin-bottom: 12px; line-height: 1.5;">Best for background API service powering VS Code extensions like Cline and Continue.dev.</div>
+                    <a href="https://ollama.com" target="_blank" class="btn-action primary" style="font-size: 12px; text-decoration: none; padding: 6px 12px; display: inline-block;">Download Ollama ↗</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Start Modal -->
+    <div id="modal-quickstart-overlay" class="modal-overlay">
+        <div class="modal-box">
+            <button id="modal-quickstart-close" class="modal-close">✕</button>
+            <h2 style="font-family: var(--font-heading); font-size: 20px; margin-bottom: 14px; color: #F8FAFC;">ℹ️ Quick Start Guide</h2>
+            <div style="font-size: 14px; color: var(--text-secondary); line-height: 1.7;">
+                <p style="margin-bottom: 12px;">Welcome to <strong>Nycto's Hugging Face Model Matcher</strong>! Follow these steps to discover models tailored for your hardware:</p>
+                <ol style="padding-left: 20px; margin-bottom: 16px;">
+                    <li style="margin-bottom: 8px;"><strong>Set Your Hardware Profile:</strong> Adjust the GPU VRAM and System RAM sliders, pick a preset button, or click <span style="color: var(--accent-blue);">⚡ Auto-Detect My Hardware</span>.</li>
+                    <li style="margin-bottom: 8px;"><strong>Select Primary Goal:</strong> Choose your target task — <strong>Coding 💻</strong>, <strong>Image Gen 🎨</strong>, <strong>Vision 👁️</strong>, or <strong>Chat 🧠</strong>.</li>
+                    <li style="margin-bottom: 8px;"><strong>Review Hero Models:</strong> Compare 🏆 <em>Best Overall</em>, 🚀 <em>Speed Demon</em>, and 🧠 <em>Max Capability</em> to inspect VRAM footprint % and community metrics.</li>
+                    <li style="margin-bottom: 8px;"><strong>One-Click Launch:</strong> Click <span style="color: var(--accent-blue);">Run Code ⚡</span> to view instant setup commands for Ollama, vLLM, or Transformers.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

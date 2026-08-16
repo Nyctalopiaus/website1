@@ -32,6 +32,10 @@ function verifyAdminAuth() {
     // Ensure session is active
     if (session_status() === PHP_SESSION_NONE) {
         @ini_set('session.cookie_httponly', 1);
+        @ini_set('session.cookie_samesite', 'Strict');
+        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+            @ini_set('session.cookie_secure', 1);
+        }
         @session_start();
     }
 
@@ -43,9 +47,9 @@ function verifyAdminAuth() {
     // 2. Extract submitted credentials
     $adminUser = trim((string)($_POST['admin_user'] ?? $_SERVER['PHP_AUTH_USER'] ?? ''));
     $adminPass = (string)($_POST['admin_pass'] ?? $_SERVER['PHP_AUTH_PW'] ?? '');
-    $adminToken = $_POST['admin_token'] ?? '';
+    $adminToken = (string)($_POST['admin_token'] ?? '');
 
-    if (!empty($adminToken) && $adminToken === 'soar_secret_token_2026') {
+    if (!empty($adminToken) && hash_equals('soar_secret_token_2026', $adminToken)) {
         return true;
     }
 
@@ -268,6 +272,237 @@ $monitoredEndpoints = [
         'name' => 'Local CISM Platform',
         'url' => 'https://nycto.ninja/cism-training/',
         'type' => 'internal'
+    ],
+        [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'CISA Known Exploited Vulnerabilities',
+        'url' => 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'CISA Cybersecurity Advisories',
+        'url' => 'https://www.cisa.gov/cybersecurity-advisories/all.xml',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'NIST CVE Intelligence Stream',
+        'url' => 'https://cvefeed.io/rssfeed/latest.xml',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'CERT/CC Vulnerability Notes',
+        'url' => 'https://www.kb.cert.org/vuls/byid?readform&OutputMap=rss',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Trend Micro Zero Day Initiative (ZDI)',
+        'url' => 'https://www.zerodayinitiative.com/rss/published/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Microsoft Security Response Center (MSRC)',
+        'url' => 'https://msrc.microsoft.com/update-guide/rss',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Palo Alto Networks Unit 42',
+        'url' => 'https://unit42.paloaltonetworks.com/feed/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Cisco Talos Intelligence',
+        'url' => 'https://blog.talosintelligence.com/rss/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'BleepingComputer',
+        'url' => 'https://www.bleepingcomputer.com/feed/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'The Hacker News',
+        'url' => 'https://feeds.feedburner.com/TheHackersNews',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'SANS Internet Storm Center',
+        'url' => 'https://isc.sans.edu/rssfeed.xml',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'SecurityWeek',
+        'url' => 'https://www.securityweek.com/feed/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Dark Reading',
+        'url' => 'https://www.darkreading.com/rss.xml',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'GitHub Advisory Database',
+        'url' => 'https://github.com/advisories.atom',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Krebs on Security',
+        'url' => 'https://krebsonsecurity.com/feed/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Google Threat Intelligence & Mandiant',
+        'url' => 'https://cloud.google.com/blog/topics/threat-intelligence/rss/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Check Point Threat Research Labs',
+        'url' => 'https://research.checkpoint.com/feed/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'SentinelLabs Threat Research',
+        'url' => 'https://www.sentinelone.com/feed/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'The Register Security Intelligence',
+        'url' => 'https://www.theregister.com/security/headlines.atom',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'AlienVault OTX Threat Pulses',
+        'url' => 'https://otx.alienvault.com/rss/pulses/recent',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Debian Security Advisories',
+        'url' => 'https://www.debian.org/security/dsa.rdf',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Ubuntu Security Notices',
+        'url' => 'https://ubuntu.com/security/notices/rss.xml',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Kubernetes Security & Releases',
+        'url' => 'https://kubernetes.io/feed.xml',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'AWS Security Bulletins',
+        'url' => 'https://aws.amazon.com/security/security-bulletins/feed/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'FreeBSD Security Advisories',
+        'url' => 'https://www.freebsd.org/security/rss.xml',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Rocky Linux Security Errata',
+        'url' => 'https://errata.rockylinux.org/rss.xml',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Cloudflare Blog',
+        'url' => 'https://blog.cloudflare.com/rss/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Tailscale Blog',
+        'url' => 'https://tailscale.com/blog/index.xml',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'TrueNAS Storage & Security',
+        'url' => 'https://www.truenas.com/feed/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Netgate pfSense Advisories',
+        'url' => 'https://www.netgate.com/blog/rss.xml',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Pi-hole Network Security',
+        'url' => 'https://pi-hole.net/feed/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'Jeff Geerling Engineering',
+        'url' => 'https://www.jeffgeerling.com/blog.xml',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'ThreatPulse Static JSON Engine',
+        'url' => 'https://nycto.ninja/threatpulse/data/feed.json',
+        'type' => 'internal'
     ]
 ];
 
@@ -283,16 +518,30 @@ function checkEndpoint($url) {
     $isSuccess = 0;
     $curlErr = null;
 
+    $parsed = parse_url($url);
+    $scheme = strtolower($parsed['scheme'] ?? '');
+    if (!in_array($scheme, ['http', 'https'], true)) {
+        return [
+            'latency_ms' => 0,
+            'http_code' => 0,
+            'is_success' => 0,
+            'error' => 'Disallowed protocol scheme'
+        ];
+    }
+
     while ($attempt < $maxAttempts) {
         $attempt++;
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+        curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         
-        // For domain homepage endpoints, use HEAD request to measure pure connection latency without downloading heavy HTML body payloads
+        // For domain homepages & API gateways (e.g. Ticketmaster), use HEAD request to measure pure gateway latency without triggering WAF penalties or downloading body payloads
         $parsed = parse_url($url);
         $path = $parsed['path'] ?? '/';
-        if ($path === '/' || strpos($url, 'mortgagenewsdaily') !== false) {
+        $host = $parsed['host'] ?? '';
+        if ($path === '/' || strpos($url, 'mortgagenewsdaily') !== false || strpos($host, 'ticketmaster.com') !== false) {
             curl_setopt($ch, CURLOPT_NOBODY, true);
         } else {
             curl_setopt($ch, CURLOPT_NOBODY, false);
@@ -466,11 +715,14 @@ foreach ($monitoredEndpoints as $ep) {
 // 4. Calculate Rolling Historical Metrics from DB (24h / 7d / 30d)
 $globalUptime24h = 99.8;
 $avgLatency24h = $totalChecks > 0 ? round($totalLatency / $totalChecks) : 120;
-$historyTrend = [];
+$historyTrend24h = [];
+$historyTrend7d = [];
+$historyTrend30d = [];
 
 if (isset($pdo)) {
     try {
         $oneDayAgo = $now - (24 * 3600);
+        $sevenDaysAgo = $now - (7 * 24 * 3600);
         $thirtyDaysAgo = $now - (30 * 24 * 3600);
 
         // 24h Uptime %
@@ -482,10 +734,20 @@ if (isset($pdo)) {
             if ($row24['avg_lat']) $avgLatency24h = round($row24['avg_lat']);
         }
 
-        // Daily Latency History for Trend Graph (last 24 check points)
-        $stmtHist = $pdo->prepare("SELECT strftime('%Y-%m-%d %H:00', timestamp, 'unixepoch') as hr, AVG(latency_ms) as avg_lat, SUM(is_success)*100.0/COUNT(*) as uptime FROM endpoint_checks WHERE timestamp >= ? GROUP BY hr ORDER BY hr ASC LIMIT 24");
-        $stmtHist->execute([$now - (24 * 3600)]);
-        $historyTrend = $stmtHist->fetchAll(PDO::FETCH_ASSOC);
+        // 1. Hourly Latency History (Last 24 Hours)
+        $stmt24h = $pdo->prepare("SELECT strftime('%Y-%m-%d %H:00', timestamp, 'unixepoch') as hr, AVG(latency_ms) as avg_lat, SUM(is_success)*100.0/COUNT(*) as uptime FROM endpoint_checks WHERE timestamp >= ? GROUP BY hr ORDER BY hr ASC LIMIT 24");
+        $stmt24h->execute([$oneDayAgo]);
+        $historyTrend24h = $stmt24h->fetchAll(PDO::FETCH_ASSOC);
+
+        // 2. Daily Latency History (Last 7 Days)
+        $stmt7d = $pdo->prepare("SELECT strftime('%Y-%m-%d', timestamp, 'unixepoch') as hr, AVG(latency_ms) as avg_lat, SUM(is_success)*100.0/COUNT(*) as uptime FROM endpoint_checks WHERE timestamp >= ? GROUP BY hr ORDER BY hr ASC LIMIT 7");
+        $stmt7d->execute([$sevenDaysAgo]);
+        $historyTrend7d = $stmt7d->fetchAll(PDO::FETCH_ASSOC);
+
+        // 3. Daily Latency History (Last Month / 30 Days)
+        $stmt30d = $pdo->prepare("SELECT strftime('%Y-%m-%d', timestamp, 'unixepoch') as hr, AVG(latency_ms) as avg_lat, SUM(is_success)*100.0/COUNT(*) as uptime FROM endpoint_checks WHERE timestamp >= ? GROUP BY hr ORDER BY hr ASC LIMIT 30");
+        $stmt30d->execute([$thirtyDaysAgo]);
+        $historyTrend30d = $stmt30d->fetchAll(PDO::FETCH_ASSOC);
     } catch (Exception $e) {
         // Fallback default history
     }
@@ -501,7 +763,10 @@ $outputPayload = [
     'total_monitored' => $totalChecks,
     'active_incidents' => $totalChecks - $successfulChecks,
     'endpoints' => $currentResults,
-    'history_trend' => $historyTrend
+    'history_trend' => $historyTrend24h,
+    'history_trend_24h' => $historyTrend24h,
+    'history_trend_7d' => $historyTrend7d,
+    'history_trend_30d' => $historyTrend30d
 ];
 
 // 6. Cache to JSON file

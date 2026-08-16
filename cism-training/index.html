@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body>
   <div class="glow-bg"></div>
@@ -18,9 +18,14 @@
       <a href="../" class="btn-back">← Back to Lab</a>
       <span class="logo-text">CISM // SECURITY COMMANDER</span>
     </div>
-    <button type="button" id="btn-open-features" class="btn-feature-modal" title="View Console Capabilities">
-      <span>🛡️</span> <span>Features</span>
-    </button>
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <button type="button" id="btn-open-quickstart" class="btn-quickstart-modal" title="View Quick Start Guide">
+        <span>⚡</span> <span>Quick Start</span>
+      </button>
+      <button type="button" id="btn-open-features" class="btn-feature-modal" title="View Console Capabilities">
+        <span>🛡️</span> <span>Features</span>
+      </button>
+    </div>
   </header>
 
   <main class="container">
@@ -688,6 +693,28 @@
     <p>&copy; 2026 Nycto. Nycto's CISM Practice Trainer. All information is AI sourced.</p>
   </footer>
 
+  <!-- Quick Start Modal -->
+  <div id="quickstart-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="quickstart-modal-title">
+      <button id="btn-close-quickstart" class="modal-close-button" aria-label="Close Quick Start guide">&times;</button>
+      <h2 id="quickstart-modal-title" class="feature-modal-title" style="color: var(--accent-cyan, #06b6d4);">⚡ CISM CONSOLE QUICK START</h2>
+      <p class="feature-modal-intro">Follow these 4 steps to master ISACA CISM exam concepts and track your domain readiness.</p>
+      <ol class="quickstart-steps-list">
+        <li><strong>1) Select Your Study Mode</strong> Choose a specific ISACA domain or launch a full timed Exam Simulation.</li>
+        <li><strong>2) Analyze Management Scenarios</strong> Read realistic scenarios, select your answer, and review instant detailed rationales.</li>
+        <li><strong>3) Flag Difficult Items</strong> Click the flag icon on tricky questions to save them into your personal Flagged Review Vault.</li>
+        <li><strong>4) Verify Exam Readiness</strong> Track domain-level accuracy scores in real time to reach your target >75% passing threshold.</li>
+      </ol>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon">🔒</span>
+        <div>
+          <strong>100% PRIVATE CLIENT-SIDE STORAGE</strong>
+          Your progress, flagged questions, and scores remain strictly stored within your browser's local sandbox.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Features Modal -->
   <div id="features-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
     <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
@@ -712,6 +739,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

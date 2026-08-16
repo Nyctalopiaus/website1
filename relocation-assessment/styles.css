@@ -71,7 +71,7 @@ body {
   margin: 0 auto;
   padding: 1.5rem 1.5rem 1rem;
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
@@ -1753,7 +1753,29 @@ body {
   }
 }
 
-/* Feature Relocation Button & Modal Styling */
+/* Feature & Quick Start Relocation Button & Modal Styling */
+.btn-quickstart-relo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-orange, #f97316);
+  background: rgba(249, 115, 22, 0.08);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+.btn-quickstart-relo:hover {
+  background: rgba(249, 115, 22, 0.18);
+  border-color: var(--accent-orange, #f97316);
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.3);
+}
+
 .btn-feature-relo {
   display: inline-flex;
   align-items: center;
@@ -1774,6 +1796,32 @@ body {
   background: rgba(249, 115, 22, 0.18);
   border-color: var(--accent-orange, #f97316);
   box-shadow: 0 0 12px rgba(249, 115, 22, 0.3);
+}
+
+.quickstart-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin: 1.25rem 0;
+  padding-left: 0;
+  list-style: none;
+}
+.quickstart-steps-list li {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, #94a3b8);
+  line-height: 1.5;
+}
+.quickstart-steps-list li strong {
+  color: var(--accent-orange, #f97316);
+  display: block;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.2rem;
 }
 
 .modal-overlay {

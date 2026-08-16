@@ -23,7 +23,15 @@
       </div>
     </div>
     
-    <div class="header-right">
+    <div class="header-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.65rem;">
+      <div class="header-buttons-row" style="display: flex; align-items: center; gap: 0.65rem;">
+        <button type="button" id="btn-open-quickstart" class="btn-quickstart-retire" title="Show Quick Start Guide">
+          <span>ℹ️</span> <span>Quick Start</span>
+        </button>
+        <button type="button" id="btn-open-features" class="btn-feature-retire" title="View Forecaster Features">
+          <span>📈</span> <span>Features</span>
+        </button>
+      </div>
       <div class="toggle-container">
         <span class="toggle-label">Show Future Dollars (Nominal)</span>
         <label class="switch-control">
@@ -33,9 +41,6 @@
         <span class="toggle-label active" id="purchasing-power-label">Show Today's Purchasing Power</span>
         <span class="tooltip-icon" data-tooltip="Nominal = actual future dollars&#10;Today's Purchasing Power = adjusted for inflation">?</span>
       </div>
-      <button type="button" id="btn-open-features" class="btn-feature-retire" title="View Forecaster Features">
-        <span>📈</span> <span>Features</span>
-      </button>
     </div>
   </header>
 
@@ -403,6 +408,28 @@
     <p>&copy; 2026 Nycto. Nycto's Retirement Forecaster. All calculations are estimates.</p>
   </footer>
 
+  <!-- Quick Start Modal -->
+  <div id="quickstart-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="quickstart-modal-title">
+      <button id="btn-close-quickstart" class="modal-close-button" aria-label="Close Quick Start guide">&times;</button>
+      <h2 id="quickstart-modal-title" class="feature-modal-title" style="color: var(--color-primary, #0f766e);">📈 RETIREMENT FORECASTER QUICK START</h2>
+      <p class="feature-modal-intro">Follow these 4 steps to model portfolio accumulation, tax buckets, and drawdown sustainability.</p>
+      <ol class="quickstart-steps-list">
+        <li><strong>1) Input Current Balances</strong> Enter your starting balances across Pre-Tax (401k/IRA), Roth, and Taxable brokerage accounts.</li>
+        <li><strong>2) Set Savings & Contributions</strong> Input monthly investment contributions, expected annual salary growth, and employer matches.</li>
+        <li><strong>3) Configure Target Horizon</strong> Define target retirement age, expected market return %, and safe withdrawal rate (SWR).</li>
+        <li><strong>4) Inspect Purchasing Power</strong> Toggle between inflation-adjusted real purchasing power and future nominal dollar growth.</li>
+      </ol>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon">🔒</span>
+        <div>
+          <strong>100% PRIVATE CLIENT-SIDE CALCULATION</strong>
+          All account balances and retirement goals remain strictly inside your browser.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Features Modal -->
   <div id="features-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
     <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
@@ -427,6 +454,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=20"></script>
 </body>
 </html>

@@ -87,6 +87,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
   dom.togglePurchasingPower.addEventListener('change', calculateAll);
 
+  // Quick Start Modal Toggle
+  const btnOpenQuickstart = document.getElementById('btn-open-quickstart');
+  const quickstartModal = document.getElementById('quickstart-modal');
+  const btnCloseQuickstart = document.getElementById('btn-close-quickstart');
+
+  if (btnOpenQuickstart && quickstartModal) {
+    const openQsModal = () => {
+      quickstartModal.style.display = 'flex';
+      quickstartModal.classList.remove('hidden');
+      quickstartModal.setAttribute('aria-hidden', 'false');
+    };
+    const closeQsModal = () => {
+      quickstartModal.style.display = 'none';
+      quickstartModal.classList.add('hidden');
+      quickstartModal.setAttribute('aria-hidden', 'true');
+    };
+
+    btnOpenQuickstart.addEventListener('click', openQsModal);
+    if (btnCloseQuickstart) btnCloseQuickstart.addEventListener('click', closeQsModal);
+    quickstartModal.addEventListener('click', (e) => {
+      if (e.target === quickstartModal) closeQsModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !quickstartModal.classList.contains('hidden')) {
+        closeQsModal();
+      }
+    });
+  }
+
   // Features Modal Toggle
   const btnOpenFeatures = document.getElementById('btn-open-features');
   const featuresModal = document.getElementById('features-modal');

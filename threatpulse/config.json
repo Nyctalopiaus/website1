@@ -1,0 +1,218 @@
+{
+  "user_agent": "ThreatPulse-IngestionEngine/1.0 (+https://github.com/threatpulse)",
+  "timeout_seconds": 15,
+  "max_feed_items": 30,
+  "categories": [
+    {
+      "id": "active_threats",
+      "name": "Active Threat Intel & CVEs",
+      "feeds": [
+        {
+          "id": "cisa_kev_json",
+          "name": "CISA Known Exploited Vulnerabilities",
+          "url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+          "type": "cisa_json"
+        },
+        {
+          "id": "cisa_advisories_rss",
+          "name": "CISA Cybersecurity Advisories",
+          "url": "https://www.cisa.gov/cybersecurity-advisories/all.xml",
+          "type": "rss"
+        },
+        {
+          "id": "nist_cve_feed",
+          "name": "NIST CVE Intelligence Stream",
+          "url": "https://cvefeed.io/rssfeed/latest.xml",
+          "type": "rss"
+        },
+        {
+          "id": "cert_cc_vuls",
+          "name": "CERT/CC Vulnerability Notes",
+          "url": "https://www.kb.cert.org/vuls/byid?readform&OutputMap=rss",
+          "type": "rss"
+        },
+        {
+          "id": "zdi_advisories",
+          "name": "Trend Micro Zero Day Initiative (ZDI)",
+          "url": "https://www.zerodayinitiative.com/rss/published/",
+          "type": "rss"
+        },
+        {
+          "id": "msrc_advisories",
+          "name": "Microsoft Security Response Center (MSRC)",
+          "url": "https://msrc.microsoft.com/update-guide/rss",
+          "type": "rss"
+        },
+        {
+          "id": "unit42_intelligence",
+          "name": "Palo Alto Networks Unit 42",
+          "url": "https://unit42.paloaltonetworks.com/feed/",
+          "type": "rss"
+        },
+        {
+          "id": "cisco_talos",
+          "name": "Cisco Talos Intelligence",
+          "url": "https://blog.talosintelligence.com/rss/",
+          "type": "rss"
+        },
+        {
+          "id": "bleeping_computer",
+          "name": "BleepingComputer",
+          "url": "https://www.bleepingcomputer.com/feed/",
+          "type": "rss"
+        },
+        {
+          "id": "the_hacker_news",
+          "name": "The Hacker News",
+          "url": "https://feeds.feedburner.com/TheHackersNews",
+          "type": "rss"
+        },
+        {
+          "id": "security_week",
+          "name": "SecurityWeek",
+          "url": "https://www.securityweek.com/feed/",
+          "type": "rss"
+        },
+        {
+          "id": "dark_reading",
+          "name": "Dark Reading",
+          "url": "https://www.darkreading.com/rss.xml",
+          "type": "rss"
+        },
+        {
+          "id": "github_advisories",
+          "name": "GitHub Advisory Database",
+          "url": "https://github.com/advisories.atom",
+          "type": "rss"
+        },
+        {
+          "id": "krebs_on_security",
+          "name": "Krebs on Security",
+          "url": "https://krebsonsecurity.com/feed/",
+          "type": "rss"
+        },
+        {
+          "id": "google_mandiant_threat_intel",
+          "name": "Google Threat Intelligence & Mandiant",
+          "url": "https://cloud.google.com/blog/topics/threat-intelligence/rss/",
+          "type": "rss"
+        },
+        {
+          "id": "checkpoint_research",
+          "name": "Check Point Threat Research Labs",
+          "url": "https://research.checkpoint.com/feed/",
+          "type": "rss"
+        },
+        {
+          "id": "sentinelone_labs",
+          "name": "SentinelLabs Threat Research",
+          "url": "https://www.sentinelone.com/feed/",
+          "type": "rss"
+        },
+        {
+          "id": "the_register_security",
+          "name": "The Register Security Intelligence",
+          "url": "https://www.theregister.com/security/headlines.atom",
+          "type": "rss"
+        },
+        {
+          "id": "alienvault_otx",
+          "name": "AlienVault OTX Threat Pulses",
+          "url": "https://otx.alienvault.com/rss/pulses/recent",
+          "type": "rss"
+        }
+      ]
+    },
+    {
+      "id": "security_advisories",
+      "name": "Security Advisories",
+      "feeds": [
+        {
+          "id": "debian_security",
+          "name": "Debian Security Advisories",
+          "url": "https://www.debian.org/security/dsa.rdf",
+          "type": "rss"
+        },
+        {
+          "id": "ubuntu_security",
+          "name": "Ubuntu Security Notices",
+          "url": "https://ubuntu.com/security/notices/rss.xml",
+          "type": "rss"
+        },
+        {
+          "id": "kubernetes_security",
+          "name": "Kubernetes Security & Releases",
+          "url": "https://kubernetes.io/feed.xml",
+          "type": "rss"
+        },
+        {
+          "id": "aws_security",
+          "name": "AWS Security Bulletins",
+          "url": "https://aws.amazon.com/security/security-bulletins/feed/",
+          "type": "rss"
+        },
+        {
+          "id": "freebsd_security",
+          "name": "FreeBSD Security Advisories",
+          "url": "https://www.freebsd.org/security/rss.xml",
+          "type": "rss"
+        },
+        {
+          "id": "rocky_linux_errata",
+          "name": "Rocky Linux Security Errata",
+          "url": "https://errata.rockylinux.org/rss.xml",
+          "type": "rss"
+        },
+        {
+          "id": "netgate_pfsense",
+          "name": "Netgate pfSense Advisories",
+          "url": "https://www.netgate.com/blog/rss.xml",
+          "type": "rss"
+        },
+        {
+          "id": "truenas_blog",
+          "name": "TrueNAS Storage & Security",
+          "url": "https://www.truenas.com/feed/",
+          "type": "rss"
+        }
+      ]
+    },
+    {
+      "id": "informational",
+      "name": "Informational & Research",
+      "feeds": [
+        {
+          "id": "sans_isc",
+          "name": "SANS Internet Storm Center",
+          "url": "https://isc.sans.edu/rssfeed.xml",
+          "type": "rss"
+        },
+        {
+          "id": "cloudflare_blog",
+          "name": "Cloudflare Blog",
+          "url": "https://blog.cloudflare.com/rss/",
+          "type": "rss",
+          "is_community_forum": true
+        },
+        {
+          "id": "tailscale_blog",
+          "name": "Tailscale Blog",
+          "url": "https://tailscale.com/blog/index.xml",
+          "type": "rss"
+        },
+        {
+          "id": "pihole_blog",
+          "name": "Pi-hole Network Security",
+          "url": "https://pi-hole.net/feed/",
+          "type": "rss"
+        },
+        {
+          "id": "jeff_geerling",
+          "name": "Jeff Geerling Engineering",
+          "url": "https://www.jeffgeerling.com/blog.xml",
+          "type": "rss"
+        }
+      ]
+    }
+  ]
+}

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=2" />
+  <link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body>
   <header class="header">
@@ -18,6 +18,9 @@
     </div>
     <div style="display: flex; align-items: center; gap: 0.75rem;">
       <div id="version-bar" class="version-bar">Version: 1.0.0</div>
+      <button type="button" id="btn-open-quickstart" class="btn-quickstart-gaming" title="Show Quick Start Guide">
+        <span>ℹ️</span> <span>Quick Start</span>
+      </button>
       <button type="button" id="btn-open-features" class="btn-feature-gaming" title="View Log Features">
         <span>🎮</span> <span>Features</span>
       </button>
@@ -100,6 +103,28 @@
     </section>
   </main>
 
+  <!-- Quick Start Modal -->
+  <div id="quickstart-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="quickstart-modal-title">
+      <button id="btn-close-quickstart" class="modal-close-button" aria-label="Close Quick Start guide">&times;</button>
+      <h2 id="quickstart-modal-title" class="feature-modal-title" style="color: var(--accent-purple, #a855f7);">🎮 HANDHELD VAULT QUICK START</h2>
+      <p class="feature-modal-intro">Follow these 4 steps to log, track, and curate your handheld gaming backlog.</p>
+      <ol class="quickstart-steps-list">
+        <li><strong>1) Log a New Title</strong> Click the "+ Log New Game" button to add any title from Steam Deck, Switch, or retro handhelds.</li>
+        <li><strong>2) Track Hours & Rating</strong> Record your total playtime hours, completion state, and star rating.</li>
+        <li><strong>3) Filter & Sort Library</strong> Filter your collection by platform, completion tier, or rating score.</li>
+        <li><strong>4) Monitor Library Stats</strong> Review aggregate stats for total hours played, completed games count, and "Great Ratio" percentage.</li>
+      </ol>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon">🔒</span>
+        <div>
+          <strong>100% PRIVATE & LOCAL STORAGE</strong>
+          Your entire game log and performance ratings live exclusively inside your browser's local storage.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Features Modal -->
   <div id="features-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
     <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
@@ -123,6 +148,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

@@ -18,9 +18,14 @@
       <a href="../index.html" class="btn-back">← Back to Lab</a>
       <h1>Nycto's Housing Cost Calculator</h1>
     </div>
-    <button type="button" id="btn-open-features" class="btn-feature-mortgage" title="View Calculator Features">
-      <span>🏠</span> <span>Features</span>
-    </button>
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <button type="button" id="btn-open-quickstart" class="btn-quickstart-mortgage" title="Show Quick Start Guide">
+        <span>ℹ️</span> <span>Quick Start</span>
+      </button>
+      <button type="button" id="btn-open-features" class="btn-feature-mortgage" title="View Calculator Features">
+        <span>🏠</span> <span>Features</span>
+      </button>
+    </div>
   </header>
 
   <main class="container">
@@ -416,6 +421,28 @@
     <p>&copy; 2026 Nycto. Nycto's Housing Cost Calculator. All calculations are estimates.</p>
   </footer>
 
+  <!-- Quick Start Modal -->
+  <div id="quickstart-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="quickstart-modal-title">
+      <button id="btn-close-quickstart" class="modal-close-button" aria-label="Close Quick Start guide">&times;</button>
+      <h2 id="quickstart-modal-title" class="feature-modal-title" style="color: var(--accent-emerald, #10b981);">🏠 MORTGAGE CALCULATOR QUICK START</h2>
+      <p class="feature-modal-intro">Follow these 4 steps to analyze monthly home costs, compare loan terms, and model extra payments.</p>
+      <ol class="quickstart-steps-list">
+        <li><strong>1) Enter Home Purchase Inputs</strong> Input purchase price, down payment %, interest rate, and term (or paste a Redfin URL).</li>
+        <li><strong>2) Include Property Taxes & Fees</strong> Add annual property taxes, home insurance, PMI, and HOA fees for true PITI accuracy.</li>
+        <li><strong>3) Simulate Extra Payments</strong> Test extra monthly principal payments to see exact time and interest saved over the life of the loan.</li>
+        <li><strong>4) Inspect Amortization Chart</strong> Review the month-by-month equity buildup curve, total interest costs, and 15-Yr vs 30-Yr comparison.</li>
+      </ol>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon">🔒</span>
+        <div>
+          <strong>100% PRIVATE CLIENT-SIDE CALCULATION</strong>
+          All financial data and loan numbers remain strictly inside your browser sandbox.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Features Modal -->
   <div id="features-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
     <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
@@ -440,6 +467,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=6"></script>
+  <script type="module" src="app.js?v=25"></script>
 </body>
 </html>

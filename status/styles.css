@@ -1,10 +1,10 @@
 /* Professional Enterprise Status Dashboard Stylesheet */
 :root {
-  --bg-main: #0f172a;
-  --bg-card: #1e293b;
-  --bg-card-hover: #26354a;
-  --bg-header: #0b1120;
-  --border-color: #334155;
+  --bg-main: #0b1120;
+  --bg-card: rgba(30, 41, 59, 0.75);
+  --bg-card-hover: rgba(38, 53, 74, 0.88);
+  --bg-header: rgba(11, 17, 32, 0.88);
+  --border-color: rgba(51, 65, 85, 0.7);
   --border-hover: #475569;
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
@@ -38,6 +38,12 @@
 
 body {
   background-color: var(--bg-main);
+  background-image: 
+    linear-gradient(rgba(11, 17, 32, 0.82), rgba(11, 17, 32, 0.86)),
+    url('../assets/cyber_status_bg.webp');
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center;
   color: var(--text-main);
   font-family: var(--font-sans);
   line-height: 1.5;
@@ -47,6 +53,7 @@ body {
 /* Header */
 .app-header {
   background-color: var(--bg-header);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--border-color);
   padding: 1.5rem 1rem;
 }
@@ -168,6 +175,7 @@ body {
 
 .metric-card {
   background-color: var(--bg-card);
+  backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
@@ -220,6 +228,7 @@ body {
 /* Toolbar Section */
 .toolbar-section {
   background-color: var(--bg-card);
+  backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 0.85rem 1.25rem;
@@ -296,6 +305,7 @@ body {
 /* Section Cards */
 .section-card {
   background-color: var(--bg-card);
+  backdrop-filter: blur(8px);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 1.5rem;
@@ -334,6 +344,43 @@ body {
   border: 1px solid var(--border-color);
   padding: 0.25rem 0.65rem;
   border-radius: 9999px;
+}
+
+.timeframe-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background-color: rgba(15, 23, 42, 0.7);
+  border: 1px solid var(--border-color);
+  padding: 0.25rem;
+  border-radius: 9999px;
+  flex-wrap: wrap;
+}
+
+.timeframe-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-muted);
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.timeframe-btn:hover {
+  color: var(--text-main);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.timeframe-btn.active {
+  color: var(--color-blue);
+  background-color: var(--color-blue-bg);
+  border-color: var(--color-blue-border);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
 }
 
 .chart-wrapper {

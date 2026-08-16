@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://nominatim.openstreetmap.org https://widgets.mortgagenewsdaily.com https://router.project-osrm.org;" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org https://widgets.mortgagenewsdaily.com https://router.project-osrm.org https://photon.komoot.io;" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Outbound Connection & Infrastructure Status | Nycto Lab</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=1" />
+  <link rel="stylesheet" href="styles.css?v=20" />
 </head>
 <body>
 
@@ -98,7 +98,11 @@
           <h2>Historical Latency &amp; Response Trends</h2>
           <p class="section-desc">Average network response time (ms) recorded across hourly automated monitoring sweeps.</p>
         </div>
-        <div class="chart-timeframe-badge">Last 24 Hours</div>
+        <div class="timeframe-selector" id="timeframe-selector" role="tablist" aria-label="Latency historical timeframe options">
+          <button type="button" class="timeframe-btn active" data-timeframe="24h" role="tab" aria-selected="true">Last 24 Hours</button>
+          <button type="button" class="timeframe-btn" data-timeframe="7d" role="tab" aria-selected="false">Last 7 Days</button>
+          <button type="button" class="timeframe-btn" data-timeframe="30d" role="tab" aria-selected="false">Last Month</button>
+        </div>
       </div>
       <div class="chart-wrapper">
         <svg id="trend-svg" width="100%" height="220" viewBox="0 0 800 220" preserveAspectRatio="none">
@@ -198,6 +202,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=1"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>

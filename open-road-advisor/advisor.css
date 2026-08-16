@@ -1190,7 +1190,29 @@ input[type="range"]::-webkit-slider-thumb:hover {
   }
 }
 
-/* Feature Road Button & Modal Styling */
+/* Feature & Quick Start Road Button & Modal Styling */
+.btn-quickstart-road {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--primary-color, #f59e0b);
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+.btn-quickstart-road:hover {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: var(--primary-color, #f59e0b);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+}
+
 .btn-feature-road {
   display: inline-flex;
   align-items: center;
@@ -1211,6 +1233,32 @@ input[type="range"]::-webkit-slider-thumb:hover {
   background: rgba(245, 158, 11, 0.18);
   border-color: var(--primary-color, #f59e0b);
   box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+}
+
+.quickstart-steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin: 1.25rem 0;
+  padding-left: 0;
+  list-style: none;
+}
+.quickstart-steps-list li {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, #94a3b8);
+  line-height: 1.5;
+}
+.quickstart-steps-list li strong {
+  color: var(--primary-color, #f59e0b);
+  display: block;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.2rem;
 }
 
 .modal-overlay {

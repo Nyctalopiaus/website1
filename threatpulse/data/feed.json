@@ -1,0 +1,3550 @@
+{
+  "generated_at": "2026-08-16T14:42:49Z",
+  "stats": {
+    "total_items": 196,
+    "active_threats_count": 179,
+    "categories": {
+      "active_threats": 179,
+      "security_advisories": 13,
+      "informational": 4
+    },
+    "last_sync_status": "success",
+    "feeds_processed": 32,
+    "feeds_failed": 0
+  },
+  "items": [
+    {
+      "id": "d2b3ec76d05f734749d8214b745cae63a5813804bc74aa63ac188292c7e64797",
+      "title": "CVE-2026-72888 - Net::OAuth versions before 0.32 for Perl allow memory exhaustion via unbounded caching of failed module loads in smart_require",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-72888",
+      "published_at": "2026-08-16T13:50:35Z",
+      "summary": "CVE ID : CVE-2026-72888 Published : Aug. 16, 2026, 1:50 p.m. | 35 minutes ago Description : Net::OAuth versions before 0.32 for Perl allow memory exhaustion via unbounded caching of failed module loads in smart_require.",
+      "tags": [
+        "CVE-2026-72888"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "e41039b6b8bc1c0bd6271e9cf863c764a2e0576420d57d6603f526721c9ac424",
+      "title": "CVE-2026-72887 - Net::OAuth::Client versions before 0.32 for Perl allow the service provider to silently downgrade OAuth 1.0a to OAuth 1.0 in...",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-72887",
+      "published_at": "2026-08-16T13:50:19Z",
+      "summary": "CVE ID : CVE-2026-72887 Published : Aug. 16, 2026, 1:50 p.m. | 36 minutes ago Description : Net::OAuth::Client versions before 0.32 for Perl allow the service provider to silently downgrade OAuth 1.0a to OAuth 1.0 in get_request_token. Passing a callback to the constructor selects OAuth 1.0a.",
+      "tags": [
+        "CVE-2026-72887"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "cfb38107fdbaab9fa536166a183a3d0b77a12d128f57061e1e568dc394f51b3d",
+      "title": "CVE-2026-19349 - Lemonldap::NG::Portal versions from 2.0.0 before 2.16.9, from 2.17.0 before 2.21.5, from 2.22.0 before 2.23.3 for Perl allow...",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-19349",
+      "published_at": "2026-08-16T13:22:34Z",
+      "summary": "CVE ID : CVE-2026-19349 Published : Aug. 16, 2026, 1:22 p.m. | 1 hour, 3 minutes ago Description : Lemonldap::NG::Portal versions from 2.0.0 before 2.16.9, from 2.17.0 before 2.21.5, from 2.22.0 before 2.23.",
+      "tags": [
+        "CVE-2026-19349"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "e6154f3604171164f203b2a42aefbabd9ed505e4f86cca3ec10e487715962d0e",
+      "title": "CVE-2026-74251 - Joomla Extension - phoca.cz - Unauthenticated SQL injection via attribute filter in Phoca Cart 5.0.0-6.1.6",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74251",
+      "published_at": "2026-08-16T13:16:57Z",
+      "summary": "CVE ID : CVE-2026-74251 Published : Aug. 16, 2026, 1:16 p.m. | 1 hour, 9 minutes ago Description : Joomla Extension - phoca.cz - Unauthenticated SQL injection via attribute filter in Phoca Cart 5.0.0-6.1.",
+      "tags": [
+        "CVE-2026-74251",
+        "SQLi",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "bde91a74dacb8d09978b20b27872b43a7e355e7a8b80772381ac874f6ef21846",
+      "title": "CVE-2026-74797 - OpenTofu before 1.11.4 Denial of Service via malicious zip",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74797",
+      "published_at": "2026-08-16T13:14:19Z",
+      "summary": "CVE ID : CVE-2026-74797 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : OpenTofu versions before 1.11.4 contain a denial of service vulnerability in the tofu init command when processing maliciously-crafted .zip archives for provider or module packages.",
+      "tags": [
+        "CVE-2026-74797",
+        "DoS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "14c0bf42582d26c95c0c69da117ac9288b8bfaeab629bc06657be63587794b94",
+      "title": "CVE-2026-74796 - OpenTofu before 1.11.7 Symlink Following Path Traversal",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74796",
+      "published_at": "2026-08-16T13:14:18Z",
+      "summary": "CVE ID : CVE-2026-74796 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : OpenTofu before 1.11.7 fails to validate existing symlinks in the provider cache directory during initialization.",
+      "tags": [
+        "CVE-2026-74796"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "81560cdabb2e2f3575767516a6671ebeeb210b21fdd7f8cf4bdd21e45d392fbf",
+      "title": "CVE-2026-74795 - Scriban before 6.6.0 Denial of Service via Uncontrolled Recursion",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74795",
+      "published_at": "2026-08-16T13:14:17Z",
+      "summary": "CVE ID : CVE-2026-74795 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : Scriban before 6.6.0 contains an uncontrolled recursion vulnerability in its recursive-descent parser.",
+      "tags": [
+        "CVE-2026-74795",
+        "DoS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "df685b498346b76a7c88f94174e128efdc732336ac37c86f62db910d671cfea0",
+      "title": "CVE-2026-74791 - Scriban before 7.0.0 Authorization Bypass via Stale Include Cache",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74791",
+      "published_at": "2026-08-16T13:14:15Z",
+      "summary": "CVE ID : CVE-2026-74791 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : Scriban before 7.0.0 fails to clear the CachedTemplates dictionary when TemplateContext.Reset() is called, allowing cached templates to persist across reused contexts.",
+      "tags": [
+        "CVE-2026-74791"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "e234395553c03feb3de61c30201511c8f9a4f91e062b5598e409fd861d1830ae",
+      "title": "CVE-2026-74792 - Scriban before 7.0.0 Stack Overflow via nested array initializers",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74792",
+      "published_at": "2026-08-16T13:14:15Z",
+      "summary": "CVE ID : CVE-2026-74792 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : Scriban before 7.0.0 (affected versions <= 6.6.0) contains a stack overflow vulnerability in nested array initializer parsing.",
+      "tags": [
+        "CVE-2026-74792"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "7edee1a37080d80d9dec4a6d878f4e42e91bc146b0032d5a5d13be92de062de2",
+      "title": "CVE-2026-74790 - Scriban before 7.0.0 MemberFilter Bypass via TemplateContext Cache",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74790",
+      "published_at": "2026-08-16T13:14:14Z",
+      "summary": "CVE ID : CVE-2026-74790 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : Scriban before 7.0.0 caches TypedObjectAccessor by Type only without considering MemberFilter changes, allowing reused TemplateContext instances to expose members that should be hidden.",
+      "tags": [
+        "CVE-2026-74790"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "87645346ffb0622c209547c8e055301b71a3faef789ad7b8a66d01402f1ade08",
+      "title": "CVE-2026-74789 - Scriban before 7.0.0 LoopLimit Bypass via Built-in Operations",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74789",
+      "published_at": "2026-08-16T13:14:13Z",
+      "summary": "CVE ID : CVE-2026-74789 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : Scriban before 7.0.0 (affected <= 6.6.0) applies its LoopLimit constraint only to script loop statements and not to expensive iteration performed inside built-in operators and functions.",
+      "tags": [
+        "CVE-2026-74789"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "afa073e4fd9ef745d3f178d307a80c7e8a3df5ec89f310b1d50ce6997f569701",
+      "title": "CVE-2026-74788 - Scriban before 7.0.0 Denial of Service via string.pad_left/pad_right",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74788",
+      "published_at": "2026-08-16T13:14:13Z",
+      "summary": "CVE ID : CVE-2026-74788 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : Scriban before 7.0.0 (affected versions <= 6.6.0) contains an uncontrolled memory allocation vulnerability in the string.pad_left and string.",
+      "tags": [
+        "CVE-2026-74788",
+        "DoS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "71d011b767a108cb3d7ede4a25eb845c19e29f450bb560a68b27b0a31ba7df60",
+      "title": "CVE-2026-74787 - Scriban before 7.0.0 Uncontrolled Recursion via object.to_json",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74787",
+      "published_at": "2026-08-16T13:14:12Z",
+      "summary": "CVE ID : CVE-2026-74787 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : Scriban before 7.0.0 contains an uncontrolled recursion vulnerability in the object.to_json builtin function that lacks depth limits and circular reference detection.",
+      "tags": [
+        "CVE-2026-74787"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "06aa6aedf963e5e082ed58de3682daebe0a3e4590ad56c7b024d1b5d9e090471",
+      "title": "CVE-2026-74786 - Scriban before 7.0.0 Denial of Service via Unbounded Template Output",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74786",
+      "published_at": "2026-08-16T13:14:11Z",
+      "summary": "CVE ID : CVE-2026-74786 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : Scriban before 7.0.0 (affected versions <= 6.6.",
+      "tags": [
+        "CVE-2026-74786",
+        "DoS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "12d5d93b0f81719b6f0a17a09a3f8caa95c3b2a41fb6c40cbd116ba342f52ea2",
+      "title": "CVE-2026-74785 - Scriban before 7.0.0 Denial of Service via Unbounded Resource Consumption",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74785",
+      "published_at": "2026-08-16T13:14:11Z",
+      "summary": "CVE ID : CVE-2026-74785 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : Scriban before 7.0.",
+      "tags": [
+        "CVE-2026-74785",
+        "DoS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "6286d74d045372e462b9407fc8dd5e7996f5e90331e07d10d3d27c1e4de59eba",
+      "title": "CVE-2026-74784 - Scriban before 7.2.0 Denial of Service via array.insert_at",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74784",
+      "published_at": "2026-08-16T13:14:10Z",
+      "summary": "CVE ID : CVE-2026-74784 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : Scriban before 7.2.0 contains a denial of service vulnerability in the array.insert_at function that allocates unbounded null entries without respecting LoopLimit or LimitToString constraints.",
+      "tags": [
+        "CVE-2026-74784",
+        "DoS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "f620bd50a68956ec1934a17e49c64202f22a3d803e8d404437eb5a0a183a0885",
+      "title": "CVE-2026-74783 - Scriban 6.6.0 through 7.2.0 Parser Recursion Denial of Service",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74783",
+      "published_at": "2026-08-16T13:14:09Z",
+      "summary": "CVE ID : CVE-2026-74783 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : Scriban versions 6.6.0 through 7.2.0 contain a non-enforcing ExpressionDepthLimit guard that fails to stop recursive descent parsing of deeply nested expressions.",
+      "tags": [
+        "CVE-2026-74783",
+        "DoS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "8cf1e11606953bdb931198a04915c2bab7ccfb48bc3deeaaf47dec5cd6b6016e",
+      "title": "CVE-2026-73062 - Scriban 3.0.0 through 7.2.0 Denial of Service via Array Multiplication",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-73062",
+      "published_at": "2026-08-16T13:14:08Z",
+      "summary": "CVE ID : CVE-2026-73062 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : Scriban versions 3.0.0 through 7.2.",
+      "tags": [
+        "CVE-2026-73062",
+        "DoS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "b1cc53c2397ddf9c11e0d5709e6960e92042d7c861ab5952305967286256d7d4",
+      "title": "CVE-2026-73061 - Scriban before 7.2.2 Arbitrary Property Write via TypedObjectAccessor",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-73061",
+      "published_at": "2026-08-16T13:14:07Z",
+      "summary": "CVE ID : CVE-2026-73061 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : Scriban before 7.2.2 contains an access-modifier bypass vulnerability in TypedObjectAccessor that allows template code to write CLR object properties without setter-visibility checks.",
+      "tags": [
+        "CVE-2026-73061"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "58ce4af48b733a41cba2dba9267f0bb424a4ec53733eb00afe8fb0212d41dc63",
+      "title": "CVE-2026-73059 - stoatchat before 0.15.0 Permission Bypass via message_fetch",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-73059",
+      "published_at": "2026-08-16T13:14:06Z",
+      "summary": "CVE ID : CVE-2026-73059 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : stoatchat before 0.15.0 contains a permission bypass vulnerability in the message_fetch route that checks only ViewChannel permission instead of requiring ReadMessageHistory.",
+      "tags": [
+        "Active Directory",
+        "CVE-2026-73059"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "5e8beeb6a68b94d7f21c2dc85e474084c37b4249ba6b0f991113df8f7c7f8d4e",
+      "title": "CVE-2026-73058 - stoatchat before 0.15.0 SSRF via IPv6 unspecified address bypass",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-73058",
+      "published_at": "2026-08-16T13:14:05Z",
+      "summary": "CVE ID : CVE-2026-73058 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : stoatchat versions before 0.15.0 fail to block the IPv6 unspecified address (::) in the SSRF blocklist, allowing unauthenticated attackers to bypass protections via the /proxy and /embed endpoints.",
+      "tags": [
+        "CVE-2026-73058",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "e99735767eaf0ffccc3edc60f994165d711e445b664aa16bb556b3b4a0494075",
+      "title": "CVE-2026-73057 - stoatchat before 0.15.0 Uncapped SVG Rendering Denial of Service",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-73057",
+      "published_at": "2026-08-16T13:14:05Z",
+      "summary": "CVE ID : CVE-2026-73057 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : stoatchat before 0.15.0 fails to validate SVG viewBox dimensions in the proxy endpoint, allowing attackers to cause denial of service by memory exhaustion.",
+      "tags": [
+        "CVE-2026-73057",
+        "DoS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "63db528564c4c33ccce3067511ee29b045fde4caaffe07f122d595ba74d16afd",
+      "title": "CVE-2026-73056 - SiYuan kernel before 3.7.4 Unthrottled Brute-Force via API Token",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-73056",
+      "published_at": "2026-08-16T13:14:04Z",
+      "summary": "CVE ID : CVE-2026-73056 Published : Aug. 16, 2026, 1:14 p.m. | 1 hour, 12 minutes ago Description : SiYuan kernel versions before 3.7.4 contain an improper restriction of excessive authentication attempts vulnerability in the CheckAuth() middleware. The middleware accepts the API token (Conf.Api.",
+      "tags": [
+        "CVE-2026-73056",
+        "Kernel"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "e627eba17982fd3371dee0c0c7f3baf40b3c28fa9134a0f8c055ce644a4510ab",
+      "title": "DSA-6443-1 docker.io - security update",
+      "source": {
+        "id": "debian_security",
+        "name": "Debian Security Advisories",
+        "category_id": "security_advisories",
+        "category_name": "Security Advisories"
+      },
+      "link": "https://lists.debian.org/debian-security-announce/2026/msg00354.html",
+      "published_at": "2026-08-16T00:00:00Z",
+      "summary": "https://security-tracker.debian.org/tracker/DSA-6443-1",
+      "tags": [
+        "Debian",
+        "Docker",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "2212b1f6b970d739b73136469f19500eb3d7b77dc86e2c537036b0af350726d9",
+      "title": "CVE-2026-19905 - A weakness has been identified in Jinher OA 1.0. I",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-19905",
+      "published_at": "2026-08-15T20:11:48Z",
+      "summary": "CVE ID : CVE-2026-19905 Published : Aug. 15, 2026, 8:11 p.m. | 2 hours, 7 minutes ago Description : A weakness has been identified in Jinher OA 1.0. Impacted is an unknown function of the file /C6/JHSoft.Web.HrmAttendance/attendance_out_approve.aspx.",
+      "tags": [
+        "CVE-2026-19905"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "2948c3eb8bde6c0e16c6f970e3d15b7fac02f874c475f87356c7c71af73c9ef4",
+      "title": "CVE-2026-19903 - A vulnerability has been found in SourceCodester O",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-19903",
+      "published_at": "2026-08-15T20:11:48Z",
+      "summary": "CVE ID : CVE-2026-19903 Published : Aug. 15, 2026, 8:11 p.m. | 2 hours, 7 minutes ago Description : A vulnerability has been found in SourceCodester Online Clothing Store 1.0. This affects an unknown part of the file /db/shopping.sql of the component SQL Database Backup.",
+      "tags": [
+        "CVE-2026-19903"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "7e9871fda7603b51993e26dbd91f7e2522458352957acc2fb53c3805a76b0bac",
+      "title": "CVE-2026-18855 - The Link Library plugin for WordPress is vulnerabl",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-18855",
+      "published_at": "2026-08-15T20:11:48Z",
+      "summary": "CVE ID : CVE-2026-18855 Published : Aug. 15, 2026, 8:11 p.m. | 2 hours, 7 minutes ago Description : The Link Library plugin for WordPress is vulnerable to arbitrary file deletion due to insufficient file path validation in the ll_delete_link_fields function in all versions up to, and including, 7.9.",
+      "tags": [
+        "CVE-2026-18855",
+        "WordPress"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "cd686e72d1f05534ff0e1f17a1fd68b43aa24982ed6f51929420b2728622760e",
+      "title": "CVE-2026-19906 - A weakness has been identified in pkp pkp-lib 3.3.",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-19906",
+      "published_at": "2026-08-15T20:11:48Z",
+      "summary": "CVE ID : CVE-2026-19906 Published : Aug. 15, 2026, 8:11 p.m. | 2 hours, 7 minutes ago Description : A weakness has been identified in pkp pkp-lib 3.3.0/3.4.0/3.5.0. This vulnerability affects the function setData of the file classes/user/form/APIProfileForm.php of the component API Key Generation.",
+      "tags": [
+        "CVE-2026-19906"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "1f22573eeab87a979fad5844e54be4a12afe002aebdaef2344d3972455e16f2d",
+      "title": "CVE-2026-19598 - Pods <= 3.3.9 - Unauthenticated Privilege Escalation via Authorization Bypass to Admin Methods via 'pods_admin' AJAX Router",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-19598",
+      "published_at": "2026-08-15T17:25:26Z",
+      "summary": "CVE ID : CVE-2026-19598 Published : Aug. 15, 2026, 5:25 p.m. | 2 hours, 52 minutes ago Description : The Pods – Custom Content Types and Fields plugin for WordPress is vulnerable to Privilege Escalation via Authorization Bypass in all versions up to, and including, 3.3.9.",
+      "tags": [
+        "CVE-2026-19598",
+        "Privilege Escalation",
+        "Unauthenticated",
+        "WordPress"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "7f658eea8c0615fa0bbd01a3e85e8120a203bd94e941f9b05308d9a22735130f",
+      "title": "CVE-2026-19900 - LB-LINK X-PRO shadow hard-coded credentials",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-19900",
+      "published_at": "2026-08-15T17:16:24Z",
+      "summary": "CVE ID : CVE-2026-19900 Published : Aug. 15, 2026, 5:16 p.m. | 3 hours, 1 minute ago Description : A vulnerability was identified in LB-LINK X-PRO 1.0.22-20231206. The impacted element is an unknown function of the file /etc/shadow. The manipulation leads to hard-coded credentials.",
+      "tags": [
+        "CVE-2026-19900"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "cba488cd14db0a7405f414a0ea521674e2e12c48137cdbfcc13ab0eeff859db7",
+      "title": "CVE-2026-19899 - SourceCodester Class and Exam Timetabling System edit_teacher.php sql injection",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-19899",
+      "published_at": "2026-08-15T17:16:23Z",
+      "summary": "CVE ID : CVE-2026-19899 Published : Aug. 15, 2026, 5:16 p.m. | 3 hours, 1 minute ago Description : A vulnerability was determined in SourceCodester Class and Exam Timetabling System 1.0. The affected element is an unknown function of the file /edit_teacher.php.",
+      "tags": [
+        "CVE-2026-19899",
+        "SQLi"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "bceef945f0625378461b199f3077381e9e1a4bf51febd479442933ae5b62e4c3",
+      "title": "CVE-2026-19898 - VictoriaMetrics VMAuth Authentication Endpoint main.go requestHandler excessive authentication",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-19898",
+      "published_at": "2026-08-15T16:16:39Z",
+      "summary": "CVE ID : CVE-2026-19898 Published : Aug. 15, 2026, 4:16 p.m. | 4 hours, 1 minute ago Description : A vulnerability was found in VictoriaMetrics up to 1.146.0. Impacted is the function requestHandler of the file app/vmauth/main.go of the component VMAuth Authentication Endpoint.",
+      "tags": [
+        "CVE-2026-19898"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "a42ef66a535c0a359d16b2de864452980c1ad5c300cce65ed11d8137f0eee3d2",
+      "title": "CVE-2026-19897 - mangroup dtale Login Endpoint auth.py login excessive authentication",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-19897",
+      "published_at": "2026-08-15T16:16:38Z",
+      "summary": "CVE ID : CVE-2026-19897 Published : Aug. 15, 2026, 4:16 p.m. | 4 hours, 1 minute ago Description : A vulnerability has been found in mangroup dtale up to 3.22.0. This issue affects the function Login of the file dtale/auth.py of the component Login Endpoint.",
+      "tags": [
+        "CVE-2026-19897"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "61b614a5216f4e52f6edfc9482a941f21ca5ceb128bd3445ed03d970f05a9901",
+      "title": "CVE-2026-19896 - mangroup dtale Flask Session Cookie app.py build_secret_key random values",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-19896",
+      "published_at": "2026-08-15T15:16:37Z",
+      "summary": "CVE ID : CVE-2026-19896 Published : Aug. 15, 2026, 3:16 p.m. | 5 hours, 1 minute ago Description : A flaw has been found in mangroup dtale up to 3.22.0. This vulnerability affects the function build_secret_key of the file dtale/app.py of the component Flask Session Cookie.",
+      "tags": [
+        "CVE-2026-19896"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "1fd4bd5cee6f6b4c52c51b781125f485772b553ff181592d1a97df1b6d42bcaa",
+      "title": "CVE-2026-18549 - @fastify/multipart vulnerable to Denial of Service via aborted upload after fileSize limit",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-18549",
+      "published_at": "2026-08-15T14:17:07Z",
+      "summary": "CVE ID : CVE-2026-18549 Published : Aug. 15, 2026, 2:17 p.m. | 6 hours, 1 minute ago Description : @fastify/multipart is a multipart form-data parser for Fastify. In versions from 5.3.0 up to but not including 10.1.",
+      "tags": [
+        "Active Directory",
+        "CVE-2026-18549",
+        "DoS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "4a9461592e99ff44227e719640934760f49a3e3ad7824efa6ca80a05ddeb6178",
+      "title": "CVE-2026-19474 - @fastify/multipart vulnerable to Denial of Service via temporary file leak on aborted upload",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-19474",
+      "published_at": "2026-08-15T14:17:07Z",
+      "summary": "CVE ID : CVE-2026-19474 Published : Aug. 15, 2026, 2:17 p.m. | 6 hours, 1 minute ago Description : @fastify/multipart is a multipart form-data parser for Fastify. In versions from 3.0.0 up to but not including 10.1.1, request.",
+      "tags": [
+        "Active Directory",
+        "CVE-2026-19474",
+        "DoS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "58cdb5f78683d5a9ab6ef8f81c2642998bda2e46d95919f270b8d1f9051bcd06",
+      "title": "CVE-2026-18500 - @fastify/jwt vulnerable to authorization bypass via global secret overriding the per-request key",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-18500",
+      "published_at": "2026-08-15T14:17:07Z",
+      "summary": "CVE ID : CVE-2026-18500 Published : Aug. 15, 2026, 2:17 p.m. | 6 hours, 1 minute ago Description : @fastify/jwt is a JSON Web Token plugin for Fastify. In versions before 10.2.2, a per-request verification key passed to request.",
+      "tags": [
+        "CVE-2026-18500"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "8cec670ab933e84128c8c72202a06e78ac3965b8bf877ffffa314eb000271004",
+      "title": "CVE-2026-19895 - opensourcepos Open Source Point of Sale Login Endpoint Filters.php index excessive authentication",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-19895",
+      "published_at": "2026-08-15T14:17:07Z",
+      "summary": "CVE ID : CVE-2026-19895 Published : Aug. 15, 2026, 2:17 p.m. | 6 hours, 1 minute ago Description : A vulnerability was detected in opensourcepos Open Source Point of Sale up to 3.4.2. This affects the function Login::index of the file app/Config/Filters.php of the component Login Endpoint.",
+      "tags": [
+        "CVE-2026-19895"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "e818dedaec291b085837ccef3c58317e4ccd9950d43ccd2249a29c477076fc67",
+      "title": "CVE-2026-18165 - @fastify/oauth2 vulnerable to Login CSRF via plantable OAuth state cookies",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-18165",
+      "published_at": "2026-08-15T14:17:07Z",
+      "summary": "CVE ID : CVE-2026-18165 Published : Aug. 15, 2026, 2:17 p.m. | 6 hours, 1 minute ago Description : @fastify/oauth2 is an OAuth 2.0 plugin for Fastify. In versions from 7.2.0 up to but not including 8.3.",
+      "tags": [
+        "CVE-2026-18165"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "22a4d1e483f7029c177a3be57464d88efb956d5da5377c48813aeb4511cea3c0",
+      "title": "CVE-2026-15689 - Dancer2::Plugin::Auth::Extensible versions through 0.713 for Perl allow password reset link poisoning via the request Host header in...",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-15689",
+      "published_at": "2026-08-15T14:17:06Z",
+      "summary": "CVE ID : CVE-2026-15689 Published : Aug. 15, 2026, 2:17 p.m. | 6 hours, 1 minute ago Description : Dancer2::Plugin::Auth::Extensible versions through 0.713 for Perl allow password reset link poisoning via the request Host header in _default_email_password_reset and _default_welcome_send.",
+      "tags": [
+        "CVE-2026-15689"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "ece78d75a16264d28bc74250fb5d52a3bb1f72b53553c24b8e0660c270dcd6a3",
+      "title": "New Evooo1Bot Linux botnet turns routers into traffic relay nodes",
+      "source": {
+        "id": "bleeping_computer",
+        "name": "BleepingComputer",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.bleepingcomputer.com/news/security/new-evooo1bot-linux-botnet-turns-routers-into-traffic-relay-nodes",
+      "published_at": "2026-08-15T14:14:38Z",
+      "summary": "A new Mirai-based modular Linux botnet malware called Evooo1Bot has been targeting internet-facing gateway devices, turning them into SOCKS5 traffic relay nodes. [...]",
+      "tags": [
+        "Linux",
+        "Malware"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "251ce2c7484245609f7f936b5ae9e7fd12dfa72bcb83890c45e7939c9dc40b52",
+      "title": "Finding Hidden Internal Apps Through Public Certificate Logs",
+      "source": {
+        "id": "reddit_netsec",
+        "name": "Reddit r/netsec Research & PoCs",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.reddit.com/r/netsec/comments/1vp35wv/finding_hidden_internal_apps_through_public",
+      "published_at": "2026-08-15T13:39:43Z",
+      "summary": "submitted by /u/Huge-Wear-125 [link] [comments]",
+      "tags": [
+        "Research"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "71076fe2fc167f5b730a6755865f3e042cce2845b0043aa08b65db1e64018809",
+      "title": "CVE-2026-74575 - thunderbolt: Prevent XDomain delayed work use-after-free on disconnect",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74575",
+      "published_at": "2026-08-15T13:18:03Z",
+      "summary": "CVE ID : CVE-2026-74575 Published : Aug. 15, 2026, 1:18 p.m. | 7 hours ago Description : In the Linux kernel, the following vulnerability has been resolved: thunderbolt: Prevent XDomain delayed work use-after-free on disconnect tb_xdp_handle_request() runs on system_wq and queues xd->state_work via...",
+      "tags": [
+        "CVE-2026-74575",
+        "Kernel",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "d0dfa2329e2fe6c7bd7f8ff652e3295b43efbcd1f4ee392cdc56c29e9043dd58",
+      "title": "CVE-2026-74576 - mm/slab: prevent unbounded recursion in free path with new kmalloc type",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74576",
+      "published_at": "2026-08-15T13:18:03Z",
+      "summary": "CVE ID : CVE-2026-74576 Published : Aug. 15, 2026, 1:18 p.m. | 7 hours ago Description : In the Linux kernel, the following vulnerability has been resolved: mm/slab: prevent unbounded recursion in free path with new kmalloc type Commit 280ea9c3154b (\"mm/slab: avoid allocating slabobj_ext array from...",
+      "tags": [
+        "CVE-2026-74576",
+        "Kernel",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "d963229448e0cb6c1ad7b1e2c947926521fa8fda6b5f6dbcd4ca017c42a0969d",
+      "title": "CVE-2026-74574 - dmaengine: idxd: fix fdev setup failure cleanup in idxd_cdev_open()",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74574",
+      "published_at": "2026-08-15T13:18:03Z",
+      "summary": "CVE ID : CVE-2026-74574 Published : Aug. 15, 2026, 1:18 p.m. | 7 hours ago Description : In the Linux kernel, the following vulnerability has been resolved: dmaengine: idxd: fix fdev setup failure cleanup in idxd_cdev_open() The failed_dev_add and failed_dev_name paths drop the file-device...",
+      "tags": [
+        "CVE-2026-74574",
+        "Kernel",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "e82b554e8fc53f2f6d653e26aee0b7ae664afcc17bfff21856e3626496686b14",
+      "title": "CVE-2026-74577 - net: mpls: initialize rtm_tos in mpls_getroute()",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74577",
+      "published_at": "2026-08-15T13:18:03Z",
+      "summary": "CVE ID : CVE-2026-74577 Published : Aug. 15, 2026, 1:18 p.m. | 7 hours ago Description : In the Linux kernel, the following vulnerability has been resolved: net: mpls: initialize rtm_tos in mpls_getroute() mpls_getroute() builds the RTM_NEWROUTE reply to an RTM_GETROUTE request by filling a struct...",
+      "tags": [
+        "CVE-2026-74577",
+        "Kernel",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "46a386d3b38d368a9fe4bb68a1af75795456267c366b867c94267a7074eed7d2",
+      "title": "CVE-2026-74569 - netfilter: nf_conntrack_sip: widen NAT rewrite delta to s32 in sip_help_tcp()",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74569",
+      "published_at": "2026-08-15T13:18:02Z",
+      "summary": "CVE ID : CVE-2026-74569 Published : Aug. 15, 2026, 1:18 p.m. | 7 hours ago Description : In the Linux kernel, the following vulnerability has been resolved: netfilter: nf_conntrack_sip: widen NAT rewrite delta to s32 in sip_help_tcp() sip_help_tcp() stores the size change of each NAT-rewritten SIP...",
+      "tags": [
+        "CVE-2026-74569",
+        "Kernel",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "5086468e5e7b9f1219ffb48986d32dd2156c7a64bd28e712650aff2ebb210f7c",
+      "title": "CVE-2026-74566 - keys: make keyring key-chunk byte order agree with keyring_diff_objects()",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74566",
+      "published_at": "2026-08-15T13:18:02Z",
+      "summary": "CVE ID : CVE-2026-74566 Published : Aug. 15, 2026, 1:18 p.m. | 7 hours ago Description : In the Linux kernel, the following vulnerability has been resolved: keys: make keyring key-chunk byte order agree with keyring_diff_objects() keyring_get_key_chunk() loads description bytes into the index chunk...",
+      "tags": [
+        "CVE-2026-74566",
+        "Kernel",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "5f6ec4deba443ee931df61e0286c7faa195964aab97a0866fe8a08383cf31275",
+      "title": "CVE-2026-74570 - ntfs: harden runlist realloc size calculations",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74570",
+      "published_at": "2026-08-15T13:18:02Z",
+      "summary": "CVE ID : CVE-2026-74570 Published : Aug. 15, 2026, 1:18 p.m. | 7 hours ago Description : In the Linux kernel, the following vulnerability has been resolved: ntfs: harden runlist realloc size calculations Add a shared helper to safely convert runlist element counts to byte sizes using overflow...",
+      "tags": [
+        "CVE-2026-74570",
+        "Kernel",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "6b531323df58fac0bd11cc06846aa0fa4c30c6d194b2a48efa8dbe666bd1f353",
+      "title": "CVE-2026-74567 - keys: fix out-of-bounds read in keyring_get_key_chunk()",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74567",
+      "published_at": "2026-08-15T13:18:02Z",
+      "summary": "CVE ID : CVE-2026-74567 Published : Aug. 15, 2026, 1:18 p.m. | 7 hours ago Description : In the Linux kernel, the following vulnerability has been resolved: keys: fix out-of-bounds read in keyring_get_key_chunk() For description-level chunks keyring_get_key_chunk() advances the read pointer by...",
+      "tags": [
+        "Active Directory",
+        "CVE-2026-74567",
+        "Kernel",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "b43e7fc90efe46e27b114a0b51b43ae8cda998318ff239cd0d25400bd21e8c32",
+      "title": "CVE-2026-74573 - iommu/arm-smmu-v3-iommufd: Require exactly one Stream ID for a vDEVICE",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74573",
+      "published_at": "2026-08-15T13:18:02Z",
+      "summary": "CVE ID : CVE-2026-74573 Published : Aug. 15, 2026, 1:18 p.m. | 7 hours ago Description : In the Linux kernel, the following vulnerability has been resolved: iommu/arm-smmu-v3-iommufd: Require exactly one Stream ID for a vDEVICE arm_vsmmu_vsid_to_sid() maps a guest's vSID to a single physical Stream...",
+      "tags": [
+        "CVE-2026-74573",
+        "Kernel",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "b4f3c10e3504c1e7c9ca15cbe795bd7008a5802818ee441dd3d02495365daf38",
+      "title": "CVE-2026-74568 - KVM: arm64: vgic: Fix race between LPI release and re-registration",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74568",
+      "published_at": "2026-08-15T13:18:02Z",
+      "summary": "CVE ID : CVE-2026-74568 Published : Aug. 15, 2026, 1:18 p.m. | 7 hours ago Description : In the Linux kernel, the following vulnerability has been resolved: KVM: arm64: vgic: Fix race between LPI release and re-registration Fix a potential race between decrementing an LPI's reference count and...",
+      "tags": [
+        "CVE-2026-74568",
+        "Kernel",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "d04966aad50dbb2da4cc8041df16217da8d1ef81757372f28be397b5b4d76d6d",
+      "title": "CVE-2026-74572 - btrfs: zoned: fix deadlock between metadata writeback and transaction commit",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74572",
+      "published_at": "2026-08-15T13:18:02Z",
+      "summary": "CVE ID : CVE-2026-74572 Published : Aug. 15, 2026, 1:18 p.m. | 7 hours ago Description : In the Linux kernel, the following vulnerability has been resolved: btrfs: zoned: fix deadlock between metadata writeback and transaction commit When writing out metadata extent buffers in a zoned filesystem,...",
+      "tags": [
+        "CVE-2026-74572",
+        "Kernel",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "d3ea200a9d6943cc8efc727ea8ee16b8b129aa6ac3e93fa43334ca1b5caa98c5",
+      "title": "CVE-2026-74571 - btrfs: skip global block reserve accounting for rescue mounts",
+      "source": {
+        "id": "nist_cve_feed",
+        "name": "NIST CVE Intelligence Stream",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://cvefeed.io/vuln/detail/CVE-2026-74571",
+      "published_at": "2026-08-15T13:18:02Z",
+      "summary": "CVE ID : CVE-2026-74571 Published : Aug. 15, 2026, 1:18 p.m. | 7 hours ago Description : In the Linux kernel, the following vulnerability has been resolved: btrfs: skip global block reserve accounting for rescue mounts [BUG] Mounting with rescue=ibadroots after corrupting the block group tree root...",
+      "tags": [
+        "CVE-2026-74571",
+        "Kernel",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "296f5fea277b5466079602dc9306cd199ee4475bc6f8b5ef0574dc9d28e29288",
+      "title": "ChainDrop worm crawls into npm supply chain, evades standard defenses",
+      "source": {
+        "id": "the_register_security",
+        "name": "The Register Security Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.theregister.com/security/2026/08/15/chaindrop-worm-crawls-into-npm-supply-chain-evades-standard-defenses/5287958",
+      "published_at": "2026-08-15T10:31:00Z",
+      "summary": "Shai-Hulud variant poisons 444 packages, spreads via tarballs and dev-tool hooks",
+      "tags": [
+        "Supply Chain"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "554e1f4672ac2d31540160ba84f6865cc25c6e1d16107a8c0e19699d8e8069a7",
+      "title": "[CVE-2026-10740] s2n-quic has excessive memory allocation",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-9q54-f358-3fqf",
+      "published_at": "2026-08-14T21:44:19Z",
+      "summary": "GitHub Security Advisory (GHSA-9q54-f358-3fqf) - Severity: MEDIUM. s2n-quic is a Rust implementation of the QUIC protocol. An unauthenticated user can attempt to exhaust server memory on an s2n-quic endpoint by sending crafted CRYPTO frames with high offsets.",
+      "tags": [
+        "CVE-2026-10740",
+        "GHSA-9Q54-F358-3FQF",
+        "GitHub",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "498fdcff9637e4fe9c6dbacaf65d4524ab446e83d5d65bf31e24df0508e0a2ec",
+      "title": "[CVE-2026-55156] Token Optimizer MCP: Unauthenticated Path Traversal in Dashboard Session Log API Endpoints",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-76pc-mqxp-3rq5",
+      "published_at": "2026-08-14T21:43:54Z",
+      "summary": "GitHub Security Advisory (GHSA-76pc-mqxp-3rq5) - Severity: MEDIUM. # Unauthenticated Path Traversal in Dashboard Session Log API Endpoints | Field | Value | | ---------------- | ----- | | Repository | ooples/token-optimizer-mcp | | Affected version | 5.0.",
+      "tags": [
+        "CVE-2026-55156",
+        "GHSA-76PC-MQXP-3RQ5",
+        "GitHub",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "a9d01f0a65cdfd1b0ebd106bcf6699fd9062a8514c9f84e59a5a6d27a47441f5",
+      "title": "[CVE-2026-55157] Token Optimizer MCP: OS command injection in smart_user via username in get-user-info",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-49mq-fc6q-3h46",
+      "published_at": "2026-08-14T21:42:06Z",
+      "summary": "GitHub Security Advisory (GHSA-49mq-fc6q-3h46) - Severity: HIGH. ### Summary `token-optimizer-mcp` is vulnerable to OS command injection in the `smart_user` tool. The `get-user-info` operation accepts a user-controlled `username` argument and later interpolates it into a shell command executed through...",
+      "tags": [
+        "CVE-2026-55157",
+        "GHSA-49MQ-FC6Q-3H46",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "ca19ea232f23c994b682fa45f952240906eef2e92731676a8d68ad3c9aedb587",
+      "title": "[CVE-2026-53708] ContextForge: DNS TOCTOU race condition causes SSRF protection bypass (`/admin/gateways/test`)",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-9hgc-g3w5-67cm",
+      "published_at": "2026-08-14T19:49:14Z",
+      "summary": "GitHub Security Advisory (GHSA-9hgc-g3w5-67cm) - Severity: MEDIUM. ## Summary The `/admin/gateways/test` endpoint validates submitted URLs by resolving the hostname at validation time and blocking private address ranges.",
+      "tags": [
+        "CVE-2026-53708",
+        "GHSA-9HGC-G3W5-67CM",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "fda3372b06f66881ef547439814b327f48e53490c93438f41cd4dff1fb27f010",
+      "title": "[GHSA-8rw6-p7m8-63jp] SurrealDB: Array element-level (field.*) SELECT permissions leak denied elements to record users",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-8rw6-p7m8-63jp",
+      "published_at": "2026-08-14T19:40:48Z",
+      "summary": "GitHub Security Advisory (GHSA-8rw6-p7m8-63jp) - Severity: MEDIUM. A `SELECT` permission defined on an array element (`DEFINE FIELD field.* … PERMISSIONS FOR select …`) is not enforced correctly for `RECORD` users.",
+      "tags": [
+        "GHSA-8RW6-P7M8-63JP",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "b6eb17bee4a27e6c7c9f55d117b6653c5a21fd4fb4e2327935a06ab66d41e8ab",
+      "title": "[CVE-2026-55153] mchange-commons-java contains elements susceptible to abuse via JNDI injection and \"deserialization gadgets\"",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-h84g-69h7-mw6v",
+      "published_at": "2026-08-14T19:29:20Z",
+      "summary": "GitHub Security Advisory (GHSA-h84g-69h7-mw6v) - Severity: HIGH. ### Impact Prior to version 0.6.0, mchange-commons-java includes a JNDI `ObjectFactory` implementation (`com.mchange.v2.naming.JavaBeanObjectFactory`) willing to construct objects of arbitrary classes and initialize \"JavaBean\"-style properties.",
+      "tags": [
+        "CVE-2026-55153",
+        "GHSA-H84G-69H7-MW6V",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "44d77dc56f6832d289752c45d2c32212e9239885ba012635a57bf82f07a90e1d",
+      "title": "[CVE-2026-53660] OpenAM Insecure SSO Cookie Initialization",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-fpmh-vx4h-xc33",
+      "published_at": "2026-08-14T19:25:57Z",
+      "summary": "GitHub Security Advisory (GHSA-fpmh-vx4h-xc33) - Severity: HIGH. ## Summary **Description** An Insecure Default Initialization of Resource (CWE-1188) issue in the OpenAM default configuration ships the `iPlanetDirectoryPro` SSO cookie with `HttpOnly=false`.",
+      "tags": [
+        "CVE-2026-53660",
+        "GHSA-FPMH-VX4H-XC33",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "97a6b1362f575bb4141d61ae6c1d97af2404e86466a200a4e52d4e2ecfe9f3b9",
+      "title": "[CVE-2026-53658] Fabric CA Developer's Guide: LDAP Injection via Unescaped Username in GetUser Filter",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-xghw-p77p-3r7x",
+      "published_at": "2026-08-14T19:24:57Z",
+      "summary": "GitHub Security Advisory (GHSA-xghw-p77p-3r7x) - Severity: MEDIUM. When fabric-ca is configured with an LDAP backend, the username from HTTP Basic authentication is included in an LDAP uid search filter without proper escaping.",
+      "tags": [
+        "CVE-2026-53658",
+        "GHSA-XGHW-P77P-3R7X",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "73497adaa8548ea861590ea105fd5f60858e8cfd9cca75aea7c2734f7aa23b20",
+      "title": "[CVE-2026-53657] Lima: An arbitrary user in a QEMU VM could gain the root privilege in the VM via the guest agent socket",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-2j9v-p4xj-cjw2",
+      "published_at": "2026-08-14T19:24:33Z",
+      "summary": "GitHub Security Advisory (GHSA-2j9v-p4xj-cjw2) - Severity: HIGH. ### Impact On an instance of Lima running with `qemu` driver, an arbitrary user in the VM could access `/run/lima-guestagent.sock` when the guest agent is enabled.",
+      "tags": [
+        "CVE-2026-53657",
+        "GHSA-2J9V-P4XJ-CJW2",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "4ae5bf990f4745935f28a9d4a2953c8d64d3bd45b33b45b333d2d731a3cf4e0c",
+      "title": "Mission-Driven Security: Inside a Global Bank's Defense",
+      "source": {
+        "id": "dark_reading",
+        "name": "Dark Reading",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.darkreading.com/cybersecurity-operations/mission-driven-security-inside-global-bank-defense",
+      "published_at": "2026-08-14T19:24:18Z",
+      "summary": "In this video interview, Standard Chartered's group CISO shares insights on transitioning from technical roles to strategic leadership, the importance of business-savvy security executives, and how AI is reshaping both defensive capabilities and adversarial tactics in banking.",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "53cb9063808e148e910c098407825ac4bb20ed202253900b32e312c1762a84a0",
+      "title": "[CVE-2026-53653] Grav: Unauthenticated denial of service via unbounded image derivative dimensions",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-4x9g-vw65-vvf9",
+      "published_at": "2026-08-14T19:23:38Z",
+      "summary": "GitHub Security Advisory (GHSA-4x9g-vw65-vvf9) - Severity: HIGH. ### Summary An unauthenticated visitor exhausts server memory and CPU by requesting an image with oversized resize dimensions. One request drives a worker to several gigabytes of RAM and tens of seconds of CPU.",
+      "tags": [
+        "CVE-2026-53653",
+        "DoS",
+        "GHSA-4X9G-VW65-VVF9",
+        "GitHub",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "fbed1649c52bda8d8adef2fb9a9ee26ddadff6b8cd18422367346041d21aebda",
+      "title": "[CVE-2026-35219] Budibase: SSRF in Automation Steps - Webhook, Zapier, N8N, Slack, Discord Bypass IP Blacklist",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-5fpj-28rv-84r7",
+      "published_at": "2026-08-14T19:18:47Z",
+      "summary": "GitHub Security Advisory (GHSA-5fpj-28rv-84r7) - Severity: HIGH. ## Summary Budibase automation steps (outgoing webhook, Zapier, n8n, Slack, Discord, Make.com) make server-side HTTP requests to user-provided URLs using `node-fetch` directly, completely bypassing the IP blacklist protection that exists in the REST...",
+      "tags": [
+        "CVE-2026-35219",
+        "GHSA-5FPJ-28RV-84R7",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "49d686ec44bd851435703d63888157bf9cc7bc4326c4a8107232b2400df26a1d",
+      "title": "Hackers arrested over €30M bank fraud exploiting service provider flaw",
+      "source": {
+        "id": "bleeping_computer",
+        "name": "BleepingComputer",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.bleepingcomputer.com/news/security/hackers-arrested-over-30m-bank-fraud-exploiting-service-provider-flaw",
+      "published_at": "2026-08-14T18:04:26Z",
+      "summary": "Four cybercriminals were arrested in Brazil, and three others were charged in Europe over allegations that they exploited a vulnerability at a service provider, allowing them to withdraw funds from Commerzbank customers' bank accounts. [...]",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "ec0f1c725ec1e0b39cfd39528d22351d88ec0957bc0c06bb77c048643ad6ee3e",
+      "title": "1.6M RingCentral accounts' data dumped after ShinyHunters extortion attack",
+      "source": {
+        "id": "the_register_security",
+        "name": "The Register Security Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.theregister.com/cyber-crime/2026/08/14/16m-ringcentral-accounts-data-dumped-after-shinyhunters-extortion-attack/5288003",
+      "published_at": "2026-08-14T17:34:57Z",
+      "summary": "Another one bites the dust",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "f9fa1931bdf6be648b51db47f50ed605e63e0d9e18be1784ef8f3d821cd5292b",
+      "title": "Amid AI-Driven Bug-Hunt Tsunami, NIST Looks to … AI",
+      "source": {
+        "id": "dark_reading",
+        "name": "Dark Reading",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.darkreading.com/vulnerabilities-threats/ai-driven-bug-tsunami-nist-looks-to-ai",
+      "published_at": "2026-08-14T17:32:46Z",
+      "summary": "Driven by AI-augmented research and scanning, vulnerability volumes continue to surge, driving the National Institute of Standards and Technology to ask whether AI could be the answer.",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "9f7d0a43b985f2a595dfb3b1c35c9a8f4ae9d28c6367b970d96900b4ad4889fa",
+      "title": "Scottish Govt Suffers Potentially Widening Data Breach at Prosecutor's Office",
+      "source": {
+        "id": "dark_reading",
+        "name": "Dark Reading",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.darkreading.com/cyberattacks-data-breaches/scottish-govt-data-breach-prosecutors-office",
+      "published_at": "2026-08-14T15:58:50Z",
+      "summary": "One Caledonian government agency reported a breach, thanks to a third party that may have serviced other agencies as well.",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "86ab8a1980b83c26a8ecb03eac03c271e23e2795711e65d6dba4a0c4ce833e52",
+      "title": "[CVE-2026-35511] Authorizer: Zero-click account takeover via OAuth identity linking to unverified email accounts",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-29rf-f4vv-pvq6",
+      "published_at": "2026-08-14T15:36:15Z",
+      "summary": "GitHub Security Advisory (GHSA-29rf-f4vv-pvq6) - Severity: HIGH. The OAuth callback handler links incoming OAuth identities (Google, GitHub, etc.) to existing accounts matched by email address without verifying that the existing account's email was verified by its original owner.",
+      "tags": [
+        "CVE-2026-35511",
+        "GHSA-29RF-F4VV-PVQ6",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "822427793e1fec4b8d18f6b2c0a204e37f168e79e9a868a5f873c91a9bfa943a",
+      "title": "The Good, the Bad and the Ugly in Cybersecurity – Week 33",
+      "source": {
+        "id": "sentinelone_labs",
+        "name": "SentinelLabs Threat Research",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.sentinelone.com/blog/the-good-the-bad-and-the-ugly-in-cybersecurity-week-33-8",
+      "published_at": "2026-08-14T15:21:37Z",
+      "summary": "Courts sentence Com member for sextorting 117 minors, joint advisory warns of Gunra ransomware, and ShieldBreak bypasses MS Defender for SYSTEM access.",
+      "tags": [
+        "Active Directory",
+        "Ransomware"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "705b3c21bff49cdf212b2675a9de85eb9c08be4c4107f5737c42f9844fdaa8a8",
+      "title": "Hackers exploit macOS Screen Sharing flaw to deploy Monero miner",
+      "source": {
+        "id": "bleeping_computer",
+        "name": "BleepingComputer",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.bleepingcomputer.com/news/security/hackers-exploit-macos-screen-sharing-flaw-to-deploy-monero-miner",
+      "published_at": "2026-08-14T14:59:55Z",
+      "summary": "The Netherlands' National Cyber Security Centre (NCSC) is warning that hackers are actively exploiting a macOS authentication bypass vulnerability after public exploit code emerged. [...]",
+      "tags": [
+        "Auth Bypass",
+        "macOS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "d75355f94483d3f87a7a45890b156a185bad61c13ac3125cfb62cc416ded60f2",
+      "title": "French tax authority admits data heist after crook touts 2M records",
+      "source": {
+        "id": "the_register_security",
+        "name": "The Register Security Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.theregister.com/security/2026/08/14/french-tax-authority-admits-data-heist-after-crook-touts-2m-records/5287885",
+      "published_at": "2026-08-14T14:27:00Z",
+      "summary": "Government disputes claims of continued access as investigators measure damage",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "0f227e7a089699dc00033d4739ff1d99d51b57d27791ef08c54ae69fbacaf141",
+      "title": "The Modern Attack Chain: Rethinking Google Workspace Security in the Age of AI",
+      "source": {
+        "id": "bleeping_computer",
+        "name": "BleepingComputer",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.bleepingcomputer.com/news/security/the-modern-attack-chain-rethinking-google-workspace-security-in-the-age-of-ai",
+      "published_at": "2026-08-14T14:00:10Z",
+      "summary": "Google Workspace attacks do not always begin with phishing. Stolen OAuth tokens can provide another path into Gmail, Drive, and connected systems. Material Security explains why organizations need defenses that cover the entire Workspace attack chain. [...]",
+      "tags": [
+        "Phishing"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "f9f5eb360a339a6e550d751fe2522f9616c7e50f229217dcc93469bbed9cdbe2",
+      "title": "What Boards Need to Know About Tech Risk",
+      "source": {
+        "id": "dark_reading",
+        "name": "Dark Reading",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.darkreading.com/cyber-risk/what-boards-must-know-tech-risk",
+      "published_at": "2026-08-14T14:00:00Z",
+      "summary": "Why do so many boards underestimate technology risk until it becomes a crisis?",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "7b0ed15636a791f8645b548eefb36515f515d0c3e887573ec7aae9e58542dff9",
+      "title": "Max severity SAP Commerce Cloud flaw now targeted in attacks",
+      "source": {
+        "id": "bleeping_computer",
+        "name": "BleepingComputer",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.bleepingcomputer.com/news/security/max-severity-sap-commerce-cloud-flaw-now-targeted-in-attacks",
+      "published_at": "2026-08-14T13:45:18Z",
+      "summary": "A maximum-severity SAP Commerce Cloud remote code execution vulnerability patched three days ago is already being targeted in attacks, according to threat intelligence company Defused. [...]",
+      "tags": [
+        "RCE"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "b22944c46110c0b4d14304de16e31c4b3aaa539520465edef7523980382e2b3a",
+      "title": "Autonomous AI attacks pose 'clear and present danger' to critical infrastructure",
+      "source": {
+        "id": "the_register_security",
+        "name": "The Register Security Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.theregister.com/security/2026/08/14/autonomous-ai-attacks-pose-clear-and-present-danger-to-critical-infrastructure/5287594",
+      "published_at": "2026-08-14T13:03:00Z",
+      "summary": "Weaponized agents could turn digital intrusions into kinetic disasters, experts warn",
+      "tags": [
+        "Critical"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "5bfa349da239b2e779f701ed1caf7a85b4da02d64e9cc2ebe720987cf481137c",
+      "title": "Cyera's Oasis Security Buy Is All About AI Agent Control",
+      "source": {
+        "id": "dark_reading",
+        "name": "Dark Reading",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.darkreading.com/identity-access-management-security/cyera-oasis-security-acquisition-ai-agent-control",
+      "published_at": "2026-08-14T12:17:21Z",
+      "summary": "The $1 billion deal aims to converge data security and identity into a single control plane for agents, with privileged access redefined around business context rather than static roles.",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "6329661ced79a53288719a5e1f92650db9bd9a1584e178f9a8ede0917985b36a",
+      "title": "In Other News: Rapid7 Layoffs, Hacking a Boeing 737, Refrigeration System Vulnerabilities",
+      "source": {
+        "id": "security_week",
+        "name": "SecurityWeek",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.securityweek.com/in-other-news-rapid7-layoffs-hacking-a-boeing-737-refrigeration-system-vulnerabilities",
+      "published_at": "2026-08-14T11:57:51Z",
+      "summary": "Noteworthy stories that might have slipped under the radar: government AI platform deal sparks outrage, North Korean IT worker breaches federal agency, DEF CON attendee blamed for Delta flight disruption.",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "519d04b3ab2b1ce2dddaf4e2e23ec970225b42506446971e32e5849e709e93af",
+      "title": "Shell investigates 'potential incident' after Clop data theft claims",
+      "source": {
+        "id": "bleeping_computer",
+        "name": "BleepingComputer",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.bleepingcomputer.com/news/security/shell-investigates-potential-incident-after-clop-data-theft-claims",
+      "published_at": "2026-08-14T11:55:45Z",
+      "summary": "Oil giant Shell has confirmed it is investigating a potential security incident after the Clop ransomware gang claimed it stole 89GB of data. [...]",
+      "tags": [
+        "Ransomware"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "d74cb019f78a666863ecf67bf4ef2515f4cefb4a553654015e5b59042906b077",
+      "title": "Trivy, Not LiteLLM Behind the 2,500 Org Compromise",
+      "source": {
+        "id": "security_week",
+        "name": "SecurityWeek",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.securityweek.com/trivy-not-litellm-behind-the-2500-org-compromise",
+      "published_at": "2026-08-14T11:35:23Z",
+      "summary": "Over 95% of the affected companies were exposed before the malicious LiteLLM packages were published. The post Trivy, Not LiteLLM Behind the 2,500 Org Compromise appeared first on SecurityWeek .",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "ce056786a8e95421efad37609951835de9b71a2b69388fe510f4aae5a0d18ab3",
+      "title": "Who’s Tracking You? Use This New Service to Find Out",
+      "source": {
+        "id": "krebs_on_security",
+        "name": "Krebs on Security",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://krebsonsecurity.com/2026/08/whos-tracking-you-use-this-new-service-to-find-out",
+      "published_at": "2026-08-14T11:24:35Z",
+      "summary": "It can be daunting to determine who's responsible for showing ads on the websites we visit, or who's harvesting data from the mobile apps we use every day.",
+      "tags": [
+        "Krebs"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "5af9a03699ba12b0aaec0285516c583acb56813ce67e2702a4383d81840330ac",
+      "title": "Google Cloud Sets Out Post-Quantum Roadmap With 2029 Readiness Goal",
+      "source": {
+        "id": "security_week",
+        "name": "SecurityWeek",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.securityweek.com/google-cloud-sets-out-post-quantum-roadmap-with-2029-readiness-goal",
+      "published_at": "2026-08-14T11:00:00Z",
+      "summary": "Google Cloud outlines its roadmap to full post-quantum cryptography readiness, with key milestones targeted for 2027 and 2028. The post Google Cloud Sets Out Post-Quantum Roadmap With 2029 Readiness Goal appeared first on SecurityWeek .",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "15557cd9aac01ee0044ae9e536af784b70824028c490e1a74e51e12432bb1388",
+      "title": "RingCentral data breach exposed info of 1.6 million accounts",
+      "source": {
+        "id": "bleeping_computer",
+        "name": "BleepingComputer",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.bleepingcomputer.com/news/security/ringcentral-data-breach-exposed-info-of-16-million-accounts",
+      "published_at": "2026-08-14T10:52:05Z",
+      "summary": "The ShinyHunters extortion group stole personal information from 1.6 million RingCentral accounts after hacking the company in July, according to the data breach notification service Have I Been Pwned. [...]",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "4839594f0705e532e74659b7296dd81b78d81e071da16dbb2727a178500b23c4",
+      "title": "Crypto wallet maker Trezor confirms 13,000 customers' details exposed in logistics breach",
+      "source": {
+        "id": "the_register_security",
+        "name": "The Register Security Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.theregister.com/security/2026/08/14/crypto-wallet-maker-trezor-confirms-13000-customers-details-exposed-in-logistics-breach/5287734",
+      "published_at": "2026-08-14T10:29:00Z",
+      "summary": "Even if your hardware is secure, quantum-ready, encrypted, and future-proof, no one is immune to a supplier letting the side down",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "ec33614852dbf6b07cab03abfdaced5ea6d99850ad1ac9d8fc89fbf6b18d8319",
+      "title": "1.6 Million Likely Impacted by RingCentral Data Breach",
+      "source": {
+        "id": "security_week",
+        "name": "SecurityWeek",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.securityweek.com/1-6-million-likely-impacted-by-ringcentral-data-breach",
+      "published_at": "2026-08-14T10:24:03Z",
+      "summary": "The hackers published the allegedly stolen information, including names, addresses, email addresses, and phone numbers. The post 1.6 Million Likely Impacted by RingCentral Data Breach appeared first on SecurityWeek .",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "272b4651e83a3f6e4184ca04314167459a04a0419dd9b924c1b9fb3f8157062c",
+      "title": "Over 1,000 Charities Hit by Beacon CRM Data Breach",
+      "source": {
+        "id": "security_week",
+        "name": "SecurityWeek",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.securityweek.com/over-1000-charities-hit-by-beacon-crm-data-breach",
+      "published_at": "2026-08-14T09:20:28Z",
+      "summary": "The root cause of the incident is believed to be a compromised AWS access key that was exposed in publicly available JavaScript build artifacts. The post Over 1,000 Charities Hit by Beacon CRM Data Breach appeared first on SecurityWeek .",
+      "tags": [
+        "AWS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "b72e39f17f4fe2409003b300cf2008635da4f9dd5527688b2a9997c31e9b2c91",
+      "title": "Scottish prosecutors cast eye over leaky supplier after staff data exposed",
+      "source": {
+        "id": "the_register_security",
+        "name": "The Register Security Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.theregister.com/security/2026/08/14/scottish-prosecutors-cast-eye-over-leaky-supplier-after-staff-data-exposed/5287479",
+      "published_at": "2026-08-14T08:46:00Z",
+      "summary": "Unnamed third party spotted suspicious activity, with names, roles, and email addresses potentially affected",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "c6f2cac6550798ed5601c13bfb6e0d1e5a7d526ba3d59d90501390634e686515",
+      "title": "Data analyst sent to prison for stealing data, extorting employer",
+      "source": {
+        "id": "bleeping_computer",
+        "name": "BleepingComputer",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.bleepingcomputer.com/news/security/data-analyst-sent-to-prison-for-stealing-data-extorting-employer",
+      "published_at": "2026-08-14T08:27:18Z",
+      "summary": "A former data analyst contractor for Brightly Software has been sentenced to two years in prison for targeting his employer in a $2.5 million extortion scheme. [...]",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "f6e0cd69ff19784effd3d1cf775ff60ebfca13b0666e290098a1da139960d6e5",
+      "title": "14,000 Trezor Customers Impacted by Data Breach at ShipMonk",
+      "source": {
+        "id": "security_week",
+        "name": "SecurityWeek",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.securityweek.com/14000-trezor-customers-impacted-by-data-breach-at-shipmonk",
+      "published_at": "2026-08-14T08:16:00Z",
+      "summary": "Hackers stole the customers’ shipping information, including names, addresses, email addresses, and phone numbers. The post 14,000 Trezor Customers Impacted by Data Breach at ShipMonk appeared first on SecurityWeek .",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "60951a77a4c6f519d79a8b72d5441743802d8f76d60eea9c2413bbb6383f8aa3",
+      "title": "You’re Back In The Room (Citrix NetScaler Pre-Auth RCE CVE-2026-8452(?)) - watchTowr Labs",
+      "source": {
+        "id": "reddit_netsec",
+        "name": "Reddit r/netsec Research & PoCs",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.reddit.com/r/netsec/comments/1vo06aj/youre_back_in_the_room_citrix_netscaler_preauth",
+      "published_at": "2026-08-14T07:10:17Z",
+      "summary": "submitted by /u/dx7r__ [link] [comments]",
+      "tags": [
+        "CVE-2026-8452",
+        "RCE",
+        "Research"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "1b6a88ec6d836dcb3e6512a5ef81c0172bf56554c32efa333cf0b7aabde39bac",
+      "title": "Hackers Exploiting Unpatched GeoServer Zero-Day",
+      "source": {
+        "id": "security_week",
+        "name": "SecurityWeek",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.securityweek.com/hackers-exploiting-unpatched-geoserver-zero-day",
+      "published_at": "2026-08-14T07:01:56Z",
+      "summary": "The security defect is described as an SQL injection that could allow attackers to achieve remote code execution. The post Hackers Exploiting Unpatched GeoServer Zero-Day appeared first on SecurityWeek .",
+      "tags": [
+        "0-Day",
+        "RCE",
+        "SQLi"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "3f3c8599b7a92194fa3129941b197fea7ddaee9d5eaea8d0a06097aa9e6a3ec3",
+      "title": "AmnesiaStealer macOS Malware Steals Data, Controls Browser Sessions",
+      "source": {
+        "id": "security_week",
+        "name": "SecurityWeek",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.securityweek.com/amnesiastealer-macos-malware-steals-data-controls-browser-sessions",
+      "published_at": "2026-08-14T06:41:43Z",
+      "summary": "The Rust-based macOS infostealer harvests users’ passwords, keychain information, Chromium-based browser data, and Safari cookies. The post AmnesiaStealer macOS Malware Steals Data, Controls Browser Sessions appeared first on SecurityWeek .",
+      "tags": [
+        "Malware",
+        "macOS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "ad3e5002aa955a22a9d8ae6f33eeb088c61cd34c05fe25cf1b9953a6bea8919d",
+      "title": "Ruby 4.0 Universal RCE Deserialization Gadget Chain - elttam",
+      "source": {
+        "id": "reddit_netsec",
+        "name": "Reddit r/netsec Research & PoCs",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.reddit.com/r/netsec/comments/1vnxkvm/ruby_40_universal_rce_deserialization_gadget",
+      "published_at": "2026-08-14T04:46:39Z",
+      "summary": "submitted by /u/AnimalStrange [link] [comments]",
+      "tags": [
+        "RCE",
+        "Research"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "54e8fe43fffce388d048526e62b10d4fed6672540da781f5073b56b186490e44",
+      "title": "New Zealand says China tried using space investments to spy on local affairs",
+      "source": {
+        "id": "the_register_security",
+        "name": "The Register Security Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.theregister.com/security/2026/08/14/new-zealand-says-china-tried-using-space-investments-to-spy-on-local-affairs/5287657",
+      "published_at": "2026-08-14T03:23:34Z",
+      "summary": "Intelligence Service says finding domestic threats is harder due to proliferation of toxic content online",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "d9325ca256f1ac0252ecc7e9ae97cd2277d4195a50be2c339d29329ae4bcc8a3",
+      "title": "ISC Stormcast For Friday, August 14th, 2026 https://isc.sans.edu/podcastdetail/10052, (Fri, Aug 14th)",
+      "source": {
+        "id": "sans_isc",
+        "name": "SANS Internet Storm Center",
+        "category_id": "informational",
+        "category_name": "Informational & Research"
+      },
+      "link": "https://isc.sans.edu/diary/rss/33246",
+      "published_at": "2026-08-14T02:00:03Z",
+      "summary": "",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "7cb9087241576c43ed40a199866689b6ab4a7148d37999971f5f73b93e410eff",
+      "title": "Apple sends new ‘Threat Notification’ alerts over mercenary spyware attacks",
+      "source": {
+        "id": "bleeping_computer",
+        "name": "BleepingComputer",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.bleepingcomputer.com/news/apple/apple-sends-new-threat-notification-alerts-over-mercenary-spyware-attacks",
+      "published_at": "2026-08-14T01:19:12Z",
+      "summary": "You're not alone if you just received an \"Apple Threat Notification\" saying it detected a \"mercenary spyware attack targeted at your iPhone.\" [...]",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "d4e630558bcdc27c956f3191e05fb2a86fa8332687848834a30b6d408c3a9275",
+      "title": "OpenAI ditches Recall-style screenshot surveillance for friendly keylogging",
+      "source": {
+        "id": "the_register_security",
+        "name": "The Register Security Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.theregister.com/ai-and-ml/2026/08/14/openai-ditches-recall-style-screenshot-surveillance-for-friendly-keylogging/5287618",
+      "published_at": "2026-08-14T00:27:53Z",
+      "summary": "'Computer History' records clicks and typing to build ChatGPT memories",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "151b0946746971d46ab9f72c61060e8a498485cc865b2a9b4b820d2f8165c6e0",
+      "title": "DSA-6442-1 util-linux - security update",
+      "source": {
+        "id": "debian_security",
+        "name": "Debian Security Advisories",
+        "category_id": "security_advisories",
+        "category_name": "Security Advisories"
+      },
+      "link": "https://lists.debian.org/debian-security-announce/2026/msg00353.html",
+      "published_at": "2026-08-14T00:00:00Z",
+      "summary": "https://security-tracker.debian.org/tracker/DSA-6442-1",
+      "tags": [
+        "Debian",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "afcba9a31b581952412466b4ee56139b7368e29bc89fff803e5a11492403f8cc",
+      "title": "DSA-6441-1 python-httplib2 - security update",
+      "source": {
+        "id": "debian_security",
+        "name": "Debian Security Advisories",
+        "category_id": "security_advisories",
+        "category_name": "Security Advisories"
+      },
+      "link": "https://lists.debian.org/debian-security-announce/2026/msg00352.html",
+      "published_at": "2026-08-14T00:00:00Z",
+      "summary": "https://security-tracker.debian.org/tracker/DSA-6441-1",
+      "tags": [
+        "Debian",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "ebb216cf6e889c506762681b7c517822c4e2f16ac39f31846525b4f402b87be6",
+      "title": "DSA-6440-1 unzip - security update",
+      "source": {
+        "id": "debian_security",
+        "name": "Debian Security Advisories",
+        "category_id": "security_advisories",
+        "category_name": "Security Advisories"
+      },
+      "link": "https://lists.debian.org/debian-security-announce/2026/msg00351.html",
+      "published_at": "2026-08-14T00:00:00Z",
+      "summary": "https://security-tracker.debian.org/tracker/DSA-6440-1",
+      "tags": [
+        "Debian",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "97325739110e3a224690241cce8764c0be24b77517a718ecd067e5eaf38ee623",
+      "title": "USN-8631-3: Linux kernel (NVIDIA Tegra IGX) vulnerabilities",
+      "source": {
+        "id": "ubuntu_security",
+        "name": "Ubuntu Security Notices",
+        "category_id": "security_advisories",
+        "category_name": "Security Advisories"
+      },
+      "link": "https://ubuntu.com/security/notices/USN-8631-3",
+      "published_at": "2026-08-13T21:47:34Z",
+      "summary": "Siebe Devroe, Héloïse Gollier, and Mathy Vanhoef discovered that the WiFi implementation in the Linux kernel did not properly handle aggregated frames in mesh networks, due to an incorrect fix for CVE-2020-24588. A physically proximate attacker could use this issue to inject packets.",
+      "tags": [
+        "CVE-2020-24588",
+        "Kernel",
+        "Linux",
+        "Ubuntu"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "7ba1d3ec13f91733ec75fbb9f5ba3e9f74f91d4940068017038812637f2a658b",
+      "title": "Ukraine shuts down 94 fraudulent call centers, seize millions in cash",
+      "source": {
+        "id": "bleeping_computer",
+        "name": "BleepingComputer",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.bleepingcomputer.com/news/security/ukraine-shuts-down-94-fraudulent-call-centers-seize-millions-in-cash",
+      "published_at": "2026-08-13T21:12:47Z",
+      "summary": "Authorities in Ukraine shut down 94 fraudulent call centers across the country that lured people into investment scams or tried to obtain access to bank accounts. [...]",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "f102bf86c5ad089fae107502cd94f05d446e7c3b30544d598be74123474168c2",
+      "title": "[CVE-2026-73654] Trigger.dev: Prototype pollution via run metadata operations → process-wide cross-tenant DoS",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-p28v-f755-9qrg",
+      "published_at": "2026-08-13T20:54:11Z",
+      "summary": "GitHub Security Advisory (GHSA-p28v-f755-9qrg) - Severity: HIGH. ## Summary The run-metadata update endpoint `PUT /api/v1/runs/:runId/metadata` applies client-supplied \"operations\" by passing the **attacker-controlled `operation.key`** straight into `new JSONHeroPath(operation.key).",
+      "tags": [
+        "CVE-2026-73654",
+        "DoS",
+        "GHSA-P28V-F755-9QRG",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "be6423ca532bb2d57e1df169b9f86aac36c4316acfbd79f41bf05ce3ed175022",
+      "title": "When You Pay the Ransom - Taking Apart an Interlock ESXi Decryptor | Maldbg",
+      "source": {
+        "id": "reddit_netsec",
+        "name": "Reddit r/netsec Research & PoCs",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.reddit.com/r/netsec/comments/1vnmye4/when_you_pay_the_ransom_taking_apart_an_interlock",
+      "published_at": "2026-08-13T20:51:00Z",
+      "summary": "submitted by /u/tohitsugu [link] [comments]",
+      "tags": [
+        "Research"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "286ed9b0bccd6111bf1225f14d7ef54d31d488376a0f8f3f05e90b70587bd4db",
+      "title": "Akira hackers disable EDR with Safe Mode, steal data but fail to encrypt",
+      "source": {
+        "id": "bleeping_computer",
+        "name": "BleepingComputer",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.bleepingcomputer.com/news/security/akira-hackers-disable-edr-with-safe-mode-steal-data-but-fail-to-encrypt",
+      "published_at": "2026-08-13T20:47:02Z",
+      "summary": "An Akira ransomware affiliate disabled the endpoint detection and response (EDR) solution on a compromised system by restarting the machine into Safe Mode with Networking. [...]",
+      "tags": [
+        "Ransomware"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "7a20fee85e3db3a9b0a25fb53a57cc12edf12798d00f8664c7e33ba06ef84414",
+      "title": "Global Threat Campaign Hits Critical VMware vCenter Flaw",
+      "source": {
+        "id": "dark_reading",
+        "name": "Dark Reading",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.darkreading.com/vulnerabilities-threats/global-threat-campaign-critical-vmware-vcenter-flaw",
+      "published_at": "2026-08-13T20:45:17Z",
+      "summary": "Exploitation against CVE-2026–59310 began earlier this month, and patching the vulnerability may not be enough to fully mitigate the threat.",
+      "tags": [
+        "Critical"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "dd8eac4db9bdf424c5269d424a9b780348d5a703bf3ac5459f5948997784434d",
+      "title": "[CVE-2026-12243] nltk: Arbitrary File Read via Path Traversal in nltk.data.load() through Percent-Encoded Sequences",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-m42h-3232-vpv3",
+      "published_at": "2026-08-13T20:45:05Z",
+      "summary": "GitHub Security Advisory (GHSA-m42h-3232-vpv3) - Severity: HIGH. # Summary nltk.data.load() and nltk.data.find() resolve user-supplied resource names to filesystem paths using url2pathname(), which decodes percent-encoded sequences (e.g. %2e%2e to ..).",
+      "tags": [
+        "Active Directory",
+        "CVE-2026-12243",
+        "GHSA-M42H-3232-VPV3",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "b1f7ef6e66bd393aafcbe0d7ac473c1c8285e6754c0d855362b025c508d2cf87",
+      "title": "Netgate Releases pfSense Plus Software Version 26.07",
+      "source": {
+        "id": "netgate_pfsense",
+        "name": "Netgate pfSense Advisories",
+        "category_id": "security_advisories",
+        "category_name": "Security Advisories"
+      },
+      "link": "https://www.netgate.com/blog/netgate-releases-pfsense-plus-software-version-26.07",
+      "published_at": "2026-08-13T20:19:28Z",
+      "summary": "pfSense® Plus software, the world's leading firewall, router, and VPN solution, delivers secure network edge and cloud networking capabilities for millions of deployments worldwide. Today, Netgate® is releasing pfSense Plus software version 26.07.",
+      "tags": [
+        "VPN"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "7b0acfc15cf711168dc9e27ba35c3477cd7e7a22b2871a57d12dd03de466ab7e",
+      "title": "CSS:the bomb inside your inbox",
+      "source": {
+        "id": "reddit_netsec",
+        "name": "Reddit r/netsec Research & PoCs",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.reddit.com/r/netsec/comments/1vnm0b2/cssthe_bomb_inside_your_inbox",
+      "published_at": "2026-08-13T20:15:35Z",
+      "summary": "Here's my research in using CSS for offence. There are loads of techniques including stealing passwords from Outlook from an email by spoofing the login screen. submitted by /u/garethheyes [link] [comments]",
+      "tags": [
+        "Research"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "942e89faf12a7c00bf9f6542038feeaf67833d5b0e7f17eb6c2ee38759ce4cdf",
+      "title": "Total eclipse of the Internet: traffic impacts in Iceland, Spain, and Portugal",
+      "source": {
+        "id": "cloudflare_blog",
+        "name": "Cloudflare Blog",
+        "category_id": "informational",
+        "category_name": "Informational & Research"
+      },
+      "link": "https://blog.cloudflare.com/total-eclipse-internet-traffic-iceland-spain-portugal",
+      "published_at": "2026-08-13T19:58:01Z",
+      "summary": "Cloudflare's data shows a clear impact on Internet traffic from Iceland to Spain and Portugal, following the path of totality of the total solar eclipse that occurred on August 12, 2026.",
+      "tags": [
+        "Cloudflare"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "93ca62fa0d7f1f4a9ae6c752814347c73a0b74ded931a3a3024eae9fb155566e",
+      "title": "USN-8638-1: Axios vulnerabilities",
+      "source": {
+        "id": "ubuntu_security",
+        "name": "Ubuntu Security Notices",
+        "category_id": "security_advisories",
+        "category_name": "Security Advisories"
+      },
+      "link": "https://ubuntu.com/security/notices/USN-8638-1",
+      "published_at": "2026-08-13T19:31:14Z",
+      "summary": "Ameer Assadi discovered that Axios did not properly handle certain hostnames when applying NO_PROXY rules. An attacker could possibly use this issue to bypass proxy restrictions and access internal services, resulting in server-side request forgery.",
+      "tags": [
+        "Linux",
+        "Ubuntu"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "accd915ee18d4d11084c6e9a0f3e8f2f18d5fc1d28c5c7a514c0514dca6b9f0c",
+      "title": "[CVE-2026-73559] vLLM: Completion prompt lists fan out into unbounded engine requests",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-87x5-vmc3-756j",
+      "published_at": "2026-08-13T18:40:06Z",
+      "summary": "GitHub Security Advisory (GHSA-87x5-vmc3-756j) - Severity: MEDIUM. ## Summary The `/v1/completions` request model accepts `prompt` as a list of text prompts or a list of token-id prompts without any outer prompt-count bound.",
+      "tags": [
+        "CVE-2026-73559",
+        "GHSA-87X5-VMC3-756J",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "b28e693aa8316a6a46248382c571d63e81aa905d9b5501ca1d7a34491af3f6e0",
+      "title": "Hackers breach govt webmail while running parallel crypto fraud",
+      "source": {
+        "id": "bleeping_computer",
+        "name": "BleepingComputer",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.bleepingcomputer.com/news/security/hackers-breach-govt-webmail-while-running-parallel-crypto-fraud",
+      "published_at": "2026-08-13T18:15:19Z",
+      "summary": "The Jewelbug hacker group has been carrying out espionage operations targeting governments and militaries while also engaging in cryptocurrency fraud. [...]",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "87b89540f415d1dea5f7f6f5ca7327461bbb4db77343806453468387903d9961",
+      "title": "Curiouser and Curiouser",
+      "source": {
+        "id": "cisco_talos",
+        "name": "Cisco Talos Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://blog.talosintelligence.com/curiouser-and-curiouser",
+      "published_at": "2026-08-13T18:00:18Z",
+      "summary": "In this edition of the Threat Source newsletter, William reflects on the “Make Hazel a Hacker” segment in Beers with Talos, and how cybersecurity is a field where questions can lead to multiple correct answers.",
+      "tags": [
+        "Active Directory",
+        "Cisco"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "7edcc56dfd2c931cab46688a1c19833a8c1bcf7055a2fac86f17d78087288772",
+      "title": "Microsoft patches LegacyHive Windows zero-day vulnerability",
+      "source": {
+        "id": "bleeping_computer",
+        "name": "BleepingComputer",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.bleepingcomputer.com/news/microsoft/microsoft-patches-legacyhive-windows-zero-day-vulnerability",
+      "published_at": "2026-08-13T17:46:20Z",
+      "summary": "Microsoft has released security patches to address a Windows zero-day vulnerability known as \"LegacyHive,\" disclosed after the July 2026 Patch Tuesday. [...]",
+      "tags": [
+        "0-Day",
+        "Windows"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "8370143ca59a9d7d6a82024defc446260f6918f2127222a2472bcf22675b3ac0",
+      "title": "From Unauthenticated API to Grid Risk: A Hybrid Inverter Vulnerability Explained",
+      "source": {
+        "id": "reddit_netsec",
+        "name": "Reddit r/netsec Research & PoCs",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.reddit.com/r/netsec/comments/1vndp8e/from_unauthenticated_api_to_grid_risk_a_hybrid",
+      "published_at": "2026-08-13T15:20:01Z",
+      "summary": "Auth Bypass. Commands over CAN Bus to internal components. Protection mechanisms disabled and configuration changes. Impact: damage connected devices, permanent DoS to the inverter itself, fines, and even risk to the lives of grid technicians. proprietary communication protocols and file formats.",
+      "tags": [
+        "Auth Bypass",
+        "DoS",
+        "Research",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "df5e5995ab6e6f73e4280be1678bbdb02772f48baaa218665835fdc7c4a03d2a",
+      "title": "The backup Microsoft never promised you",
+      "source": {
+        "id": "the_register_security",
+        "name": "The Register Security Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.theregister.com/security/2026/08/13/sponsored-the-backup-microsoft-never-promised-you/5284957",
+      "published_at": "2026-08-13T15:00:00Z",
+      "summary": "SPONSORED FEATURE: Your M365 and Azure data might not be as safe as you think from ransomware; time for a reality check",
+      "tags": [
+        "Ransomware"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "402f4479c3efc26264a5e4f398ffdd80106fea0c241ea93f2f3cd6d5f8594732",
+      "title": "Adobe Commerce Bug Targeted Immediately After Disclosure",
+      "source": {
+        "id": "security_week",
+        "name": "SecurityWeek",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.securityweek.com/adobe-commerce-bug-targeted-immediately-after-disclosure",
+      "published_at": "2026-08-13T14:17:44Z",
+      "summary": "The first exploitation attempts targeting CVE-2026-71362 were observed shortly after Adobe released patches. The post Adobe Commerce Bug Targeted Immediately After Disclosure appeared first on SecurityWeek .",
+      "tags": [
+        "CVE-2026-71362"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "91a6d35ddb351be9305bf1359491690002e7aef80657d07cad2b5dd51ef5d182",
+      "title": "[GHSA-rm43-82j9-r4mj] atomic-agents-stack: Dashboard HTTP server path traversal allows arbitrary file read",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-rm43-82j9-r4mj",
+      "published_at": "2026-08-13T14:17:13Z",
+      "summary": "GitHub Security Advisory (GHSA-rm43-82j9-r4mj) - Severity: HIGH. The optional dashboard HTTP server (`atomic_agents/dashboard/serve.py`) builds filesystem paths directly from the request path and serves them without a containment check.",
+      "tags": [
+        "Active Directory",
+        "GHSA-RM43-82J9-R4MJ",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "569fb3ce8242469d5d7fdd2193ad229363ad3c21fe10c6dd8f4af3b911cb02d7",
+      "title": "[CVE-2026-54249] Pydantic AI: Unvalidated UploadedFile references in UI adapters allow server-side file access using the application's credentials",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-h7p7-w5gc-xj3w",
+      "published_at": "2026-08-13T14:16:26Z",
+      "summary": "GitHub Security Advisory (GHSA-h7p7-w5gc-xj3w) - Severity: MEDIUM. ### Summary A client that can submit message history to a Pydantic AI UI adapter can reference arbitrary files in the application's model-provider or cloud-storage account.",
+      "tags": [
+        "CVE-2026-54249",
+        "GHSA-H7P7-W5GC-XJ3W",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "fcbf207492cf511e659cfe5c657085dc8d611af4e34613ed146f8810b0457f74",
+      "title": "[CVE-2026-54526] Argo Workflows: ArtifactGC.PodSpecPatch bypasses Strict/Secure template reference allow-list (Incomplete fix for CVE-2026-31892)",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-48p8-g2fx-3wwm",
+      "published_at": "2026-08-13T14:16:09Z",
+      "summary": "GitHub Security Advisory (GHSA-48p8-g2fx-3wwm) - Severity: HIGH. ### Summary The allow-list fix for CVE-2026-31892 (GHSA-3wf5-g532-rcrr), and its follow-up coverage of `hostNetwork`/`securityContext`/`serviceAccountName` in GHSA-3775-99mw-8rp4, is incomplete. `workflow/util/merge.",
+      "tags": [
+        "CVE-2026-31892",
+        "CVE-2026-54526",
+        "GHSA-48P8-G2FX-3WWM",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "904e0f96115801b9ffc9aabb2c2d1dbfa4647285da65e63711072a27d4b733e5",
+      "title": "[CVE-2026-55102] hashi-vault-js: Vault token and secret values exposed in thrown errors",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-5pq8-3ffp-7w5m",
+      "published_at": "2026-08-13T14:14:32Z",
+      "summary": "GitHub Security Advisory (GHSA-5pq8-3ffp-7w5m) - Severity: MEDIUM. ## Summary Vault token and secret values are exposed in thrown errors when using `hashi-vault-js`. ## Details Every API method in `Vault.js` executes `throw parseAxiosError(err)`, which returns the raw `AxiosError` untouched.",
+      "tags": [
+        "CVE-2026-55102",
+        "GHSA-5PQ8-3FFP-7W5M",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "108ef3694d1ccc7316433919e2c0ff39275734158754e24656248732a092ee74",
+      "title": "[CVE-2026-55088] ep_etherpad-lite: Device-to-device author-token transfer endpoint is replayable, never expires, and exposes the cleartext author...",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-vqfp-p66c-xrp9",
+      "published_at": "2026-08-13T14:12:44Z",
+      "summary": "GitHub Security Advisory (GHSA-vqfp-p66c-xrp9) - Severity: MEDIUM. Etherpad's device-to-device author-token transfer endpoint is replayable, never expires, and exposes the cleartext author token in the GET response body ## Description Etherpad ships an endpoint pair under `/tokenTransfer`...",
+      "tags": [
+        "Active Directory",
+        "CVE-2026-55088",
+        "GHSA-VQFP-P66C-XRP9",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "97f1ed962a0ad29b23d71b21fc655cfaf5dcc5a82a3b808b7dd962aeb31ce53f",
+      "title": "[CVE-2026-55086] ep_etherpad-lite: Import/export uses Math.random() for temp file paths; predictable paths on shared /tmp enable symlink-based file...",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-2jwf-f4xq-f24h",
+      "published_at": "2026-08-13T14:11:07Z",
+      "summary": "GitHub Security Advisory (GHSA-2jwf-f4xq-f24h) - Severity: MEDIUM. ## Description `src/node/handler/ImportHandler.ts` and `src/node/handler/ExportHandler.ts` both compute their temporary working-file paths as: ```ts const randNum = Math.floor(Math.random() * 0xFFFFFFFF); const srcFile = `${os.",
+      "tags": [
+        "Active Directory",
+        "CVE-2026-55086",
+        "GHSA-2JWF-F4XQ-F24H",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "d5fb2f2d35ed01aa87c2646cf327b5880ad6df9ab6110e18c511203928868704",
+      "title": "[CVE-2026-55087] ep_etherpad-lite: Cache-poisoning Cross-site Scripting and Open Redirect via x-proxy-path Header",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-fjgc-3mj7-8rg8",
+      "published_at": "2026-08-13T13:46:07Z",
+      "summary": "GitHub Security Advisory (GHSA-fjgc-3mj7-8rg8) - Severity: MEDIUM. # GHSA-03 — `x-proxy-path` header reflected into admin HTML/JS/CSS (cache-poisoning XSS) and concatenated into redirect (open-redirect) **Severity:** Medium **CVSS v3.1 vector:** `CVSS:3.",
+      "tags": [
+        "Active Directory",
+        "CVE-2026-55087",
+        "GHSA-FJGC-3MJ7-8RG8",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "8aee6afb48bfc4633b40f82dc6441d3190cb72292c8d0d081e7ee75eb83db696",
+      "title": "[CVE-2026-55072] Pimcore: ClassDefinition UID regex missing end anchor allows SQL injection via Block.php unquoted table name",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-2mhj-fhvg-v428",
+      "published_at": "2026-08-13T13:44:24Z",
+      "summary": "GitHub Security Advisory (GHSA-2mhj-fhvg-v428) - Severity: HIGH. ### Summary A missing end anchor (`$`) in the ClassDefinition UID validation regex allows an authenticated user with the `objects` permission to create a class with a malicious UID containing SQL.",
+      "tags": [
+        "CVE-2026-55072",
+        "GHSA-2MHJ-FHVG-V428",
+        "GitHub",
+        "SQLi"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "ff8e21af745fe4d38a97c29e1a39e0ee37cc5b8f8d9c7f92f2f95d2956173b65",
+      "title": "Certificate Transparency Monitoring is now generally available",
+      "source": {
+        "id": "cloudflare_blog",
+        "name": "Cloudflare Blog",
+        "category_id": "informational",
+        "category_name": "Informational & Research"
+      },
+      "link": "https://blog.cloudflare.com/certificate-transparency-monitoring-ga",
+      "published_at": "2026-08-13T13:00:00Z",
+      "summary": "Cloudflare's Certificate Transparency Monitoring is now generally available. The biggest change: we no longer email you about certificates Cloudflare issued for your domain, so when an alert lands in your inbox, it's worth a look.",
+      "tags": [
+        "Cloudflare"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "d8633cdd48fdb2db3036dbb7fca9fc7aceef64c88c9607ce489f590e59c61c99",
+      "title": "The State of Ransomware Q2 2026",
+      "source": {
+        "id": "checkpoint_research",
+        "name": "Check Point Threat Research Labs",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://research.checkpoint.com/2026/the-state-of-ransomware-q2-2026",
+      "published_at": "2026-08-13T12:54:35Z",
+      "summary": "For the past year, the ransomware conversation has centered on concentration: a handful of dominant RaaS operations controlling most of the damage, and a shrinking pool of active groups fighting over the same territory.",
+      "tags": [
+        "Ransomware"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "7367d3f1679f5babd1e44fe89cb9e7e19719a9dc3e93a8d3eafb5857f111db81",
+      "title": "Can AI do novel security research? Meet the HTTP Terminator",
+      "source": {
+        "id": "reddit_netsec",
+        "name": "Reddit r/netsec Research & PoCs",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.reddit.com/r/netsec/comments/1vn94sg/can_ai_do_novel_security_research_meet_the_http",
+      "published_at": "2026-08-13T12:19:41Z",
+      "summary": "submitted by /u/albinowax [link] [comments]",
+      "tags": [
+        "Research"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "0da9a6c77f5f218bc073b7d5d62efd41d8919e1526ccc7cabf60ccc4945084af",
+      "title": "AVEVA Enterprise SCADA",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-advisories/icsa-26-225-01",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary Successful exploitation of this vulnerability could allow an attacker to tamper with serialized data, potentially resulting in code execution during deserialization.",
+      "tags": [
+        "CISA-KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "10341ae0af0fff16d8150aff6a246b797c93d1be5d4a97229dcfa80d2d375bad",
+      "title": "Haiwell IoT Cloud HMI Gateway",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-advisories/icsa-26-225-02",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary Successful exploitation of this vulnerability may allow an attacker to inject and execute arbitrary OS commands with root privileges. The following versions of Haiwell IoT Cloud HMI Gateway are affected: Haiwell IoT Cloud HMI Gateway 3.40.1.",
+      "tags": [
+        "CISA-KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "130edd7317c8254d8df1e6c53065994b6da09dde766753a83f1f0468371426b8",
+      "title": "Siemens Parasolid",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-advisories/icsa-26-225-10",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary Parasolid is affected by an out of bounds read vulnerability that could be triggered when the application reads files in X_T format. This could allow an attacker to crash the application or execute arbitrary code.",
+      "tags": [
+        "Active Directory",
+        "CISA-KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "19f8b89d631316313a128d88afe7d8bab540a616a58b6f248020c3376f947bcb",
+      "title": "Siemens Simcenter Femap",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-advisories/icsa-26-225-11",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary Simcenter Femap contains two file parsing vulnerabilities that could be triggered when the application reads files in BMP file format.",
+      "tags": [
+        "CISA-KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "2d703033b3495ce15d9549364e8b52cb9a0fbb69b10e5ed706a833cfacc812da",
+      "title": "Johnson Controls Metasys",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-advisories/icsa-26-225-14",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary Successful exploitation of this vulnerability could allow a low-privilege user or attacker to inject a persistent malicious payload via a crafted URL that executes in the context of other users' sessions, including administrators, potentially leading to session hijacking and...",
+      "tags": [
+        "Active Directory",
+        "CISA-KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "3264c8ab3a0b5253f236367987f2c006c084cf5c04ec4bedc23d61cffc977de6",
+      "title": "Siemens LOGO! Soft Comfort",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-advisories/icsa-26-225-13",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary Siemens LOGO! Soft Comfort contains multiple vulnerabilities in its project-file encryption and password handling mechanisms. A local attacker could exploit these vulnerabilities to extract the master key, allowing them to decrypt project data or remove project passwords.",
+      "tags": [
+        "CISA-KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "5a2939616f1d23c7114f7ef99b82a3a4f2891e903e1bd94b842cffac176b28aa",
+      "title": "Siemens License Server (SLS)",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-advisories/icsa-26-225-07",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary Siemens License Server is affected by multiple vulnerabilities which could allow an attacker to elevate its privileges and read arbitrary files on the system. Siemens has released a new version for Siemens License Server (SLS) and recommends to update to the latest version.",
+      "tags": [
+        "Active Directory",
+        "CISA-KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "a716bf6f256f5a8c17a24f777edd349ff45edf61d22425356d665c9b3a40c3d0",
+      "title": "Siemens Solid Edge",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-advisories/icsa-26-225-12",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary Solid Edge is affected by multiple file parsing vulnerabilities that could be triggered when the application reads specially crafted files in PAR, PSM or DFT format. This could allow an attacker to crash the application or execute arbitrary code.",
+      "tags": [
+        "CISA-KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "a8ad91edb2bea185080ac1951e2600fdc2f1665ab18313605efcb7a64af0e46d",
+      "title": "ANDRITZ HIPASE-250 and 250 SCALA",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-advisories/icsa-26-225-05",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary Successful exploitation of these vulnerabilities could allow an attacker to read data from the device or gain access to affected workstations. The following versions of ANDRITZ HIPASE-250 and 250 SCALA are affected: HIPASE-250 <=7.",
+      "tags": [
+        "Active Directory",
+        "CISA-KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "ae84b1aab0beb676809a9073d694d23495ad357b85c1de7329f4a6e2cf942598",
+      "title": "Siemens Desigo DXR and PXC Controllers",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-advisories/icsa-26-225-08",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary A vulnerability in Desigo DXR and PXC controllers has been identified that could allow an attacker to cause denial of service conditions by sending malformed BACnet packets. Recovery requires a device reset or reboot to restore normal functionality.",
+      "tags": [
+        "CISA-KEV",
+        "DoS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "b465bfbdf6853985f91fc9d9a98a414f211a54e5169cc9d91d34fb23ac456d9f",
+      "title": "Johnson Controls Inc. Airwall",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-advisories/icsa-26-225-03",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary Successful exploitation of these vulnerabilities could allow an attacker to decrypt sensitive data, bypass authentication controls, gaining unauthorized access to read arbitrary files on the system, or gain unauthorized access to protected system resources.",
+      "tags": [
+        "Active Directory",
+        "CISA-KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "cf3bb9f4d022e023d1b1db561cf75e10c495818785c6425d480e82467242f747",
+      "title": "Flow Neuroscience FL-100",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-medical-advisories/icsma-26-225-01",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary Successful exploitation of this vulnerability could allow an attacker within Bluetooth range to manipulate brain stimulation parameters and override safety limits.",
+      "tags": [
+        "CISA-KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "e757c46b684327f4fdaa089dea40937675b7f72d99f1f4ddf48c0a2fe09eb57b",
+      "title": "Siemens Siveillance Video",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-advisories/icsa-26-225-09",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary Siveillance Video Management Servers contains a vulnerability that could allow a Remote Code Execution attack. Siemens has released new versions for the affected products and recommends to update to the latest versions.",
+      "tags": [
+        "CISA-KEV",
+        "RCE"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "fa65f8b39404bbfc1a8012cafec79e70bf49d2020db1aff8d59348fcb440b72e",
+      "title": "Hitachi Energy APM Edge Product",
+      "source": {
+        "id": "cisa_advisories_rss",
+        "name": "CISA Cybersecurity Advisories",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.cisa.gov/news-events/ics-advisories/icsa-26-225-04",
+      "published_at": "2026-08-13T12:00:00Z",
+      "summary": "View CSAF Summary Hitachi Energy is aware of Dirty Frag vulnerabilities that affect APM Edge product versions listed in this document. Successful exploitation of these vulnerabilities could result in impact on confidentiality, integrity and availability of the product.",
+      "tags": [
+        "CISA-KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "409cf7f509537bcfb0ade0734bb4c344ed65f958cc6c8fd717598297f815552a",
+      "title": "AWS key exposed in JavaScript may have lit way to Beacon's charity data",
+      "source": {
+        "id": "the_register_security",
+        "name": "The Register Security Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.theregister.com/security/2026/08/13/aws-key-exposed-in-javascript-may-have-lit-way-to-beacons-charity-data/5287303",
+      "published_at": "2026-08-13T11:34:00Z",
+      "summary": "CRM provider confirms customer database was copied and probably downloaded in readable form",
+      "tags": [
+        "AWS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "4d817dc4dd262f9b32a3e31a90dcbcc91dbea3319379f21a800cf38283882902",
+      "title": "Dissecting the JWR phishing framework",
+      "source": {
+        "id": "cisco_talos",
+        "name": "Cisco Talos Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://blog.talosintelligence.com/dissecting-the-jwr-phishing-framework",
+      "published_at": "2026-08-13T10:00:35Z",
+      "summary": "Cisco Talos recently identified an undocumented phishing framework, internally branded \"JWR\" by its developer, built to convincingly impersonate checkout and login pages across major payment and shopping platforms.",
+      "tags": [
+        "Cisco",
+        "Phishing"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "0d9304a57c79cd9a5214df53fbde985f3b730e8cca3b823f238d319d691585b8",
+      "title": "'Jewelbug' APT Balances State Espionage & Cryptocurrency Theft",
+      "source": {
+        "id": "dark_reading",
+        "name": "Dark Reading",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.darkreading.com/threat-intelligence/jewelbug-apt-state-espionage-cryptocurrency-theft",
+      "published_at": "2026-08-13T10:00:00Z",
+      "summary": "Researchers discovered hackers-for-hire performing cyber espionage and financially motivated heists from the same Web panel.",
+      "tags": [
+        "APT"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "6ad3c57e750ed7781513d6050c43647e41fcf99130f5754bade23b2d779414bb",
+      "title": "Belgium's eID Authentication Opens Citizen Accounts to RCE",
+      "source": {
+        "id": "dark_reading",
+        "name": "Dark Reading",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.darkreading.com/application-security/belgium-eid-authentication-citizen-accounts-rce",
+      "published_at": "2026-08-13T07:00:00Z",
+      "summary": "The trust framework underlying Belgium's electronic ID system was fully compromised by severe vulnerabilities in a key browser extension, showcasing bigger problems with extensions in general.",
+      "tags": [
+        "RCE"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "bca3533143f52178e18f0c292fb6497f42347ff821424a58269720e0b48c5744",
+      "title": "Passwords stored in public Google Doc then showed up in search results",
+      "source": {
+        "id": "the_register_security",
+        "name": "The Register Security Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.theregister.com/security/2026/08/13/passwords-stored-in-public-google-doc-then-showed-up-in-search-results/5287028",
+      "published_at": "2026-08-13T07:00:00Z",
+      "summary": "Developer spotted hostname and credential string lurking in autocomplete",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "3c5ef5fa5324c56d0088ebd0c255bc52445049f09368b126e7e180b72ff900db",
+      "title": "Attackers Exploit SharePoint Authentication Bypass After Public PoC Release",
+      "source": {
+        "id": "the_hacker_news",
+        "name": "The Hacker News",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://thehackernews.com/2026/08/attackers-exploit-sharepoint.html",
+      "published_at": "2026-08-13T06:09:48Z",
+      "summary": "Threat actors have begun to exploit a newly disclosed Microsoft SharePoint vulnerability following the release of a proof-of-concept (PoC) code. The vulnerability in question is CVE-2026-55040 (CVSS score: 9.1), which refers to a critical security feature bypass that stems from weak authentication.",
+      "tags": [
+        "Auth Bypass",
+        "CVE-2026-55040",
+        "Critical"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "1be17d2bf3bb3f262bdde12ce374fd7710f2f9d1fad660e74500b4757b8196cd",
+      "title": "ZDI-26-574: Linux Kernel Net Scheduler Connection Tracking Race Condition Local Privilege Escalation Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-574",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows local attackers to escalate privileges on affected installations of Linux Kernel. An attacker must first obtain the ability to execute high-privileged code on the target system in order to exploit this vulnerability. The ZDI has assigned a CVSS rating of 7.5.",
+      "tags": [
+        "Kernel",
+        "Linux",
+        "Privilege Escalation"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "303a7ac3fb215ceb10b77fd49b53b3a3911ca151cb287b61db6482fa69f08a07",
+      "title": "ZDI-26-578: NGINX HTTP Dav Module Alias Directive Integer Underflow Remote Code Execution Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-578",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows remote attackers to execute arbitrary code on affected installations of NGINX. Authentication is not required to exploit this vulnerability. The ZDI has assigned a CVSS rating of 8.1. The following CVEs are assigned: CVE-2026-27654.",
+      "tags": [
+        "CVE-2026-27654",
+        "Nginx",
+        "RCE"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "32bd1c543ca93912afcc3e69fcf20d87bc34b3b13bdda24ed2b3308d032c5e06",
+      "title": "ZDI-26-575: Linux Kernel Net Scheduler Packet Classifier API Time-Of-Check Time-Of-Use Local Privilege Escalation Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-575",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows local attackers to escalate privileges on affected installations of Linux Kernel. An attacker must first obtain the ability to execute high-privileged code on the target system in order to exploit this vulnerability. The ZDI has assigned a CVSS rating of 7.5.",
+      "tags": [
+        "Kernel",
+        "Linux",
+        "Privilege Escalation"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "3ec926cfd6bfaa83c659d2eaeade84d5b0151ba4cc5120705507bf3b0c62e670",
+      "title": "ZDI-26-581: Cisco Identity Services Engine invokeScript Command Injection Remote Code Execution Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-581",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows remote attackers to execute arbitrary code on affected installations of Cisco Identity Services Engine. Authentication is required to exploit this vulnerability. The ZDI has assigned a CVSS rating of 7.2. The following CVEs are assigned: CVE-2026-20147.",
+      "tags": [
+        "CVE-2026-20147",
+        "Cisco",
+        "RCE"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "41ea3e18ce079827301b1062dc56f64e818d282a780736a27c1cc2b377cebba5",
+      "title": "ZDI-26-580: Cisco Identity Services Engine Missing Authentication for Critical Function Information Disclosure Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-580",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "The vulnerability allows remote attackers to disclose sensitive information on affected installations of Cisco Identity Services Engine. Authentication is not required to exploit this vulnerability. The ZDI has assigned a CVSS rating of 7.5. The following CVEs are assigned: CVE-2026-20190.",
+      "tags": [
+        "CVE-2026-20190",
+        "Cisco",
+        "Critical"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "52d0a89d69b5706b663574734149845849a78910c969e04289a50bdc6c724b63",
+      "title": "ZDI-26-567: Norton Utilities Ultimate NortonUtilitiesSvc Link Following Local Privilege Escalation Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-567",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows local attackers to escalate privileges on affected installations of Norton Utilities Ultimate. An attacker must first obtain the ability to execute low-privileged code on the target system in order to exploit this vulnerability. The ZDI has assigned a CVSS rating of 7.8.",
+      "tags": [
+        "Privilege Escalation"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "6dad460b82d8959205d0b11dfcff5a05810a47584f649a00a1b872a927d74e65",
+      "title": "ZDI-26-579: Cisco Identity Services Engine zipFiles Directory Traversal Remote Code Execution Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-579",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows remote attackers to execute arbitrary code on affected installations of Cisco Identity Services Engine. Authentication is required to exploit this vulnerability. The ZDI has assigned a CVSS rating of 7.2. The following CVEs are assigned: CVE-2026-20181.",
+      "tags": [
+        "CVE-2026-20181",
+        "Cisco",
+        "RCE"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "7d9667b645ed858ef6647d6b9d34ed2248c516eebe1716786807ff46c5d5e94d",
+      "title": "ZDI-26-564: NVIDIA Transformers4Rec load_model_trainer_states_from_checkpoint Deserialization of Untrusted Data Remote Code Execution Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-564",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows remote attackers to execute arbitrary code on affected installations of NVIDIA Transformers4Rec. User interaction is required to exploit this vulnerability in that the target must visit a malicious page or open a malicious file. The ZDI has assigned a CVSS rating of 7.8.",
+      "tags": [
+        "RCE"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "95220908f0961d39eb3107513561c2f54110c18a4d827b0b2386fd93bcb8e24e",
+      "title": "ZDI-26-576: Linux Kernel XFRM Race Condition Local Privilege Escalation Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-576",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows local attackers to escalate privileges on affected installations of Linux Kernel. An attacker must first obtain the ability to execute high-privileged code on the target system in order to exploit this vulnerability. The ZDI has assigned a CVSS rating of 7.5.",
+      "tags": [
+        "Kernel",
+        "Linux",
+        "Privilege Escalation"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "a6e2a599a0c9745b7791cfe870684e0bb08d3d92cf276872882ac6578c1debc2",
+      "title": "ZDI-26-566: BlackBerry QNX KEV File Parsing Out-Of-Bounds Write Remote Code Execution Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-566",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows remote attackers to execute arbitrary code on affected installations of BlackBerry QNX. User interaction is required to exploit this vulnerability in that the target must visit a malicious page or open a malicious file. The ZDI has assigned a CVSS rating of 7.8.",
+      "tags": [
+        "RCE"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "ac0fa1c8e18f8c551132faf207829ba8eec392ba85420c04f8c9e2dc287f533e",
+      "title": "ZDI-26-565: Gen Digital CCleaner Link Following Local Privilege Escalation Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-565",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows local attackers to escalate privileges on affected installations of Gen Digital CCleaner. An attacker must first obtain the ability to execute low-privileged code on the target system in order to exploit this vulnerability. The ZDI has assigned a CVSS rating of 7.8.",
+      "tags": [
+        "Privilege Escalation"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "bce104b295b8a873c6abbda42ae082a1e95a19aca5769cfa9a30fad0572b7175",
+      "title": "ZDI-26-577: Trend Micro VPN OpenSSL Configuration Uncontrolled Search Path Element Local Privilege Escalation Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-577",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows local attackers to escalate privileges on affected installations of Trend Micro VPN. An attacker must first obtain the ability to execute low-privileged code on the target system in order to exploit this vulnerability. The ZDI has assigned a CVSS rating of 7.0.",
+      "tags": [
+        "Privilege Escalation",
+        "VPN"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "c3dab0fedcd6668b2d6357e8485c32bd7b0bea0ab9e3e31900fd39e719fba202",
+      "title": "ZDI-26-573: Linux Kernel KSMBD Response Header Out-Of-Bounds Read Information Disclosure Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-573",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows remote attackers to disclose sensitive information on affected installations of Linux Kernel KSMBD. Authentication is not required to exploit this vulnerability. However, only systems with ksmbd enabled are vulnerable. The ZDI has assigned a CVSS rating of 9.3.",
+      "tags": [
+        "Active Directory",
+        "Kernel",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "c59768f732463ff2f4b540907121b785abaab1281380d915e36c40c81dd7655a",
+      "title": "ZDI-26-584: dnsmasq DNSSEC NSEC/NSEC3 Type Bitmap Processing Infinite Loop Denial-of-Service Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-584",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows remote attackers to create a denial-of-service condition on affected installations of dnsmasq. Authentication is not required to exploit this vulnerability. The ZDI has assigned a CVSS rating of 7.5. The following CVEs are assigned: CVE-2026-4890.",
+      "tags": [
+        "CVE-2026-4890"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "c7fd40a8614dee03de54d41a55e9f4c02932683c16aa994331b1a926f8a0dee3",
+      "title": "ZDI-26-569: Linux Kernel Net Scheduler True Link Equalizer Race Condition Local Privilege Escalation Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-569",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows local attackers to escalate privileges on affected installations of Linux Kernel. An attacker must first obtain the ability to execute high-privileged code on the target system in order to exploit this vulnerability. The ZDI has assigned a CVSS rating of 7.5.",
+      "tags": [
+        "Kernel",
+        "Linux",
+        "Privilege Escalation"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "d0404fd62c6d790cb1381229cf57e5626719fb7ed2a06fe812169d420d3520b1",
+      "title": "ZDI-26-583: Clam AntiVirus 7z Archive Parsing Integer Overflow Remote Code Execution Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-583",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows remote attackers to execute arbitrary code on affected installations of Clam AntiVirus. Interaction with this product is required to exploit this vulnerability but attack vectors may vary depending on the implementation. The ZDI has assigned a CVSS rating of 8.4.",
+      "tags": [
+        "RCE"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "da99a9c53b2d3b9f2a78052c4bf132eab9aa156254f9112ffb05f52b255e14b5",
+      "title": "ZDI-26-582: Cisco Identity Services Engine PatchUpdateListener Directory Traversal Information Disclosure Vulnerability",
+      "source": {
+        "id": "zdi_advisories",
+        "name": "Trend Micro Zero Day Initiative (ZDI)",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "http://www.zerodayinitiative.com/advisories/ZDI-26-582",
+      "published_at": "2026-08-13T05:00:00Z",
+      "summary": "This vulnerability allows remote attackers to disclose sensitive information on affected installations of Cisco Identity Services Engine. Authentication is required to exploit this vulnerability. The ZDI has assigned a CVSS rating of 4.9. The following CVEs are assigned: CVE-2026-20148.",
+      "tags": [
+        "CVE-2026-20148",
+        "Cisco"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "7875c55e5036f065bee721f125e4fc9115ddb0958491b77abfd562bb724e67f6",
+      "title": "Chinese Loongson processors have leaky caches, researchers find",
+      "source": {
+        "id": "the_register_security",
+        "name": "The Register Security Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.theregister.com/security/2026/08/13/chinese-loongson-processors-have-leaky-caches-researchers-find/5287137",
+      "published_at": "2026-08-13T02:14:11Z",
+      "summary": "Attackers could extract data, even working from inside a guest VM",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "be579ec8a4a0b6397ee944fa21d371409516d28ac12e2a071844d435afd59db0",
+      "title": "Using Gemma4 with Ollama - Testing File Hash Analysis and Recommendations with AI, (Wed, Aug 12th)",
+      "source": {
+        "id": "sans_isc",
+        "name": "SANS Internet Storm Center",
+        "category_id": "informational",
+        "category_name": "Informational & Research"
+      },
+      "link": "https://isc.sans.edu/diary/rss/33242",
+      "published_at": "2026-08-13T01:26:53Z",
+      "summary": "In the past few weeks, I have been using Gemma4 as a Large Language Model (LLM) to see how useful it can be to analyze some of the malware hashes uploaded to the DShield sensor over the past 30 days and figure out how its recommendation can be considered useful about the activity my DShield sensor...",
+      "tags": [
+        "Malware"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "2096d14cc19ee82ad56362eabd6b1f7c910ecede600659732e174545d7beb0b2",
+      "title": "DSA-6436-1 chromium - security update",
+      "source": {
+        "id": "debian_security",
+        "name": "Debian Security Advisories",
+        "category_id": "security_advisories",
+        "category_name": "Security Advisories"
+      },
+      "link": "https://lists.debian.org/debian-security-announce/2026/msg00347.html",
+      "published_at": "2026-08-13T00:00:00Z",
+      "summary": "https://security-tracker.debian.org/tracker/DSA-6436-1",
+      "tags": [
+        "Debian",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "de9b408f2c23dcb24ee44bb9845ccd826eaf22a4276fbadef2541db5303ce58c",
+      "title": "DSA-6438-1 postgresql-17 - security update",
+      "source": {
+        "id": "debian_security",
+        "name": "Debian Security Advisories",
+        "category_id": "security_advisories",
+        "category_name": "Security Advisories"
+      },
+      "link": "https://lists.debian.org/debian-security-announce/2026/msg00349.html",
+      "published_at": "2026-08-13T00:00:00Z",
+      "summary": "https://security-tracker.debian.org/tracker/DSA-6438-1",
+      "tags": [
+        "Debian",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "f057b4acda5d3f8017cb4f78433551d356ba466102e85fa887bb3b2bd79e3b84",
+      "title": "DSA-6437-1 apr-util - security update",
+      "source": {
+        "id": "debian_security",
+        "name": "Debian Security Advisories",
+        "category_id": "security_advisories",
+        "category_name": "Security Advisories"
+      },
+      "link": "https://lists.debian.org/debian-security-announce/2026/msg00348.html",
+      "published_at": "2026-08-13T00:00:00Z",
+      "summary": "https://security-tracker.debian.org/tracker/DSA-6437-1",
+      "tags": [
+        "Debian",
+        "Linux"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "e23e9e9a68fb31ee113e5e4f1ed11fc14b6138fb207273eecbe89166dcda87cc",
+      "title": "[CVE-2026-55074] Ansible FreeBSD Jail Connection Plugin: Jail escape via symlink following in put_file (host-side root mv)",
+      "source": {
+        "id": "github_advisories",
+        "name": "GitHub Advisory Database",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://github.com/advisories/GHSA-cxgv-hp74-jj7r",
+      "published_at": "2026-08-12T23:21:06Z",
+      "summary": "GitHub Security Advisory (GHSA-cxgv-hp74-jj7r) - Severity: HIGH. Through version 1.3.0, the jailexec connection plugin's put_file resolved a transfer's destination to a path on the jail host ( + ) and ran mkdir -p and mv there as root on the host.",
+      "tags": [
+        "CVE-2026-55074",
+        "FreeBSD",
+        "GHSA-CXGV-HP74-JJ7R",
+        "GitHub"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "7e3f6afdeee83ef193c3aaca16b6af97cd674905d7b80acadb1badc0d52e77d6",
+      "title": "TrueNAS 25.10.6: Resolving a Truckload of CVEs",
+      "source": {
+        "id": "truenas_blog",
+        "name": "TrueNAS Storage & Security",
+        "category_id": "security_advisories",
+        "category_name": "Security Advisories"
+      },
+      "link": "https://www.truenas.com/blog/truenas-25-10-6-truckload-security-vulnerabilities",
+      "published_at": "2026-08-12T21:57:31Z",
+      "summary": "Patch notes are supposed to be boring. A short list of CVEs, a version bump, nothing to see here. That stopped being true the moment AI models got better at finding vulnerabilities than most people are at writing proof-of-concepts for them. TL;DR: TrueNAS 25.10.",
+      "tags": [
+        "Active Directory",
+        "TrueNAS"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "fc536b1be471f8ca8990a6005bae62b69491071afbe0a13908c01ef3b17ca954",
+      "title": "'Near-autonomous' AI agents attack Taiwan's nuclear safety agency",
+      "source": {
+        "id": "the_register_security",
+        "name": "The Register Security Intelligence",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.theregister.com/security/2026/08/12/near-autonomous-ai-agents-attack-taiwans-nuclear-safety-agency/5287055",
+      "published_at": "2026-08-12T21:45:16Z",
+      "summary": "Some say the world will end in fire, some say an agentic swarm",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "5c0ecb74e8a5493e5f66db73344920aec98adbdc06b44fc3c953f60308fbb89f",
+      "title": "Long-running Data Theft Campaign Targeting Salesforce, ServiceNow",
+      "source": {
+        "id": "dark_reading",
+        "name": "Dark Reading",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://www.darkreading.com/cyberattacks-data-breaches/long-running-data-theft-campaign-salesforce-servicenow",
+      "published_at": "2026-08-12T21:08:54Z",
+      "summary": "The \"City-Forum\" campaign has been active since at least March 2025 and has targeted organizations across multiple sectors with custom tooling.",
+      "tags": [],
+      "secondary_sources": []
+    },
+    {
+      "id": "dd4bd571d188fbcf0c2fc2e2e0a87deb72077af2755326f7396bb73078c5da31",
+      "title": "USN-8632-1: follow-redirects vulnerability",
+      "source": {
+        "id": "ubuntu_security",
+        "name": "Ubuntu Security Notices",
+        "category_id": "security_advisories",
+        "category_name": "Security Advisories"
+      },
+      "link": "https://ubuntu.com/security/notices/USN-8632-1",
+      "published_at": "2026-08-12T20:27:13Z",
+      "summary": "Dennis Sepede discovered that follow-redirects did not properly remove custom authentication headers when following cross-domain redirects. An attacker could possibly use this issue to obtain sensitive authentication information, resulting in credential disclosure.",
+      "tags": [
+        "Linux",
+        "Ubuntu"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "b650a26b9feb1c9f2dd2252ec488d4959121d2535755694a1de7af46f8c62810",
+      "title": "CVE-2026-19642 & CVE-2026-19643 - Memory-safety issues in the Base64 decoder in the AWS SDK for C++",
+      "source": {
+        "id": "aws_security",
+        "name": "AWS Security Bulletins",
+        "category_id": "security_advisories",
+        "category_name": "Security Advisories"
+      },
+      "link": "https://aws.amazon.com/security/security-bulletins/rss/2026-080-aws",
+      "published_at": "2026-08-12T19:52:23Z",
+      "summary": "Bulletin ID: 2026-080-AWS Scope: AWS Content Type: Important (requires attention) Publication Date: 08/12/2026 12:30 PM PDT Description: The AWS SDK for C++ is an open-source library that provides C++ developers with APIs for AWS services.",
+      "tags": [
+        "AWS",
+        "CVE-2026-19642",
+        "CVE-2026-19643"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "35c1eb1c63888c0a5f2467ade9a10027c308a63ae875985337c9dc30e22e74c0",
+      "title": "CISA KEV: CVE-2026-68820 - Microsoft Windows Ancillary Function Driver for WinSock (Microsoft Windows Ancillary Function Driver for WinSock Use-After-Free Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-68820",
+      "published_at": "2026-08-11T00:00:00Z",
+      "summary": "Microsoft Windows Ancillary Function Driver for WinSock contains a use-after-free vulnerability that allows an authorized attacker to elevate privileges locally.",
+      "tags": [
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-68820",
+        "Critical",
+        "KEV",
+        "Windows"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "ba9da5cbdda032af661c6a46b783a86d4ca611b5df22eb2f8d83b4c03c86c6b0",
+      "title": "CISA KEV: CVE-2026-72898 - Metabase Metabase (Metabase SQL Injection Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-72898",
+      "published_at": "2026-08-11T00:00:00Z",
+      "summary": "Metabase contains a SQL Injection vulnerability that allows an unauthenticated remote attacker to inject arbitrary SQL into the Metabase application database, which can give them administrator access to the instance.",
+      "tags": [
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-72898",
+        "Critical",
+        "KEV",
+        "SQLi",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "d8569b39ca3631274ad5b57e1cc8c8a9a771a58cf9388f71c31222633c335f59",
+      "title": "CISA KEV: CVE-2026-20349 - Cisco Secure Firewall Adaptive Security Appliance (ASA) and Secure Firewall Threat Defense (FTD) (Cisco Secure Firewall Adaptive Security Appliance (ASA) and Secure Firewall Threat Defense (FTD) Heap Inspection Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-20349",
+      "published_at": "2026-08-11T00:00:00Z",
+      "summary": "Cisco Secure Firewall Adaptive Security Appliance (ASA) and Secure Firewall Threat Defense (FTD) contain a heap inspection vulnerability that could allow an unauthenticated, remote attacker to cause the device to reload unexpectedly, resulting in a denial of service (DoS) condition.",
+      "tags": [
+        "Active Directory",
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-20349",
+        "Cisco",
+        "Critical",
+        "DoS",
+        "KEV",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "e5c4bac2654ab6ebffa164eb26a9c2d80840ad2c0ebd89f59d8141636b1e7120",
+      "title": "CISA KEV: CVE-2026-8037 - Progress LoadMaster (Progress LoadMaster Command Injection Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-8037",
+      "published_at": "2026-08-07T00:00:00Z",
+      "summary": "Progress LoadMaster contains a command injection vulnerability that allows an un-authenticated attacker to execute arbitrary commands on the LoadMaster appliance by exploiting unsanitized input in multiple command endpoints.",
+      "tags": [
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-8037",
+        "Critical",
+        "KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "2657132cad2ee0fbd2206a3dd3f5241dbb6eefedc1bcdbf3a4c3a01d4675bc0c",
+      "title": "CISA KEV: CVE-2026-63077 - JetBrains TeamCity (JetBrains TeamCity Deserialization of Untrusted Data Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-63077",
+      "published_at": "2026-08-05T00:00:00Z",
+      "summary": "JetBrains TeamCity contains a deserialization of untrusted data vulnerability that could allow unauthenticated remote code execution via the agent polling protocol.",
+      "tags": [
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-63077",
+        "Critical",
+        "KEV",
+        "RCE",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "481c9e72e0ff58f8bfe984e3a3b204f7e7ac75e1b58e0e500ffbc0b095b91ce7",
+      "title": "CISA KEV: CVE-2026-9198 - IBM Langflow (IBM Langflow Code Injection Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-9198",
+      "published_at": "2026-08-04T00:00:00Z",
+      "summary": "Langflow contains a code injection vulnerability that allows unauthenticated attackers to achieve full remote code execution on default Langflow deployments.",
+      "tags": [
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-9198",
+        "Critical",
+        "KEV",
+        "RCE",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "bf0aeb8d40dca6f9edba379dc6b89aaa47bf95ecb1211234052044c073cf80b3",
+      "title": "CISA KEV: CVE-2026-34486 - Apache Tomcat (Apache Tomcat Missing Encryption of Sensitive Data Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-34486",
+      "published_at": "2026-08-04T00:00:00Z",
+      "summary": "Apache Tomcat contains a missing encryption of sensitive data vulnerability that allows the bypass of the EncryptInterceptor. This vulnerability can be chained with CVE‑2025‑24813.",
+      "tags": [
+        "Apache",
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-34486",
+        "Critical",
+        "KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "cd209761b022b7ce56a7ac6a8c5378368bc874b067d25e4b29f1652e1fbd27fc",
+      "title": "CISA KEV: CVE-2026-18556 - N-able N-central (N-able N-central Authentication Bypass Using an Alternate Path or Channel Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-18556",
+      "published_at": "2026-08-04T00:00:00Z",
+      "summary": "N-able N-central contains an authentication bypass using an alternate path or channel that allows for authentication bypass.",
+      "tags": [
+        "Auth Bypass",
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-18556",
+        "Critical",
+        "KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "17bdc86605bbbe307eabe1723ff4530fc60a0e407dd61a139b15694e403674e5",
+      "title": "CISA KEV: CVE-2026-20316 - Cisco Secure Firewall Management Center (FMC) (Cisco Secure Firewall Management Center Use of Hard-coded Password Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-20316",
+      "published_at": "2026-07-29T00:00:00Z",
+      "summary": "Cisco Secure Firewall Management Center (FMC) formerly known as Firepower Management Center contains a use of hard-coded password vulnerability that could allow an unauthenticated, remote attacker to log in to an affected device using a low-privileged account to access sensitive data within the...",
+      "tags": [
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-20316",
+        "Cisco",
+        "Critical",
+        "KEV",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "db2794905935828e0e5b92f468c80be489200cbe2f6d5fda9a802466157241af",
+      "title": "CISA KEV: CVE-2026-16812 - Arista VeloCloud Orchestrator (Arista VeloCloud Orchestrator On-Prem OS Command Injection Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-16812",
+      "published_at": "2026-07-27T00:00:00Z",
+      "summary": "Arista VeloCloud Orchestrator On-Prem contains an OS command injection vulnerability that may allow a remote attacker to access privileged internal functionality and impact the VCO host.",
+      "tags": [
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-16812",
+        "Critical",
+        "KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "e86dff840cb44d2c90bf715ee18e6cb817bc0c52f4b754bd32df6d745587b54f",
+      "title": "CISA KEV: CVE-2025-68686 - Fortinet FortiOS (Fortinet FortiOS Exposure of Sensitive Information to an Unauthorized Actor Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2025-68686",
+      "published_at": "2026-07-27T00:00:00Z",
+      "summary": "Fortinet FortiOS contains an exposure of sensitive information to an unauthorized actor vulnerability. This may allow a remote unauthenticated attacker to bypass the patch developed for the symbolic link persistency mechanism observed in some post-exploit cases, via crafted HTTP requests.",
+      "tags": [
+        "CISA",
+        "CISA-KEV",
+        "CVE-2025-68686",
+        "Critical",
+        "KEV",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "247d1aac5589d133607aa3faa4757b0ae28d7d2e35b21249e8021bf4b8739b68",
+      "title": "CISA KEV: CVE-2026-50522 - Microsoft SharePoint (Microsoft SharePoint Deserialization of Untrusted Data Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-50522",
+      "published_at": "2026-07-22T00:00:00Z",
+      "summary": "Microsoft SharePoint contains a deserialization of untrusted data vulnerability which could allow an unauthorized attacker to execute code over a network.",
+      "tags": [
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-50522",
+        "Critical",
+        "KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "344ad67013841aaa183359829ee52a125d110543052446abaa7f94f4515dde93",
+      "title": "CISA KEV: CVE-2026-16232 - Check Point SmartConsole (Check Point SmartConsole Improper Authentication Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-16232",
+      "published_at": "2026-07-22T00:00:00Z",
+      "summary": "Check Point SmartConsole contains an improper authentication vulnerability which could allow an unauthenticated remote attacker to obtain an application login token and use it to authenticate with full administrative privileges.",
+      "tags": [
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-16232",
+        "Critical",
+        "KEV",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "56943e5be88ff6b8b1635337db33ef427044204f3c0f1da46b0a3717b2cf07c3",
+      "title": "CISA KEV: CVE-2026-60137 - WordPress Core (WordPress Core SQL Injection Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-60137",
+      "published_at": "2026-07-21T00:00:00Z",
+      "summary": "WordPress Core contains a SQL injection vulnerability when a plugin or theme passes untrusted input to the parameter. This vulnerability can be chained with CVE-2026-63030 to allow an unauthenticated attacker to gain remote code execution on default WordPress installations.",
+      "tags": [
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-60137",
+        "CVE-2026-63030",
+        "Critical",
+        "KEV",
+        "RCE",
+        "SQLi",
+        "Unauthenticated",
+        "WordPress"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "577d620a14c10ff1790f6d2c56d21cdc0c57ec35948217af523bbe341d4f0a54",
+      "title": "CISA KEV: CVE-2026-0770 - Langflow Langflow (Langflow Inclusion of Functionality from Untrusted Control Sphere Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2026-0770",
+      "published_at": "2026-07-21T00:00:00Z",
+      "summary": "Langflow contains an inclusion of functionality from untrusted control sphere vulnerability that allows remote attackers to execute arbitrary code on affected installations.",
+      "tags": [
+        "CISA",
+        "CISA-KEV",
+        "CVE-2026-0770",
+        "Critical",
+        "KEV"
+      ],
+      "secondary_sources": []
+    },
+    {
+      "id": "fe43d878a37206a6f6018e0576f792b144f846b5a733b889f5f8b57e681a6967",
+      "title": "CISA KEV: CVE-2021-27137 - DD-WRT DD-WRT (DD-WRT Stack-Based Buffer Overflow Vulnerability)",
+      "source": {
+        "id": "cisa_kev_json",
+        "name": "CISA Known Exploited Vulnerabilities",
+        "category_id": "active_threats",
+        "category_name": "Active Threat Intel & CVEs"
+      },
+      "link": "https://nvd.nist.gov/vuln/detail/CVE-2021-27137",
+      "published_at": "2026-07-21T00:00:00Z",
+      "summary": "DD-WRT contains a stack-based buffer overflow vulnerability that could allow an unauthenticated attacker to overflow an internal buffer used by UPnP and trigger a code execution vulnerability.",
+      "tags": [
+        "Buffer Overflow",
+        "CISA",
+        "CISA-KEV",
+        "CVE-2021-27137",
+        "Critical",
+        "KEV",
+        "Unauthenticated"
+      ],
+      "secondary_sources": []
+    }
+  ]
+}

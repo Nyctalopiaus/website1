@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <!-- Chart.js library for elevation graphing -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="advisor.css?v=13" />
+  <link rel="stylesheet" href="advisor.css?v=20" />
 </head>
 <body>
 
@@ -27,6 +27,9 @@
         <span class="pulse-indicator"></span>
         <span class="status-val">Open Road Advisor Active</span>
       </div>
+      <button type="button" id="btn-open-quickstart" class="btn-quickstart-road" title="Show Quick Start Guide">
+        <span>ℹ️</span> <span>Quick Start</span>
+      </button>
       <button type="button" id="btn-open-features" class="btn-feature-road" title="View Advisor Capabilities">
         <span>🧭</span> <span>Features</span>
       </button>
@@ -401,6 +404,28 @@
     <p>&copy; 2026 Nycto. Nycto's Open Road Advisor. All calculations are estimates.</p>
   </footer>
 
+  <!-- Quick Start Modal -->
+  <div id="quickstart-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="quickstart-modal-title">
+      <button id="btn-close-quickstart" class="modal-close-button" aria-label="Close Quick Start guide">&times;</button>
+      <h2 id="quickstart-modal-title" class="feature-modal-title" style="color: var(--accent-gold, #f59e0b);">🧭 OPEN ROAD ADVISOR QUICK START</h2>
+      <p class="feature-modal-intro">Follow these 4 steps to plan your driving route, assess weather hazards, and optimize departure times.</p>
+      <ol class="quickstart-steps-list">
+        <li><strong>1) Enter Route Waypoints</strong> Set your departure city, destination, and any planned intermediate rest or gas stops.</li>
+        <li><strong>2) Fetch Highway Weather</strong> Get real-time NOAA/Open-Meteo weather waypoints timed to your exact milestone arrivals.</li>
+        <li><strong>3) Assess Drive Risk Scores</strong> Inspect temperature drops, wind gusts, precipitation alerts, and road hazard scores per leg.</li>
+        <li><strong>4) Optimize Departure Window</strong> Adjust the departure time slider to find the safest driving window before hitting the road.</li>
+      </ol>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon">🔒</span>
+        <div>
+          <strong>100% PRIVATE CLIENT-SIDE TELEMETRY</strong>
+          All route waypoints and trip schedules process strictly inside your browser sandbox.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Features Modal -->
   <div id="features-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
     <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
@@ -427,6 +452,6 @@
 
   <!-- Leaflet GIS Mapping library script -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script type="module" src="advisor.js?v=9"></script>
+  <script type="module" src="advisor.js?v=20"></script>
 </body>
 </html>

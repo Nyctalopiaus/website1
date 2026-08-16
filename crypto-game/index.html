@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body>
   <div class="crt-overlay"></div>
@@ -24,6 +24,9 @@
         <span class="entropy-label">Entropy Definition:</span>
         <span class="entropy-formula">H(X) = - &sum; P(x<sub>i</sub>) log<sub>2</sub> P(x<sub>i</sub>)</span>
       </div>
+      <button type="button" id="btn-open-quickstart" class="btn-quickstart-matrix font-mono" title="Show Quick Start Guide">
+        [SYS_QUICKSTART]
+      </button>
       <button type="button" id="btn-open-features" class="btn-feature-matrix font-mono" title="View Matrix Capabilities">
         [SYS_FEATURES]
       </button>
@@ -179,6 +182,28 @@
     <p class="font-mono">&copy; 2026 CRYPTO MATRIX CONSOLE. ALL SHANNON DATA INTEGRITY VERIFIED.</p>
   </footer>
 
+  <!-- Quick Start Modal -->
+  <div id="quickstart-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content font-mono" role="dialog" aria-modal="true" aria-labelledby="quickstart-modal-title">
+      <button id="btn-close-quickstart" class="modal-close-button" aria-label="Close Quick Start guide">&times;</button>
+      <h2 id="quickstart-modal-title" class="feature-modal-title text-green">[SYS_QUICKSTART] MATRIX DECODER PROTOCOL</h2>
+      <p class="feature-modal-intro">Execute these 4 operational steps to decode, analyze, and breach encrypted telemetry signals.</p>
+      <ol class="quickstart-steps-list">
+        <li><strong>1) Input Cipher Stream</strong> Paste raw text, base64 strings, or encrypted telemetry into the Decoder Input buffer.</li>
+        <li><strong>2) Run Shannon Analysis</strong> Inspect bitwise character distribution, Shannon entropy levels H(X), and byte frequency histograms.</li>
+        <li><strong>3) Toggle Real-Time Ciphers</strong> Apply Caesar, Vigenère, Rail Fence, or Repeating XOR ciphers to observe dynamic scramble outputs.</li>
+        <li><strong>4) Intercept CTF Flags</strong> Launch CTF Challenge Mode to intercept signals, crack enemy payloads, and harvest flag credentials.</li>
+      </ol>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon">🔒</span>
+        <div>
+          <strong>100% PRIVATE CLIENT-SIDE MATRIX</strong>
+          All payload encryption, hash operations, and CTF challenges execute entirely within your browser's RAM sandbox.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Features Modal -->
   <div id="features-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
     <div class="modal-card feature-modal-content font-mono" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
@@ -203,6 +228,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=1"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

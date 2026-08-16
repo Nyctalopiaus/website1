@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   let statusState = null;
+  let currentTimeframe = '24h';
 
   // Add Terminal Log Message
   function logTerminal(message, type = 'info') {
@@ -124,7 +125,56 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMatrixTable(visibleEndpoints);
 
     // 5. Render Historical Trend SVG Chart
-    renderTrendChart(data.history_trend || []);
+    updateTrendChartForTimeframe(data, currentTimeframe);
+  }
+
+  // Resolve Dataset for Active Timeframe (Strict Real Database Data Only)
+  function getTimeframeHistory(data, timeframe) {
+    if (!data) return [];
+
+    if (timeframe === '7d' && data.history_trend_7d && data.history_trend_7d.length > 0) {
+      return data.history_trend_7d;
+    }
+
+    if (timeframe === '30d' && data.history_trend_30d && data.history_trend_30d.length > 0) {
+      return data.history_trend_30d;
+    }
+
+    if (timeframe === '24h') {
+      return (data.history_trend_24h && data.history_trend_24h.length > 0)
+        ? data.history_trend_24h
+        : (data.history_trend || []);
+    }
+
+    // Fallback if specific array is missing: aggregate real recorded items from history_trend by date (YYYY-MM-DD)
+    const baseHistory = data.history_trend_24h || data.history_trend || [];
+    const dailyMap = {};
+    baseHistory.forEach(item => {
+      if (!item || !item.hr) return;
+      const dateStr = item.hr.slice(0, 10);
+      if (!dailyMap[dateStr]) dailyMap[dateStr] = [];
+      dailyMap[dateStr].push(parseFloat(item.avg_lat) || 0);
+    });
+
+    const realDates = Object.keys(dailyMap).sort();
+    if (realDates.length > 0) {
+      return realDates.map(dStr => {
+        const sum = dailyMap[dStr].reduce((a, b) => a + b, 0);
+        return {
+          hr: dStr,
+          avg_lat: Math.round(sum / dailyMap[dStr].length)
+        };
+      });
+    }
+
+    return baseHistory;
+  }
+
+  // Update Trend Chart for Selected Timeframe
+  function updateTrendChartForTimeframe(data, timeframe) {
+    if (!data) return;
+    const history = getTimeframeHistory(data, timeframe);
+    renderTrendChart(history, timeframe);
   }
 
   // Group Endpoints by Application
@@ -272,33 +322,98 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Render SVG Trend Analysis Chart
-  function renderTrendChart(history) {
+  // Render SVG Trend Analysis Chart (Fixed Calendar Scale for 7d & 30d)
+  function renderTrendChart(history, timeframe = '24h') {
     if (!dom.trendSvg) return;
     dom.trendSvg.innerHTML = '';
-
-    if (!history || history.length === 0) {
-      // Default sample trend points
-      history = [
-        { hr: '00:00', avg_lat: 135 },
-        { hr: '04:00', avg_lat: 142 },
-        { hr: '08:00', avg_lat: 128 },
-        { hr: '12:00', avg_lat: 155 },
-        { hr: '16:00', avg_lat: 138 },
-        { hr: '20:00', avg_lat: 142 }
-      ];
-    }
 
     const width = 800;
     const height = 220;
     const padding = { top: 30, right: 30, bottom: 40, left: 50 };
 
-    const latValues = history.map(h => parseFloat(h.avg_lat) || 0);
+    if (!history) history = [];
+
+    // Map existing DB data points by date YYYY-MM-DD
+    const dbMap = {};
+    history.forEach(item => {
+      if (!item || !item.hr) return;
+      const dStr = item.hr.slice(0, 10);
+      dbMap[dStr] = item;
+    });
+
+    let chartPoints = [];
+    let xAxisLabels = [];
+
+    if (timeframe === '7d' || timeframe === '30d') {
+      const totalDays = timeframe === '7d' ? 7 : 30;
+      const labelInterval = timeframe === '7d' ? 1 : 3;
+
+      let endDate = new Date();
+      if (history.length > 0) {
+        const lastHr = history[history.length - 1].hr;
+        if (lastHr && lastHr.length >= 10) {
+          const parsed = new Date(lastHr.slice(0, 10) + 'T00:00:00Z');
+          if (!isNaN(parsed.getTime())) endDate = parsed;
+        }
+      }
+
+      for (let i = totalDays - 1; i >= 0; i--) {
+        const d = new Date(endDate);
+        d.setUTCDate(d.getUTCDate() - i);
+        const dStr = d.toISOString().slice(0, 10);
+        const dayIdx = (totalDays - 1) - i;
+
+        const x = padding.left + (dayIdx / (totalDays - 1)) * (width - padding.left - padding.right);
+        const dbItem = dbMap[dStr];
+
+        chartPoints.push({
+          x: x,
+          data: dbItem || null,
+          hasData: !!dbItem,
+          dateStr: dStr
+        });
+
+        if (dayIdx % labelInterval === 0 || dayIdx === totalDays - 1) {
+          xAxisLabels.push({ x: x, text: dStr.slice(5) });
+        }
+      }
+    } else {
+      // 24h Mode: render hourly check points over 24h
+      const showEvery = history.length > 15 ? Math.ceil(history.length / 8) : 1;
+      history.forEach((h, idx) => {
+        const x = history.length <= 1
+          ? padding.left + (width - padding.left - padding.right) / 2
+          : padding.left + (idx / (history.length - 1)) * (width - padding.left - padding.right);
+
+        chartPoints.push({
+          x: x,
+          data: h,
+          hasData: true,
+          dateStr: h.hr
+        });
+
+        if (idx % showEvery === 0 || idx === history.length - 1) {
+          let labelStr = h.hr || `${idx * 4}:00`;
+          labelStr = labelStr.length > 10 ? labelStr.slice(-5) : labelStr;
+          xAxisLabels.push({ x: x, text: labelStr });
+        }
+      });
+    }
+
+    // Filter points that actually have real data
+    const activePoints = chartPoints.filter(p => p.hasData && p.data && p.data.avg_lat !== undefined);
+    if (activePoints.length === 0) return;
+
+    const latValues = activePoints.map(p => parseFloat(p.data.avg_lat) || 0);
     const minLat = Math.max(0, Math.min(...latValues) - 20);
     const maxLat = Math.max(...latValues) + 30;
 
-    const getX = (idx) => padding.left + (idx / (history.length - 1 || 1)) * (width - padding.left - padding.right);
     const getY = (val) => height - padding.bottom - ((val - minLat) / (maxLat - minLat || 1)) * (height - padding.top - padding.bottom);
+
+    // Calculate Y positions for active points
+    activePoints.forEach(p => {
+      p.y = getY(parseFloat(p.data.avg_lat) || 0);
+    });
 
     // Draw Grid Lines & Y-Axis Labels
     const numGridLines = 4;
@@ -326,33 +441,28 @@ document.addEventListener('DOMContentLoaded', () => {
       dom.trendSvg.appendChild(text);
     }
 
-    // Build SVG Path
-    let pathD = '';
-    let points = [];
-
-    history.forEach((h, idx) => {
-      const x = getX(idx);
-      const y = getY(h.avg_lat);
-      points.push({ x, y, data: h });
-
-      if (idx === 0) pathD += `M ${x} ${y}`;
-      else pathD += ` L ${x} ${y}`;
-
-      // X-Axis Time Label
+    // Draw X-Axis Time Labels
+    xAxisLabels.forEach(lbl => {
       const timeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      timeText.setAttribute('x', x);
+      timeText.setAttribute('x', lbl.x);
       timeText.setAttribute('y', height - 12);
       timeText.setAttribute('fill', '#94a3b8');
       timeText.setAttribute('font-size', '10');
       timeText.setAttribute('text-anchor', 'middle');
-      let labelStr = h.hr ? h.hr.slice(-5) : `${idx*4}:00`;
-      timeText.textContent = labelStr;
+      timeText.textContent = lbl.text;
       dom.trendSvg.appendChild(timeText);
     });
 
-    // Draw Trend Area Fill
-    if (points.length > 0) {
-      const areaD = pathD + ` L ${points[points.length-1].x} ${height - padding.bottom} L ${points[0].x} ${height - padding.bottom} Z`;
+    // Build SVG Path connecting only real data points
+    let pathD = '';
+    activePoints.forEach((pt, idx) => {
+      if (idx === 0) pathD += `M ${pt.x} ${pt.y}`;
+      else pathD += ` L ${pt.x} ${pt.y}`;
+    });
+
+    // Draw Trend Area Fill if >= 2 points
+    if (activePoints.length > 1) {
+      const areaD = pathD + ` L ${activePoints[activePoints.length - 1].x} ${height - padding.bottom} L ${activePoints[0].x} ${height - padding.bottom} Z`;
       const area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
       area.setAttribute('d', areaD);
       area.setAttribute('fill', 'rgba(59, 130, 246, 0.1)');
@@ -368,8 +478,8 @@ document.addEventListener('DOMContentLoaded', () => {
     path.setAttribute('stroke-linecap', 'round');
     dom.trendSvg.appendChild(path);
 
-    // Draw Data Circles
-    points.forEach(pt => {
+    // Draw Data Circles ONLY on days that actually have real data
+    activePoints.forEach(pt => {
       const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       circle.setAttribute('cx', pt.x);
       circle.setAttribute('cy', pt.y);
@@ -379,14 +489,14 @@ document.addEventListener('DOMContentLoaded', () => {
       circle.setAttribute('stroke-width', '2');
       circle.style.cursor = 'pointer';
 
-      circle.addEventListener('mouseenter', (e) => {
+      circle.addEventListener('mouseenter', () => {
         circle.setAttribute('r', '6');
         circle.setAttribute('fill', '#3b82f6');
         if (dom.chartTooltip) {
           dom.chartTooltip.style.display = 'block';
           dom.chartTooltip.style.left = (pt.x + 10) + 'px';
           dom.chartTooltip.style.top = (pt.y - 30) + 'px';
-          dom.chartTooltip.innerHTML = `<strong>${pt.data.hr || 'Check Point'}</strong>: ${Math.round(pt.data.avg_lat)} ms`;
+          dom.chartTooltip.innerHTML = `<strong>${pt.data.hr || pt.dateStr}</strong>: ${Math.round(pt.data.avg_lat)} ms`;
         }
       });
 
@@ -408,6 +518,31 @@ document.addEventListener('DOMContentLoaded', () => {
       avg_latency_ms: 142,
       total_monitored: 11,
       active_incidents: 0,
+      history_trend_24h: [
+        { hr: '00:00', avg_lat: 135 },
+        { hr: '04:00', avg_lat: 142 },
+        { hr: '08:00', avg_lat: 128 },
+        { hr: '12:00', avg_lat: 155 },
+        { hr: '16:00', avg_lat: 138 },
+        { hr: '20:00', avg_lat: 142 }
+      ],
+      history_trend_7d: [
+        { hr: '2026-08-06', avg_lat: 140 },
+        { hr: '2026-08-07', avg_lat: 135 },
+        { hr: '2026-08-08', avg_lat: 150 },
+        { hr: '2026-08-09', avg_lat: 165 },
+        { hr: '2026-08-10', avg_lat: 142 },
+        { hr: '2026-08-11', avg_lat: 158 },
+        { hr: '2026-08-12', avg_lat: 145 }
+      ],
+      history_trend_30d: [
+        { hr: '2026-07-14', avg_lat: 138 },
+        { hr: '2026-07-20', avg_lat: 145 },
+        { hr: '2026-07-26', avg_lat: 132 },
+        { hr: '2026-08-01', avg_lat: 155 },
+        { hr: '2026-08-07', avg_lat: 140 },
+        { hr: '2026-08-12', avg_lat: 142 }
+      ],
       endpoints: [
         { app_key: 'open-road-advisor', app_name: 'Open Road Advisor', endpoint_name: 'Open-Meteo Weather API', endpoint_url: 'https://api.open-meteo.com', type: 'outbound', latency_ms: 118, http_code: 200, is_success: true, status: 'OPERATIONAL' },
         { app_key: 'open-road-advisor', app_name: 'Open Road Advisor', endpoint_name: 'OSRM Driving Router', endpoint_url: 'https://router.project-osrm.org', type: 'outbound', latency_ms: 210, http_code: 200, is_success: true, status: 'OPERATIONAL' },
@@ -422,6 +557,24 @@ document.addEventListener('DOMContentLoaded', () => {
   if (dom.btnRefresh) {
     dom.btnRefresh.addEventListener('click', fetchStatusData);
   }
+
+  // Timeframe selector buttons listener
+  const tfBtns = document.querySelectorAll('.timeframe-btn');
+  tfBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tfBtns.forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
+
+      currentTimeframe = btn.getAttribute('data-timeframe') || '24h';
+      if (statusState) {
+        updateTrendChartForTimeframe(statusState, currentTimeframe);
+      }
+    });
+  });
 
   // Admin Manual Trigger Authentication Modal Logic
   if (dom.btnTriggerManual && dom.authModal) {

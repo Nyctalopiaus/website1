@@ -1,310 +1,985 @@
 {
-    "timestamp": 1786492820,
-    "formatted_date": "2026-08-12 00:00:20 UTC",
-    "system_status": "OPERATIONAL",
-    "global_uptime_24h": 93.4,
-    "avg_latency_ms": 601,
-    "total_monitored": 19,
-    "active_incidents": 0,
-    "endpoints": [
-        {
-            "app_key": "open-road-advisor",
-            "app_name": "Open Road Advisor",
-            "endpoint_name": "Open-Meteo Weather API",
-            "endpoint_url": "https:\/\/api.open-meteo.com\/v1\/forecast?latitude=47.6062&longitude=-122.3321&hourly=temperature_2m",
-            "type": "outbound",
-            "latency_ms": 760,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "open-road-advisor",
-            "app_name": "Open Road Advisor",
-            "endpoint_name": "OSRM Driving Router",
-            "endpoint_url": "https:\/\/router.project-osrm.org\/route\/v1\/driving\/-122.3321,47.6062;-122.6765,45.5152?overview=false",
-            "type": "outbound",
-            "latency_ms": 472,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "open-road-advisor",
-            "app_name": "Open Road Advisor",
-            "endpoint_name": "Komoot Photon Geocoder",
-            "endpoint_url": "https:\/\/photon.komoot.io\/api\/?q=Seattle",
-            "type": "outbound",
-            "latency_ms": 617,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "relocation-assessment",
-            "app_name": "Relocation Assessment",
-            "endpoint_name": "Nominatim OSM Geocoder",
-            "endpoint_url": "https:\/\/nominatim.openstreetmap.org\/search?format=json&q=Seattle",
-            "type": "outbound",
-            "latency_ms": 818,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "relocation-assessment",
-            "app_name": "Relocation Assessment",
-            "endpoint_name": "Open-Meteo Geocoding API",
-            "endpoint_url": "https:\/\/geocoding-api.open-meteo.com\/v1\/search?name=Seattle",
-            "type": "outbound",
-            "latency_ms": 637,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "mortgage-calculator",
-            "app_name": "Housing Cost Calculator",
-            "endpoint_name": "Mortgage News Daily Provider",
-            "endpoint_url": "https:\/\/www.mortgagenewsdaily.com\/",
-            "type": "outbound",
-            "latency_ms": 1307,
-            "http_code": 200,
-            "is_success": true,
-            "status": "DEGRADED",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "retirement-forecaster",
-            "app_name": "Retirement Forecaster",
-            "endpoint_name": "Social Security Admin (SSA.gov)",
-            "endpoint_url": "https:\/\/www.ssa.gov\/OACT\/quickcalc\/",
-            "type": "outbound",
-            "latency_ms": 258,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "crypto-game",
-            "app_name": "Crypto Trading Simulator",
-            "endpoint_name": "CoinGecko Public API",
-            "endpoint_url": "https:\/\/api.coingecko.com\/api\/v3\/ping",
-            "type": "outbound",
-            "latency_ms": 248,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": true,
-            "error": null
-        },
-        {
-            "app_key": "nyctos-gig-grid",
-            "app_name": "Nycto's Gig Grid",
-            "endpoint_name": "Ticketmaster Discovery API",
-            "endpoint_url": "https:\/\/app.ticketmaster.com\/discovery\/v2\/events.json",
-            "type": "outbound",
-            "latency_ms": 293,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "nyctos-gig-grid",
-            "app_name": "Nycto's Gig Grid",
-            "endpoint_name": "Bandsintown Public API",
-            "endpoint_url": "https:\/\/rest.bandsintown.com\/artists\/vulfpeck?app_id=1234",
-            "type": "outbound",
-            "latency_ms": 159,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "nyctos-gig-grid",
-            "app_name": "Nycto's Gig Grid",
-            "endpoint_name": "Setlist.fm Concert API",
-            "endpoint_url": "https:\/\/www.setlist.fm\/",
-            "type": "outbound",
-            "latency_ms": 202,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "nyctos-gig-grid",
-            "app_name": "Nycto's Gig Grid",
-            "endpoint_name": "Last.fm Music API",
-            "endpoint_url": "https:\/\/www.last.fm\/",
-            "type": "outbound",
-            "latency_ms": 6680,
-            "http_code": 200,
-            "is_success": true,
-            "status": "DEGRADED",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "nyctos-gig-grid",
-            "app_name": "Nycto's Gig Grid",
-            "endpoint_name": "AXS & AEG Ticketing Scraper",
-            "endpoint_url": "https:\/\/www.axs.com\/",
-            "type": "scraper",
-            "latency_ms": 90,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "nyctos-gig-grid",
-            "app_name": "Nycto's Gig Grid",
-            "endpoint_name": "Do303 Indie Event Scraper",
-            "endpoint_url": "https:\/\/do303.com\/events",
-            "type": "scraper",
-            "latency_ms": 1061,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "nyctos-gig-grid",
-            "app_name": "Nycto's Gig Grid",
-            "endpoint_name": "Cervantes Masterpiece Scraper",
-            "endpoint_url": "https:\/\/cervantesmasterpiece.com\/events\/",
-            "type": "scraper",
-            "latency_ms": 284,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "nyctos-gig-grid",
-            "app_name": "Nycto's Gig Grid",
-            "endpoint_name": "Scrape.do Anti-WAF Proxy",
-            "endpoint_url": "https:\/\/api.scrape.do\/",
-            "type": "proxy",
-            "latency_ms": 482,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "nyctos-gig-grid",
-            "app_name": "Nycto's Gig Grid",
-            "endpoint_name": "Gig Grid Database Engine",
-            "endpoint_url": "https:\/\/nycto.ninja\/nyctos-gig-grid\/",
-            "type": "internal",
-            "latency_ms": 212,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        },
-        {
-            "app_key": "game-rating-log",
-            "app_name": "Game Rating Log",
-            "endpoint_name": "Steam Store API",
-            "endpoint_url": "https:\/\/store.steampowered.com\/api\/appdetails?appids=105600",
-            "type": "outbound",
-            "latency_ms": 253,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": true,
-            "error": null
-        },
-        {
-            "app_key": "cism-training",
-            "app_name": "CISM Exam Prep",
-            "endpoint_name": "Local CISM Platform",
-            "endpoint_url": "https:\/\/nycto.ninja\/cism-training\/",
-            "type": "internal",
-            "latency_ms": 5,
-            "http_code": 200,
-            "is_success": true,
-            "status": "OPERATIONAL",
-            "is_hidden": false,
-            "error": null
-        }
-    ],
-    "history_trend": [
-        {
-            "hr": "2026-08-11 13:00",
-            "avg_lat": 446.5584415584416,
-            "uptime": 79.22077922077922
-        },
-        {
-            "hr": "2026-08-11 14:00",
-            "avg_lat": 634.4423076923077,
-            "uptime": 94.23076923076923
-        },
-        {
-            "hr": "2026-08-11 17:00",
-            "avg_lat": 769.0175438596491,
-            "uptime": 96.49122807017544
-        },
-        {
-            "hr": "2026-08-11 18:00",
-            "avg_lat": 853.8421052631579,
-            "uptime": 100
-        },
-        {
-            "hr": "2026-08-11 19:00",
-            "avg_lat": 610,
-            "uptime": 100
-        },
-        {
-            "hr": "2026-08-11 20:00",
-            "avg_lat": 411.89473684210526,
-            "uptime": 100
-        },
-        {
-            "hr": "2026-08-11 21:00",
-            "avg_lat": 524.8947368421053,
-            "uptime": 100
-        },
-        {
-            "hr": "2026-08-11 22:00",
-            "avg_lat": 637.578947368421,
-            "uptime": 100
-        },
-        {
-            "hr": "2026-08-11 23:00",
-            "avg_lat": 415.10526315789474,
-            "uptime": 100
-        },
-        {
-            "hr": "2026-08-12 00:00",
-            "avg_lat": 780.9473684210526,
-            "uptime": 100
-        }
-    ]
+  "timestamp": 1786848506,
+  "formatted_date": "2026-08-12 02:09:04 UTC",
+  "system_status": "OPERATIONAL",
+  "global_uptime_24h": 94.1,
+  "avg_latency_ms": 582,
+  "total_monitored": 52,
+  "active_incidents": 0,
+  "endpoints": [
+    {
+      "app_key": "open-road-advisor",
+      "app_name": "Open Road Advisor",
+      "endpoint_name": "Open-Meteo Weather API",
+      "endpoint_url": "https://api.open-meteo.com/v1/forecast?latitude=47.6062&longitude=-122.3321&hourly=temperature_2m",
+      "type": "outbound",
+      "latency_ms": 596,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "open-road-advisor",
+      "app_name": "Open Road Advisor",
+      "endpoint_name": "OSRM Driving Router",
+      "endpoint_url": "https://router.project-osrm.org/route/v1/driving/-122.3321,47.6062;-122.6765,45.5152?overview=false",
+      "type": "outbound",
+      "latency_ms": 413,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "open-road-advisor",
+      "app_name": "Open Road Advisor",
+      "endpoint_name": "Komoot Photon Geocoder",
+      "endpoint_url": "https://photon.komoot.io/api/?q=Seattle",
+      "type": "outbound",
+      "latency_ms": 603,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "relocation-assessment",
+      "app_name": "Relocation Assessment",
+      "endpoint_name": "Nominatim OSM Geocoder",
+      "endpoint_url": "https://nominatim.openstreetmap.org/search?format=json&q=Seattle",
+      "type": "outbound",
+      "latency_ms": 36,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "relocation-assessment",
+      "app_name": "Relocation Assessment",
+      "endpoint_name": "Open-Meteo Geocoding API",
+      "endpoint_url": "https://geocoding-api.open-meteo.com/v1/search?name=Seattle",
+      "type": "outbound",
+      "latency_ms": 550,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "mortgage-calculator",
+      "app_name": "Housing Cost Calculator",
+      "endpoint_name": "Mortgage News Daily Provider",
+      "endpoint_url": "https://www.mortgagenewsdaily.com/",
+      "type": "outbound",
+      "latency_ms": 252,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "retirement-forecaster",
+      "app_name": "Retirement Forecaster",
+      "endpoint_name": "Social Security Admin (SSA.gov)",
+      "endpoint_url": "https://www.ssa.gov/OACT/quickcalc/",
+      "type": "outbound",
+      "latency_ms": 57,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "crypto-game",
+      "app_name": "Crypto Trading Simulator",
+      "endpoint_name": "CoinGecko Public API",
+      "endpoint_url": "https://api.coingecko.com/api/v3/ping",
+      "type": "outbound",
+      "latency_ms": 90,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": true,
+      "error": null
+    },
+    {
+      "app_key": "nyctos-gig-grid",
+      "app_name": "Nycto's Gig Grid",
+      "endpoint_name": "Ticketmaster Discovery API",
+      "endpoint_url": "https://app.ticketmaster.com/discovery/v2/events.json",
+      "type": "outbound",
+      "latency_ms": 311,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "nyctos-gig-grid",
+      "app_name": "Nycto's Gig Grid",
+      "endpoint_name": "Bandsintown Public API",
+      "endpoint_url": "https://rest.bandsintown.com/artists/vulfpeck?app_id=1234",
+      "type": "outbound",
+      "latency_ms": 26,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "nyctos-gig-grid",
+      "app_name": "Nycto's Gig Grid",
+      "endpoint_name": "Setlist.fm Concert API",
+      "endpoint_url": "https://www.setlist.fm/",
+      "type": "outbound",
+      "latency_ms": 35,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "nyctos-gig-grid",
+      "app_name": "Nycto's Gig Grid",
+      "endpoint_name": "Last.fm Music API",
+      "endpoint_url": "https://www.last.fm/",
+      "type": "outbound",
+      "latency_ms": 174,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "nyctos-gig-grid",
+      "app_name": "Nycto's Gig Grid",
+      "endpoint_name": "AXS & AEG Ticketing Scraper",
+      "endpoint_url": "https://www.axs.com/",
+      "type": "scraper",
+      "latency_ms": 35,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "nyctos-gig-grid",
+      "app_name": "Nycto's Gig Grid",
+      "endpoint_name": "Do303 Indie Event Scraper",
+      "endpoint_url": "https://do303.com/events",
+      "type": "scraper",
+      "latency_ms": 614,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "nyctos-gig-grid",
+      "app_name": "Nycto's Gig Grid",
+      "endpoint_name": "Cervantes Masterpiece Scraper",
+      "endpoint_url": "https://cervantesmasterpiece.com/events/",
+      "type": "scraper",
+      "latency_ms": 111,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "nyctos-gig-grid",
+      "app_name": "Nycto's Gig Grid",
+      "endpoint_name": "Scrape.do Anti-WAF Proxy",
+      "endpoint_url": "https://api.scrape.do/",
+      "type": "proxy",
+      "latency_ms": 437,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "nyctos-gig-grid",
+      "app_name": "Nycto's Gig Grid",
+      "endpoint_name": "Gig Grid Database Engine",
+      "endpoint_url": "https://nycto.ninja/nyctos-gig-grid/",
+      "type": "internal",
+      "latency_ms": 2726,
+      "http_code": 200,
+      "is_success": true,
+      "status": "DEGRADED",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "game-rating-log",
+      "app_name": "Game Rating Log",
+      "endpoint_name": "Steam Store API",
+      "endpoint_url": "https://store.steampowered.com/api/appdetails?appids=105600",
+      "type": "outbound",
+      "latency_ms": 87,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": true,
+      "error": null
+    },
+    {
+      "app_key": "cism-training",
+      "app_name": "CISM Exam Prep",
+      "endpoint_name": "Local CISM Platform",
+      "endpoint_url": "https://nycto.ninja/cism-training/",
+      "type": "internal",
+      "latency_ms": 229,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "CISA Known Exploited Vulnerabilities",
+      "endpoint_url": "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json",
+      "type": "outbound",
+      "latency_ms": 109,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "CISA Cybersecurity Advisories",
+      "endpoint_url": "https://www.cisa.gov/cybersecurity-advisories/all.xml",
+      "type": "outbound",
+      "latency_ms": 55,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "NIST CVE Intelligence Stream",
+      "endpoint_url": "https://cvefeed.io/rssfeed/latest.xml",
+      "type": "outbound",
+      "latency_ms": 49,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "CERT/CC Vulnerability Notes",
+      "endpoint_url": "https://www.kb.cert.org/vuls/byid?readform&OutputMap=rss",
+      "type": "outbound",
+      "latency_ms": 346,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Trend Micro Zero Day Initiative (ZDI)",
+      "endpoint_url": "https://www.zerodayinitiative.com/rss/published/",
+      "type": "outbound",
+      "latency_ms": 1124,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Microsoft Security Response Center (MSRC)",
+      "endpoint_url": "https://msrc.microsoft.com/update-guide/rss",
+      "type": "outbound",
+      "latency_ms": 189,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Palo Alto Networks Unit 42",
+      "endpoint_url": "https://unit42.paloaltonetworks.com/feed/",
+      "type": "outbound",
+      "latency_ms": 51,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Cisco Talos Intelligence",
+      "endpoint_url": "https://blog.talosintelligence.com/rss/",
+      "type": "outbound",
+      "latency_ms": 57,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "BleepingComputer",
+      "endpoint_url": "https://www.bleepingcomputer.com/feed/",
+      "type": "outbound",
+      "latency_ms": 120,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "The Hacker News",
+      "endpoint_url": "https://feeds.feedburner.com/TheHackersNews",
+      "type": "outbound",
+      "latency_ms": 158,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "SANS Internet Storm Center",
+      "endpoint_url": "https://isc.sans.edu/rssfeed.xml",
+      "type": "outbound",
+      "latency_ms": 54,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "SecurityWeek",
+      "endpoint_url": "https://www.securityweek.com/feed/",
+      "type": "outbound",
+      "latency_ms": 100,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Dark Reading",
+      "endpoint_url": "https://www.darkreading.com/rss.xml",
+      "type": "outbound",
+      "latency_ms": 364,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "GitHub Advisory Database",
+      "endpoint_url": "https://github.com/advisories.atom",
+      "type": "outbound",
+      "latency_ms": 496,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Krebs on Security",
+      "endpoint_url": "https://krebsonsecurity.com/feed/",
+      "type": "outbound",
+      "latency_ms": 76,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Google Threat Intelligence & Mandiant",
+      "endpoint_url": "https://cloud.google.com/blog/topics/threat-intelligence/rss/",
+      "type": "outbound",
+      "latency_ms": 151,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Check Point Threat Research Labs",
+      "endpoint_url": "https://research.checkpoint.com/feed/",
+      "type": "outbound",
+      "latency_ms": 53,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "SentinelLabs Threat Research",
+      "endpoint_url": "https://www.sentinelone.com/feed/",
+      "type": "outbound",
+      "latency_ms": 69,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "The Register Security Intelligence",
+      "endpoint_url": "https://www.theregister.com/security/headlines.atom",
+      "type": "outbound",
+      "latency_ms": 609,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "AlienVault OTX Threat Pulses",
+      "endpoint_url": "https://otx.alienvault.com/rss/pulses/recent",
+      "type": "outbound",
+      "latency_ms": 45,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Debian Security Advisories",
+      "endpoint_url": "https://www.debian.org/security/dsa.rdf",
+      "type": "outbound",
+      "latency_ms": 146,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Ubuntu Security Notices",
+      "endpoint_url": "https://ubuntu.com/security/notices/rss.xml",
+      "type": "outbound",
+      "latency_ms": 394,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Kubernetes Security & Releases",
+      "endpoint_url": "https://kubernetes.io/feed.xml",
+      "type": "outbound",
+      "latency_ms": 97,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "AWS Security Bulletins",
+      "endpoint_url": "https://aws.amazon.com/security/security-bulletins/feed/",
+      "type": "outbound",
+      "latency_ms": 119,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "FreeBSD Security Advisories",
+      "endpoint_url": "https://www.freebsd.org/security/rss.xml",
+      "type": "outbound",
+      "latency_ms": 174,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Rocky Linux Security Errata",
+      "endpoint_url": "https://errata.rockylinux.org/rss.xml",
+      "type": "outbound",
+      "latency_ms": 155,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Cloudflare Blog",
+      "endpoint_url": "https://blog.cloudflare.com/rss/",
+      "type": "outbound",
+      "latency_ms": 51,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Tailscale Blog",
+      "endpoint_url": "https://tailscale.com/blog/index.xml",
+      "type": "outbound",
+      "latency_ms": 119,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "TrueNAS Storage & Security",
+      "endpoint_url": "https://www.truenas.com/feed/",
+      "type": "outbound",
+      "latency_ms": 196,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Netgate pfSense Advisories",
+      "endpoint_url": "https://www.netgate.com/blog/rss.xml",
+      "type": "outbound",
+      "latency_ms": 73,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Pi-hole Network Security",
+      "endpoint_url": "https://pi-hole.net/feed/",
+      "type": "outbound",
+      "latency_ms": 73,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "Jeff Geerling Engineering",
+      "endpoint_url": "https://www.jeffgeerling.com/blog.xml",
+      "type": "outbound",
+      "latency_ms": 59,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    },
+    {
+      "app_key": "threatpulse",
+      "app_name": "Nycto's ThreatPulse",
+      "endpoint_name": "ThreatPulse Static JSON Engine",
+      "endpoint_url": "https://nycto.ninja/threatpulse/data/feed.json",
+      "type": "internal",
+      "latency_ms": 35,
+      "http_code": 200,
+      "is_success": true,
+      "status": "OPERATIONAL",
+      "is_hidden": false,
+      "error": null
+    }
+  ],
+  "history_trend": [
+    {
+      "hr": "2026-08-14 14:00",
+      "avg_lat": 547.7368421052631,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 15:00",
+      "avg_lat": 1010.8421052631579,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 16:00",
+      "avg_lat": 575.7368421052631,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 17:00",
+      "avg_lat": 675.6315789473684,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 18:00",
+      "avg_lat": 452.0,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 19:00",
+      "avg_lat": 681.6842105263158,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 20:00",
+      "avg_lat": 673.0526315789474,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 21:00",
+      "avg_lat": 600.1052631578947,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 22:00",
+      "avg_lat": 737.5263157894736,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 23:00",
+      "avg_lat": 432.05263157894734,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 00:00",
+      "avg_lat": 549.578947368421,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 01:00",
+      "avg_lat": 400.8421052631579,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 02:00",
+      "avg_lat": 408.2105263157895,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 03:00",
+      "avg_lat": 530.5263157894736,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 04:00",
+      "avg_lat": 434.36842105263156,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 05:00",
+      "avg_lat": 469.42105263157896,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 06:00",
+      "avg_lat": 375.63157894736844,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 07:00",
+      "avg_lat": 600.6842105263158,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 08:00",
+      "avg_lat": 896.4736842105264,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 09:00",
+      "avg_lat": 521.0,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 10:00",
+      "avg_lat": 509.4736842105263,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 11:00",
+      "avg_lat": 497.05263157894734,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 12:00",
+      "avg_lat": 413.0,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 13:00",
+      "avg_lat": 512.578947368421,
+      "uptime": 100.0
+    }
+  ],
+  "history_trend_24h": [
+    {
+      "hr": "2026-08-14 14:00",
+      "avg_lat": 547.7368421052631,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 15:00",
+      "avg_lat": 1010.8421052631579,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 16:00",
+      "avg_lat": 575.7368421052631,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 17:00",
+      "avg_lat": 675.6315789473684,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 18:00",
+      "avg_lat": 452.0,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 19:00",
+      "avg_lat": 681.6842105263158,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 20:00",
+      "avg_lat": 673.0526315789474,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 21:00",
+      "avg_lat": 600.1052631578947,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 22:00",
+      "avg_lat": 737.5263157894736,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14 23:00",
+      "avg_lat": 432.05263157894734,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 00:00",
+      "avg_lat": 549.578947368421,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 01:00",
+      "avg_lat": 400.8421052631579,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 02:00",
+      "avg_lat": 408.2105263157895,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 03:00",
+      "avg_lat": 530.5263157894736,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 04:00",
+      "avg_lat": 434.36842105263156,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 05:00",
+      "avg_lat": 469.42105263157896,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 06:00",
+      "avg_lat": 375.63157894736844,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 07:00",
+      "avg_lat": 600.6842105263158,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 08:00",
+      "avg_lat": 896.4736842105264,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 09:00",
+      "avg_lat": 521.0,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 10:00",
+      "avg_lat": 509.4736842105263,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 11:00",
+      "avg_lat": 497.05263157894734,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 12:00",
+      "avg_lat": 413.0,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-15 13:00",
+      "avg_lat": 512.578947368421,
+      "uptime": 100.0
+    }
+  ],
+  "history_trend_7d": [
+    {
+      "hr": "2026-08-11",
+      "avg_lat": 589.41,
+      "uptime": 93.0
+    },
+    {
+      "hr": "2026-08-12",
+      "avg_lat": 795.7621052631579,
+      "uptime": 99.36842105263158
+    },
+    {
+      "hr": "2026-08-13",
+      "avg_lat": 782.7651821862348,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14",
+      "avg_lat": 600.3070175438596,
+      "uptime": 99.78070175438596
+    },
+    {
+      "hr": "2026-08-15",
+      "avg_lat": 503.11929824561406,
+      "uptime": 100.0
+    }
+  ],
+  "history_trend_30d": [
+    {
+      "hr": "2026-08-11",
+      "avg_lat": 589.41,
+      "uptime": 93.0
+    },
+    {
+      "hr": "2026-08-12",
+      "avg_lat": 795.7621052631579,
+      "uptime": 99.36842105263158
+    },
+    {
+      "hr": "2026-08-13",
+      "avg_lat": 782.7651821862348,
+      "uptime": 100.0
+    },
+    {
+      "hr": "2026-08-14",
+      "avg_lat": 600.3070175438596,
+      "uptime": 99.78070175438596
+    },
+    {
+      "hr": "2026-08-15",
+      "avg_lat": 503.11929824561406,
+      "uptime": 100.0
+    }
+  ]
 }

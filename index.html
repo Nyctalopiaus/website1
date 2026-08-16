@@ -393,6 +393,76 @@
           </footer>
         </div>
       </article>
+
+      <!-- Project 8: Nycto's Hugging Face Model Matcher -->
+      <article class="project-card active">
+        <div class="card-glow"></div>
+        <div class="card-inner">
+          <header class="card-header">
+            <div style="display: flex; gap: 0.5rem;">
+              <span class="badge badge-active">Active</span>
+              <span class="badge badge-pro">Pro</span>
+              <span class="badge badge-live">Live Data</span>
+            </div>
+          </header>
+          <div class="card-content">
+            <h2 class="project-title font-display">Nycto's HF Model Matcher</h2>
+            <p class="project-desc">
+              A hardware-aware AI model discovery engine that profiles GPU VRAM, system RAM, and CPU/GPU architecture to recommend optimal Hugging Face models based on intended goals (Coding, Image Gen, Vision, Chat) without OOM risks using a strict 4-tier filtering pipeline.
+            </p>
+            <details class="tech-dropdown">
+              <summary class="tech-toggle">Show tech stack</summary>
+              <div class="tech-tags">
+                <span>FastAPI Async Engine (Python REST API &amp; 4-tier scoring pipeline)</span>
+                <span>Hugging Face Hub API (Real-time model catalog &amp; metrics)</span>
+                <span>Tier-1 Memory Engine (Hardware VRAM cap math &amp; OOM protection)</span>
+                <span>Hardware Profiler (Web Memory API &amp; psutil system inspection)</span>
+                <span>Categorized UI Output (Best Overall, Speed Demon, Max Capability cards)</span>
+                <span>1-Click Code Launcher (Ollama, vLLM, &amp; Transformers snippets)</span>
+              </div>
+            </details>
+          </div>
+          <footer class="card-footer">
+            <a href="hf-model-matcher" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+          </footer>
+        </div>
+      </article>
+
+      <!-- Project 9: Nycto's ThreatPulse Security Feed Aggregator -->
+      <article class="project-card active">
+        <div class="card-glow"></div>
+        <div class="card-inner">
+          <header class="card-header">
+            <div style="display: flex; gap: 0.5rem;">
+              <span class="badge badge-active">Active</span>
+              <span class="badge badge-pro">Pro</span>
+              <span class="badge badge-live">Live Data</span>
+            </div>
+          </header>
+          <div class="card-content">
+            <h2 class="project-title font-display">Nycto's ThreatPulse</h2>
+            <p class="project-desc">
+              A high-signal, distraction-free security advisory &amp; technical news aggregation engine. Ingests 11+ RSS/Atom/JSON feeds (CISA KEV, BleepingComputer, SANS ISC, Debian/Ubuntu Security, Cloudflare), executes 2-layer deduplication with fuzzy title matching, auto-extracts CVE tags, and delivers static JSON payloads via a dark-mode Kanban &amp; Compact dashboard.
+            </p>
+            <details class="tech-dropdown">
+              <summary class="tech-toggle">Show tech stack</summary>
+              <div class="tech-tags">
+                <span>Python Ingestion Engine (BeautifulSoup, feedparser, requests)</span>
+                <span>SQLite WAL Mode Caching (30-day automated vacuum &amp; pruning)</span>
+                <span>2-Layer Deduplication (URL SHA-256 hash &amp; 85%+ fuzzy title matching)</span>
+                <span>CVE &amp; Keyword Extractor (Auto-hyperlinking to NIST NVD database)</span>
+                <span>Executive Dark SPA (Tailwind CSS, Inter &amp; JetBrains Mono typography)</span>
+                <span>Dual View Modes (Kanban 3-column &amp; Compact Ticker table)</span>
+                <span>Vim Keyboard Shortcuts (j/k navigation, o open link, m read, b bookmark, / search)</span>
+                <span>Stateless Client Storage (LocalStorage persistence)</span>
+              </div>
+            </details>
+          </div>
+          <footer class="card-footer">
+            <a href="threatpulse" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+          </footer>
+        </div>
+      </article>
     </section>
   </main>
 

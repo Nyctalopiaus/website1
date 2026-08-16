@@ -1,0 +1,97 @@
+# ThreatPulse Server-Side Security Hardened .htaccess for Apache / Shared Hosting
+
+# ----------------------------------------------------------------------
+# 1. SECURITY & DIRECTORY HARDENING
+# ----------------------------------------------------------------------
+
+# Disable Directory Browsing
+Options -Indexes -MultiViews
+
+# Block Access to Hidden Files, Dotfiles, Databases & Sensitive Scripts
+<FilesMatch "(^\.|\.(bak|config|sql|db|py|sh|env|md|json\.bak|schema|log))$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Explicitly Allow Feed Payload
+<Files "feed.json">
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+</Files>
+
+# Prevent Dynamic Script Execution in Static Asset Directories
+<FilesMatch "\.(php|py|pl|sh|cgi)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+
+# ----------------------------------------------------------------------
+# 2. ENTERPRISE HTTP SECURITY HEADERS
+# ----------------------------------------------------------------------
+<IfModule mod_headers.c>
+  # Content Security Policy (CSP)
+  Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self';"
+  
+  # Anti-Clickjacking & Anti-MIME Sniffing
+  Header set X-Frame-Options "DENY"
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-XSS-Protection "1; mode=block"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header set Cross-Origin-Opener-Policy "same-origin"
+  
+  # Restrict Browser Hardware & API Access
+  Header set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=()"
+
+  # HTTP Strict Transport Security (HSTS)
+  Header set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" env=HTTPS
+
+  # ----------------------------------------------------------------------
+  # 3. CACHE-CONTROL HEADERS
+  # ----------------------------------------------------------------------
+  # Static Feed Data: 60 seconds with forced revalidation
+  <FilesMatch "feed\.json$">
+    Header set Cache-Control "public, max-age=60, must-revalidate"
+  </FilesMatch>
+
+  # Static Frontend Assets: Long term immutable cache
+  <FilesMatch "\.(js|css|woff2|svg|png|jpg|webp)$">
+    Header set Cache-Control "public, max-age=2592000, immutable"
+  </FilesMatch>
+</IfModule>
+
+# ----------------------------------------------------------------------
+# 4. GZIP / DEFLATE COMPRESSION
+# ----------------------------------------------------------------------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE application/json
+  AddOutputFilterByType DEFLATE application/javascript
+  AddOutputFilterByType DEFLATE text/javascript
+  AddOutputFilterByType DEFLATE text/html
+  AddOutputFilterByType DEFLATE text/css
+  AddOutputFilterByType DEFLATE text/xml
+  AddOutputFilterByType DEFLATE text/plain
+  AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# ----------------------------------------------------------------------
+# 5. EXPIRES HEADERS
+# ----------------------------------------------------------------------
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "access plus 1 month"
+  ExpiresByType application/json "access plus 60 seconds"
+  ExpiresByType text/html "access plus 5 minutes"
+  ExpiresByType application/javascript "access plus 30 days"
+  ExpiresByType text/css "access plus 30 days"
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+</IfModule>

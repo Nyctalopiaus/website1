@@ -18,9 +18,14 @@
       <a href="../" class="btn-back">← BACK TO LAB</a>
       <span class="logo-text">Relocation Analytics Dashboard</span>
     </div>
-    <button type="button" id="btn-open-features" class="btn-feature-relo" title="View Dashboard Capabilities">
-      <span>📍</span> <span>Features</span>
-    </button>
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-left: auto;">
+      <button type="button" id="btn-open-quickstart" class="btn-quickstart-relo" title="Show Quick Start Guide">
+        <span>ℹ️</span> <span>Quick Start</span>
+      </button>
+      <button type="button" id="btn-open-features" class="btn-feature-relo" title="View Dashboard Capabilities">
+        <span>📍</span> <span>Features</span>
+      </button>
+    </div>
   </header>
 
   <main class="container">
@@ -210,6 +215,28 @@
     <p>&copy; 2026 Relocation Analytics Dashboard</p>
   </footer>
 
+  <!-- Quick Start Modal -->
+  <div id="quickstart-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="quickstart-modal-title">
+      <button id="btn-close-quickstart" class="modal-close-button" aria-label="Close Quick Start guide">&times;</button>
+      <h2 id="quickstart-modal-title" class="feature-modal-title" style="color: var(--accent-cyan, #06b6d4);">📍 RELOCATION ANALYTICS QUICK START</h2>
+      <p class="feature-modal-intro">Follow these 4 steps to evaluate street address livability and compare target locations.</p>
+      <ol class="quickstart-steps-list">
+        <li><strong>1) Enter Target Address</strong> Type any candidate street address or city to trigger real-time spatial geocoding.</li>
+        <li><strong>2) Define Priority Weights</strong> Customize sliders for grocery proximity, parks, cycling trails, gyms, and dining preferences.</li>
+        <li><strong>3) Set Transit Radius</strong> Adjust your transit time radius (2 to 30 minutes) to recalculate amenity counts instantly.</li>
+        <li><strong>4) Compare Livability Scores</strong> Review the 100-point match scorecard and side-by-side comparison against alternative locations.</li>
+      </ol>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon">🔒</span>
+        <div>
+          <strong>100% PRIVATE SPATIAL PROCESSING</strong>
+          All address searches and location calculations run strictly inside your browser sandbox.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Features Modal -->
   <div id="features-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
     <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
@@ -240,6 +267,6 @@
   <script src="autocomplete.js?v=141"></script>
   <script src="spatial.js?v=141"></script>
   <script src="scoring.js?v=141"></script>
-  <script src="app.js?v=141"></script>
+  <script src="app.js?v=200"></script>
 </body>
 </html>
