@@ -128,6 +128,38 @@ export function initFilters(opts = {}) {
     }
   }
 
+  // Remember which market within each family (US state / intl country) was last
+  // active, so switching America <-> International and back restores where you
+  // left off instead of always resetting to the first option in the list.
+  const lastUsMarketKey = 'gig_grid_last_us_market';
+  const lastIntlMarketKey = 'gig_grid_last_intl_market';
+
+  try {
+    if (INTL_MARKETS.has(activeMarket)) {
+      localStorage.setItem(lastIntlMarketKey, activeMarket);
+    } else {
+      localStorage.setItem(lastUsMarketKey, activeMarket);
+    }
+  } catch (_) {}
+
+  if (INTL_MARKETS.has(activeMarket) && usStateSelect) {
+    let lastUsMarket = null;
+    try { lastUsMarket = localStorage.getItem(lastUsMarketKey); } catch (_) {}
+    const matchedLastUsOption = findOptionByParam(usStateSelect, 'market', lastUsMarket);
+    if (matchedLastUsOption) {
+      usStateSelect.value = matchedLastUsOption.value;
+    }
+  }
+
+  if (!INTL_MARKETS.has(activeMarket) && intlCountrySelect) {
+    let lastIntlMarket = null;
+    try { lastIntlMarket = localStorage.getItem(lastIntlMarketKey); } catch (_) {}
+    const matchedLastIntlOption = findOptionByParam(intlCountrySelect, 'market', lastIntlMarket);
+    if (matchedLastIntlOption) {
+      intlCountrySelect.value = matchedLastIntlOption.value;
+    }
+  }
+
   if (intlCountrySelect) {
     intlCountrySelect.addEventListener('change', (e) => {
       const nextUrl = intlCountrySelect.value;
@@ -1238,6 +1270,7 @@ export function initFilters(opts = {}) {
             } else if (act === 'clear_search') {
               if (artistSearchInput) artistSearchInput.value = '';
               syncSearchClearButton();
+              updateMarketLinksWithSearch();
               applyFilters();
             } else if (act === 'reset_region') {
               activeRegions.clear();

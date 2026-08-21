@@ -27,7 +27,7 @@
 
 body {
   background-color: var(--bg-dark);
-  background-image: linear-gradient(rgba(6, 8, 11, 0.82), rgba(6, 8, 11, 0.82)), url('../assets/cyber_study_bg.webp');
+  background-image: linear-gradient(rgba(6, 8, 11, 0.82), rgba(6, 8, 11, 0.82)), url('assets/cyber_study_bg.webp');
   background-attachment: fixed;
   background-size: cover;
   background-position: center;

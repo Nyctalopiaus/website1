@@ -12,39 +12,27 @@ document.addEventListener('DOMContentLoaded', () => {
   let sortColumn = 'title';
   let sortAscending = true;
 
-  async function loadGames() {
-    try {
-      const res = await fetch('/api/games');
-      if (res.ok) {
-        games = await res.json();
-        updateStats();
-        applySorting();
-      } else {
-        console.error('[ERROR] Failed to fetch games from API:', res.statusText);
-        loadLocalFallback();
-      }
-    } catch (e) {
-      console.error('[ERROR] API connection error:', e);
-      loadLocalFallback();
-    }
-  }
-
-  function loadLocalFallback() {
-    console.log('[SYSTEM] Loading localStorage fallback.');
+  // Games are stored exclusively in the browser's localStorage, matching the
+  // "100% Private & Local Storage" claim shown in the UI. Do NOT reintroduce a
+  // server sync call here — a previous version POSTed entries to a shared,
+  // unauthenticated /api/games record on the backend, which meant every
+  // visitor's log was stored server-side and visible to every other visitor.
+  // See project notes for details.
+  function loadGames() {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
         games = JSON.parse(stored);
-        updateStats();
-        applySorting();
       } catch (e) {
-        console.error('[ERROR] Failed to parse stored fallback games:', e);
+        console.error('[ERROR] Failed to parse stored games:', e);
         games = [];
       }
     }
+    updateStats();
+    applySorting();
   }
 
-  function saveLocalFallback() {
+  function saveGames() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(games));
   }
 
@@ -155,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Form submission handler
-  form.addEventListener('submit', async (event) => {
+  form.addEventListener('submit', (event) => {
     event.preventDefault();
 
     const titleInput = form.querySelector('[name="title"]');
@@ -177,77 +165,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const hours = parseFloat(hoursInput.value);
     const rating = ratingSelect.value;
 
-    const newGameData = { title, hours, rating };
+    const newGame = {
+      id: Date.now(),
+      title,
+      hours,
+      rating
+    };
 
-    try {
-      const res = await fetch('/api/games', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newGameData)
-      });
-      if (res.ok) {
-        const savedGame = await res.json();
-        games.push(savedGame);
-        updateStats();
-        applySorting();
-        
-        // Reset fields only on success
-        titleInput.value = '';
-        hoursInput.value = '';
-        ratingSelect.value = '';
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        const errMsg = errData.error || ('API server returned error: ' + res.statusText);
-        errorEl.textContent = errMsg;
-        errorEl.style.display = 'block';
-      }
-    } catch (e) {
-      console.error('[ERROR] Failed to save game on database. Saving locally.', e);
-      // Fallback (only trigger if network is actually offline)
-      const fallbackGame = {
-        id: Date.now(),
-        title,
-        hours,
-        rating
-      };
-      games.push(fallbackGame);
-      saveLocalFallback();
-      updateStats();
-      applySorting();
-      
-      // Reset fields
-      titleInput.value = '';
-      hoursInput.value = '';
-      ratingSelect.value = '';
-    }
+    games.push(newGame);
+    saveGames();
+    updateStats();
+    applySorting();
+
+    // Reset fields
+    titleInput.value = '';
+    hoursInput.value = '';
+    ratingSelect.value = '';
   });
 
   // Delete button handler (delegated on grid)
-  grid.addEventListener('click', async (event) => {
+  grid.addEventListener('click', (event) => {
     const btn = event.target.closest('.btn-delete');
     if (!btn || !btn.dataset.id) return;
 
     const id = parseInt(btn.dataset.id);
-
-    try {
-      const res = await fetch(`/api/games/${id}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        games = games.filter(g => g.id !== id);
-        updateStats();
-        applySorting();
-      } else {
-        throw new Error('API server returned error: ' + res.statusText);
-      }
-    } catch (e) {
-      console.error('[ERROR] Failed to delete game on database. Removing locally.', e);
-      // Fallback
-      games = games.filter(g => g.id !== id);
-      saveLocalFallback();
-      updateStats();
-      applySorting();
-    }
+    games = games.filter(g => g.id !== id);
+    saveGames();
+    updateStats();
+    applySorting();
   });
 
   // Sorting handlers

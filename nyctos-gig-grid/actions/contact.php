@@ -57,10 +57,11 @@ if ($sent) {
         'message' => 'Thank you! Your message has been sent directly to Nycto.'
     ]);
 } else {
-    // Fallback log to server error log if mail server fails
-    error_log("[CONTACT FORM BACKUP LOG] Subject: {$subjectCategory} | From: {$userEmail} | Msg: {$message}");
-    jsonResponse([
-        'status' => 'success',
-        'message' => 'Thank you! Your message has been logged for Nycto.'
-    ]);
+    // Mail delivery failed. Log only that a failure occurred — never the
+    // sender's email or message body, since this form isn't covered by any
+    // "we don't store your data" claim in the UI and shouldn't quietly start
+    // retaining PII in the server error log as a side effect of a delivery
+    // failure.
+    error_log("[CONTACT FORM] Mail delivery failed for category: {$subjectCategory}");
+    jsonErrorResponse('Sorry, your message could not be delivered right now. Please try again later or reach out another way.');
 }

@@ -41,7 +41,7 @@ body {
   background-color: var(--bg-dark);
   background-image: 
     linear-gradient(rgba(6, 8, 11, 0.85), rgba(6, 8, 11, 0.85)),
-    url('../assets/cyber_calc_bg.webp');
+    url('assets/cyber_calc_bg.webp');
   background-attachment: fixed;
   background-size: cover;
   background-position: center;
@@ -145,6 +145,36 @@ body {
   .calculator-grid {
     grid-template-columns: 380px 1fr;
     align-items: start;
+  }
+
+  .inputs-panel {
+    position: sticky;
+    top: 1.5rem;
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Keep the scrollbar from shoving card content sideways */
+    scrollbar-gutter: stable;
+    padding-right: 0.25rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--text-dark) transparent;
+  }
+
+  .inputs-panel::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .inputs-panel::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .inputs-panel::-webkit-scrollbar-thumb {
+    background-color: var(--text-dark);
+    border-radius: 4px;
+  }
+
+  .inputs-panel::-webkit-scrollbar-thumb:hover {
+    background-color: var(--accent-emerald);
   }
 }
 
@@ -1503,4 +1533,270 @@ input[type="number"]:focus {
 .modal-privacy-icon {
   font-size: 1.2rem;
 }
+
+/* Fetch Property button hover (moved from inline onmouseover/onmouseout so
+   script-src can drop 'unsafe-inline' in the CSP) */
+#btn-search-mls:hover {
+  filter: brightness(1.1);
+}
+
+/* ============================================================
+   "Have a house to sell?" section
+   ============================================================ */
+
+.sell-house-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sell-house-label {
+  cursor: pointer;
+  text-transform: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  color: var(--text-bright);
+}
+
+/* "Have a house to sell?" panel — given its own card treatment (border,
+   tinted background, rounded corners) rather than just another dashed
+   divider in the Purchase Details flow. Without it, "New Home's Redfin URL"
+   above and "Current Home's Redfin URL" inside here used identical
+   input/button styling back-to-back and were easy to mix up as the same
+   property. The card boundary plus the repeated inner heading keep it
+   visually and contextually separate from the new-home purchase fields
+   above and the Down Payment field below. */
+.sell-house-card {
+  background: rgba(6, 182, 212, 0.05);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  border-radius: 0.6rem;
+  padding: 1rem 1rem 1.1rem;
+}
+
+.sell-house-card-heading {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-cyan);
+  opacity: 0.9;
+  margin-bottom: 0.9rem;
+}
+
+/* Small "overwrite cache" action under each sell-side lookup button. Kept
+   deliberately understated (ghost/text-button, not full-width) since this
+   is a troubleshooting escape hatch, not a primary action — most visits
+   should never need it, the normal cache is what keeps lookups fast/cheap. */
+.btn-force-refresh {
+  display: inline-block;
+  margin-top: 0.4rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  padding: 0.15rem 0;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.btn-force-refresh:hover,
+.btn-force-refresh:focus-visible {
+  color: var(--accent-cyan);
+  text-decoration-color: var(--accent-cyan);
+}
+
+.btn-force-refresh:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Toggle switch: a checkbox visually rendered as a pill switch. The
+   checkbox itself is visually hidden but stays in the DOM (not display:none)
+   so it's still keyboard-focusable and screen-reader accessible. */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.toggle-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border-color);
+  border: 1px solid var(--border-hover);
+  border-radius: 999px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 2px;
+  top: 2px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--accent-emerald-dim);
+  border-color: var(--accent-emerald);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(18px);
+  background: var(--accent-emerald);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.toggle-switch input:focus-visible + .toggle-slider {
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+}
+
+/* Net proceeds breakdown box */
+.sell-proceeds-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1.25rem 0;
+  padding: 0.9rem 1rem;
+  background: rgba(16, 185, 129, 0.03);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  border-radius: 0.5rem;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.sell-proceeds-box .sell-net-row {
+  border-top: 1px dashed var(--border-color);
+  padding-top: 0.5rem;
+  margin-top: 0.2rem;
+  font-weight: 700;
+  color: var(--accent-emerald);
+  font-size: 0.9rem;
+}
+
+.sell-proceeds-box.underwater {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.sell-proceeds-box.underwater .sell-net-row {
+  color: var(--color-high);
+}
+
+.sell-warning-text {
+  font-size: 0.75rem;
+  color: var(--color-high);
+  line-height: 1.4;
+  padding-top: 0.3rem;
+}
+
+.sell-proceeds-readout {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 0.5rem;
+  font-family: var(--font-display);
+}
+
+.sell-proceeds-readout #sell-proceeds-percent-value {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.sell-proceeds-readout #sell-proceeds-dollar-value {
+  font-size: 1.15rem;
+  color: var(--accent-emerald);
+  font-weight: 700;
+}
+
+.btn-apply-proceeds {
+  width: 100%;
+  margin-top: 0.9rem;
+  background: var(--accent-emerald-gradient);
+  color: #061510;
+  border: none;
+  border-radius: 0.4rem;
+  padding: 0.7rem 1rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: filter 0.2s ease, transform 0.1s ease;
+}
+
+.btn-apply-proceeds:hover {
+  filter: brightness(1.08);
+}
+
+.btn-apply-proceeds:active {
+  transform: translateY(1px);
+}
+
+#btn-search-sell-redfin:hover {
+  filter: brightness(1.1);
+}
+
+/* Gentle "this value might be stale" suggestion */
+.sell-stale-box {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0 0 1.25rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 0.5rem;
+}
+
+.sell-stale-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.sell-stale-text {
+  flex: 1 1 auto;
+  font-size: 0.775rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.sell-stale-refresh-btn {
+  flex-shrink: 0;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: var(--color-moderate);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, filter 0.2s ease;
+}
+
+.sell-stale-refresh-btn:hover {
+  filter: brightness(1.15);
+  background: rgba(245, 158, 11, 0.18);
+}
+
 

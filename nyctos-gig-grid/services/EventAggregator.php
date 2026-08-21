@@ -1142,7 +1142,10 @@ class EventAggregator {
      * Returns matched venue + market context or null.
      */
     public function resolveTargetVenue($venueName, $marketHint = null, $locationHint = null) {
-        $cleanVenue = strtolower(trim((string)$venueName));
+        // Strip stray trailing punctuation/whitespace some source APIs append to venue
+        // names (e.g. "The Deaf Institute.") before it's persisted or displayed anywhere.
+        $venueName = rtrim(trim((string)$venueName), " .,;:\t\n\r\0\x0B");
+        $cleanVenue = strtolower($venueName);
         if ($cleanVenue === '') {
             return null;
         }
@@ -1268,26 +1271,39 @@ class EventAggregator {
 
             if ($targetMarket !== null) {
                 $streetAddress = trim($locationHint['street'] ?? $locationHint['address'] ?? '');
-                // Strict Pristine Rule: Only auto-insert into venues table if a valid physical street address exists!
-                if (!empty($streetAddress) && preg_match('/\d+/', $streetAddress)) {
-                    try {
-                        $vKey = preg_replace('/[^a-z0-9]/', '', strtolower($venueName));
-                        $mapsUrl = 'https://www.google.com/maps/search/?api=1&query=' . urlencode($venueName . ' ' . $streetAddress . ' ' . $city);
-                        $stmtInsert = $this->db->prepare("INSERT OR IGNORE INTO venues (venue_key, venue_name, address, city, maps_url, market) VALUES (:key, :name, :address, :city, :maps_url, :market)");
-                        $stmtInsert->execute([
-                            ':key' => $vKey,
-                            ':name' => $venueName,
-                            ':address' => $streetAddress,
-                            ':city' => !empty($city) ? $city : 'Unknown',
-                            ':maps_url' => $mapsUrl,
-                            ':market' => $targetMarket
-                        ]);
-                    } catch (Exception $e) {}
-                }
+                // Strict Pristine Rule: only attach a verified physical address/maps link
+                // when one exists. But even without one, still persist the known city so
+                // the venue isn't left blank everywhere it's displayed (event cards, etc.) —
+                // an upsert backfills the address/maps_url later without ever downgrading
+                // a venue that already has verified data.
+                try {
+                    $vKey = preg_replace('/[^a-z0-9]/', '', strtolower($venueName));
+                    $hasStreetAddress = (!empty($streetAddress) && preg_match('/\d+/', $streetAddress));
+                    $mapsUrl = $hasStreetAddress
+                        ? 'https://www.google.com/maps/search/?api=1&query=' . urlencode($venueName . ' ' . $streetAddress . ' ' . $city)
+                        : '';
+                    $stmtInsert = $this->db->prepare("
+                        INSERT INTO venues (venue_key, venue_name, address, city, maps_url, market)
+                        VALUES (:key, :name, :address, :city, :maps_url, :market)
+                        ON CONFLICT(venue_key) DO UPDATE SET
+                            address = CASE WHEN (address = '' OR address IS NULL) AND excluded.address != '' THEN excluded.address ELSE address END,
+                            maps_url = CASE WHEN (maps_url = '' OR maps_url IS NULL) AND excluded.maps_url != '' THEN excluded.maps_url ELSE maps_url END,
+                            city = CASE WHEN (city = '' OR city = 'Unknown' OR city IS NULL) AND excluded.city != '' THEN excluded.city ELSE city END
+                    ");
+                    $stmtInsert->execute([
+                        ':key' => $vKey,
+                        ':name' => $venueName,
+                        ':address' => $hasStreetAddress ? $streetAddress : '',
+                        ':city' => !empty($city) ? $city : 'Unknown',
+                        ':maps_url' => $mapsUrl,
+                        ':market' => $targetMarket
+                    ]);
+                } catch (Exception $e) {}
 
                 $best = [
                     'market' => $targetMarket,
-                    'venue_name' => $venueName
+                    'venue_name' => $venueName,
+                    'city' => $city
                 ];
             }
         }
@@ -1517,6 +1533,22 @@ class EventAggregator {
 
                     if (!empty($doorsTimeSql) && !empty($startTimeSql) && strtotime($doorsTimeSql) === strtotime($startTimeSql)) {
                         $doorsTimeSql = null;
+                    }
+
+                    // Guard against displaying an impossible "Doors X / Show Y" pair. If the
+                    // start time is still a known API placeholder (00:00:00 or 12:00:00) after
+                    // the live-page re-check above, and we do have a real doors time that falls
+                    // later in the day, the placeholder can't be trusted — fall back to a
+                    // doors-plus-buffer estimate instead of showing the show before the doors.
+                    if (!empty($doorsTimeSql) && !empty($startTimeSql)) {
+                        $startTimeOnly = date('H:i:s', strtotime($startTimeSql));
+                        if ($startTimeOnly === '00:00:00' || $startTimeOnly === '12:00:00') {
+                            $doorsTs = strtotime($doorsTimeSql);
+                            $startTs = strtotime($startTimeSql);
+                            if ($doorsTs !== false && $startTs !== false && $doorsTs > $startTs) {
+                                $startTimeSql = date('Y-m-d H:i:s', $doorsTs + 1800);
+                            }
+                        }
                     }
 
                     $ticketUrl = $event['url'] ?? null;

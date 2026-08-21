@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-      <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.open-meteo.com https://unpkg.com https://widgets.mortgagenewsdaily.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://*.basemaps.cartocdn.com; connect-src 'self' https://photon.komoot.io https://cdn.jsdelivr.net https://unpkg.com https://api.open-meteo.com https://nominatim.openstreetmap.org https://widgets.mortgagenewsdaily.com https://router.project-osrm.org;" />
+      <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.open-meteo.com https://unpkg.com https://widgets.mortgagenewsdaily.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://cdn.jsdelivr.net https://*.basemaps.cartocdn.com; connect-src 'self' https://photon.komoot.io https://cdn.jsdelivr.net https://unpkg.com https://api.open-meteo.com https://nominatim.openstreetmap.org https://widgets.mortgagenewsdaily.com https://router.project-osrm.org https://overpass-api.de https://overpass.kumi.systems https://overpass.private.coffee https://maps.mail.ru;" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Open Road Advisor</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -10,10 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
   
   <!-- Leaflet GIS Mapping library styles -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <!-- Chart.js library for elevation graphing -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="advisor.css?v=20" />
+  <link rel="stylesheet" href="advisor.css?v=25" />
 </head>
 <body>
 
@@ -115,6 +115,22 @@
               <button type="button" id="btn-swap-route" class="btn-action" style="padding: 0.45rem 1.05rem; font-size: 0.8rem; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-bright); border-radius: 6px;">⇅ Swap Route</button>
             </div>
           </div>
+
+          <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem; margin-top: 0.75rem;">
+            <input id="scenic-route" type="checkbox" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" />
+            <label for="scenic-route" style="cursor: pointer; user-select: none; font-size: 0.85rem; font-weight: 500;">Scenic Route (Avoid Interstates)<span class="info-tooltip" data-tooltip="Routes around interstates/motorways where possible, keeping state and US highways in play. Requires the site's OpenRouteService key; automatically falls back to the standard fastest route if that service is unavailable.">?</span></label>
+          </div>
+
+          <div class="grid-2-col" style="margin-top: 0.5rem;">
+            <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem;">
+              <input id="avoid-tolls" type="checkbox" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" />
+              <label for="avoid-tolls" style="cursor: pointer; user-select: none; font-size: 0.85rem; font-weight: 500;">Avoid Tolls<span class="info-tooltip" data-tooltip="Routes around toll roads where possible. Requires the site's OpenRouteService key; automatically falls back to the standard route if that service is unavailable.">?</span></label>
+            </div>
+            <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem;">
+              <input id="avoid-ferries" type="checkbox" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" />
+              <label for="avoid-ferries" style="cursor: pointer; user-select: none; font-size: 0.85rem; font-weight: 500;">Avoid Ferries<span class="info-tooltip" data-tooltip="Routes around ferry crossings where possible. Requires the site's OpenRouteService key; automatically falls back to the standard route if that service is unavailable.">?</span></label>
+            </div>
+          </div>
         </div>
 
         <!-- Group 2: Pacing & Stops -->
@@ -138,8 +154,12 @@
               <input id="estimated-mpg" type="number" min="5" max="150" value="30" class="terminal-input" />
             </div>
             <div class="input-group">
-              <label for="fuel-price" id="label-fuel-price">Fuel Price ($/Gal)</label>
-              <input id="fuel-price" type="number" step="0.01" min="0.50" max="20.00" value="3.50" class="terminal-input" />
+              <label for="fuel-grade" id="label-fuel-grade">Fuel Grade</label>
+              <select id="fuel-grade" class="terminal-input">
+                <option value="regular" selected>Regular Unleaded</option>
+                <option value="premium">Premium Unleaded</option>
+                <option value="diesel">Diesel</option>
+              </select>
             </div>
           </div>
 
@@ -167,7 +187,11 @@
               <input id="top-off-meals" type="checkbox" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" checked />
               <label for="top-off-meals" style="cursor: pointer; user-select: none; font-size: 0.85rem; font-weight: 600;">Top off at Meal Stops<span class="info-tooltip" data-tooltip="Simulates filling your gas tank during this stop, resetting your maximum fuel range.">?</span></label>
             </div>
-            
+            <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+              <input id="find-restaurants" type="checkbox" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" checked />
+              <label for="find-restaurants" style="cursor: pointer; user-select: none; font-size: 0.85rem; font-weight: 600;">Find Nearby Restaurants<span class="info-tooltip" data-tooltip="Searches OpenStreetMap for real dining options near each meal stop, backtracking up to 50 miles to find any. Adds scan time — uncheck to skip and speed up route planning.">?</span></label>
+            </div>
+
             <div class="grid-3-col" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.5rem;">
               <div class="meal-input-box" style="border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 6px; background: rgba(0,0,0,0.15);">
                 <div style="display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.25rem;">
@@ -206,6 +230,13 @@
             <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem; height: 100%;">
               <input id="smart-layover" type="checkbox" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" checked />
               <label for="smart-layover" style="cursor: pointer; user-select: none; font-size: 0.85rem; font-weight: 500;">Smart Layover<span class="info-tooltip" data-tooltip="Prevents stopping in desolate areas by backtracking your overnight layover to the nearest valid city or town.">?</span></label>
+            </div>
+          </div>
+
+          <div class="grid-2-col" style="margin-bottom: 0.75rem;">
+            <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem; height: 100%;">
+              <input id="find-hotels" type="checkbox" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" checked />
+              <label for="find-hotels" style="cursor: pointer; user-select: none; font-size: 0.85rem; font-weight: 500;">Find Nearby Lodging<span class="info-tooltip" data-tooltip="Searches OpenStreetMap for real hotels/motels near each overnight layover, backtracking up to 60 miles to find any. Adds scan time — uncheck to skip and speed up route planning.">?</span></label>
             </div>
           </div>
 
@@ -450,8 +481,10 @@
     </div>
   </div>
 
+  <button type="button" id="btn-back-to-top" class="btn-back-to-top" aria-label="Back to top" title="Back to top">Back to Top</button>
+
   <!-- Leaflet GIS Mapping library script -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <script type="module" src="advisor.js?v=20"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="advisor.js?v=42"></script>
 </body>
 </html>

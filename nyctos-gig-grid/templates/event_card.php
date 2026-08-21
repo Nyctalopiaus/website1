@@ -400,8 +400,17 @@ $isThisWeek = ($eventTs >= ($nowTs - 4 * 3600) && $eventTs <= ($nowTs + 7 * 8640
         <div class="time-row time-row-wrap">
             <span>⏱️</span>
             <span>
-                <?php if (!empty($event['doors_time']) && strtotime($event['doors_time']) !== false && strtotime($event['doors_time']) !== strtotime($event['start_time'])): ?>
-                    <?php echo 'Doors ' . date('g:i A', strtotime($event['doors_time'])) . ' / Show ' . $dateInfo['time']; ?>
+                <?php
+                    $doorsTs = !empty($event['doors_time']) ? strtotime($event['doors_time']) : false;
+                    $showTs = strtotime($event['start_time']);
+                    // Only show the "Doors X / Show Y" pairing when doors genuinely precede
+                    // the show on the same day — a source occasionally supplies a doors time
+                    // alongside an unreliable placeholder show time, which would otherwise
+                    // render the nonsensical "Doors 6:00 PM / Show 12:00 PM".
+                    $showsDoorsPairing = ($doorsTs !== false && $doorsTs !== $showTs && $doorsTs < $showTs);
+                ?>
+                <?php if ($showsDoorsPairing): ?>
+                    <?php echo 'Doors ' . date('g:i A', $doorsTs) . ' / Show ' . $dateInfo['time']; ?>
                 <?php else: ?>
                     <?php echo 'Show starts at ' . $dateInfo['time']; ?>
                 <?php endif; ?>
@@ -474,8 +483,8 @@ $isThisWeek = ($eventTs >= ($nowTs - 4 * 3600) && $eventTs <= ($nowTs + 7 * 8640
         ?>
         <div class="artist-links-dropdown" style="width: 100%;">
             <button type="button" class="btn-tickets secondary btn-links-toggle" style="width: 100% !important; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; padding: 0.5rem 0.35rem; font-size: 0.76rem; font-weight: 700; letter-spacing: 0;">
-                <span>🎟️</span>
-                <span>GET TICKETS</span>
+                <span><?php echo $shouldShowFreeBadge ? '🆓' : '🎟️'; ?></span>
+                <span><?php echo $shouldShowFreeBadge ? 'EVENT INFO' : 'GET TICKETS'; ?></span>
                 <span class="dropdown-caret" style="font-size: 0.65rem;">▼</span>
             </button>
             <div class="links-popover" style="width: 100%; min-width: 100%; box-sizing: border-box;">

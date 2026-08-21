@@ -40,7 +40,7 @@ body {
   background-color: var(--bg-main);
   background-image: 
     linear-gradient(rgba(11, 17, 32, 0.82), rgba(11, 17, 32, 0.86)),
-    url('../assets/cyber_status_bg.webp');
+    url('assets/cyber_status_bg.webp');
   background-attachment: fixed;
   background-size: cover;
   background-position: center;

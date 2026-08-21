@@ -2,14 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://api.open-meteo.com https://unpkg.com https://widgets.mortgagenewsdaily.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://*.basemaps.cartocdn.com; connect-src 'self' https://unpkg.com https://api.open-meteo.com https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org https://photon.komoot.io https://widgets.mortgagenewsdaily.com https://router.project-osrm.org https://overpass-api.de https://overpass.kumi.systems https://overpass.private.coffee https://maps.mail.ru https://overpass.osm.ch; object-src 'none'; base-uri 'self'; form-action 'self';" />
+  <!-- NOTE: widgets.mortgagenewsdaily.com and router.project-osrm.org were allowlisted
+       here but are never referenced by this app's JS (likely copied from a sibling tool
+       in the shared vm_code suite) -- trimmed to keep the allowlist matched to what this
+       page actually loads. Leaflet is loaded from cdn.jsdelivr.net rather than unpkg.com:
+       unpkg's own docs say it isn't meant for production hotlinking, and in practice it
+       was intermittently 503-ing on this page specifically (see 2026-08 incident) while
+       jsDelivr -- built for exactly this use case -- served it reliably. connect-src no
+       longer needs a CDN entry: Leaflet's tiles load as <img> (covered by img-src), not
+       via fetch/XHR. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://cdn.jsdelivr.net; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://nominatim.openstreetmap.org https://photon.komoot.io https://overpass-api.de https://overpass.kumi.systems https://overpass.private.coffee https://maps.mail.ru https://overpass.osm.ch; object-src 'none'; base-uri 'self'; form-action 'self';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Relocation Analytics Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="styles.css?v=120" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css?v=123" />
 </head>
 <body>
 
@@ -112,6 +121,8 @@
             <button id="btn-use-current" type="button" class="ghost-btn">Use Last Search</button>
             <button id="btn-export-report" type="button" class="ghost-btn">Export Report</button>
           </div>
+
+          <div id="form-notice" class="form-notice" hidden role="status" aria-live="polite"></div>
 
           <div id="location-status-container" class="location-status-container">
             <div id="primary-status-wrap" class="status-pill-wrap">
@@ -261,12 +272,12 @@
     </div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="keywords.js?v=141"></script>
   <script src="geocoder.js?v=141"></script>
-  <script src="autocomplete.js?v=141"></script>
-  <script src="spatial.js?v=141"></script>
+  <script src="autocomplete.js?v=142"></script>
+  <script src="spatial.js?v=142"></script>
   <script src="scoring.js?v=141"></script>
-  <script src="app.js?v=200"></script>
+  <script src="app.js?v=206"></script>
 </body>
 </html>

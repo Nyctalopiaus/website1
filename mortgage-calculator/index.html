@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-      <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.open-meteo.com https://unpkg.com https://widgets.mortgagenewsdaily.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://*.basemaps.cartocdn.com; connect-src 'self' https://api.open-meteo.com https://nominatim.openstreetmap.org https://widgets.mortgagenewsdaily.com https://router.project-osrm.org;" />
+      <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; base-uri 'self'; object-src 'none';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nycto's Housing Cost Calculator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="styles.css?v=11" />
 </head>
 <body>
   <div class="glow-bg"></div>
@@ -44,12 +44,12 @@
           
             <div class="input-group" style="padding-bottom: 1.25rem; border-bottom: 1px dashed var(--border-color); margin-bottom: 1.25rem;">
             <div class="label-with-tooltip">
-              <label for="mlsNumber">Auto-Fill via Redfin URL</label>
-              <span class="tooltip-icon" data-tooltip="Securely pulls price, HOA, and tax data from a Redfin property link.">?</span>
+              <label for="mlsNumber">New Home's Redfin URL</label>
+              <span class="tooltip-icon" data-tooltip="Securely pulls price, HOA, and tax data for the home you're buying from a Redfin property link.">?</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
               <input id="mlsNumber" type="text" placeholder="Paste Redfin property page URL..." aria-label="Redfin property page URL for auto-fill" style="width: 100%; background: rgba(7, 9, 8, 0.5); border: 1px solid var(--border-color); border-radius: 0.4rem; color: var(--text-bright); padding: 0.65rem 0.9rem; font-family: var(--font-sans); outline: none;" />
-              <button id="btn-search-mls" aria-label="Fetch property data from Redfin URL" style="width: 100%; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.65rem 1rem; font-weight: 600; cursor: pointer; text-align: center; transition: filter 0.2s ease;" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">🔍 Fetch Property</button>
+              <button id="btn-search-mls" aria-label="Fetch property data from Redfin URL" style="width: 100%; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.65rem 1rem; font-weight: 600; cursor: pointer; text-align: center; transition: filter 0.2s ease;">🔍 Fetch Property</button>
             </div>
             
             <!-- NEW HOUSING PREVIEW CARD -->
@@ -70,6 +70,119 @@
               <input id="homePrice" type="number" min="10000" max="20000000" step="5000" value="400000" />
             </div>
             <input id="homePriceSlider" type="range" min="100000" max="1500000" step="10000" value="400000" class="slider" />
+          </div>
+
+          <div class="input-group sell-house-group" style="margin-bottom: 1.25rem;">
+            <div class="sell-house-header">
+              <label class="toggle-switch" for="hasHouseToSell">
+                <input type="checkbox" id="hasHouseToSell" aria-label="Have a house to sell?" />
+                <span class="toggle-slider" aria-hidden="true"></span>
+              </label>
+              <div class="label-with-tooltip" style="margin: 0;">
+                <label for="hasHouseToSell" class="sell-house-label">🏡 Have a house to sell?</label>
+                <span class="tooltip-icon" data-tooltip="Estimate what you'll walk away with after selling your current home, then decide how much of that goes toward your new down payment.">?</span>
+              </div>
+            </div>
+
+            <div id="sell-house-panel" class="sell-house-card" style="display: none; margin-top: 0.75rem;">
+              <div class="sell-house-card-heading">🏡 Selling Your Current Home — separate from the purchase details above</div>
+              <div class="input-group">
+                <div class="label-with-tooltip">
+                  <label for="sellHomeRedfinUrl">Current Home's Redfin URL</label>
+                  <span class="tooltip-icon" data-tooltip="Paste your current home's Redfin property page to try auto-filling an estimated value. Works best when the page is public; you can always type the value in yourself.">?</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
+                  <input id="sellHomeRedfinUrl" type="text" placeholder="Paste Redfin property URL..." aria-label="Redfin property page URL for your current home" style="width: 100%; background: rgba(7, 9, 8, 0.5); border: 1px solid var(--border-color); border-radius: 0.4rem; color: var(--text-bright); padding: 0.65rem 0.9rem; font-family: var(--font-sans); outline: none;" />
+                  <button id="btn-search-sell-redfin" type="button" aria-label="Look up value estimate from Redfin URL" style="width: 100%; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.65rem 1rem; font-weight: 600; cursor: pointer; text-align: center; transition: filter 0.2s ease;">🔍 Look Up Value</button>
+                </div>
+                <span class="help-text">Best-effort — Redfin's off-market page layout can vary, so double-check the value it fills in.</span>
+                <button id="btn-force-refresh-sell-redfin" type="button" class="btn-force-refresh" aria-label="Force a fresh Redfin lookup, bypassing the cache">↻ Overwrite cache (force fresh lookup)</button>
+              </div>
+
+              <div class="grid-2-col">
+                <div class="input-group">
+                  <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 0.35rem; flex-wrap: wrap;">
+                    <label for="sellHomeValue">Estimated Home Value</label>
+                    <span id="badge-sell-redfin" style="display: none; font-size: 0.65rem; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.25); padding: 0.15rem 0.45rem; border-radius: 0.25rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em;">✓ Redfin</span>
+                  </div>
+                  <div class="input-with-prefix">
+                    <span class="prefix">$</span>
+                    <input id="sellHomeValue" type="number" min="0" max="20000000" step="1000" value="350000" />
+                  </div>
+                </div>
+                <div class="input-group">
+                  <div class="label-with-tooltip"><label for="sellMortgagePayoff">Mortgage Payoff Balance</label><span class="tooltip-icon" data-tooltip="How much you still owe on your current home's mortgage(s) — this comes off the top before you see any cash.">?</span></div>
+                  <div class="input-with-prefix">
+                    <span class="prefix">$</span>
+                    <input id="sellMortgagePayoff" type="number" min="0" max="20000000" step="1000" value="180000" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid-2-col">
+                <div class="input-group">
+                  <div class="label-with-tooltip"><label for="sellCommissionPercent">Agent Commission</label><span class="tooltip-icon" data-tooltip="Combined buyer's + seller's agent commission, typically negotiated as a percentage of the sale price.">?</span></div>
+                  <div class="input-with-suffix">
+                    <input id="sellCommissionPercent" type="number" min="0" max="20" step="0.1" value="6" />
+                    <span class="suffix">%</span>
+                  </div>
+                </div>
+                <div class="input-group">
+                  <div class="label-with-tooltip"><label for="sellClosingCostsPercent">Other Closing Costs</label><span class="tooltip-icon" data-tooltip="Title, escrow, attorney, and transfer-tax style costs. Varies a lot by state — this is a rough percentage estimate.">?</span></div>
+                  <div class="input-with-suffix">
+                    <input id="sellClosingCostsPercent" type="number" min="0" max="10" step="0.1" value="1.5" />
+                    <span class="suffix">%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid-2-col">
+                <div class="input-group">
+                  <label for="sellRepairCosts">Repairs / Prep Costs</label>
+                  <div class="input-with-prefix">
+                    <span class="prefix">$</span>
+                    <input id="sellRepairCosts" type="number" min="0" max="500000" step="100" value="0" />
+                  </div>
+                </div>
+                <div class="input-group">
+                  <div class="label-with-tooltip"><label for="sellConcessions">Buyer Concessions</label><span class="tooltip-icon" data-tooltip="Credits offered to the buyer to close the deal — repair credits, rate buydowns, closing cost help, etc.">?</span></div>
+                  <div class="input-with-prefix">
+                    <span class="prefix">$</span>
+                    <input id="sellConcessions" type="number" min="0" max="500000" step="100" value="0" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="input-group">
+                <label for="sellMovingCosts">Moving Costs</label>
+                <div class="input-with-prefix">
+                  <span class="prefix">$</span>
+                  <input id="sellMovingCosts" type="number" min="0" max="100000" step="100" value="2000" />
+                </div>
+              </div>
+
+              <div id="sell-proceeds-box" class="sell-proceeds-box">
+                <div class="detail-row"><span>Home Value</span><span id="sell-line-value">$-.--</span></div>
+                <div class="detail-row"><span>− Mortgage Payoff</span><span id="sell-line-payoff">$-.--</span></div>
+                <div class="detail-row"><span>− Agent Commission</span><span id="sell-line-commission">$-.--</span></div>
+                <div class="detail-row"><span>− Closing Costs</span><span id="sell-line-closing">$-.--</span></div>
+                <div class="detail-row"><span>− Repairs</span><span id="sell-line-repairs">$-.--</span></div>
+                <div class="detail-row"><span>− Concessions</span><span id="sell-line-concessions">$-.--</span></div>
+                <div class="detail-row"><span>− Moving Costs</span><span id="sell-line-moving">$-.--</span></div>
+                <div class="detail-row sell-net-row"><span>Net Sale Proceeds</span><span id="sell-net-proceeds">$-.--</span></div>
+                <p id="sell-underwater-warning" class="sell-warning-text" style="display: none;">⚠ You may owe money at closing instead of receiving proceeds.</p>
+              </div>
+
+              <div class="input-group" style="margin-bottom: 0;">
+                <div class="label-with-tooltip"><label>% of Proceeds → New Down Payment</label><span class="tooltip-icon" data-tooltip="How much of your net sale proceeds you want to put toward the down payment on the new house, versus keeping as cash on hand.">?</span></div>
+                <input id="sellProceedsPercentSlider" type="range" min="0" max="100" step="5" value="100" class="slider" />
+                <div class="sell-proceeds-readout">
+                  <span id="sell-proceeds-percent-value">100%</span>
+                  <span id="sell-proceeds-dollar-value">$0.00</span>
+                </div>
+                <button id="btn-apply-proceeds" type="button" class="btn-apply-proceeds">⬇ Apply to Down Payment</button>
+              </div>
+            </div>
           </div>
 
           <div class="input-group">
@@ -355,12 +468,12 @@
             <h2>Affordability Analysis (DTI)</h2>
 
             <div class="input-group" style="margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px dashed var(--border-color);">
-              <div class="label-with-tooltip"><label for="grossIncome">Gross Monthly Income</label><span class="tooltip-icon" data-tooltip="Your total household income BEFORE taxes, health insurance, and other deductions are taken out of your paycheck.">?</span></div>
+              <div class="label-with-tooltip"><label for="grossAnnualIncome">Gross Annual Income</label><span class="tooltip-icon" data-tooltip="Your total household income BEFORE taxes, health insurance, and other deductions are taken out of your paycheck. Enter the full yearly amount — we'll divide by 12 for the math.">?</span></div>
               <div class="input-with-prefix">
                 <span class="prefix">$</span>
-                <input id="grossIncome" type="number" min="1" max="1000000" step="100" value="10000" />
+                <input id="grossAnnualIncome" type="number" min="1" max="12000000" step="1000" value="120000" />
               </div>
-              <span class="help-text">Pre-tax monthly household income</span>
+              <span class="help-text">Pre-tax annual household income (before taxes)</span>
             </div>
 
             <div class="dti-metric">
@@ -456,6 +569,7 @@
         <li><strong>Accelerated Payoff Simulator:</strong> Test monthly extra principal payments and recurring lump-sum boosts to calculate exact time and interest saved.</li>
         <li><strong>Interactive Visualizations:</strong> Explore SVG payment breakdown donut charts and interactive loan burndown curves.</li>
         <li><strong>DTI Affordability Analysis:</strong> Check front-end Debt-to-Income ratios against standard 28%/36% underwriting benchmarks.</li>
+        <li><strong>Have a House to Sell?:</strong> Estimate net proceeds from selling your current home — payoff balance, agent commission, closing costs, and more — then route a chosen share straight into your new down payment.</li>
       </ul>
       <div class="modal-privacy-notice">
         <span class="modal-privacy-icon">🔒</span>
@@ -467,6 +581,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=25"></script>
+  <script type="module" src="app.js?v=29"></script>
 </body>
 </html>

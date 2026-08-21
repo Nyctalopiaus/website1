@@ -191,3 +191,16 @@ export function looksLikeUrl(value) {
 export function encodeUrlParam(url) {
   return encodeURIComponent(url.trim());
 }
+
+/**
+ * Calculates whole days elapsed since a stored epoch-ms timestamp.
+ * @param {number|null|undefined} timestampMs - Epoch ms of the stored event, or null/undefined if never set
+ * @param {number} [nowMs] - Current time in epoch ms (defaults to Date.now(), overridable for testing)
+ * @returns {number|null} Whole days elapsed, or null if timestampMs is missing/invalid
+ */
+export function daysSince(timestampMs, nowMs = Date.now()) {
+  if (!timestampMs || isNaN(timestampMs)) return null;
+  const elapsedMs = nowMs - timestampMs;
+  if (elapsedMs < 0) return 0; // Clock skew / future timestamp guard
+  return Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
+}

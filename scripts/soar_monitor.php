@@ -182,13 +182,11 @@ $monitoredEndpoints = [
         'url' => 'https://www.mortgagenewsdaily.com/',
         'type' => 'outbound'
     ],
-    [
-        'app_key' => 'retirement-forecaster',
-        'app_name' => 'Retirement Forecaster',
-        'name' => 'Social Security Admin (SSA.gov)',
-        'url' => 'https://www.ssa.gov/OACT/quickcalc/',
-        'type' => 'outbound'
-    ],
+    // NOTE: "Social Security Admin (SSA.gov)" removed from monitoring 2026-08-18. The Retirement
+    // Forecaster app never calls SSA.gov server-side - it's a plain <a target="_blank"> link users
+    // open in their own browser (see retirement-forecaster/index.html). There was no real server-side
+    // dependency for this check to reflect, and repeated automated hits to a .gov domain with no
+    // corresponding real usage pattern were getting flagged by their bot detection.
     [
         'app_key' => 'crypto-game',
         'app_name' => 'Crypto Trading Simulator',
@@ -207,8 +205,18 @@ $monitoredEndpoints = [
         'app_key' => 'nyctos-gig-grid',
         'app_name' => "Nycto's Gig Grid",
         'name' => 'Bandsintown Public API',
-        'url' => 'https://rest.bandsintown.com/artists/vulfpeck?app_id=1234',
-        'type' => 'outbound'
+        // Matches the real endpoint pattern EventAggregator::fetchBandsintownFallback() actually
+        // uses (the plain /artists/{name}?app_id= location-search endpoint is a deprecated,
+        // provider-blocked path the app deliberately avoids - see fetchBandsintown()). Same app_id
+        // default as config.php's BANDSINTOWN_APP_ID, and a stable, real touring artist to query
+        // instead of the production artist registry (approved_artists table), which this monitor
+        // shouldn't need to read from the live DB just to health-check the API shape.
+        'url' => 'https://rest.bandsintown.com/artists/vulfpeck/events?app_id=js_nyctos_gig_grid',
+        'type' => 'outbound',
+        'user_agent' => 'NyctosGigGrid/2.0',
+        // Production treats HTTP 404 (artist has no upcoming events / not recognized) as a normal,
+        // non-error outcome, not a failure - mirror that here so the monitor doesn't flag it either.
+        'accept_404' => true
     ],
     [
         'app_key' => 'nyctos-gig-grid',
@@ -224,13 +232,11 @@ $monitoredEndpoints = [
         'url' => 'https://www.last.fm/',
         'type' => 'outbound'
     ],
-    [
-        'app_key' => 'nyctos-gig-grid',
-        'app_name' => "Nycto's Gig Grid",
-        'name' => 'AXS & AEG Ticketing Scraper',
-        'url' => 'https://www.axs.com/',
-        'type' => 'scraper'
-    ],
+    // NOTE: "AXS & AEG Ticketing Scraper" (bare https://www.axs.com/) removed from monitoring
+    // 2026-08-18. VenueScraper.php never touches axs.com - AEG venue events are actually pulled
+    // from aegwebprod.blob.core.windows.net JSON feeds and specific venue sites (e.g.
+    // gothictheatre.com). Hitting AXS's homepage, which runs aggressive bot protection, reflected
+    // no real dependency and was a false signal.
     [
         'app_key' => 'nyctos-gig-grid',
         'app_name' => "Nycto's Gig Grid",
@@ -368,8 +374,14 @@ $monitoredEndpoints = [
         'app_key' => 'threatpulse',
         'app_name' => "Nycto's ThreatPulse",
         'name' => 'GitHub Advisory Database',
-        'url' => 'https://github.com/advisories.atom',
-        'type' => 'outbound'
+        // fetcher.py's fetch_github_api() actually calls the official REST API, not the website's
+        // Atom feed (github.com/advisories.atom), which sits behind much stricter bot detection and
+        // was persistently 406'ing regardless of Accept header. Matches fetch_github_api() exactly:
+        // same URL, same Accept header, same User-Agent identity.
+        'url' => 'https://api.github.com/advisories',
+        'type' => 'outbound',
+        'user_agent' => 'ThreatPulse-IngestionEngine/1.0',
+        'headers' => ['Accept: application/vnd.github.v3+json']
     ],
     [
         'app_key' => 'threatpulse',
@@ -510,7 +522,15 @@ $monitoredEndpoints = [
 $now = time();
 $currentResults = [];
 
-function checkEndpoint($url) {
+function checkEndpoint($url, $opts = []) {
+    // Optional per-endpoint overrides so a check can mirror exactly how the real app calls this
+    // URL (custom User-Agent, extra headers like a specific Accept, treating a particular HTTP
+    // code as a non-error). Defaults preserve the plain, generic-browser-UA request every other
+    // endpoint already uses.
+    $userAgent = $opts['user_agent'] ?? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    $extraHeaders = $opts['headers'] ?? [];
+    $accept404 = !empty($opts['accept_404']);
+
     $attempt = 0;
     $maxAttempts = 2;
     $latencyMs = 0;
@@ -549,7 +569,16 @@ function checkEndpoint($url) {
         
         curl_setopt($ch, CURLOPT_TIMEOUT, 12);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        curl_setopt($ch, CURLOPT_USERAGENT, $userAgent);
+        // NOTE: previously added a blanket "Accept: text/html,...,application/atom+xml,..." header here
+        // for every endpoint, to try to stop GitHub's .atom feed from 406'ing. Reverted: it didn't fix
+        // GitHub (still 406 with the header present) and it tripped bot/WAF detection on SSA.gov,
+        // Bandsintown, AXS, and BleepingComputer, which had been returning clean 200s for every prior
+        // scan. Headers are now only added per-endpoint (via $opts['headers']) to mirror what the real
+        // app actually sends for that specific call, not applied blanket to every check.
+        if (!empty($extraHeaders)) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $extraHeaders);
+        }
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 
@@ -568,12 +597,23 @@ function checkEndpoint($url) {
         if ($httpCode === 401 || $httpCode === 400) {
             $httpCode = 200; // Normalize status code display
         }
+        // Some endpoints' real production caller treats 404 as a normal non-error outcome (e.g.
+        // Bandsintown returns 404 for an artist with no upcoming events / not recognized, and
+        // EventAggregator::fetchBandsintownFallback() just skips it rather than logging a failure).
+        if ($accept404 && $httpCode === 404) {
+            $isSuccess = 1;
+        }
 
-        // Fallback WAF check for domains blocking script HTML/API requests (e.g. Akamai / Cloudflare 403 on HTML)
+        // Fallback WAF check for domains blocking script HTML/API requests (e.g. Akamai / Cloudflare 403 on HTML).
+        // NOTE: this only proves the *domain* is reachable, not that the actual monitored endpoint
+        // (the specific feed/API URL) is working. We deliberately report these as DEGRADED rather
+        // than OPERATIONAL below, so a real content-block doesn't get silently reported as all-clear.
+        $wafFallbackUsed = false;
         if ($httpCode === 403) {
             if (!empty($parsed['scheme']) && !empty($parsed['host'])) {
                 $host = $parsed['host'];
                 $baseDomain = preg_replace('/^rest\.|^app\.|^api\./', 'www.', $host);
+                $originalCode = $httpCode;
 
                 $fallbackUrls = [
                     $parsed['scheme'] . '://' . $host . '/favicon.ico',
@@ -589,7 +629,7 @@ function checkEndpoint($url) {
                     curl_setopt($chFb, CURLOPT_TIMEOUT, 6);
                     curl_setopt($chFb, CURLOPT_SSL_VERIFYPEER, false);
                     curl_setopt($chFb, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-                    
+
                     $fbStart = microtime(true);
                     curl_exec($chFb);
                     $fbEnd = microtime(true);
@@ -597,10 +637,12 @@ function checkEndpoint($url) {
                     @curl_close($chFb);
 
                     if ($fbCode >= 200 && $fbCode < 400) {
-                        $httpCode = 200;
+                        // Domain is up, but the actual monitored endpoint returned 403 - treat as
+                        // a partial/degraded result, not a clean success, and keep the real code/error.
                         $isSuccess = 1;
                         $latencyMs = round(($fbEnd - $fbStart) * 1000);
-                        $curlErr = null;
+                        $curlErr = "HTTP $originalCode on target endpoint (domain reachable via fallback probe)";
+                        $wafFallbackUsed = true;
                         break;
                     }
                 }
@@ -613,7 +655,8 @@ function checkEndpoint($url) {
                 'latency_ms' => $latencyMs,
                 'http_code' => $httpCode,
                 'is_success' => 1,
-                'error' => null
+                'error' => $curlErr,
+                'waf_fallback_used' => $wafFallbackUsed
             ];
         }
 
@@ -627,7 +670,8 @@ function checkEndpoint($url) {
         'latency_ms' => $latencyMs,
         'http_code' => $httpCode,
         'is_success' => 0,
-        'error' => $curlErr ? $curlErr : "HTTP " . $httpCode
+        'error' => $curlErr ? $curlErr : "HTTP " . $httpCode,
+        'waf_fallback_used' => false
     ];
 }
 
@@ -639,6 +683,7 @@ if (isset($pdo)) {
 $totalLatency = 0;
 $totalChecks = count($monitoredEndpoints);
 $successfulChecks = 0;
+$incidentChecks = 0; // counts OUTAGE + DEGRADED, matching what the dashboard displays
 
 // Helper: detect hidden apps from index.html
 function getHiddenAppKeys($baseDir) {
@@ -661,7 +706,11 @@ function getHiddenAppKeys($baseDir) {
 $hiddenKeys = getHiddenAppKeys($baseDir);
 
 foreach ($monitoredEndpoints as $ep) {
-    $res = checkEndpoint($ep['url']);
+    $res = checkEndpoint($ep['url'], [
+        'user_agent' => $ep['user_agent'] ?? null,
+        'headers' => $ep['headers'] ?? [],
+        'accept_404' => $ep['accept_404'] ?? false
+    ]);
 
     if ($insertStmt) {
         try {
@@ -693,9 +742,14 @@ foreach ($monitoredEndpoints as $ep) {
     }
     if (!$res['is_success']) {
         $statusText = 'OUTAGE';
+    } else if (!empty($res['waf_fallback_used'])) {
+        // Target endpoint itself failed (e.g. 403); only the fallback probe succeeded.
+        // Report as DEGRADED rather than OPERATIONAL so this isn't silently reported as all-clear.
+        $statusText = 'DEGRADED';
     } else if ($res['latency_ms'] > $degradedThreshold) {
         $statusText = 'DEGRADED';
     }
+    if ($statusText !== 'OPERATIONAL') $incidentChecks++;
 
     $currentResults[] = [
         'app_key' => $ep['app_key'],
@@ -757,11 +811,11 @@ if (isset($pdo)) {
 $outputPayload = [
     'timestamp' => $now,
     'formatted_date' => gmdate('Y-m-d H:i:s \U\T\C', $now),
-    'system_status' => ($successfulChecks === $totalChecks) ? 'OPERATIONAL' : (($successfulChecks > 0) ? 'DEGRADED' : 'OUTAGE'),
+    'system_status' => ($incidentChecks === 0) ? 'OPERATIONAL' : (($successfulChecks > 0) ? 'DEGRADED' : 'OUTAGE'),
     'global_uptime_24h' => $globalUptime24h,
     'avg_latency_ms' => $avgLatency24h,
     'total_monitored' => $totalChecks,
-    'active_incidents' => $totalChecks - $successfulChecks,
+    'active_incidents' => $incidentChecks, // OUTAGE + DEGRADED, matches what the dashboard displays
     'endpoints' => $currentResults,
     'history_trend' => $historyTrend24h,
     'history_trend_24h' => $historyTrend24h,

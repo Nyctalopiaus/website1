@@ -23,6 +23,9 @@
     getViewScope: () => localStorage.getItem('tp_view_scope') || 'briefing',
     setViewScope: (scope) => localStorage.setItem('tp_view_scope', scope),
 
+    getSortMode: () => localStorage.getItem('tp_sort_mode') || 'recency',
+    setSortMode: (mode) => localStorage.setItem('tp_sort_mode', mode),
+
     getSelectedTags: () => new Set(JSON.parse(localStorage.getItem('tp_selected_tags') || '[]')),
     saveSelectedTags: (set) => localStorage.setItem('tp_selected_tags', JSON.stringify(Array.from(set))),
 
@@ -44,6 +47,37 @@
     },
     saveVisibleColumns: (set) => localStorage.setItem('tp_visible_columns', JSON.stringify(Array.from(set))),
 
+    // Saved Views: named filter presets (tags + match mode + search + sort). Stored as a plain
+    // array of {id, name, tags, tagMatchMode, searchQuery, sortMode, createdAt}. Consistent with
+    // every other Storage entry here: pure localStorage, nothing sent to a server, so the
+    // "100% stateless & private" claim in the Quick Start modal stays true for this too.
+    getSavedViews: () => {
+      try {
+        const stored = JSON.parse(localStorage.getItem('tp_saved_views') || '[]');
+        return Array.isArray(stored) ? stored : [];
+      } catch (e) {
+        return [];
+      }
+    },
+    saveSavedViews: (views) => localStorage.setItem('tp_saved_views', JSON.stringify(views)),
+
+    // IOC Watch panel preferences (Phase 3). "Show low confidence" defaults OFF -- the whole
+    // point of the confidence model is a curated High+Medium default view, not a raw firehose.
+    getIocShowLow: () => localStorage.getItem('tp_ioc_show_low') === 'true',
+    setIocShowLow: (show) => localStorage.setItem('tp_ioc_show_low', show ? 'true' : 'false'),
+
+    getIocFilterGreyNoise: () => localStorage.getItem('tp_ioc_filter_greynoise') === 'true',
+    setIocFilterGreyNoise: (val) => localStorage.setItem('tp_ioc_filter_greynoise', val ? 'true' : 'false'),
+
+    getIocTypeFilter: () => localStorage.getItem('tp_ioc_type_filter') || 'all',
+    setIocTypeFilter: (type) => localStorage.setItem('tp_ioc_type_filter', type),
+
+    getIocSortColumn: () => localStorage.getItem('tp_ioc_sort_col') || 'confidence_score',
+    setIocSortColumn: (col) => localStorage.setItem('tp_ioc_sort_col', col),
+
+    getIocSortOrder: () => localStorage.getItem('tp_ioc_sort_order') || 'desc',
+    setIocSortOrder: (order) => localStorage.setItem('tp_ioc_sort_order', order),
+
     clearAll: () => {
       localStorage.removeItem('tp_read_items');
       localStorage.removeItem('tp_bookmarked_items');
@@ -52,10 +86,17 @@
       localStorage.removeItem('tp_triage_filter');
       localStorage.removeItem('tp_metrics_collapsed');
       localStorage.removeItem('tp_view_scope');
+      localStorage.removeItem('tp_sort_mode');
       localStorage.removeItem('tp_selected_tags');
       localStorage.removeItem('tp_tags_collapsed');
       localStorage.removeItem('tp_summary_collapsed');
       localStorage.removeItem('tp_visible_columns');
+      localStorage.removeItem('tp_saved_views');
+      localStorage.removeItem('tp_ioc_show_low');
+      localStorage.removeItem('tp_ioc_filter_greynoise');
+      localStorage.removeItem('tp_ioc_type_filter');
+      localStorage.removeItem('tp_ioc_sort_col');
+      localStorage.removeItem('tp_ioc_sort_order');
     }
   };
 
@@ -63,15 +104,27 @@
     rawData: null,
     allItems: [],
     filteredItems: [],
+    // IOC Watch (Phase 3): loaded separately from data/iocs.json, never merged into
+    // allItems/filteredItems -- a deliberately distinct data model and view, not part of the
+    // news kanban's tag taxonomy or severity/urgency system.
+    allIocs: [],
+    iocRawData: null,
+    iocShowLow: Storage.getIocShowLow(),
+    iocFilterGreyNoise: Storage.getIocFilterGreyNoise(),
+    iocTypeFilter: Storage.getIocTypeFilter(),
+    iocSortColumn: Storage.getIocSortColumn(),
+    iocSortOrder: Storage.getIocSortOrder(),
     readItems: Storage.getReadItems(),
     bookmarkedItems: Storage.getBookmarkedItems(),
     selectedTags: Storage.getSelectedTags(),
     visibleColumns: Storage.getVisibleColumns(),
+    savedViews: Storage.getSavedViews(),
     tagsCollapsed: Storage.getTagsCollapsed(),
     summaryCollapsed: Storage.getSummaryCollapsed(),
     tagMatchMode: 'OR',
     preferredView: 'kanban',
     viewScope: Storage.getViewScope(),
+    sortMode: Storage.getSortMode(),
     activeCategory: Storage.getActiveCategory(),
     triageFilter: Storage.getTriageFilter(),
     metricsCollapsed: Storage.getMetricsCollapsed(),

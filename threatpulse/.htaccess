@@ -8,7 +8,9 @@
 Options -Indexes -MultiViews
 
 # Block Access to Hidden Files, Dotfiles, Databases & Sensitive Scripts
-<FilesMatch "(^\.|\.(bak|config|sql|db|py|sh|env|md|json\.bak|schema|log))$">
+# (json is blocked here too - config.json isn't meant to be public; feed.json
+# is explicitly re-allowed below)
+<FilesMatch "(^\.|\.(bak|config|sql|db|py|sh|env|md|json|schema|log))$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
@@ -18,12 +20,22 @@ Options -Indexes -MultiViews
     </IfModule>
 </FilesMatch>
 
-# Explicitly Allow Feed Payload
-<Files "feed.json">
+# Explicitly Allow Feed & IOC Payloads
+<FilesMatch "^(feed|iocs)\.json$">
     <IfModule mod_authz_core.c>
         Require all granted
     </IfModule>
-</Files>
+</FilesMatch>
+
+# Explicitly Allow Documentation PDFs
+<FilesMatch "\.pdf$">
+    <IfModule mod_authz_core.c>
+        Require all granted
+    </IfModule>
+    <IfModule mod_headers.c>
+        Header set Content-Disposition "inline"
+    </IfModule>
+</FilesMatch>
 
 # Prevent Dynamic Script Execution in Static Asset Directories
 <FilesMatch "\.(php|py|pl|sh|cgi)$">
@@ -56,7 +68,7 @@ Options -Indexes -MultiViews
   # 3. CACHE-CONTROL HEADERS
   # ----------------------------------------------------------------------
   # Static Feed Data: 60 seconds with forced revalidation
-  <FilesMatch "feed\.json$">
+  <FilesMatch "(feed|iocs)\.json$">
     Header set Cache-Control "public, max-age=60, must-revalidate"
   </FilesMatch>
 

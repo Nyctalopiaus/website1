@@ -5,6 +5,8 @@ Disallow: /actions/
 Disallow: /PHPMailer/
 Disallow: /services/
 Disallow: /cache/
+Disallow: /admin.php
+Disallow: /admin_data_quality.php
 
 Sitemap: https://nycto.ninja/sitemap.xml
 Sitemap: https://nycto.ninja/sitemap.php

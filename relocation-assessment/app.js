@@ -2,7 +2,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   'use strict';
 
-  const APP_VERSION = '11.7-smart-cache-skip-including-distance';
+  const APP_VERSION = '12.2-fix-leaflet-overflow';
   const STORAGE_KEY = 'relocation_assessment_prefs_v117';
 
   const geocoder = window.RelocationGeocoder;
@@ -22,14 +22,17 @@ document.addEventListener('DOMContentLoaded', () => {
     locationCenter: null,
     lastSavedQuery: '',
     cuisineTags: ['mexican', 'italian', 'sushi', 'thai'],
+    // NOTE: these defaults must mirror the `checked` attributes in index.html
+    // (grocery/fitness/trails/cuisine on, gas/parks/pharmacy off). initUI() also
+    // re-syncs this from the live DOM checkboxes on load so the two can never drift.
     categoryPrefs: {
       grocery: true,
       fitness: true,
       trails: true,
       cuisine: true,
-      gas: true,
-      parks: true,
-      pharmacy: true
+      gas: false,
+      parks: false,
+      pharmacy: false
     },
     sources: {
       primary: null,
@@ -60,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btnUseCurrent: document.getElementById('btn-use-current'),
     btnExportReport: document.getElementById('btn-export-report'),
     autocompleteList: document.getElementById('autocomplete-list'),
+    formNotice: document.getElementById('form-notice'),
 
     primaryStatusWrap: document.getElementById('primary-status-wrap'),
     primaryStatusPill: document.getElementById('primary-status-pill'),
@@ -127,6 +131,34 @@ document.addEventListener('DOMContentLoaded', () => {
         reads.scannerGrid.removeChild(reads.scannerGrid.lastChild);
       }
     }
+  }
+
+  let formNoticeTimer = null;
+
+  // Surfaces a message where the user is actually looking, near the search
+  // controls. Previously these validation messages only went to telemetry(),
+  // which writes into the "Live Activity Feed" panel -- a panel that ships
+  // hidden in this build, so the warnings were never visible at all.
+  function showFormNotice(message, level = 'warn') {
+    if (!reads.formNotice) return;
+    reads.formNotice.textContent = message;
+    reads.formNotice.className = level === 'error' ? 'form-notice form-notice-error' : 'form-notice';
+    reads.formNotice.hidden = false;
+    clearTimeout(formNoticeTimer);
+    formNoticeTimer = setTimeout(() => {
+      reads.formNotice.hidden = true;
+    }, 6000);
+  }
+
+  function hideFormNotice() {
+    if (!reads.formNotice) return;
+    clearTimeout(formNoticeTimer);
+    reads.formNotice.hidden = true;
+  }
+
+  function warnUser(message, level = 'warn') {
+    telemetry(message, level);
+    showFormNotice(message, level);
   }
 
   function updateSearchButtonText() {
@@ -219,6 +251,94 @@ document.addEventListener('DOMContentLoaded', () => {
     const hasValue = !!state.lastSavedQuery;
     reads.btnUseCurrent.disabled = !hasValue;
     reads.btnUseCurrent.title = hasValue ? 'Use your most recent successful search' : 'No previous search is available yet';
+  }
+
+  function updateExportButtonState() {
+    if (!reads.btnExportReport) return;
+    const hasData = !!state.assessments.primary;
+    reads.btnExportReport.disabled = !hasData;
+    reads.btnExportReport.title = hasData
+      ? 'Download a text summary of your current match score results'
+      : 'Run a search first to enable exporting a report';
+  }
+
+  function slugifyForFilename(str) {
+    const slug = String(str || 'location')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+      .slice(0, 40);
+    return slug || 'location';
+  }
+
+  function buildAssessmentReportSection(label, assessment, activeKeys) {
+    const lines = [];
+    if (!assessment) {
+      lines.push(`${label}: No search run yet.`);
+      lines.push('');
+      return lines;
+    }
+    lines.push(`${label}: ${assessment.displayName}`);
+    lines.push(`Match Score: ${assessment.score}/100`);
+    lines.push('Category Breakdown:');
+    activeKeys.forEach((key) => {
+      const meta = CATEGORY_META[key];
+      const count = assessment.counts[key] ?? 0;
+      const pct = Math.round((assessment.norms[key] || 0) * 100);
+      const unit = key === 'trails' ? ' mi' : '';
+      const targetUnit = key === 'trails' ? ' mi' : '';
+      lines.push(`  - ${meta.label} (target ${meta.target}${targetUnit}): ${count}${unit} found (${pct}%)`);
+    });
+    lines.push('');
+    return lines;
+  }
+
+  function buildReportText() {
+    const activeKeys = selectedCategoryKeys();
+    const radiusMinutes = parseInt(controls.transitRadius?.value || '10', 10);
+    const radiusMeters = spatial.radiusMetersFromMinutes(radiusMinutes);
+    const miles = (radiusMeters / 1609.344).toFixed(1);
+
+    const lines = [];
+    lines.push('RELOCATION ANALYTICS REPORT');
+    lines.push(`Generated: ${new Date().toLocaleString()}`);
+    lines.push('');
+    lines.push(`Transit Radius: ${radiusMinutes} min (${miles} mi)`);
+    lines.push(`Cuisine Filters: ${state.cuisineTags.length ? state.cuisineTags.join(', ') : 'All Cuisines'}`);
+    lines.push(`Selected Categories: ${activeKeys.map((k) => CATEGORY_META[k].label).join(', ') || 'None'}`);
+    lines.push('');
+
+    lines.push(...buildAssessmentReportSection('PRIMARY LOCATION', state.assessments.primary, activeKeys));
+    if (state.compareEnabled) {
+      lines.push(...buildAssessmentReportSection('COMPARE LOCATION', state.assessments.compare, activeKeys));
+    }
+
+    lines.push('Data sources: OpenStreetMap (Nominatim, Photon, Overpass), Open-Meteo Geocoding.');
+    return lines.join('\n');
+  }
+
+  function downloadTextFile(filename, text) {
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function exportReport() {
+    if (!state.assessments.primary) {
+      telemetry('Run a primary search first to export a report.', 'warn');
+      return;
+    }
+    const text = buildReportText();
+    const namePart = slugifyForFilename(state.assessments.primary.displayName);
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    downloadTextFile(`relocation-report-${namePart}-${dateStamp}.txt`, text);
+    telemetry('Report exported.', 'info');
   }
 
   function hideAutocompleteList() {
@@ -525,29 +645,91 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function ensureMap(slot) {
+  // Creates the Leaflet map for a slot and hands it to onReady once it's safe
+  // to use. Leaflet measures its container the instant L.map() runs, and this
+  // map card sits inside a CSS grid whose column widths aren't necessarily
+  // final on first paint (webfont swap, sibling content, initial layout
+  // settle) -- often the container is still genuinely 0x0 at that instant.
+  // Initializing Leaflet against a 0-size container and trying to correct it
+  // afterward with invalidateSize() turned out not to reliably recover (still
+  // produced a torn/partial tile grid in production) -- so instead we wait
+  // for the container's first real (non-zero) measurement before ever
+  // constructing the map. A ResizeObserver keeps correcting the size for
+  // every later real change too (window resize, compare-mode toggling the
+  // grid layout, etc.), not just first paint.
+  function ensureMap(slot, onReady) {
     const el = slot === 'primary' ? reads.routePreviewMap : reads.routePreviewMapCompare;
-    if (!el || typeof window.L === 'undefined') return null;
+    if (!el || typeof window.L === 'undefined') return;
 
-    if (state.maps[slot]) return state.maps[slot];
+    if (state.maps[slot]) {
+      onReady(state.maps[slot]);
+      return;
+    }
 
-    const map = window.L.map(el, {
-      zoomControl: true,
-      attributionControl: false
-    });
+    function createMap() {
+      if (state.maps[slot]) {
+        onReady(state.maps[slot]);
+        return;
+      }
 
-    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19
-    }).addTo(map);
+      const map = window.L.map(el, {
+        zoomControl: true,
+        attributionControl: false
+      });
 
-    const group = window.L.layerGroup().addTo(map);
-    state.maps[slot] = map;
-    state.layerGroups[slot] = group;
-    return map;
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+      }).addTo(map);
+
+      const group = window.L.layerGroup().addTo(map);
+      state.maps[slot] = map;
+      state.layerGroups[slot] = group;
+
+      if (typeof ResizeObserver !== 'undefined') {
+        let resizeTimer = null;
+        const observer = new ResizeObserver(() => {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() => map.invalidateSize(), 50);
+        });
+        observer.observe(el);
+      } else {
+        // Fallback for older browsers without ResizeObserver support.
+        window.addEventListener('resize', () => map.invalidateSize());
+      }
+
+      onReady(map);
+    }
+
+    const rect = el.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      createMap();
+      return;
+    }
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const waitObserver = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        const w = entry.contentRect ? entry.contentRect.width : el.getBoundingClientRect().width;
+        const h = entry.contentRect ? entry.contentRect.height : el.getBoundingClientRect().height;
+        if (w > 0 && h > 0) {
+          waitObserver.disconnect();
+          createMap();
+        }
+      });
+      waitObserver.observe(el);
+    } else {
+      // No ResizeObserver support: fall back to polling briefly for a real size.
+      setTimeout(() => ensureMap(slot, onReady), 100);
+    }
   }
 
   function renderMapForAssessment(slot, assessment) {
-    const map = ensureMap(slot);
+    ensureMap(slot, (map) => {
+      renderMapOnceReady(slot, assessment, map);
+    });
+  }
+
+  function renderMapOnceReady(slot, assessment, map) {
     const footerEl = slot === 'primary' ? reads.primaryMapFooter : reads.compareMapFooter;
     if (!map || !state.layerGroups[slot]) return;
 
@@ -601,6 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
+    map.invalidateSize({ animate: false });
     try {
       const circleBounds = radiusCircle.getBounds();
       map.fitBounds(circleBounds, { padding: [22, 22], maxZoom: 15 });
@@ -645,7 +828,14 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }
 
-    setTimeout(() => map.invalidateSize(), 150);
+    setTimeout(() => {
+      map.invalidateSize({ animate: false });
+      try {
+        if (radiusCircle) {
+          map.fitBounds(radiusCircle.getBounds(), { padding: [22, 22], maxZoom: 15 });
+        }
+      } catch (_e) {}
+    }, 100);
   }
 
   function renderDashboard() {
@@ -655,6 +845,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderScoreHeader();
     renderScoreboardList();
     renderMatrix();
+    updateExportButtonState();
     renderMapForAssessment('primary', primary);
 
     if (reads.compareMapCard) {
@@ -666,15 +857,52 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function recomputeAssessmentsFromSources() {
+  // A cached search source can only be reused (without hitting the live APIs
+  // again) if it actually queried every category currently selected, at a
+  // radius at least as large as what's currently needed, and -- when Cuisine
+  // is selected -- with the same cuisine tags. Otherwise the "cached" counts
+  // for anything newly added would silently read as zero.
+  function sourceCanSatisfy(source, selectedKeys, radiusMinutes) {
+    if (!source) return false;
+
+    const queriedCategories = source.queriedCategories || [];
+    const missingCategory = selectedKeys.some((key) => !queriedCategories.includes(key));
+    if (missingCategory) return false;
+
+    const neededMeters = spatial.radiusMetersFromMinutes(radiusMinutes);
+    if (neededMeters > (source.queryRadiusMeters || 0)) return false;
+
+    if (selectedKeys.includes('cuisine')) {
+      const queriedCuisine = source.queriedCuisineTags || [];
+      const currentCuisine = state.cuisineTags || [];
+      const sameCuisineSet = queriedCuisine.length === currentCuisine.length
+        && queriedCuisine.every((tag) => currentCuisine.includes(tag));
+      if (!sameCuisineSet) return false;
+    }
+
+    return true;
+  }
+
+  async function recomputeAssessmentsFromSources() {
     const radiusMinutes = parseInt(controls.transitRadius?.value || '10', 10);
+    const selectedKeys = selectedCategoryKeys();
+
     for (const slot of ['primary', 'compare']) {
       const source = state.sources[slot];
       if (!source) continue;
-      state.assessments[slot] = scoring.buildAssessment(slot, source.query, source.candidate, source.parsed, {
-        radiusMinutes,
-        categoryPrefs: state.categoryPrefs
-      });
+
+      if (sourceCanSatisfy(source, selectedKeys, radiusMinutes)) {
+        state.assessments[slot] = scoring.buildAssessment(slot, source.query, source.candidate, source.parsed, {
+          radiusMinutes,
+          categoryPrefs: state.categoryPrefs
+        });
+      } else {
+        // The current selection needs data this cached source never fetched
+        // (a newly-enabled category, a wider radius, or new cuisine tags) --
+        // re-run a live search instead of silently showing stale/zero counts.
+        telemetry(`Refreshing ${slot} live data for your updated selection...`, 'info', false);
+        await runAssessmentForCandidate(slot, source.query, source.candidate);
+      }
     }
     renderDashboard();
     savePrefs();
@@ -724,7 +952,15 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error('Live map servers returned 0 results or are rate-limited. Click Search to retry.');
       }
 
-      state.sources[slot] = { query, candidate, parsed, queriedRadiusMinutes: radiusMinutes };
+      state.sources[slot] = {
+        query,
+        candidate,
+        parsed,
+        queriedRadiusMinutes: radiusMinutes,
+        queryRadiusMeters,
+        queriedCategories: selectedKeys.slice(),
+        queriedCuisineTags: state.cuisineTags.slice()
+      };
       const assessment = scoring.buildAssessment(slot, query, candidate, parsed, {
         isEstimated: false,
         sourceLabel,
@@ -763,13 +999,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function executeSearch(rawQuery, slot = 'primary', forceRetry = false) {
     if (state.loading) {
-      telemetry('A search is already running. Please wait a moment.', 'warn', false);
+      warnUser('A search is already running. Please wait a moment.');
       return;
     }
 
     const query = String(rawQuery || '').trim();
     if (!query) {
-      telemetry(`Enter a search location first.`, 'warn');
+      warnUser('Enter a search location first.');
       return;
     }
 
@@ -778,7 +1014,8 @@ document.addEventListener('DOMContentLoaded', () => {
       telemetry(`Retrying live spatial search for ${slot} location...`, 'info', false);
     }
 
-    // Check if we already have valid cached live map source for this exact query, slot AND transit radius
+    // Check if we already have a valid cached live map source for this exact query
+    // AND slot that can satisfy the currently selected categories/radius/cuisine.
     const currentRadiusMinutes = parseInt(controls.transitRadius?.value || '10', 10);
     const cachedSource = state.sources[slot];
 
@@ -787,9 +1024,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const cQueryLower = String(cachedSource.query || '').toLowerCase().trim();
       const cDisplayLower = String(cachedSource.candidate?.displayName || '').toLowerCase().trim();
       const sameAddress = (qLower === cQueryLower || qLower === cDisplayLower || cDisplayLower.includes(qLower) || qLower.includes(cQueryLower));
-      const sameRadius = (cachedSource.queriedRadiusMinutes === currentRadiusMinutes);
+      const canSatisfy = sourceCanSatisfy(cachedSource, selectedCategoryKeys(), currentRadiusMinutes);
 
-      if (sameAddress && sameRadius) {
+      if (sameAddress && canSatisfy) {
         telemetry(`Reusing active live map data for ${slot}...`, 'info', false);
         const assessment = scoring.buildAssessment(slot, cachedSource.query, cachedSource.candidate, cachedSource.parsed, {
           isEstimated: false,
@@ -881,6 +1118,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function initUI() {
+    // Always take the checkboxes' actual DOM state as the source of truth first
+    // (fixes a bug where the score silently included Gas/Parks/Pharmacy even
+    // though those boxes render unchecked on a fresh visit). loadPrefs() below
+    // will override this if the user has previously saved preferences.
+    state.categoryPrefs = getCategoryPrefs();
     loadPrefs();
     refreshSliderReadouts();
     renderCuisineDisplay();
@@ -927,7 +1169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (query) {
           executeSearch(query, 'primary', true);
         } else {
-          telemetry('Enter a primary location first to retry.', 'warn');
+          warnUser('Enter a primary location first to retry.');
         }
       });
     }
@@ -938,7 +1180,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (query) {
           executeSearch(query, 'compare', true);
         } else {
-          telemetry('Enter a second location to compare first.', 'warn');
+          warnUser('Enter a second location to compare first.');
         }
       });
     }
@@ -965,10 +1207,25 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    if (reads.btnExportReport) {
+      reads.btnExportReport.addEventListener('click', () => {
+        exportReport();
+      });
+    }
+
     if (controls.transitRadius) {
+      let radiusRecomputeTimer = null;
       controls.transitRadius.addEventListener('input', () => {
         refreshSliderReadouts();
-        recomputeAssessmentsFromSources();
+        // Debounced: dragging the slider fires many 'input' events, and a
+        // recompute can now trigger a real live re-fetch (see
+        // sourceCanSatisfy) when the new radius exceeds what was originally
+        // queried, so we wait for the user to pause instead of re-running it
+        // on every pixel of drag.
+        clearTimeout(radiusRecomputeTimer);
+        radiusRecomputeTimer = setTimeout(() => {
+          recomputeAssessmentsFromSources();
+        }, 350);
       });
     }
 
@@ -1032,16 +1289,17 @@ document.addEventListener('DOMContentLoaded', () => {
         event.preventDefault();
         const primaryQuery = (reads.locationInput?.value || '').trim();
         if (!primaryQuery) {
-          telemetry('Enter a primary street address first.', 'warn');
+          warnUser('Enter a primary street address first.');
           return;
         }
 
         if (state.compareEnabled) {
           const compareQuery = (reads.compareInput?.value || '').trim();
           if (!compareQuery) {
-            telemetry('Enter a second street address to compare.', 'warn');
+            warnUser('Enter a second street address to compare.');
             return;
           }
+          hideFormNotice();
           const pShort = geocoder.getShortAddressLabel(null, primaryQuery);
           const cShort = geocoder.getShortAddressLabel(null, compareQuery);
           setPrimaryStatus(`Searching: ${pShort}...`, 'searching');
@@ -1051,6 +1309,7 @@ document.addEventListener('DOMContentLoaded', () => {
           await new Promise((resolve) => setTimeout(resolve, 400));
           await executeSearch(compareQuery, 'compare');
         } else {
+          hideFormNotice();
           await executeSearch(primaryQuery, 'primary');
         }
       });

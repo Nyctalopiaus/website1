@@ -29,9 +29,21 @@ body {
     box-sizing: border-box;
 }
 
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 body {
     background-color: var(--bg-color);
-    background-image: linear-gradient(rgba(10, 11, 13, 0.7), rgba(10, 11, 13, 0.8)), url('../assets/backstage_bg.jpg');
+    background-image: linear-gradient(rgba(10, 11, 13, 0.7), rgba(10, 11, 13, 0.8)), url('assets/backstage_bg.webp');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
@@ -1422,6 +1434,18 @@ select option,
     position: relative;
     transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
     content-visibility: visible;
+}
+
+/* Large markets can render 1,000+ cards into the DOM at once (filtering hides most of
+   them with CSS rather than limiting what's rendered). content-visibility lets the
+   browser skip layout/paint work entirely for cards that are far off-screen, without
+   changing what's in the DOM or how filtering/search/counts work — it degrades to a
+   harmless no-op on browsers that don't support it (e.g. older Safari). */
+@supports (content-visibility: auto) {
+    .event-card {
+        content-visibility: auto;
+        contain-intrinsic-size: auto 260px;
+    }
 }
 
 /* Micro-Accent Left Border & Glow Indicators */

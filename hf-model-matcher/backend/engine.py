@@ -2,10 +2,19 @@ import math
 from typing import List, Dict, Any
 
 class RecommendationEngine:
+    # Estimated KV-cache VRAM overhead (GB) by target context window (thousands of
+    # tokens). Mirrors js/app.js's getKvCacheOverhead() so the backend and the
+    # client-side fallback engine size hardware fit identically.
+    KV_CACHE_OVERHEAD_GB = {4: 0.4, 8: 0.8, 16: 1.5, 32: 3.5, 64: 5.5, 128: 8.0}
+
     @staticmethod
     def calculate_vram_required(params_b: float, quant_bits: int = 4, overhead_multiplier: float = 1.25) -> float:
         raw_gb = (params_b * quant_bits) / 8.0
         return round(raw_gb * overhead_multiplier, 2)
+
+    @classmethod
+    def get_kv_cache_overhead(cls, context_k: int) -> float:
+        return cls.KV_CACHE_OVERHEAD_GB.get(context_k, 1.5)
 
     @classmethod
     def run_pipeline(
@@ -14,9 +23,11 @@ class RecommendationEngine:
         user_vram_gb: float,
         user_ram_gb: float,
         goal: str,
-        preferred_quant: int = 4
+        preferred_quant: int = 4,
+        context_k: int = 16
     ) -> Dict[str, Any]:
         user_vram_gb = max(user_vram_gb, 1.0)
+        kv_overhead_gb = cls.get_kv_cache_overhead(context_k)
         surviving_models = []
 
         for m in models:
@@ -26,11 +37,13 @@ class RecommendationEngine:
             vram_req_fp16 = cls.calculate_vram_required(params_b, quant_bits=16)
 
             active_quant_bits = preferred_quant
-            vram_req = cls.calculate_vram_required(params_b, quant_bits=active_quant_bits)
+            vram_weight_gb = cls.calculate_vram_required(params_b, quant_bits=active_quant_bits)
+            vram_req = round(vram_weight_gb + kv_overhead_gb, 2)
 
             if vram_req > user_vram_gb:
                 active_quant_bits = 4
-                vram_req = vram_req_q4
+                vram_weight_gb = vram_req_q4
+                vram_req = round(vram_weight_gb + kv_overhead_gb, 2)
 
             if vram_req > user_vram_gb * 1.02:
                 continue
@@ -40,6 +53,9 @@ class RecommendationEngine:
             model_item = dict(m)
             model_item.update({
                 "vram_req_gb": vram_req,
+                "vram_weight_gb": vram_weight_gb,
+                "kv_overhead_gb": kv_overhead_gb,
+                "context_k": context_k,
                 "vram_req_q4_gb": vram_req_q4,
                 "vram_req_q8_gb": vram_req_q8,
                 "vram_req_fp16_gb": vram_req_fp16,
@@ -102,6 +118,16 @@ class RecommendationEngine:
             }
 
             scored_models.append(m)
+
+        # task_boost is applied after normalizing to a 0-100 scale, so a strong task
+        # match can otherwise push recommendation_score past 100 (up to ~140), which
+        # reads like a percentage that broke. Rescale the whole batch down so the top
+        # score is exactly 100 when that happens; relative ordering is unaffected.
+        max_score = max((m["recommendation_score"] for m in scored_models), default=0)
+        if max_score > 100:
+            scale_factor = 100.0 / max_score
+            for m in scored_models:
+                m["recommendation_score"] = round(m["recommendation_score"] * scale_factor, 1)
 
         scored_models.sort(key=lambda x: x["recommendation_score"], reverse=True)
 

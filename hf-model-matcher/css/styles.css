@@ -3,7 +3,10 @@
    Aesthetics: Deep Space Dark Mode, Glassmorphism, Neon Glow Accents
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap');
+/* Inter/Outfit fonts are now loaded via <link rel="preconnect"> + <link rel="stylesheet">
+   in index.html's <head>, not a CSS @import here - @import is render-blocking and can
+   only be discovered after this stylesheet itself has been fetched and parsed, adding
+   an avoidable extra round-trip before font loading even starts. */
 
 :root {
   --bg-primary: #070B14;

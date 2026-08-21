@@ -142,7 +142,9 @@ export function renderAccumChart(data, dom, formatCurrency) {
 
   drawGridLines(accumSvg, padding, roundedYMax, yScale, stepY, width, height);
 
-  const stepAge = Math.ceil((maxAge - minAge) / 5);
+  // Guard against a zero-width age range (e.g. minAge === maxAge): Math.ceil(0/5)
+  // is 0, which would make this loop's `age += stepAge` never advance and hang forever.
+  const stepAge = Math.max(1, Math.ceil((maxAge - minAge) / 5));
   for (let age = minAge; age <= maxAge; age += stepAge) {
     const xCoord = xScale(age);
     const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -289,7 +291,9 @@ export function renderBurnChart(data, dom, formatCurrency, context) {
 
   drawGridLines(burnSvg, padding, roundedYMax, yScale, stepY, width, height);
 
-  const stepAge = Math.ceil((maxAge - minAge) / 5);
+  // Guard against a zero-width age range (e.g. minAge === maxAge): Math.ceil(0/5)
+  // is 0, which would make this loop's `age += stepAge` never advance and hang forever.
+  const stepAge = Math.max(1, Math.ceil((maxAge - minAge) / 5));
   for (let age = minAge; age <= maxAge; age += stepAge) {
     const xCoord = xScale(age);
     const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');

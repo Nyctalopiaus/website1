@@ -37,6 +37,23 @@
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
+  // Matches "exploit" only when it refers to an actual exploit event/artifact tied to a
+  // vulnerability (exploitation in the wild, a PoC, a weaponized/public/working exploit, an
+  // exploit being released/sold/disclosed) — NOT the plain-English verb "hackers/attackers
+  // exploit X" used to describe a general technique or trend (e.g. "hackers exploit MFA gaps"),
+  // which isn't itself a signal that a specific CVE/zero-day is under active attack.
+  const EXPLOIT_SIGNAL_RE = new RegExp(
+    '(actively[\\s-]exploited' +
+    '|exploited?[\\s-]in[\\s-]the[\\s-]wild' +
+    '|mass[\\s-]exploitation' +
+    '|widespread[\\s-]exploitation' +
+    '|(?:poc|proof-of-concept|public|working|weaponized|zero-day|0-day|n-day|\\d+-day)[\\s-]exploit' +
+    '|exploit[\\s-](?:code|kit|chain|released|available|published|disclosed|sold)' +
+    '|\\b(?:an|the)[\\s-]exploit\\b' +
+    ')',
+    'i'
+  );
+
   function getItemSeverity(item) {
     if (!item) return 'neutral';
     let cat = item.source ? item.source.category_id : '';
@@ -45,15 +62,19 @@
 
     const srcId = item.source ? item.source.id : '';
     const titleLower = (item.title || '').toLowerCase();
-    const hasCve = item.tags && item.tags.some(t => t.startsWith('CVE-'));
+    const tags = item.tags || [];
+    const hasCriticalSeverityRating = tags.includes('Critical Severity');
 
-    // Critical (Red Border & Blinking Dot): Reserved strictly for CVEs, CISA KEVs, Zero-Days, Active Exploits, RCEs, or Ransomware
+    // Critical (Red Border & Blinking Dot): reserved for CISA KEVs, advisories with an explicit
+    // Critical severity rating (e.g. GitHub Advisories' severity field), Zero-Days, Active
+    // Exploits, RCEs, or Ransomware — NOT every item that merely mentions a CVE ID, so "Critical"
+    // stays a meaningful triage signal instead of the default state for most of the feed.
     const isCritical = (
       srcId === 'cisa_kev_json' ||
-      hasCve ||
+      hasCriticalSeverityRating ||
       titleLower.includes('zero-day') ||
       titleLower.includes('0-day') ||
-      titleLower.includes('exploit') ||
+      EXPLOIT_SIGNAL_RE.test(titleLower) ||
       titleLower.includes('rce') ||
       titleLower.includes('ransomware') ||
       titleLower.includes('critical vulnerability') ||
@@ -64,6 +85,108 @@
     if (cat === 'security_advisories' || cat === 'platform_infrastructure') return 'warning';
     if (cat === 'informational' || cat === 'engineering_homelab') return 'info';
     return 'active';
+  }
+
+  // Urgency ranking for the "Most Urgent" sort mode: severity tier first, then (within the same
+  // tier) computed risk score, then the nearest CISA KEV remediation deadline, then newest-first
+  // as a final tiebreak.
+  const SEVERITY_URGENCY_RANK = { critical: 0, active: 1, warning: 2, info: 3, neutral: 4 };
+
+  function getUrgencyWeight(item) {
+    const severity = getItemSeverity(item);
+    return SEVERITY_URGENCY_RANK[severity] !== undefined ? SEVERITY_URGENCY_RANK[severity] : 5;
+  }
+
+  // Blends FIRST.org EPSS (probability a CVE is exploited in the wild in the next 30 days,
+  // 0-1) with NVD CVSS base score (0-10) into a single risk number. EPSS is weighted ~2.3x
+  // heavier than CVSS because it answers "will this actually get exploited," a sharper triage
+  // signal than CVSS's "how bad would it be" alone. Items with no CVE/no enrichment data score
+  // 0 and simply fall through to the existing due-date/recency tiebreaks below.
+  function getRiskScore(item) {
+    if (!item) return 0;
+    const epss = typeof item.epss_score === 'number' ? item.epss_score : 0;
+    const cvss = typeof item.cvss_score === 'number' ? item.cvss_score : 0;
+    return (epss * 70) + (cvss * 3);
+  }
+
+  // Site-wide priority score for the "Top Priority" spotlight (distinct from getRiskScore's
+  // per-tier tiebreak): blends risk score with a KEV due-date proximity bonus (closer/overdue
+  // deadlines matter more) and a flat bonus for anything already in the "critical" severity
+  // tier, so the spotlight surfaces genuinely urgent items regardless of which column they're in.
+  function getPriorityScore(item) {
+    if (!item) return 0;
+    let score = getRiskScore(item);
+
+    if (item.due_date) {
+      const due = new Date(item.due_date).getTime();
+      if (!isNaN(due)) {
+        const daysUntil = (due - Date.now()) / (1000 * 60 * 60 * 24);
+        // Overdue/imminent deadlines add up to +30; bonus decays to 0 as the deadline recedes.
+        score += Math.max(0, Math.min(30, 30 - daysUntil));
+      }
+    }
+
+    if (getItemSeverity(item) === 'critical') score += 10;
+
+    return score;
+  }
+
+  function compareUrgency(a, b) {
+    const sevDiff = getUrgencyWeight(a) - getUrgencyWeight(b);
+    if (sevDiff !== 0) return sevDiff;
+
+    const riskDiff = getRiskScore(b) - getRiskScore(a); // descending: higher risk first
+    if (riskDiff !== 0) return riskDiff;
+
+    const aDue = a.due_date ? new Date(a.due_date).getTime() : null;
+    const bDue = b.due_date ? new Date(b.due_date).getTime() : null;
+    const aDueValid = aDue !== null && !isNaN(aDue);
+    const bDueValid = bDue !== null && !isNaN(bDue);
+    if (aDueValid && bDueValid) return aDue - bDue;
+    if (aDueValid) return -1;
+    if (bDueValid) return 1;
+
+    const aPub = a.published_at ? new Date(a.published_at).getTime() : 0;
+    const bPub = b.published_at ? new Date(b.published_at).getTime() : 0;
+    return bPub - aPub;
+  }
+
+  function formatCvssBadge(cvssScore, cvssSeverity) {
+    if (typeof cvssScore !== 'number' || isNaN(cvssScore)) return null;
+    let cls = 'risk-low';
+    if (cvssScore >= 9.0) cls = 'risk-critical';
+    else if (cvssScore >= 7.0) cls = 'risk-high';
+    else if (cvssScore >= 4.0) cls = 'risk-medium';
+    const label = cvssSeverity ? `CVSS ${cvssScore.toFixed(1)} (${cvssSeverity})` : `CVSS ${cvssScore.toFixed(1)}`;
+    return { cls, label };
+  }
+
+  function formatEpssBadge(epssScore, epssPercentile) {
+    if (typeof epssScore !== 'number' || isNaN(epssScore)) return null;
+    let cls = 'risk-low';
+    if (epssScore >= 0.7) cls = 'risk-critical';
+    else if (epssScore >= 0.3) cls = 'risk-high';
+    else if (epssScore >= 0.1) cls = 'risk-medium';
+    const pct = Math.round(epssScore * 100);
+    const pctLabel = (typeof epssPercentile === 'number' && !isNaN(epssPercentile))
+      ? ` · top ${Math.round((1 - epssPercentile) * 100)}%`
+      : '';
+    return { cls, label: `EPSS ${pct}%${pctLabel}` };
+  }
+
+  function formatDueDateBadge(dueDateStr) {
+    if (!dueDateStr) return null;
+    const due = new Date(dueDateStr);
+    if (isNaN(due.getTime())) return null;
+
+    const now = new Date();
+    const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+    const dateLabel = due.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    if (diffDays < 0) return { cls: 'due-overdue', label: `Overdue — was due ${dateLabel}` };
+    if (diffDays === 0) return { cls: 'due-today', label: `Due Today (${dateLabel})` };
+    if (diffDays <= 7) return { cls: 'due-soon', label: `Due in ${diffDays}d (${dateLabel})` };
+    return { cls: 'due-normal', label: `Remediate by ${dateLabel}` };
   }
 
   function getEnrichedItemTags(item) {
@@ -156,6 +279,41 @@
     }
   }
 
+  // Daily Digest export — batches today's top critical/high items into one clipboard copy as
+  // Markdown, so a triage lead can paste a single message into Slack/email instead of copying
+  // each advisory one at a time via copySlackSnippet(). Reuses the same clipboard mechanics
+  // (navigator.clipboard with a fallbackCopyText/execCommand path) rather than a second copy path.
+  function copyDailyDigest(items) {
+    const list = Array.isArray(items) ? items : [];
+
+    if (list.length === 0) {
+      showToast('No critical/high items to include in today\'s digest.');
+      return;
+    }
+
+    const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+    const lines = [`*ThreatPulse Daily Digest — ${dateLabel}*`, `${list.length} critical/high-priority item${list.length === 1 ? '' : 's'} today:`, ''];
+
+    list.forEach((item, idx) => {
+      const source = (item.source && item.source.name) || 'Unknown Source';
+      const cvssBadge = formatCvssBadge(item.cvss_score, item.cvss_severity);
+      const epssBadge = formatEpssBadge(item.epss_score, item.epss_percentile);
+      const riskBits = [cvssBadge ? cvssBadge.label : null, epssBadge ? epssBadge.label : null].filter(Boolean);
+      const riskSuffix = riskBits.length > 0 ? ` [${riskBits.join(' · ')}]` : '';
+      lines.push(`${idx + 1}. *${item.title}* — ${source}${riskSuffix} (<${item.link || '#'}>)`);
+    });
+
+    const digest = lines.join('\n');
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(digest).then(() => {
+        showToast(`Copied Daily Digest (${list.length} items)!`);
+      }).catch(() => fallbackCopyText(digest));
+    } else {
+      fallbackCopyText(digest);
+    }
+  }
+
   function fallbackCopyText(text) {
     const textarea = document.createElement('textarea');
     textarea.value = text;
@@ -172,6 +330,22 @@
     document.body.removeChild(textarea);
   }
 
+  // Source trust tier — a small icon prefix so users can gauge authoritativeness at a glance
+  // without reading the source name closely, especially once TAXII/JSON sources sit next to
+  // blog RSS in the same column. Tier is config-driven (see config.json's per-feed "tier"),
+  // resolved server-side, and shipped on item.source.tier.
+  const TIER_META = {
+    gov: { icon: '🏛️', label: 'Government / CERT source' },
+    vendor: { icon: '🏢', label: 'Vendor / commercial security research' },
+    community: { icon: '🧩', label: 'Open-source project / community-maintained' },
+    osint: { icon: '🌐', label: 'Open threat intel (OSINT/TAXII)' },
+    aggregator: { icon: '📰', label: 'News aggregator / independent commentary' }
+  };
+
+  function getTierMeta(tier) {
+    return TIER_META[tier] || TIER_META.aggregator;
+  }
+
   function createKanbanCardDOM(item, itemIdx, State, onToggleRead, onToggleBookmark) {
     const isRead = State.readItems.has(item.id);
     const isBookmarked = State.bookmarkedItems.has(item.id);
@@ -182,13 +356,16 @@
     card.dataset.id = item.id;
     card.dataset.index = itemIdx;
 
+    const tierMeta = getTierMeta(item.source && item.source.tier);
+    const sourceLabel = `<span title="${escapeHtml(tierMeta.label)}">${tierMeta.icon} ${escapeHtml(item.source.name)}</span>`;
+
     let sourceBadge = '';
     if (severity === 'critical') {
-      sourceBadge = `<span class="badge-critical"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span> ${escapeHtml(item.source.name)}</span>`;
+      sourceBadge = `<span class="badge-critical"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span> ${sourceLabel}</span>`;
     } else if (severity === 'warning') {
-      sourceBadge = `<span class="badge-warning">☁️ ${escapeHtml(item.source.name)}</span>`;
+      sourceBadge = `<span class="badge-warning">☁️ ${sourceLabel}</span>`;
     } else {
-      sourceBadge = `<span class="badge-subdued">${escapeHtml(item.source.name)}</span>`;
+      sourceBadge = `<span class="badge-subdued">${sourceLabel}</span>`;
     }
 
     const headerRow = `
@@ -199,6 +376,29 @@
         </span>
       </div>
     `;
+
+    let dueDateRow = '';
+    const dueBadge = formatDueDateBadge(item.due_date);
+    if (dueBadge) {
+      dueDateRow = `
+        <div class="badge-due ${dueBadge.cls}" title="CISA KEV mandated federal remediation deadline">
+          ⏰ ${escapeHtml(dueBadge.label)}
+        </div>
+      `;
+    }
+
+    // CVSS (NVD severity) + EPSS (FIRST.org exploit-probability) risk badges — surfaced inline
+    // so triage doesn't require a click-through. Only rendered for items that were actually
+    // enriched (i.e. carry a recognized CVE); most feed items simply won't have these fields.
+    let riskRow = '';
+    const cvssBadge = formatCvssBadge(item.cvss_score, item.cvss_severity);
+    const epssBadge = formatEpssBadge(item.epss_score, item.epss_percentile);
+    if (cvssBadge || epssBadge) {
+      const pills = [];
+      if (cvssBadge) pills.push(`<span class="badge-risk ${cvssBadge.cls}" title="NVD CVSS base score for this CVE">🎯 ${escapeHtml(cvssBadge.label)}</span>`);
+      if (epssBadge) pills.push(`<span class="badge-risk ${epssBadge.cls}" title="FIRST.org EPSS: modeled probability of exploitation in the wild within 30 days">📈 ${escapeHtml(epssBadge.label)}</span>`);
+      riskRow = `<div class="flex flex-wrap gap-1.5 mt-1.5">${pills.join('')}</div>`;
+    }
 
     const titleRow = `
       <h3 class="item-title mt-1.5">
@@ -233,10 +433,10 @@
 
     let secRow = '';
     if (item.secondary_sources && item.secondary_sources.length > 0) {
-      const validSec = item.secondary_sources.filter(s => s && s.name && s.url);
+      const validSec = item.secondary_sources.filter(s => s && s.name && s.link);
       if (validSec.length > 0) {
         const secPills = validSec.map(s => `
-          <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer" class="sec-source-pill" title="View secondary coverage on ${escapeHtml(s.name)}">
+          <a href="${escapeHtml(s.link)}" target="_blank" rel="noopener noreferrer" class="sec-source-pill" title="View secondary coverage on ${escapeHtml(s.name)}">
             ${escapeHtml(s.name)} ↗
           </a>
         `).join(' ');
@@ -278,7 +478,7 @@
       </div>
     `;
 
-    card.innerHTML = headerRow + titleRow + tagsRow + summaryRow + secRow + actionsRow;
+    card.innerHTML = headerRow + dueDateRow + riskRow + titleRow + tagsRow + summaryRow + secRow + actionsRow;
 
     card.addEventListener('click', (e) => {
       if (e.target.closest('button') || e.target.closest('a')) return;
@@ -312,14 +512,54 @@
     return card;
   }
 
+  // IOC Watch (Phase 3) display helpers. Confidence badges reuse the existing risk-* badge
+  // color scale (risk-critical/high/low) rather than inventing a new palette: High confidence
+  // maps to the most alarming color since it's the "act on this" tier, Medium to caution, Low
+  // to subdued -- consistent with how CVSS/EPSS badges already use that scale elsewhere.
+  const IOC_CONFIDENCE_META = {
+    High: { cls: 'risk-critical', icon: '🔴' },
+    Medium: { cls: 'risk-high', icon: '🟡' },
+    Low: { cls: 'risk-low', icon: '⚪' }
+  };
+
+  function getIocConfidenceMeta(label) {
+    return IOC_CONFIDENCE_META[label] || IOC_CONFIDENCE_META.Low;
+  }
+
+  // Maps a raw ioc_type (as stored in ioc_items/iocs.json) to its display label, icon, and the
+  // filter-chip group it belongs to (the three hash subtypes all group under "hash").
+  const IOC_TYPE_META = {
+    hash_sha256: { label: 'SHA-256', icon: '#️⃣', group: 'hash' },
+    hash_sha1: { label: 'SHA-1', icon: '#️⃣', group: 'hash' },
+    hash_md5: { label: 'MD5', icon: '#️⃣', group: 'hash' },
+    url: { label: 'URL', icon: '🔗', group: 'url' },
+    domain: { label: 'Domain', icon: '🌐', group: 'domain' },
+    ip: { label: 'IP', icon: '🖥️', group: 'ip' }
+  };
+
+  function getIocTypeMeta(iocType) {
+    return IOC_TYPE_META[iocType] || { label: iocType || 'Unknown', icon: '❔', group: 'other' };
+  }
+
   window.TPComponents = {
     escapeHtml,
     formatUtcDate,
     formatRelativeTime,
     getItemSeverity,
+    getUrgencyWeight,
+    getRiskScore,
+    getPriorityScore,
+    compareUrgency,
+    formatDueDateBadge,
+    formatCvssBadge,
+    formatEpssBadge,
+    getTierMeta,
     getEnrichedItemTags,
     showToast,
     copySlackSnippet,
-    createKanbanCardDOM
+    copyDailyDigest,
+    createKanbanCardDOM,
+    getIocConfidenceMeta,
+    getIocTypeMeta
   };
 })(window);

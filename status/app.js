@@ -109,13 +109,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dom.metricUptime) dom.metricUptime.textContent = (data.global_uptime_24h || 99.9) + '%';
     if (dom.metricLatency) dom.metricLatency.textContent = (data.avg_latency_ms || 120) + ' ms';
     if (dom.metricMonitored) dom.metricMonitored.textContent = visibleEndpoints.length;
+    const offlineCount = visibleEndpoints.filter(e => !e.is_success).length;
+    const degradedCount = visibleEndpoints.filter(e => e.is_success && e.status === 'DEGRADED').length;
     if (dom.metricIncidents) {
-      const activeVisIncidents = visibleEndpoints.filter(e => !e.is_success || e.status === 'DEGRADED').length;
+      const activeVisIncidents = offlineCount + degradedCount;
       dom.metricIncidents.textContent = activeVisIncidents;
       dom.metricIncidents.className = 'metric-value ' + (activeVisIncidents > 0 ? 'text-red' : 'text-emerald');
     }
     if (dom.metricIncidentsSub) {
-      dom.metricIncidentsSub.textContent = '0 degraded or offline endpoints';
+      if (offlineCount === 0 && degradedCount === 0) {
+        dom.metricIncidentsSub.textContent = '0 degraded or offline endpoints';
+      } else {
+        const parts = [];
+        if (offlineCount > 0) parts.push(`${offlineCount} offline`);
+        if (degradedCount > 0) parts.push(`${degradedCount} degraded`);
+        dom.metricIncidentsSub.textContent = parts.join(', ') + ' endpoint' + ((offlineCount + degradedCount) > 1 ? 's' : '');
+      }
     }
 
     // 3. Render Application Cards

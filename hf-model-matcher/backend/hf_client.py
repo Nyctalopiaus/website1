@@ -112,6 +112,17 @@ class HuggingFaceClient:
                 
                 trending_score = float(likes) * 1.5 + float(downloads) * 0.01
 
+                # Every downstream feature (the run-instructions modal, the Ollama/
+                # LM Studio commands, the KV-cache VRAM math) assumes the model has a
+                # GGUF file to actually run locally. A model whose repo/tags don't
+                # mention GGUF is almost always the original full-precision release
+                # (e.g. "Qwen/Qwen2.5-Coder-14B-Instruct" rather than a community
+                # "...-GGUF" quant of it) - recommending those sends users to a modal
+                # with nothing to download. Skip anything that isn't GGUF/MLX up front
+                # instead of only recording has_gguf as inert metadata.
+                if not (has_gguf or "mlx" in repo_id.lower() or any("mlx" in str(t).lower() for t in tags)):
+                    continue
+
                 models_result.append({
                     "id": repo_id,
                     "pipeline_tag": getattr(m, "pipeline_tag", pipeline_tag or "text-generation"),
@@ -124,33 +135,66 @@ class HuggingFaceClient:
                     "has_fp16": has_fp16,
                     "has_safetensors": has_safetensors,
                     "author": repo_id.split('/')[0] if '/' in repo_id else "Community",
-                    "name": repo_id.split('/')[-1] if '/' in repo_id else repo_id
+                    "name": repo_id.split('/')[-1] if '/' in repo_id else repo_id,
+                    "source": "live"
                 })
+
+            # If the search term matched real models but none of them were GGUF/MLX
+            # (e.g. a very new release nobody has quantized yet), fall back to the
+            # curated seed list rather than showing an empty result set.
+            if not models_result:
+                models_result = self._get_fallback_seed_models(goal, query)
         except Exception as e:
             print(f"[HFClient] Error fetching models for {goal}: {e}")
-            models_result = self._get_fallback_seed_models(goal)
+            models_result = self._get_fallback_seed_models(goal, query)
 
         self._cache[cache_key] = {"timestamp": now, "data": models_result}
         return models_result
 
-    def _get_fallback_seed_models(self, goal: str) -> List[Dict[str, Any]]:
+    def _get_fallback_seed_models(self, goal: str, query: str = "") -> List[Dict[str, Any]]:
+        seeds = self._get_fallback_seed_models_unfiltered(goal)
+        query = (query or "").strip().lower()
+        if query:
+            # Only the tiny hardcoded seed set is available here (we've already
+            # failed to reach the live HF Hub API), but it should still respect
+            # whatever the user typed instead of silently ignoring it.
+            filtered = [m for m in seeds if query in m["id"].lower() or any(query in str(t).lower() for t in m.get("tags", []))]
+            if filtered:
+                seeds = filtered
+        for m in seeds:
+            m["source"] = "fallback"
+        return seeds
+
+    def _get_fallback_seed_models_unfiltered(self, goal: str) -> List[Dict[str, Any]]:
+        # These IDs must actually be GGUF repos (not the original full-precision
+        # release) - the run-instructions modal, Ollama/LM Studio commands, and
+        # KV-cache VRAM math all assume a downloadable .gguf file exists. Kept in
+        # sync with the equivalent client-side fallback list in js/app.js's
+        # getFallbackModels(), which was already correct on this point.
         if goal == "coding":
             return [
-                {"id": "Qwen/Qwen2.5-Coder-7B-Instruct", "pipeline_tag": "text-generation", "tags": ["code"], "downloads": 1250000, "likes": 3400, "trending_score": 5100, "params_b": 7.0, "has_gguf": True, "has_fp16": True, "has_safetensors": True, "author": "Qwen", "name": "Qwen2.5-Coder-7B-Instruct"},
-                {"id": "Qwen/Qwen2.5-Coder-14B-Instruct", "pipeline_tag": "text-generation", "tags": ["code"], "downloads": 890000, "likes": 2800, "trending_score": 4200, "params_b": 14.0, "has_gguf": True, "has_fp16": True, "has_safetensors": True, "author": "Qwen", "name": "Qwen2.5-Coder-14B-Instruct"},
-                {"id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B", "pipeline_tag": "text-generation", "tags": ["code"], "downloads": 1500000, "likes": 4200, "trending_score": 6300, "params_b": 14.0, "has_gguf": True, "has_fp16": True, "has_safetensors": True, "author": "deepseek-ai", "name": "DeepSeek-R1-Distill-Qwen-14B"},
+                {"id": "mradermacher/Llama3.3-coder-70b-GGUF", "pipeline_tag": "text-generation", "tags": ["code", "gguf"], "downloads": 550000, "likes": 3200, "trending_score": 10300.0, "params_b": 70.0, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "mradermacher", "name": "Llama3.3-coder-70b-GGUF"},
+                {"id": "unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF", "pipeline_tag": "text-generation", "tags": ["code", "gguf"], "downloads": 1150000, "likes": 2100, "trending_score": 14650.0, "params_b": 30.0, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "unsloth", "name": "Qwen3-Coder-30B-A3B-Instruct-GGUF"},
+                {"id": "Qwen/Qwen2.5-Coder-14B-Instruct-GGUF", "pipeline_tag": "text-generation", "tags": ["code", "gguf"], "downloads": 890000, "likes": 2800, "trending_score": 13100.0, "params_b": 14.0, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "Qwen", "name": "Qwen2.5-Coder-14B-Instruct-GGUF"},
+                {"id": "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF", "pipeline_tag": "text-generation", "tags": ["code", "gguf"], "downloads": 1250000, "likes": 3400, "trending_score": 17600.0, "params_b": 7.0, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "Qwen", "name": "Qwen2.5-Coder-7B-Instruct-GGUF"},
+                {"id": "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF", "pipeline_tag": "text-generation", "tags": ["code", "gguf"], "downloads": 950000, "likes": 1400, "trending_score": 11600.0, "params_b": 1.5, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "Qwen", "name": "Qwen2.5-Coder-1.5B-Instruct-GGUF"},
             ]
         elif goal == "image-gen":
             return [
-                {"id": "black-forest-labs/FLUX.1-schnell", "pipeline_tag": "text-to-image", "tags": ["flux"], "downloads": 3200000, "likes": 6500, "trending_score": 9750, "params_b": 12.0, "has_gguf": True, "has_fp16": True, "has_safetensors": True, "author": "black-forest-labs", "name": "FLUX.1-schnell"},
-                {"id": "stabilityai/stable-diffusion-xl-base-1.0", "pipeline_tag": "text-to-image", "tags": ["sdxl"], "downloads": 4500000, "likes": 8900, "trending_score": 13350, "params_b": 3.5, "has_gguf": False, "has_fp16": True, "has_safetensors": True, "author": "stabilityai", "name": "stable-diffusion-xl-base-1.0"},
+                {"id": "city96/FLUX.1-schnell-gguf", "pipeline_tag": "text-to-image", "tags": ["flux", "gguf"], "downloads": 3200000, "likes": 6500, "trending_score": 41750.0, "params_b": 12.0, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "city96", "name": "FLUX.1-schnell-gguf"},
+                {"id": "city96/FLUX.1-dev-gguf", "pipeline_tag": "text-to-image", "tags": ["flux", "gguf"], "downloads": 2800000, "likes": 7800, "trending_score": 39700.0, "params_b": 12.0, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "city96", "name": "FLUX.1-dev-gguf"},
+                {"id": "bartowski/stable-diffusion-xl-base-1.0-GGUF", "pipeline_tag": "text-to-image", "tags": ["sdxl", "gguf"], "downloads": 4500000, "likes": 8900, "trending_score": 58350.0, "params_b": 3.5, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "bartowski", "name": "stable-diffusion-xl-base-1.0-GGUF"},
             ]
         elif goal == "vision":
             return [
-                {"id": "Qwen/Qwen2-VL-7B-Instruct", "pipeline_tag": "image-to-text", "tags": ["vision"], "downloads": 1100000, "likes": 3200, "trending_score": 4800, "params_b": 7.0, "has_gguf": True, "has_fp16": True, "has_safetensors": True, "author": "Qwen", "name": "Qwen2-VL-7B-Instruct"},
+                {"id": "leafspark/Llama-3.2-11B-Vision-Instruct-GGUF", "pipeline_tag": "image-to-text", "tags": ["vision", "gguf"], "downloads": 1100000, "likes": 3200, "trending_score": 15800.0, "params_b": 11.0, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "leafspark", "name": "Llama-3.2-11B-Vision-Instruct-GGUF"},
+                {"id": "Qwen/Qwen2-VL-7B-Instruct-GGUF", "pipeline_tag": "image-to-text", "tags": ["vision", "gguf"], "downloads": 1400000, "likes": 2100, "trending_score": 17150.0, "params_b": 7.0, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "Qwen", "name": "Qwen2-VL-7B-Instruct-GGUF"},
+                {"id": "vikhyatk/moondream2-gguf", "pipeline_tag": "image-to-text", "tags": ["vision", "gguf"], "downloads": 850000, "likes": 2700, "trending_score": 12550.0, "params_b": 1.8, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "vikhyatk", "name": "moondream2-gguf"},
             ]
         else:
             return [
-                {"id": "deepseek-ai/DeepSeek-R1-Distill-Qwen-8B", "pipeline_tag": "text-generation", "tags": ["instruct"], "downloads": 3100000, "likes": 5600, "trending_score": 8400, "params_b": 8.0, "has_gguf": True, "has_fp16": True, "has_safetensors": True, "author": "deepseek-ai", "name": "DeepSeek-R1-Distill-Qwen-8B"},
-                {"id": "meta-llama/Llama-3.1-8B-Instruct", "pipeline_tag": "text-generation", "tags": ["llama"], "downloads": 5200000, "likes": 9800, "trending_score": 14700, "params_b": 8.0, "has_gguf": True, "has_fp16": True, "has_safetensors": True, "author": "meta-llama", "name": "Llama-3.1-8B-Instruct"},
+                {"id": "unsloth/Llama-3.3-70B-Instruct-GGUF", "pipeline_tag": "text-generation", "tags": ["llama", "gguf"], "downloads": 1800000, "likes": 4100, "trending_score": 24150.0, "params_b": 70.0, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "unsloth", "name": "Llama-3.3-70B-Instruct-GGUF"},
+                {"id": "bartowski/DeepSeek-R1-Distill-Qwen-14B-GGUF", "pipeline_tag": "text-generation", "tags": ["reasoning", "gguf"], "downloads": 3100000, "likes": 5600, "trending_score": 39400.0, "params_b": 14.0, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "bartowski", "name": "DeepSeek-R1-Distill-Qwen-14B-GGUF"},
+                {"id": "bartowski/DeepSeek-R1-Distill-Qwen-8B-GGUF", "pipeline_tag": "text-generation", "tags": ["reasoning", "gguf"], "downloads": 3100000, "likes": 5600, "trending_score": 39400.0, "params_b": 8.0, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "bartowski", "name": "DeepSeek-R1-Distill-Qwen-8B-GGUF"},
+                {"id": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF", "pipeline_tag": "text-generation", "tags": ["llama", "gguf"], "downloads": 5200000, "likes": 9800, "trending_score": 66700.0, "params_b": 8.0, "has_gguf": True, "has_fp16": False, "has_safetensors": False, "author": "bartowski", "name": "Meta-Llama-3.1-8B-Instruct-GGUF"},
             ]

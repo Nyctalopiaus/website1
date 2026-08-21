@@ -86,6 +86,24 @@ $pages = [
         'priority' => '0.9',
         'is_root' => false
     ]
+
+    // NOTE: crypto-game and game-rating-log are intentionally NOT listed above.
+    // Both are marked <article hidden> on the hub (Beta, not yet linked from the project grid) as of 2026-08-18.
+    // Once either is unhidden/launched on the hub, uncomment its block below to include it in sitemap.xml.
+    // ,[
+    //     'loc' => $baseUrl . '/crypto-game/',
+    //     'dir' => $baseDir . '/crypto-game',
+    //     'changefreq' => 'monthly',
+    //     'priority' => '0.6',
+    //     'is_root' => false
+    // ],
+    // [
+    //     'loc' => $baseUrl . '/game-rating-log/',
+    //     'dir' => $baseDir . '/game-rating-log',
+    //     'changefreq' => 'monthly',
+    //     'priority' => '0.6',
+    //     'is_root' => false
+    // ]
 ];
 
 // Setup Logs Directory & 7-Day Log Rotation

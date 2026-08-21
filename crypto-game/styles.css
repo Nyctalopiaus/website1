@@ -27,7 +27,7 @@
 
 body {
   background-color: var(--bg-dark);
-  background-image: linear-gradient(rgba(15, 15, 26, 0.86), rgba(15, 15, 26, 0.86)), url('../assets/cyber_crypto_bg.webp');
+  background-image: linear-gradient(rgba(15, 15, 26, 0.86), rgba(15, 15, 26, 0.86)), url('assets/cyber_crypto_bg.webp');
   background-attachment: fixed;
   background-size: cover;
   background-position: center;

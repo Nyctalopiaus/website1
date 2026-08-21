@@ -9,7 +9,11 @@
     'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
     'https://overpass-api.de/api/interpreter'
   ];
-  const OVERPASS_ENDPOINT_TIMEOUT_MS = 25000;
+  // Kept fairly generous (real Overpass responses for this app's small radius/POI
+  // queries typically land in 1-4s) but well below the old 25s: with 5 mirrors tried
+  // strictly in sequence, a full outage used to mean up to 125s of silence before the
+  // Nominatim fallback kicked in. 9s per mirror caps that worst case at ~45s instead.
+  const OVERPASS_ENDPOINT_TIMEOUT_MS = 9000;
 
   function haversineMeters(aLat, aLon, bLat, bLon) {
     const toRad = Math.PI / 180;

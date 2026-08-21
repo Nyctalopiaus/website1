@@ -61,7 +61,7 @@ body {
     ),
     /* Base warm overlay and beautiful theme-relevant background image */
     linear-gradient(rgba(254, 251, 243, 0.45), rgba(253, 246, 232, 0.55)),
-    url('../assets/warm_retirement_bg.webp');
+    url('assets/warm_retirement_bg.webp');
   background-attachment: fixed;
   background-size: cover;
   background-position: center;

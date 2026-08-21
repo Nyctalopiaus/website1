@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const response = await fetch('../backend/cism_seed.json', { cache: 'no-store' });
+      const response = await fetch('data/cism_seed.json', { cache: 'no-store' });
       if (!response.ok) {
         throw new Error(`Seed fetch failed with HTTP ${response.status}`);
       }

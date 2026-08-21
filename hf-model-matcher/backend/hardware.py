@@ -18,8 +18,8 @@ def detect_system_hardware():
     
     gpu_info = {
         "detected": False,
-        "name": "NVIDIA GeForce RTX 5080 / Generic GPU",
-        "vram_gb": 64.0 if total_ram_gb >= 64 else 16.0,
+        "name": "Generic GPU (undetected)",
+        "vram_gb": 8.0,
         "vendor": "Generic"
     }
 
@@ -28,11 +28,7 @@ def detect_system_hardware():
         if torch.cuda.is_available():
             gpu_name = torch.cuda.get_device_name(0)
             total_vram = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
-            
-            if "5080" in gpu_name:
-                vram_gb = max(round(total_vram, 1), 64.0)
-            else:
-                vram_gb = round(total_vram, 1)
+            vram_gb = round(total_vram, 1)
 
             gpu_info = {
                 "detected": True,
@@ -58,9 +54,6 @@ def detect_system_hardware():
         vram_mb = float(parts[1]) if len(parts) > 1 else 16384.0
         vram_gb = round(vram_mb / 1024.0, 1)
 
-        if "5080" in gpu_name or "5090" in gpu_name:
-            vram_gb = max(vram_gb, 64.0)
-
         gpu_info = {
             "detected": True,
             "name": gpu_name,
@@ -75,11 +68,13 @@ def detect_system_hardware():
             for name in lines:
                 if any(x in name.upper() for x in ["NVIDIA", "RTX", "GEFORCE", "5080", "5090", "4090"]):
                     vram_estimate = 16.0
-                    if "5080" in name:
-                        vram_estimate = 64.0
-                    elif "5090" in name or "4090" in name or "3090" in name:
+                    if "5090" in name:
+                        vram_estimate = 32.0
+                    elif "4090" in name or "3090" in name:
                         vram_estimate = 24.0
-                    
+                    elif "5080" in name:
+                        vram_estimate = 16.0
+
                     gpu_info = {
                         "detected": True,
                         "name": name,

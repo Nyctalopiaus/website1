@@ -5,9 +5,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hugging Face Model Matcher | Hardware-Aware AI Discovery Engine</title>
     <meta name="description" content="Discover the best local or hosted AI models on Hugging Face that run effectively on your specific VRAM & RAM hardware setup without OOM errors.">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://huggingface.co https://api-inference.huggingface.co;">
+    <link rel="canonical" href="https://nycto.ninja/hf-model-matcher/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://nycto.ninja/hf-model-matcher/">
+    <meta property="og:title" content="Hugging Face Model Matcher | Hardware-Aware AI Discovery Engine">
+    <meta property="og:description" content="Discover the best local or hosted AI models on Hugging Face that run effectively on your specific VRAM & RAM hardware setup without OOM errors.">
+    <meta property="og:image" content="https://nycto.ninja/hf-model-matcher/assets/ai_neural_hardware_bg.jpg">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Hugging Face Model Matcher | Hardware-Aware AI Discovery Engine">
+    <meta name="twitter:description" content="Discover the best local or hosted AI models on Hugging Face that run effectively on your specific VRAM & RAM hardware setup without OOM errors.">
+    <meta name="twitter:image" content="https://nycto.ninja/hf-model-matcher/assets/ai_neural_hardware_bg.jpg">
+
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://huggingface.co https://api-inference.huggingface.co;">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤗</text></svg>">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Hugging Face Model Matcher",
+      "url": "https://nycto.ninja/hf-model-matcher/",
+      "description": "Hardware-aware AI model discovery engine that recommends Hugging Face models sized to your GPU VRAM and system RAM without out-of-memory errors.",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Any (Web Browser)",
+      "isAccessibleForFree": true
+    }
+    </script>
 </head>
 <body>
     <div class="mesh-glow nebula-1"></div>
@@ -111,7 +142,7 @@
                         <span class="control-label">Total Effective VRAM</span>
                         <span id="vram-val" class="control-value">24 GB</span>
                     </div>
-                    <input type="range" id="vram-slider" class="range-slider" min="2" max="192" step="1" value="24" style="margin-bottom: 12px;">
+                    <input type="range" id="vram-slider" class="range-slider" min="2" max="192" step="1" value="24" aria-label="Total effective VRAM in gigabytes" aria-valuetext="24 gigabytes" style="margin-bottom: 12px;">
 
                     <!-- STAGE 1: Target Context Window Selector -->
                     <div class="label-row">
@@ -132,7 +163,7 @@
                         <span class="control-label">System RAM</span>
                         <span id="ram-val" class="control-value">64 GB</span>
                     </div>
-                    <input type="range" id="ram-slider" class="range-slider" min="4" max="256" step="4" value="64">
+                    <input type="range" id="ram-slider" class="range-slider" min="4" max="256" step="4" value="64" aria-label="System RAM in gigabytes" aria-valuetext="64 gigabytes">
                 </div>
 
                 <!-- Engine Tier Explanation Box -->
@@ -185,7 +216,7 @@
                     <div class="section-header">
                         <div class="section-title">🏆 Top Recommended Models</div>
                     </div>
-                    <div id="hero-cards-container" class="hero-cards-grid">
+                    <div id="hero-cards-container" class="hero-cards-grid" aria-live="polite">
                         <!-- Hero cards rendered dynamically by app.js -->
                     </div>
                 </div>
@@ -198,12 +229,17 @@
                         </div>
                     </div>
 
+                    <div id="data-source-notice" role="status" style="display: none; align-items: flex-start; gap: 8px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: var(--radius-sm); padding: 10px 12px; font-size: 12px; line-height: 1.4; color: #FCD34D; margin-bottom: 14px;">
+                        <span style="font-size: 15px;">⚠️</span>
+                        <span><strong>Showing a limited offline sample:</strong> live Hugging Face search is unavailable right now, so results (and the search box) are drawn from a small built-in list rather than a full live search.</span>
+                    </div>
+
                     <div class="search-bar-row">
-                        <input type="text" id="search-input" class="input-search" placeholder="Search model name or tag (e.g. llama, qwen, flux)...">
+                        <input type="text" id="search-input" class="input-search" placeholder="Search model name or tag (e.g. llama, qwen, flux)..." aria-label="Search model name or tag">
                         <button id="btn-refresh" class="btn-action" style="padding: 0 16px;">Refresh 🔄</button>
                     </div>
 
-                    <div id="candidates-container">
+                    <div id="candidates-container" aria-live="polite">
                         <!-- Candidate items rendered dynamically by app.js -->
                     </div>
                 </div>
@@ -214,8 +250,8 @@
 
     <!-- STAGE 2: Enhanced App-Specific Launchers Modal -->
     <div id="modal-overlay" class="modal-overlay">
-        <div class="modal-box" style="max-width: 680px;">
-            <button id="modal-close" class="modal-close">✕</button>
+        <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="max-width: 680px;">
+            <button id="modal-close" class="modal-close" aria-label="Close dialog">✕</button>
             <h2 id="modal-title" style="font-family: var(--font-heading); font-size: 19px; margin-bottom: 14px; color: #F8FAFC;">Run Instructions & Integration Launcher</h2>
 
             <!-- Launcher Tabs -->
@@ -271,9 +307,9 @@
 
     <!-- STAGE 3: Quantization Quality Matrix Modal -->
     <div id="modal-quant-overlay" class="modal-overlay">
-        <div class="modal-box" style="max-width: 620px;">
-            <button id="modal-quant-close" class="modal-close">✕</button>
-            <h2 style="font-family: var(--font-heading); font-size: 20px; margin-bottom: 14px; color: #F8FAFC;">📊 GGUF Quantization Quality Matrix</h2>
+        <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-quant-title" style="max-width: 620px;">
+            <button id="modal-quant-close" class="modal-close" aria-label="Close dialog">✕</button>
+            <h2 id="modal-quant-title" style="font-family: var(--font-heading); font-size: 20px; margin-bottom: 14px; color: #F8FAFC;">📊 GGUF Quantization Quality Matrix</h2>
             <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
                 <p style="margin-bottom: 14px;">GGUF quantization balances LLM parameter size against GPU VRAM footprint:</p>
                 <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
@@ -296,9 +332,9 @@
 
     <!-- STAGE 4: Onboarding Runner Assistant Modal -->
     <div id="modal-onboarding-overlay" class="modal-overlay">
-        <div class="modal-box" style="max-width: 640px;">
-            <button id="modal-onboarding-close" class="modal-close">✕</button>
-            <h2 style="font-family: var(--font-heading); font-size: 20px; margin-bottom: 12px; color: #F8FAFC;">🚀 Don't Have a Runner Yet?</h2>
+        <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-onboarding-title" style="max-width: 640px;">
+            <button id="modal-onboarding-close" class="modal-close" aria-label="Close dialog">✕</button>
+            <h2 id="modal-onboarding-title" style="font-family: var(--font-heading); font-size: 20px; margin-bottom: 12px; color: #F8FAFC;">🚀 Don't Have a Runner Yet?</h2>
             <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">Choose the desktop application that best fits your workflow:</p>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 16px;">
                 <div style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.3); padding: 16px; border-radius: 10px;">
@@ -317,21 +353,21 @@
 
     <!-- Quick Start Modal -->
     <div id="modal-quickstart-overlay" class="modal-overlay">
-        <div class="modal-box">
-            <button id="modal-quickstart-close" class="modal-close">✕</button>
-            <h2 style="font-family: var(--font-heading); font-size: 20px; margin-bottom: 14px; color: #F8FAFC;">ℹ️ Quick Start Guide</h2>
+        <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-quickstart-title">
+            <button id="modal-quickstart-close" class="modal-close" aria-label="Close dialog">✕</button>
+            <h2 id="modal-quickstart-title" style="font-family: var(--font-heading); font-size: 20px; margin-bottom: 14px; color: #F8FAFC;">ℹ️ Quick Start Guide</h2>
             <div style="font-size: 14px; color: var(--text-secondary); line-height: 1.7;">
                 <p style="margin-bottom: 12px;">Welcome to <strong>Nycto's Hugging Face Model Matcher</strong>! Follow these steps to discover models tailored for your hardware:</p>
                 <ol style="padding-left: 20px; margin-bottom: 16px;">
                     <li style="margin-bottom: 8px;"><strong>Set Your Hardware Profile:</strong> Adjust the GPU VRAM and System RAM sliders, pick a preset button, or click <span style="color: var(--accent-blue);">⚡ Auto-Detect My Hardware</span>.</li>
                     <li style="margin-bottom: 8px;"><strong>Select Primary Goal:</strong> Choose your target task — <strong>Coding 💻</strong>, <strong>Image Gen 🎨</strong>, <strong>Vision 👁️</strong>, or <strong>Chat 🧠</strong>.</li>
                     <li style="margin-bottom: 8px;"><strong>Review Hero Models:</strong> Compare 🏆 <em>Best Overall</em>, 🚀 <em>Speed Demon</em>, and 🧠 <em>Max Capability</em> to inspect VRAM footprint % and community metrics.</li>
-                    <li style="margin-bottom: 8px;"><strong>One-Click Launch:</strong> Click <span style="color: var(--accent-blue);">Run Code ⚡</span> to view instant setup commands for Ollama, vLLM, or Transformers.</li>
+                    <li style="margin-bottom: 8px;"><strong>One-Click Launch:</strong> Click <span style="color: var(--accent-blue);">Setup Guide ⚡</span> to view instant setup commands for Ollama, vLLM, or Transformers.</li>
                 </ol>
             </div>
         </div>
     </div>
 
-    <script src="js/app.js"></script>
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>

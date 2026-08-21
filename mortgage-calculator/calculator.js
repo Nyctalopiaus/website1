@@ -181,6 +181,56 @@ export function getDTIStatus(dti) {
 }
 
 /**
+ * Calculates net proceeds from selling a current home, and how much of
+ * that would be routed toward the new home's down payment.
+ * @param {Object} inputs - { sellHomeValue, sellMortgagePayoff, sellCommissionPercent,
+ *   sellClosingCostsPercent, sellRepairCosts, sellConcessions, sellMovingCosts, sellProceedsPercent }
+ * @returns {Object} Breakdown of costs, net proceeds, and down-payment routing
+ */
+export function calculateSaleProceeds(inputs) {
+  const {
+    sellHomeValue = 0,
+    sellMortgagePayoff = 0,
+    sellCommissionPercent = 0,
+    sellClosingCostsPercent = 0,
+    sellRepairCosts = 0,
+    sellConcessions = 0,
+    sellMovingCosts = 0,
+    sellProceedsPercent = 0
+  } = inputs;
+
+  const commissionAmount = sellHomeValue * (sellCommissionPercent / 100);
+  const closingCostsAmount = sellHomeValue * (sellClosingCostsPercent / 100);
+  const totalSellingCosts = commissionAmount + closingCostsAmount + sellRepairCosts + sellConcessions + sellMovingCosts;
+
+  // Net proceeds can legitimately be negative (a short sale / bringing cash
+  // to closing), so this is intentionally NOT clamped to zero — the UI is
+  // responsible for surfacing that as a warning rather than hiding it.
+  const netProceeds = sellHomeValue - sellMortgagePayoff - totalSellingCosts;
+  const isUnderwater = netProceeds < 0;
+
+  // Only a positive net proceeds figure can actually fund a down payment.
+  const availableForDownPayment = Math.max(0, netProceeds);
+  const amountToDownPayment = availableForDownPayment * (clamp01Percent(sellProceedsPercent) / 100);
+  const remainingCash = availableForDownPayment - amountToDownPayment;
+
+  return {
+    commissionAmount,
+    closingCostsAmount,
+    totalSellingCosts,
+    netProceeds,
+    isUnderwater,
+    availableForDownPayment,
+    amountToDownPayment,
+    remainingCash
+  };
+}
+
+function clamp01Percent(value) {
+  return Math.min(Math.max(value, 0), 100);
+}
+
+/**
  * Extracts and validates input values from DOM
  * @param {Object} domRefs - Object containing DOM element references
  * @returns {Object} Extracted input values
@@ -195,7 +245,7 @@ export function extractInputValues(domRefs) {
     homeInsurance: parseFloatSafe(domRefs.homeInsuranceInput.value, 0),
     hoaFees: parseFloatSafe(domRefs.hoaFeesInput.value, 0),
     pmiRate: parseFloatSafe(domRefs.pmiRateInput.value, 0),
-    grossIncome: parseFloatSafe(domRefs.grossIncomeInput.value, 1),
+    grossAnnualIncome: parseFloatSafe(domRefs.grossAnnualIncomeInput.value, 1),
     additionalPayment: parseFloatSafe(domRefs.additionalPaymentInput.value, 0),
     lumpSumAmount: parseFloatSafe(domRefs.lumpSumAmountInput.value, 0),
     lumpSumFrequency: parseInt(domRefs.lumpSumFrequencyInput.value, 10) || 12,
@@ -218,7 +268,7 @@ export function performCalculations(inputs) {
     homeInsurance,
     hoaFees,
     pmiRate,
-    grossIncome,
+    grossAnnualIncome,
     additionalPayment,
     lumpSumAmount,
     lumpSumFrequency

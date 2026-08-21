@@ -17,7 +17,7 @@ export const CONFIG = {
   DEFAULT_TAX_RATE: 1.2,
   DEFAULT_HOME_INSURANCE: 1200,
   DEFAULT_PMI_RATE: 0.75,
-  DEFAULT_GROSS_INCOME: 10000,
+  DEFAULT_GROSS_ANNUAL_INCOME: 120000,
   DEFAULT_HOA_FEES: 0,
   DEFAULT_LUMP_SUM_FREQUENCY: 12,
   
@@ -64,11 +64,11 @@ export const CONFIG = {
   STORAGE_KEY_INPUTS: 'housing_calculator_inputs',
   STORAGE_KEY_ACTIVE_TERM: 'housing_calculator_active_term',
   
-  // API Endpoints
-  API_CALCULATOR: '/api/calculator',
+  // API Endpoints (server-side proxies only — calculator inputs are stored
+  // locally in the browser and are never synced to a server; see storage.js)
   API_RATES: 'rates-proxy.php',
   API_MLS: 'mls-proxy.php',
-  
+
   // Debounce Timings
   SAVE_DEBOUNCE_MS: 500,
   CALCULATE_DEBOUNCE_MS: 300,
@@ -94,10 +94,29 @@ export const CONFIG = {
   
   // Down Payment Thresholds
   PMI_THRESHOLD_PERCENT: 20,
-  
+
   // Amortization Precision
   LOAN_BALANCE_THRESHOLD: 0.01, // Cents
-  MAX_MONTHS: 1200 // 100 years safety limit
+  MAX_MONTHS: 1200, // 100 years safety limit
+
+  // "Have a house to sell?" defaults — selling your current home to help
+  // fund the down payment on the new one.
+  DEFAULT_SELL_HOME_VALUE: 350000,
+  DEFAULT_SELL_MORTGAGE_PAYOFF: 180000,
+  DEFAULT_SELL_COMMISSION_PERCENT: 6,     // combined buyer+seller agent commission
+  DEFAULT_SELL_CLOSING_COSTS_PERCENT: 1.5, // title, escrow, attorney, etc.
+  DEFAULT_SELL_REPAIR_COSTS: 0,
+  DEFAULT_SELL_CONCESSIONS: 0,
+  DEFAULT_SELL_MOVING_COSTS: 2000,
+  DEFAULT_SELL_PROCEEDS_PERCENT: 100, // % of net proceeds routed to new down payment
+
+  MSG_SELL_LOOKUP: '⏳ Looking Up...',
+  MSG_FETCH_VALUE: '🔍 Look Up Value',
+  ERROR_SELL_NO_VALUE: 'Could not extract a value estimate from this page. Please enter the value manually.',
+
+  // How old a sell-side home value estimate can get before we gently
+  // suggest refreshing it (home prices drift over time).
+  SELL_VALUE_STALE_DAYS: 14
 };
 
 export const DEFAULTS = {
@@ -110,11 +129,28 @@ export const DEFAULTS = {
   homeInsurance: CONFIG.DEFAULT_HOME_INSURANCE,
   hoaFees: CONFIG.DEFAULT_HOA_FEES,
   pmiRate: CONFIG.DEFAULT_PMI_RATE,
-  grossIncome: CONFIG.DEFAULT_GROSS_INCOME,
+  grossAnnualIncome: CONFIG.DEFAULT_GROSS_ANNUAL_INCOME,
   additionalPayment: 0,
   lumpSumAmount: 0,
   lumpSumFrequency: CONFIG.DEFAULT_LUMP_SUM_FREQUENCY,
-  activeTerm: 30
+  activeTerm: 30,
+
+  // "Have a house to sell?" section — off by default, values only matter
+  // once the checkbox is enabled.
+  sellingHouse: false,
+  sellHomeValue: CONFIG.DEFAULT_SELL_HOME_VALUE,
+  sellMortgagePayoff: CONFIG.DEFAULT_SELL_MORTGAGE_PAYOFF,
+  sellCommissionPercent: CONFIG.DEFAULT_SELL_COMMISSION_PERCENT,
+  sellClosingCostsPercent: CONFIG.DEFAULT_SELL_CLOSING_COSTS_PERCENT,
+  sellRepairCosts: CONFIG.DEFAULT_SELL_REPAIR_COSTS,
+  sellConcessions: CONFIG.DEFAULT_SELL_CONCESSIONS,
+  sellMovingCosts: CONFIG.DEFAULT_SELL_MOVING_COSTS,
+  sellProceedsPercent: CONFIG.DEFAULT_SELL_PROCEEDS_PERCENT,
+
+  // Epoch ms timestamp of the last time sellHomeValue was set (via lookup
+  // or manual edit). null until the value has actually been touched once —
+  // an untouched default shouldn't trigger a "this is stale" suggestion.
+  sellHomeValueUpdatedAt: null
 };
 
 export const INPUT_IDS = {
@@ -129,7 +165,7 @@ export const INPUT_IDS = {
   homeInsurance: 'homeInsurance',
   hoaFees: 'hoaFees',
   pmiRate: 'pmiRate',
-  grossIncome: 'grossIncome',
+  grossAnnualIncome: 'grossAnnualIncome',
   additionalPayment: 'additionalPayment',
   additionalPaymentSlider: 'additionalPaymentSlider',
   lumpSumAmount: 'lumpSumAmount',
@@ -137,7 +173,21 @@ export const INPUT_IDS = {
   mlsNumber: 'mlsNumber',
   btnSearchMls: 'btn-search-mls',
   btnViewAmort: 'btn-view-amort',
-  loadRatesBtn: 'btn-load-rates'
+  loadRatesBtn: 'btn-load-rates',
+
+  // "Have a house to sell?" section
+  hasHouseToSell: 'hasHouseToSell',
+  sellHomeRedfinUrl: 'sellHomeRedfinUrl',
+  btnSearchSellRedfin: 'btn-search-sell-redfin',
+  sellHomeValue: 'sellHomeValue',
+  sellMortgagePayoff: 'sellMortgagePayoff',
+  sellCommissionPercent: 'sellCommissionPercent',
+  sellClosingCostsPercent: 'sellClosingCostsPercent',
+  sellRepairCosts: 'sellRepairCosts',
+  sellConcessions: 'sellConcessions',
+  sellMovingCosts: 'sellMovingCosts',
+  sellProceedsPercentSlider: 'sellProceedsPercentSlider',
+  btnApplyProceeds: 'btn-apply-proceeds'
 };
 
 export const OUTPUT_IDS = {
@@ -178,7 +228,25 @@ export const OUTPUT_IDS = {
   mlsPreviewDetails: 'mls-preview-details',
   
   // Rates Attribution
-  ratesAttribution: 'rates-attribution'
+  ratesAttribution: 'rates-attribution',
+
+  // "Have a house to sell?" section
+  sellHousePanel: 'sell-house-panel',
+  sellLineValue: 'sell-line-value',
+  sellLinePayoff: 'sell-line-payoff',
+  sellLineCommission: 'sell-line-commission',
+  sellLineClosing: 'sell-line-closing',
+  sellLineRepairs: 'sell-line-repairs',
+  sellLineConcessions: 'sell-line-concessions',
+  sellLineMoving: 'sell-line-moving',
+  sellNetProceeds: 'sell-net-proceeds',
+  sellUnderwaterWarning: 'sell-underwater-warning',
+  sellProceedsPercentValue: 'sell-proceeds-percent-value',
+  sellProceedsDollarValue: 'sell-proceeds-dollar-value',
+  badgeSellRedfin: 'badge-sell-redfin',
+  sellStaleWarning: 'sell-stale-warning',
+  sellStaleWarningText: 'sell-stale-warning-text',
+  btnRefreshStaleValue: 'btn-refresh-stale-value'
 };
 
 export const CARD_IDS = {

@@ -4,7 +4,7 @@
  */
 
 import { CONFIG, OUTPUT_IDS } from './config.js';
-import { formatCurrency, formatTimeSaved, linearInterpolateYear, setElementText, getElement } from './utils.js';
+import { formatCurrency, formatTimeSaved, linearInterpolateYear, setElementText, getElement, daysSince } from './utils.js';
 import { getDTIStatus } from './calculator.js';
 
 /**
@@ -27,17 +27,34 @@ export function createDOMReferences() {
     homeInsuranceInput: getEl('homeInsurance'),
     hoaFeesInput: getEl('hoaFees'),
     pmiRateInput: getEl('pmiRate'),
-    grossIncomeInput: getEl('grossIncome'),
+    grossAnnualIncomeInput: getEl('grossAnnualIncome'),
     additionalPaymentInput: getEl('additionalPayment'),
     additionalPaymentSlider: getEl('additionalPaymentSlider'),
     lumpSumAmountInput: getEl('lumpSumAmount'),
     lumpSumFrequencyInput: getEl('lumpSumFrequency'),
     mlsNumberInput: getEl('mlsNumber'),
-    
+
+    // "Have a house to sell?" inputs
+    hasHouseToSellInput: getEl('hasHouseToSell'),
+    sellHouseFieldsPanel: getEl('sell-house-panel'),
+    sellHomeRedfinUrlInput: getEl('sellHomeRedfinUrl'),
+    sellHomeValueInput: getEl('sellHomeValue'),
+    sellMortgagePayoffInput: getEl('sellMortgagePayoff'),
+    sellCommissionPercentInput: getEl('sellCommissionPercent'),
+    sellClosingCostsPercentInput: getEl('sellClosingCostsPercent'),
+    sellRepairCostsInput: getEl('sellRepairCosts'),
+    sellConcessionsInput: getEl('sellConcessions'),
+    sellMovingCostsInput: getEl('sellMovingCosts'),
+    sellProceedsPercentSliderInput: getEl('sellProceedsPercentSlider'),
+
     // Buttons
     btnSearchMls: getEl('btn-search-mls'),
     btnViewAmort: getEl('btn-view-amort'),
     loadRatesBtn: getEl('btn-load-rates'),
+    btnSearchSellRedfin: getEl('btn-search-sell-redfin'),
+    btnForceRefreshSellRedfin: getEl('btn-force-refresh-sell-redfin'),
+    btnApplyProceeds: getEl('btn-apply-proceeds'),
+    btnRefreshStaleValue: getEl('btn-refresh-stale-value'),
     
     // Cards
     card30: getEl('card-30yr'),
@@ -86,7 +103,23 @@ export function createDOMReferences() {
     mlsPreviewBox: getEl('mls-preview-box'),
     mlsPreviewAddress: getEl('mls-preview-address'),
     mlsPreviewDetails: getEl('mls-preview-details'),
-    ratesAttributionEl: getEl('rates-attribution')
+    ratesAttributionEl: getEl('rates-attribution'),
+
+    // "Have a house to sell?" outputs
+    sellLineValueEl: getEl('sell-line-value'),
+    sellLinePayoffEl: getEl('sell-line-payoff'),
+    sellLineCommissionEl: getEl('sell-line-commission'),
+    sellLineClosingEl: getEl('sell-line-closing'),
+    sellLineRepairsEl: getEl('sell-line-repairs'),
+    sellLineConcessionsEl: getEl('sell-line-concessions'),
+    sellLineMovingEl: getEl('sell-line-moving'),
+    sellNetProceedsEl: getEl('sell-net-proceeds'),
+    sellProceedsBoxEl: getEl('sell-proceeds-box'),
+    sellUnderwaterWarningEl: getEl('sell-underwater-warning'),
+    sellProceedsPercentValueEl: getEl('sell-proceeds-percent-value'),
+    sellProceedsDollarValueEl: getEl('sell-proceeds-dollar-value'),
+    sellStaleWarningEl: getEl('sell-stale-warning'),
+    sellStaleWarningTextEl: getEl('sell-stale-warning-text')
   };
 }
 
@@ -207,7 +240,9 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
 
   // Draw charts
   drawDonutChart(activePI, monthlyTax, monthlyInsurance, monthlyPmi, results.hoaFees, activeTotal, domRefs);
-  updateAffordability(activeTotal, results.grossIncome, domRefs);
+  // grossAnnualIncome is entered as a yearly figure now (easier for most people
+  // to recall than gross monthly); convert to monthly here for the DTI math.
+  updateAffordability(activeTotal, results.grossAnnualIncome / CONFIG.MONTHS_PER_YEAR, domRefs);
 
   // Draw amortization charts
   drawBurndownChart('burndown-svg-30', amort30, results.baseline30, results.homePrice);
@@ -468,5 +503,75 @@ export function updateRatesAttribution(source, date, domRefs) {
   if (domRefs.ratesAttributionEl) {
     domRefs.ratesAttributionEl.textContent = `Source: ${source} (Updated: ${date})`;
     domRefs.ratesAttributionEl.classList.add('visible');
+  }
+}
+
+/**
+ * Formats a currency value, showing a leading minus sign for negatives
+ * instead of formatCurrency's "$-500.00" (net proceeds can go negative —
+ * selling short — and this reads more naturally in that case).
+ * @param {number} value
+ * @returns {string}
+ */
+function formatSignedCurrency(value) {
+  return value < 0 ? `-${formatCurrency(Math.abs(value))}` : formatCurrency(value);
+}
+
+/**
+ * Renders the "Have a house to sell?" net-proceeds breakdown, the
+ * underwater warning state, and the proceeds-to-down-payment slider readout.
+ * @param {Object} proceeds - Result of calculateSaleProceeds()
+ * @param {number} sellProceedsPercent - Current slider value (0-100)
+ * @param {Object} domRefs - DOM element references
+ */
+export function updateSellProceedsUI(proceeds, sellProceedsPercent, domRefs) {
+  const homeValue = parseFloat(domRefs.sellHomeValueInput?.value) || 0;
+  const payoff = parseFloat(domRefs.sellMortgagePayoffInput?.value) || 0;
+  const repairCosts = parseFloat(domRefs.sellRepairCostsInput?.value) || 0;
+  const concessions = parseFloat(domRefs.sellConcessionsInput?.value) || 0;
+  const movingCosts = parseFloat(domRefs.sellMovingCostsInput?.value) || 0;
+
+  const setText = (el, text) => { if (el) el.textContent = text; };
+
+  setText(domRefs.sellLineValueEl, formatCurrency(homeValue));
+  setText(domRefs.sellLinePayoffEl, formatSignedCurrency(-payoff));
+  setText(domRefs.sellLineCommissionEl, formatSignedCurrency(-proceeds.commissionAmount));
+  setText(domRefs.sellLineClosingEl, formatSignedCurrency(-proceeds.closingCostsAmount));
+  setText(domRefs.sellLineRepairsEl, formatSignedCurrency(-repairCosts));
+  setText(domRefs.sellLineConcessionsEl, formatSignedCurrency(-concessions));
+  setText(domRefs.sellLineMovingEl, formatSignedCurrency(-movingCosts));
+  setText(domRefs.sellNetProceedsEl, formatSignedCurrency(proceeds.netProceeds));
+
+  if (domRefs.sellProceedsBoxEl) {
+    domRefs.sellProceedsBoxEl.classList.toggle('underwater', proceeds.isUnderwater);
+  }
+  if (domRefs.sellUnderwaterWarningEl) {
+    domRefs.sellUnderwaterWarningEl.style.display = proceeds.isUnderwater ? 'block' : 'none';
+  }
+
+  setText(domRefs.sellProceedsPercentValueEl, `${Math.round(sellProceedsPercent)}%`);
+  setText(domRefs.sellProceedsDollarValueEl, formatCurrency(proceeds.amountToDownPayment));
+}
+
+/**
+ * Shows a gentle suggestion to refresh the home value estimate once it's
+ * gotten old enough that it might no longer reflect the market. Hidden
+ * entirely if the value has never actually been set/touched (null
+ * timestamp) — nothing to call "stale" yet.
+ * @param {number|null} updatedAtMs - Epoch ms the value was last set, or null if never
+ * @param {Object} domRefs - DOM element references
+ */
+export function updateStaleValueWarning(updatedAtMs, domRefs) {
+  if (!domRefs.sellStaleWarningEl) return;
+
+  const age = daysSince(updatedAtMs);
+  const isStale = age !== null && age >= CONFIG.SELL_VALUE_STALE_DAYS;
+
+  domRefs.sellStaleWarningEl.style.display = isStale ? 'flex' : 'none';
+
+  if (isStale && domRefs.sellStaleWarningTextEl) {
+    const ageText = age === 1 ? '1 day' : `${age} days`;
+    domRefs.sellStaleWarningTextEl.textContent =
+      `This value is ${ageText} old — home prices can shift. You may want to refresh it.`;
   }
 }

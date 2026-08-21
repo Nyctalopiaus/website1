@@ -1,14 +1,13 @@
 {
   "name": "nycto-project-lab-backend",
   "version": "1.0.0",
-  "description": "Node.js SQLite API backend for Nycto's Project Lab",
+  "description": "Node.js API backend for Nycto's Project Lab (stateless proxies only — no user data is persisted)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "sqlite3": "^5.1.7"
+    "express": "^4.19.2"
   }
 }

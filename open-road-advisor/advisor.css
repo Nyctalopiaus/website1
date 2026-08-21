@@ -36,7 +36,7 @@
 
 body {
   background-color: var(--bg-dark);
-  background-image: radial-gradient(circle at 50% 50%, rgba(34, 36, 41, 0.72), rgba(17, 19, 23, 0.92)), url('../assets/scenic_highway_bg.webp');
+  background-image: radial-gradient(circle at 50% 50%, rgba(34, 36, 41, 0.72), rgba(17, 19, 23, 0.92)), url('assets/scenic_highway_bg.webp');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -347,6 +347,18 @@ input[type="range"]::-webkit-slider-thumb:hover {
   border-color: transparent;
 }
 
+/* Dims a settings row whose control is disabled because a prerequisite
+   checkbox isn't checked (e.g. "Top off at Rest Stops" when "Schedule Rest
+   Stops" is off) -- see advisor.js's syncTopOffRestAvailability(). */
+.input-group.control-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.input-group.control-disabled label {
+  cursor: not-allowed;
+}
+
 /* Leaflet GIS Map Container styling */
 .map-wrapper {
   background: var(--bg-dark);
@@ -362,6 +374,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 #map {
   width: 100%;
   height: 100%;
+  min-height: 220px;
   z-index: 1;
 }
 
@@ -668,6 +681,71 @@ input[type="range"]::-webkit-slider-thumb:hover {
 /* Leaflet Container customization */
 .leaflet-container {
   font-family: var(--font-sans) !important;
+  overflow: hidden !important;
+  position: relative !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-pane > svg,
+.leaflet-pane > canvas,
+.leaflet-zoom-box,
+.leaflet-image-layer,
+.leaflet-layer {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+}
+
+.leaflet-tile-container {
+  pointer-events: none;
+}
+
+.leaflet-container img.leaflet-tile {
+  max-width: none !important;
+  max-height: none !important;
+  width: 256px !important;
+  height: 256px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.leaflet-tile {
+  filter: inherit;
+  visibility: hidden;
+}
+
+.leaflet-tile-loaded {
+  visibility: inherit;
+}
+
+.leaflet-zoom-animated {
+  -webkit-transform-origin: 0 0 !important;
+  transform-origin: 0 0 !important;
+}
+
+.leaflet-tile-pane {
+  z-index: 2;
+}
+
+.leaflet-objects-pane {
+  z-index: 3;
+}
+
+.leaflet-overlay-pane {
+  z-index: 4;
+}
+
+.leaflet-marker-pane {
+  z-index: 6;
+}
+
+.leaflet-popup-pane {
+  z-index: 8;
 }
 
 .leaflet-bar {
@@ -683,6 +761,16 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .leaflet-bar a:hover {
   background-color: var(--bg-panel) !important;
+}
+
+/* Custom Leaflet Marker Icons */
+.custom-map-emoji,
+.custom-route-stop-icon {
+  background: transparent !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 /* Footer */
@@ -840,6 +928,19 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .info-tooltip:hover::before {
   opacity: 1;
   visibility: visible;
+}
+
+/* Each .panel-card gets backdrop-filter (the glassmorphic blur), which creates
+   its own CSS stacking context — so an .info-tooltip's z-index: 999 only wins
+   against other content *inside the same card*; it can never paint over a
+   sibling .panel-card (e.g. the map/HUD panel next to it), no matter how high
+   that number goes. .panel-card elements are direct grid items of
+   .telemetry-grid, so z-index does apply to them for ordering against each
+   other (grid/flex items respect z-index without needing position: relative).
+   While a tooltip inside a card is hovered, promote that whole card above its
+   siblings so its popup isn't hidden behind the next card over. */
+.panel-card:has(.info-tooltip:hover) {
+  z-index: 50;
 }
 
 /* Keyframe animations */
@@ -1366,5 +1467,59 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 .modal-privacy-icon {
   font-size: 1.2rem;
+}
+
+/* ===== Back to Top button ===== */
+.btn-back-to-top {
+  position: fixed;
+  right: max(14px, calc((100vw - 1100px) / 2 + 20px));
+  bottom: 22px;
+  z-index: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 94px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(249, 115, 22, 0.45);
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.18), rgba(255, 255, 255, 0.06));
+  color: var(--text-bright);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s ease, border-color 0.22s ease;
+}
+
+.btn-back-to-top.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.btn-back-to-top:hover {
+  border-color: rgba(249, 115, 22, 0.72);
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.28), 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.btn-back-to-top:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 768px) {
+  .btn-back-to-top {
+    right: max(10px, env(safe-area-inset-right));
+    bottom: calc(10px + env(safe-area-inset-bottom));
+    min-width: 74px;
+    height: 36px;
+    font-size: 0.8rem;
+  }
 }
 

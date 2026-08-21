@@ -5,15 +5,17 @@
 
 import { CONFIG, DEFAULTS } from './config.js';
 import { debounce, clamp, getElement } from './utils.js';
-import { performCalculations, extractInputValues } from './calculator.js';
+import { performCalculations, extractInputValues, calculateSaleProceeds } from './calculator.js';
 import { loadSavedInputs, applyLoadedDataToDOM, saveInputs, fetchMortgageRates } from './storage.js';
-import { fetchPropertyData, validateMLSInput } from './scraper.js';
+import { fetchPropertyData, validateMLSInput, fetchRedfinValueOnly } from './scraper.js';
 import {
   createDOMReferences,
   updateTermCardSelection,
   updateAllOutputs,
   setButtonLoading,
-  updateRatesAttribution
+  updateRatesAttribution,
+  updateSellProceedsUI,
+  updateStaleValueWarning
 } from './ui.js';
 
 // ============================================================================
@@ -21,6 +23,9 @@ import {
 // ============================================================================
 
 let activeTerm = 30;
+// Epoch ms of the last time sellHomeValue was set (lookup or manual edit).
+// null until it's actually been touched once — see config.js DEFAULTS.
+let sellHomeValueUpdatedAt = null;
 const domRefs = createDOMReferences();
 
 // ============================================================================
@@ -37,10 +42,48 @@ function calculateAll() {
   // Add missing fields to results for UI rendering
   results.homePrice = inputs.homePrice;
   results.hoaFees = inputs.hoaFees;
-  results.grossIncome = inputs.grossIncome;
+  results.grossAnnualIncome = inputs.grossAnnualIncome;
   results.additionalPayment = inputs.additionalPayment;
 
   updateAllOutputs(results, activeTerm, domRefs);
+}
+
+/**
+ * Reads the "Have a house to sell?" fields into the shape calculateSaleProceeds() expects
+ */
+function getSellInputs() {
+  return {
+    sellHomeValue: parseFloat(domRefs.sellHomeValueInput.value) || 0,
+    sellMortgagePayoff: parseFloat(domRefs.sellMortgagePayoffInput.value) || 0,
+    sellCommissionPercent: parseFloat(domRefs.sellCommissionPercentInput.value) || 0,
+    sellClosingCostsPercent: parseFloat(domRefs.sellClosingCostsPercentInput.value) || 0,
+    sellRepairCosts: parseFloat(domRefs.sellRepairCostsInput.value) || 0,
+    sellConcessions: parseFloat(domRefs.sellConcessionsInput.value) || 0,
+    sellMovingCosts: parseFloat(domRefs.sellMovingCostsInput.value) || 0,
+    sellProceedsPercent: parseFloat(domRefs.sellProceedsPercentSliderInput.value) || 0
+  };
+}
+
+/**
+ * Recomputes and re-renders the net-proceeds breakdown. Cheap arithmetic
+ * (no amortization loop involved), so this runs directly on every relevant
+ * input event rather than going through debouncedCalculate.
+ */
+function updateSellProceeds() {
+  const inputs = getSellInputs();
+  const proceeds = calculateSaleProceeds(inputs);
+  updateSellProceedsUI(proceeds, inputs.sellProceedsPercent, domRefs);
+  updateStaleValueWarning(sellHomeValueUpdatedAt, domRefs);
+  return proceeds;
+}
+
+/**
+ * Marks the home value as freshly confirmed right now — called whenever the
+ * user actually provides a new value (manual edit or a successful Redfin
+ * lookup), never just from opening the panel.
+ */
+function markSellHomeValueFresh() {
+  sellHomeValueUpdatedAt = Date.now();
 }
 
 /**
@@ -57,11 +100,16 @@ const debouncedSave = debounce(() => {
     homeInsurance: parseFloat(domRefs.homeInsuranceInput.value),
     hoaFees: parseFloat(domRefs.hoaFeesInput.value),
     pmiRate: parseFloat(domRefs.pmiRateInput.value),
-    grossIncome: parseFloat(domRefs.grossIncomeInput.value),
+    grossAnnualIncome: parseFloat(domRefs.grossAnnualIncomeInput.value),
     additionalPayment: parseFloat(domRefs.additionalPaymentInput.value) || 0,
     lumpSumAmount: parseFloat(domRefs.lumpSumAmountInput.value) || 0,
     lumpSumFrequency: parseInt(domRefs.lumpSumFrequencyInput.value) || 12,
-    activeTerm
+    activeTerm,
+
+    // "Have a house to sell?" section — local-only, same as everything else
+    sellingHouse: domRefs.hasHouseToSellInput.checked,
+    ...getSellInputs(),
+    sellHomeValueUpdatedAt
   };
   saveInputs(data);
 }, CONFIG.SAVE_DEBOUNCE_MS);
@@ -91,10 +139,16 @@ function attachInputListeners() {
     const badge = getElement('badge-redfin-price');
     if (badge) badge.style.display = 'none';
 
-    // Maintain down payment percentage
-    const percent = parseFloat(domRefs.downPaymentPercentInput.value) || 0;
-    const amount = (percent / 100) * val;
-    domRefs.downPaymentAmountInput.value = Math.round(amount);
+    // Keep the down payment dollar amount fixed (it's the more static number
+    // for most buyers) and recompute its percentage against the new price.
+    let amount = parseFloat(domRefs.downPaymentAmountInput.value) || 0;
+    if (amount > val) {
+      amount = val;
+      domRefs.downPaymentAmountInput.value = Math.round(amount);
+    }
+    const percent = val > 0 ? clamp((amount / val) * 100, 0, 100) : 0;
+    domRefs.downPaymentPercentInput.value = Math.round(percent);
+    domRefs.downPaymentSlider.value = Math.round(percent);
 
     debouncedCalculate();
   });
@@ -106,9 +160,16 @@ function attachInputListeners() {
     const badge = getElement('badge-redfin-price');
     if (badge) badge.style.display = 'none';
 
-    const percent = parseFloat(domRefs.downPaymentPercentInput.value) || 0;
-    const amount = (percent / 100) * val;
-    domRefs.downPaymentAmountInput.value = Math.round(amount);
+    // Keep the down payment dollar amount fixed and recompute its percentage
+    // against the new price (same logic as the Home Price number input above).
+    let amount = parseFloat(domRefs.downPaymentAmountInput.value) || 0;
+    if (amount > val) {
+      amount = val;
+      domRefs.downPaymentAmountInput.value = Math.round(amount);
+    }
+    const percent = val > 0 ? clamp((amount / val) * 100, 0, 100) : 0;
+    domRefs.downPaymentPercentInput.value = Math.round(percent);
+    domRefs.downPaymentSlider.value = Math.round(percent);
 
     debouncedCalculate();
   });
@@ -186,7 +247,7 @@ function attachInputListeners() {
   const otherNumericInputs = [
     domRefs.homeInsuranceInput,
     domRefs.pmiRateInput,
-    domRefs.grossIncomeInput
+    domRefs.grossAnnualIncomeInput
   ];
 
   otherNumericInputs.forEach(input => {
@@ -211,6 +272,83 @@ function attachInputListeners() {
     calculateAll();
     debouncedSave();
   });
+}
+
+/**
+ * Helper: Attach listeners for the "Have a house to sell?" section
+ */
+function attachSellHouseListeners() {
+  // Toggle checkbox — show/hide the fields panel
+  domRefs.hasHouseToSellInput.addEventListener('change', () => {
+    const isChecked = domRefs.hasHouseToSellInput.checked;
+    domRefs.sellHouseFieldsPanel.style.display = isChecked ? 'block' : 'none';
+    if (isChecked) updateSellProceeds();
+    debouncedSave();
+  });
+
+  // Every field that feeds the net-proceeds math
+  const sellNumericInputs = [
+    domRefs.sellMortgagePayoffInput,
+    domRefs.sellCommissionPercentInput,
+    domRefs.sellClosingCostsPercentInput,
+    domRefs.sellRepairCostsInput,
+    domRefs.sellConcessionsInput,
+    domRefs.sellMovingCostsInput
+  ];
+  sellNumericInputs.forEach(input => {
+    input.addEventListener('input', () => {
+      updateSellProceeds();
+      debouncedSave();
+    });
+  });
+
+  // Home value has its own listener so manual edits can clear the Redfin
+  // source badge and mark the value as freshly confirmed (resets the
+  // stale-value suggestion, since the user just told us what it is right now)
+  domRefs.sellHomeValueInput.addEventListener('input', () => {
+    const redfinBadge = getElement('badge-sell-redfin');
+    if (redfinBadge) redfinBadge.style.display = 'none';
+    markSellHomeValueFresh();
+    updateSellProceeds();
+    debouncedSave();
+  });
+
+  // Proceeds-to-down-payment slider
+  domRefs.sellProceedsPercentSliderInput.addEventListener('input', () => {
+    updateSellProceeds();
+    debouncedSave();
+  });
+
+  // Redfin value lookup
+  domRefs.btnSearchSellRedfin.addEventListener('click', () => handleSearchSellRedfin(false));
+
+  // "Overwrite cache" — forces a fresh lookup bypassing mls-proxy.php's own
+  // response cache, for when a cached value is known stale or was wrong
+  // (this is how the redfin_estimate parsing bug's old cached $217,888
+  // would otherwise keep showing up for up to its 20-minute TTL even after
+  // the underlying fix is deployed). Requires a URL already entered — reuses
+  // the same validation as the normal lookup button.
+  if (domRefs.btnForceRefreshSellRedfin) {
+    domRefs.btnForceRefreshSellRedfin.addEventListener('click', () => handleSearchSellRedfin(true));
+  }
+
+  // Apply computed proceeds to the main Down Payment field
+  domRefs.btnApplyProceeds.addEventListener('click', handleApplyProceeds);
+
+  // "Refresh Now" from the gentle stale-value suggestion — reuse the saved
+  // Redfin URL if there is one, otherwise just put the user's cursor in the
+  // value field so they can type a fresh number.
+  if (domRefs.btnRefreshStaleValue) {
+    domRefs.btnRefreshStaleValue.addEventListener('click', () => {
+      const savedUrl = domRefs.sellHomeRedfinUrlInput.value.trim();
+      if (savedUrl) {
+        handleSearchSellRedfin();
+      } else {
+        domRefs.sellHomeValueInput.focus();
+        domRefs.sellHomeValueInput.select();
+      }
+    });
+  }
 }
 
 // ============================================================================
@@ -320,6 +458,68 @@ function handleSearchMls() {
 }
 
 /**
+ * Handles the sell-side Redfin value lookup — fills sellHomeValue only,
+ * never touches the main purchase fields.
+ * @param {boolean} [force=false] - Bypass mls-proxy.php's cache (see the
+ * small "↻ overwrite cache" button) — for when a cached value is known
+ * stale or was wrong (e.g. the redfin_estimate parsing bug found 2026-08-20).
+ */
+async function handleSearchSellRedfin(force = false) {
+  const userInput = domRefs.sellHomeRedfinUrlInput.value.trim();
+
+  const validation = validateMLSInput(userInput);
+  if (!validation.isValid) {
+    alert(validation.message);
+    return;
+  }
+
+  setButtonLoading(domRefs.btnSearchSellRedfin, CONFIG.MSG_SELL_LOOKUP, true);
+
+  try {
+    const result = await fetchRedfinValueOnly(userInput, force);
+    if (result && result.price) {
+      domRefs.sellHomeValueInput.value = Math.round(result.price);
+      const badge = getElement('badge-sell-redfin');
+      if (badge) badge.style.display = 'inline-block';
+      markSellHomeValueFresh();
+      updateSellProceeds();
+      debouncedSave();
+      setButtonLoading(domRefs.btnSearchSellRedfin, CONFIG.MSG_UPDATED, false);
+    } else {
+      alert(CONFIG.ERROR_SELL_NO_VALUE);
+      setButtonLoading(domRefs.btnSearchSellRedfin, CONFIG.MSG_FETCH_VALUE, false);
+    }
+  } catch (error) {
+    console.error('[ERROR] Sell-side Redfin lookup failed:', error);
+    alert(CONFIG.ERROR_SELL_NO_VALUE);
+    setButtonLoading(domRefs.btnSearchSellRedfin, CONFIG.MSG_FETCH_VALUE, false);
+  }
+
+  setTimeout(() => {
+    setButtonLoading(domRefs.btnSearchSellRedfin, CONFIG.MSG_FETCH_VALUE, false);
+  }, 2000);
+}
+
+/**
+ * Pushes the currently computed sale-proceeds amount into the main Down
+ * Payment field. Dispatches a synthetic 'input' event rather than
+ * duplicating the amount/percent/slider sync logic already wired up on
+ * downPaymentAmountInput above.
+ */
+function handleApplyProceeds() {
+  const proceeds = updateSellProceeds();
+  const amount = Math.round(proceeds.amountToDownPayment);
+
+  domRefs.downPaymentAmountInput.value = amount;
+  domRefs.downPaymentAmountInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+  setButtonLoading(domRefs.btnApplyProceeds, `✅ Applied ${amount > 0 ? '$' + amount.toLocaleString() : '$0'}`, false);
+  setTimeout(() => {
+    setButtonLoading(domRefs.btnApplyProceeds, '⬇ Apply to Down Payment', false);
+  }, 2000);
+}
+
+/**
  * Loads live mortgage rates from the proxy
  */
 async function loadLiveMortgageRates() {
@@ -383,13 +583,22 @@ async function initializeApp() {
     applyLoadedDataToDOM(savedData, domRefs);
     activeTerm = savedData.activeTerm || 30;
 
+    // Restore "Have a house to sell?" panel visibility (applyLoadedDataToDOM
+    // only restores input values, not this checkbox-driven show/hide state)
+    // and the home-value freshness timestamp used by the stale-value suggestion.
+    domRefs.hasHouseToSellInput.checked = !!savedData.sellingHouse;
+    domRefs.sellHouseFieldsPanel.style.display = savedData.sellingHouse ? 'block' : 'none';
+    sellHomeValueUpdatedAt = savedData.sellHomeValueUpdatedAt || null;
+
     // Attach all listeners
     attachInputListeners();
     attachActionListeners();
+    attachSellHouseListeners();
 
     // Update UI and calculate
     updateTermCardSelection(activeTerm, domRefs);
     calculateAll();
+    updateSellProceeds();
 
     // Load live rates on startup
     loadLiveMortgageRates();

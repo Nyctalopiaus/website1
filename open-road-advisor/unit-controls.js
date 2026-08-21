@@ -1,14 +1,5 @@
 import { getCurrencySymbol } from './road-utils.js';
 
-function updateFuelPriceLabel(unitToggle, currencyToggle, labelPrice) {
-  const symbol = getCurrencySymbol(currencyToggle.value);
-  if (unitToggle.value === 'metric') {
-    labelPrice.textContent = `Fuel Price (${symbol}/L)`;
-  } else {
-    labelPrice.textContent = `Fuel Price (${symbol}/Gal)`;
-  }
-}
-
 function updateHudFuelCostSymbol(currencyToggle, hudFuelCost) {
   if (!hudFuelCost) return;
 
@@ -27,8 +18,8 @@ function updateHudFuelCostSymbol(currencyToggle, hudFuelCost) {
 export function initUnitCurrencyControls({ unitToggle, currencyToggle, labels, inputs, hudFuelCost }) {
   let currentSystem = unitToggle.value || 'imperial';
 
-  const { labelSpeed, labelCapacity, labelMpg, labelPrice, labelRest } = labels;
-  const { inputSpeed, inputCapacity, inputMpg, inputPrice, inputRest } = inputs;
+  const { labelSpeed, labelCapacity, labelMpg, labelRest } = labels;
+  const { inputSpeed, inputCapacity, inputMpg, inputRest } = inputs;
 
   function applySystemLabels(newSystem) {
     if (newSystem === 'metric') {
@@ -43,7 +34,11 @@ export function initUnitCurrencyControls({ unitToggle, currencyToggle, labels, i
       labelRest.textContent = 'Rest Interval (Miles)';
     }
 
-    updateFuelPriceLabel(unitToggle, currencyToggle, labelPrice);
+    // Fuel Grade is unit-agnostic (Regular/Premium/Diesel don't change with
+    // imperial/metric), so there's no label to update here anymore — pricing
+    // itself always comes back in USD $/gal from fuel-price-proxy.php and is
+    // just displayed with whatever currency symbol is selected below, same
+    // simplified (non-FX-converting) approach the rest of this app already uses.
     updateHudFuelCostSymbol(currencyToggle, hudFuelCost);
   }
 
@@ -51,7 +46,6 @@ export function initUnitCurrencyControls({ unitToggle, currencyToggle, labels, i
     const curValSpeed = parseFloat(inputSpeed.value) || 0;
     const curValCapacity = parseFloat(inputCapacity.value) || 0;
     const curValMpg = parseFloat(inputMpg.value) || 0;
-    const curValPrice = parseFloat(inputPrice.value) || 0;
     const curValRest = parseFloat(inputRest.value) || 0;
 
     if (newSystem === 'metric') {
@@ -64,9 +58,6 @@ export function initUnitCurrencyControls({ unitToggle, currencyToggle, labels, i
       inputMpg.min = '2'; inputMpg.max = '65';
       inputMpg.value = (curValMpg * 0.425144).toFixed(1);
 
-      inputPrice.min = '0.15'; inputPrice.max = '5.50';
-      inputPrice.value = (curValPrice / 3.78541).toFixed(2);
-
       inputRest.value = Math.round(curValRest * 1.60934);
     } else {
       inputSpeed.min = '10'; inputSpeed.max = '120';
@@ -77,9 +68,6 @@ export function initUnitCurrencyControls({ unitToggle, currencyToggle, labels, i
 
       inputMpg.min = '5'; inputMpg.max = '150';
       inputMpg.value = (curValMpg / 0.425144).toFixed(1);
-
-      inputPrice.min = '0.50'; inputPrice.max = '20.00';
-      inputPrice.value = (curValPrice * 3.78541).toFixed(2);
 
       inputRest.value = Math.round(curValRest / 1.60934);
     }
@@ -95,7 +83,6 @@ export function initUnitCurrencyControls({ unitToggle, currencyToggle, labels, i
   });
 
   currencyToggle.addEventListener('change', () => {
-    updateFuelPriceLabel(unitToggle, currencyToggle, labelPrice);
     updateHudFuelCostSymbol(currencyToggle, hudFuelCost);
   });
 

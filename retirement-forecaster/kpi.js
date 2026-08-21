@@ -4,14 +4,18 @@ export function syncLabels(dom) {
   dom.valLifeExpectancy.textContent = dom.lifeExpectancyInput.value;
 
   const curr = parseInt(dom.currentAgeInput.value, 10);
-  const ret = parseInt(dom.retirementAgeInput.value, 10);
+  let ret = parseInt(dom.retirementAgeInput.value, 10);
   const life = parseInt(dom.lifeExpectancyInput.value, 10);
 
   if (ret <= curr) {
-    dom.retirementAgeInput.value = curr + 1;
-    dom.valRetirementAge.textContent = String(curr + 1);
+    ret = curr + 1;
+    dom.retirementAgeInput.value = ret;
+    dom.valRetirementAge.textContent = String(ret);
   }
 
+  // Re-check against the possibly-just-corrected retirement age (not the stale
+  // pre-correction value) so life expectancy can never end up <= retirement age,
+  // which would collapse the burndown chart's age range and hang the chart renderer.
   if (life <= ret) {
     dom.lifeExpectancyInput.value = ret + 1;
     dom.valLifeExpectancy.textContent = String(ret + 1);
@@ -44,15 +48,30 @@ export function renderKPIs({ dom, model, simulation, burnDataRaw, optimalRetirem
     : simulation.cumulativeContributions);
   dom.kpiAccumYears.textContent = `Over ${simulation.accumYears} accumulation years`;
 
+  const kpiOptimalWarningText = document.getElementById('kpi-optimal-warning-text');
+
   if (optimalRetirementAge) {
     const retirementYear = new Date().getFullYear() + (optimalRetirementAge.age - model.currentAge);
     dom.kpiOptimalAge.textContent = String(optimalRetirementAge.age);
     const kpiOptimalYear = document.getElementById('kpi-optimal-year');
     if (kpiOptimalYear) kpiOptimalYear.textContent = `Year ${retirementYear}`;
-    dom.kpiOptimalAgeDesc.textContent = 'Earliest age with ~ $0 balance at life expectancy';
     const suggestedAge = parseInt(optimalRetirementAge.age, 10);
     const selectedAge = parseInt(dom.retirementAgeInput.value, 10);
-    dom.kpiOptimalWarning.style.display = suggestedAge > selectedAge ? 'flex' : 'none';
+
+    if (optimalRetirementAge.type === 'survive') {
+      // A genuinely fully-funded age was found at or before age 80.
+      dom.kpiOptimalAgeDesc.textContent = 'Earliest age with ~ $0 balance at life expectancy';
+      if (kpiOptimalWarningText) kpiOptimalWarningText.textContent = 'You may need to work longer than expected.';
+      dom.kpiOptimalWarning.style.display = suggestedAge > selectedAge ? 'flex' : 'none';
+    } else {
+      // Fallback: no age up to 80 fully funds the plan. This is just the age that
+      // delays the shortfall the longest, not a solvent outcome — say so explicitly.
+      dom.kpiOptimalAgeDesc.textContent = 'Best available age — your plan is still projected to run short';
+      if (kpiOptimalWarningText) {
+        kpiOptimalWarningText.textContent = 'Even retiring at this age, your portfolio is projected to run out before life expectancy. Increase savings or reduce planned spending.';
+      }
+      dom.kpiOptimalWarning.style.display = 'flex';
+    }
   } else {
     dom.kpiOptimalAge.textContent = '—';
     dom.kpiOptimalAgeDesc.textContent = 'Increase savings to find a valid age';

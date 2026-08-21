@@ -345,13 +345,35 @@ if (file_exists($lastSyncFile)) {
         $lastSyncText = date('M j, g:i A', (int) $timestamp);
     }
 }
+
+// SEO / social sharing metadata
+$siteBaseUrl = 'https://nycto.ninja/nyctos-gig-grid/';
+$canonicalUrl = $siteBaseUrl . ($activeMarket !== 'colorado' ? 'index.php?market=' . $activeMarket : '');
+$activeMetaTitle = $activeMarketConfig['title'] . ' // Live Show Intelligence';
+$activeMetaDescription = 'Browse upcoming concerts in ' . $activeMarketConfig['region_name'] . '. Filter by sub-region, genre, and venue, track tickets, preview artists, and export shows to your calendar — all in one place.';
+$activeOgImage = 'https://nycto.ninja/nyctos-gig-grid/assets/backstage_bg.jpg';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><?php echo htmlspecialchars($activeMarketConfig['title']); ?> // Live Show Intelligence</title>
+    <title><?php echo htmlspecialchars($activeMetaTitle); ?></title>
+    <meta name="description" content="<?php echo htmlspecialchars($activeMetaDescription); ?>" />
+    <link rel="canonical" href="<?php echo htmlspecialchars($canonicalUrl); ?>" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Nycto's Gig Grid" />
+    <meta property="og:title" content="<?php echo htmlspecialchars($activeMetaTitle); ?>" />
+    <meta property="og:description" content="<?php echo htmlspecialchars($activeMetaDescription); ?>" />
+    <meta property="og:url" content="<?php echo htmlspecialchars($canonicalUrl); ?>" />
+    <meta property="og:image" content="<?php echo htmlspecialchars($activeOgImage); ?>" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="<?php echo htmlspecialchars($activeMetaTitle); ?>" />
+    <meta name="twitter:description" content="<?php echo htmlspecialchars($activeMetaDescription); ?>" />
+    <meta name="twitter:image" content="<?php echo htmlspecialchars($activeOgImage); ?>" />
+
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤘</text></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -359,6 +381,8 @@ if (file_exists($lastSyncFile)) {
     <link rel="stylesheet" href="styles.css?v=<?php echo filemtime(__DIR__ . '/styles.css'); ?>&r=20260811a" />
 </head>
 <body data-market="<?php echo htmlspecialchars($activeMarket); ?>" data-country="<?php echo htmlspecialchars($activeCountry); ?>">
+
+    <h1 class="sr-only"><?php echo htmlspecialchars($activeMarketConfig['region_name']); ?> — Live Music &amp; Concert Calendar</h1>
 
     <!-- Header Navigation -->
     <header class="container header header-compact">
@@ -552,6 +576,13 @@ if (file_exists($lastSyncFile)) {
             <textarea id="contact-message" rows="5" maxlength="500" style="width:100%;"></textarea>
             <div id="contact-char-count" style="margin:.35rem 0; color:#94a3b8;">0 / 500</div>
             <div id="contact-status-msg" style="display:none; margin:.35rem 0; padding:.5rem; border-radius:6px;"></div>
+            <div class="modal-privacy-notice" style="margin:.75rem 0;">
+                <span class="modal-privacy-icon">🔒</span>
+                <div>
+                    <span class="modal-privacy-heading">Dispatch-Only</span>
+                    Your message is emailed directly to Nycto and not stored in our database. If email delivery fails, we log that a failure happened — never your address or message text.
+                </div>
+            </div>
             <div style="display:flex; justify-content:flex-end;">
                 <button type="button" id="btn-submit-contact">Send Message 🚀</button>
             </div>

@@ -1,31 +1,22 @@
 /**
- * Storage Module - Handles persistent storage via localStorage and API
- * Provides fallback mechanisms for offline support
+ * Storage Module - Handles persistent storage via localStorage
+ * Calculator inputs are intentionally local-only (per-browser), matching the
+ * "100% Private & Local" claim shown in the UI. Do NOT reintroduce a server
+ * sync call here without per-user auth/session scoping — a previous version
+ * synced to a single shared, unauthenticated /api/calculator record, which
+ * meant every visitor's inputs overwrote and were visible to every other
+ * visitor. See project notes for details.
  */
 
 import { CONFIG, DEFAULTS } from './config.js';
 import { parseFloatSafe, parseIntSafe, mergeDefaults } from './utils.js';
 
 /**
- * Loads calculator state from API, with localStorage fallback
+ * Loads calculator state from localStorage
  * @returns {Promise<Object>} Loaded calculator state
  */
 export async function loadSavedInputs() {
-  try {
-    const response = await fetch(CONFIG.API_CALCULATOR);
-    if (response.ok) {
-      const data = await response.json();
-      if (data) {
-        return mergeDefaults(DEFAULTS, data);
-      }
-    } else {
-      console.error('[ERROR] Failed to fetch calculator profile:', response.statusText);
-      return loadFromLocalStorage();
-    }
-  } catch (error) {
-    console.error('[ERROR] API connection error:', error);
-    return loadFromLocalStorage();
-  }
+  return loadFromLocalStorage();
 }
 
 /**
@@ -46,45 +37,16 @@ export function loadFromLocalStorage() {
 }
 
 /**
- * Saves calculator state to localStorage immediately, and syncs to API after debounce
+ * Saves calculator state to localStorage only (no network sync — see module header)
  * @param {Object} data - Calculator state to save
- * @param {Function} onSyncComplete - Optional callback after sync completes
  */
-export function saveInputs(data, onSyncComplete) {
-  // Save locally for instant offline feedback
-  localStorage.setItem(CONFIG.STORAGE_KEY_INPUTS, JSON.stringify(data));
-
-  // Debounce the network sync request
-  if (saveInputs.debounceTimer) {
-    clearTimeout(saveInputs.debounceTimer);
+export function saveInputs(data) {
+  try {
+    localStorage.setItem(CONFIG.STORAGE_KEY_INPUTS, JSON.stringify(data));
+  } catch (error) {
+    console.error('[ERROR] Failed to save calculator inputs to localStorage:', error);
   }
-
-  saveInputs.debounceTimer = setTimeout(async () => {
-    try {
-      const response = await fetch(CONFIG.API_CALCULATOR, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-
-      if (!response.ok) {
-        console.error('[ERROR] API sync failed:', response.statusText);
-      }
-
-      if (onSyncComplete) {
-        onSyncComplete(response.ok);
-      }
-    } catch (error) {
-      console.error('[ERROR] Failed to sync calculator inputs with database:', error);
-      if (onSyncComplete) {
-        onSyncComplete(false);
-      }
-    }
-  }, CONFIG.SAVE_DEBOUNCE_MS);
 }
-
-// Static property for debounce timer
-saveInputs.debounceTimer = null;
 
 /**
  * Applies loaded data to DOM input elements
@@ -107,11 +69,23 @@ export function applyLoadedDataToDOM(data, domRefs) {
   safeSet(domRefs.homeInsuranceInput, data.homeInsurance);
   safeSet(domRefs.hoaFeesInput, data.hoaFees);
   safeSet(domRefs.pmiRateInput, data.pmiRate);
-  safeSet(domRefs.grossIncomeInput, data.grossIncome);
+  safeSet(domRefs.grossAnnualIncomeInput, data.grossAnnualIncome);
   safeSet(domRefs.additionalPaymentInput, data.additionalPayment);
   safeSet(domRefs.additionalPaymentSlider, data.additionalPayment);
   safeSet(domRefs.lumpSumAmountInput, data.lumpSumAmount);
   safeSet(domRefs.lumpSumFrequencyInput, data.lumpSumFrequency);
+
+  // "Have a house to sell?" section. The checkbox's checked state and the
+  // panel's show/hide are handled by app.js (not value-based, so safeSet
+  // doesn't apply), right after this function runs.
+  safeSet(domRefs.sellHomeValueInput, data.sellHomeValue);
+  safeSet(domRefs.sellMortgagePayoffInput, data.sellMortgagePayoff);
+  safeSet(domRefs.sellCommissionPercentInput, data.sellCommissionPercent);
+  safeSet(domRefs.sellClosingCostsPercentInput, data.sellClosingCostsPercent);
+  safeSet(domRefs.sellRepairCostsInput, data.sellRepairCosts);
+  safeSet(domRefs.sellConcessionsInput, data.sellConcessions);
+  safeSet(domRefs.sellMovingCostsInput, data.sellMovingCosts);
+  safeSet(domRefs.sellProceedsPercentSliderInput, data.sellProceedsPercent);
 }
 
 /**
