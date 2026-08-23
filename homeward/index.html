@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en" class="dark h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Homeward — Home Build & Lot Scouting Route Optimizer</title>
+  <meta name="description" content="Optimize house build lot scouting routes, track inspection notes, view Redfin/Zillow listings, and generate executive scouting reports.">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              bg: '#0b0f19',
+              card: '#111827',
+              border: '#1f2937',
+              accent: '#38bdf8'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Preconnect & DNS-Prefetch for Leaflet Map Tile CDNs (Instant LCP) -->
+  <link rel="preconnect" href="https://a.basemaps.cartocdn.com" crossorigin>
+  <link rel="preconnect" href="https://b.basemaps.cartocdn.com" crossorigin>
+  <link rel="preconnect" href="https://c.basemaps.cartocdn.com" crossorigin>
+  <link rel="preconnect" href="https://d.basemaps.cartocdn.com" crossorigin>
+  <link rel="dns-prefetch" href="https://unpkg.com">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#0b0f19] text-slate-200 min-h-screen font-sans antialiased flex flex-col overflow-x-hidden">
+
+  <!-- Header / Navigation Bar (centered to match 1400px layout) -->
+  <header class="no-print border-b border-slate-800/70">
+    <div class="max-w-[1400px] mx-auto px-4 lg:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <!-- Left: Back Button & Branding Logo -->
+      <div class="flex items-center gap-3">
+        <a href="../index.html" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition-all flex items-center gap-1">
+          ← Back to Lab
+        </a>
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-sky-500 to-emerald-400 flex items-center justify-center text-slate-950 font-black text-sm shadow-lg shadow-sky-500/20">
+          🏡
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-slate-100 leading-tight tracking-tight">Homeward</h1>
+          <p class="text-[11px] text-slate-400">Home Build & Lot Scouting Optimizer</p>
+        </div>
+      </div>
+
+      <!-- Right: Action Toolbar Buttons (Right-aligned, mobile-wrap) -->
+      <div class="flex flex-wrap items-center justify-start sm:justify-end gap-2 w-full sm:w-auto">
+        <!-- Dev & Admin Tools Dropdown Menu (Only visible on private/local networks) -->
+        <div id="dev-tools-dropdown-container" class="relative hidden">
+          <button id="btn-dev-tools-trigger" type="button" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold text-xs border border-slate-700/80 transition-all flex items-center gap-1.5 shadow-sm" title="Dev & Admin Tools">
+            <span>⚙️ Dev Tools</span>
+            <svg id="chevron-dev-tools" class="w-3.5 h-3.5 text-slate-400 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          <div id="dev-tools-panel" class="absolute right-0 top-full mt-2 w-64 rounded-xl bg-slate-900/95 border border-slate-700/80 shadow-2xl p-2.5 z-50 hidden flex-col gap-2 backdrop-blur-md">
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1 pt-0.5">Scraping Ingestion Mode</div>
+            <!-- Dev / Prod Mode Toggle -->
+            <div id="fetch-mode-toggle-container" class="flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-300">
+              <span class="font-medium text-[11px] text-slate-400">Scrape Mode:</span>
+              <button id="btn-fetch-mode-toggle" type="button" class="font-bold text-[11px] px-2.5 py-1 rounded transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" title="Toggle between Dev (Local Residential IP, 0 Scrape.do tokens) and Prod (Scrape.do Proxy)">
+                ⚡ Dev (Local)
+              </button>
+            </div>
+
+            <div class="h-px bg-slate-800 my-0.5"></div>
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1">Admin Tools & Database</div>
+
+            <!-- Admin DB Sync Button -->
+            <button id="btn-admin-sync" type="button" class="w-full px-2.5 py-2 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold text-xs hover:bg-amber-500/20 transition-all flex items-center justify-between" title="Sync local residential Redfin DB records to production with Data Quality Audit">
+              <span>🔄 Sync DB to Prod</span>
+              <span class="text-[10px] font-mono text-amber-400/70">Audit & Merge</span>
+            </button>
+
+            <!-- Local DB Inspector Button -->
+            <button id="btn-view-local-db" type="button" onclick="openLocalDbModal();" class="w-full px-2.5 py-2 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 font-bold text-xs hover:bg-indigo-500/20 transition-all flex items-center justify-between" title="View & inspect all records stored in the local residential property_cache.db">
+              <span>🗄️ Local DB Inspector</span>
+              <span class="text-[10px] font-mono text-indigo-400/70">SQLite Cache</span>
+            </button>
+
+            <!-- Admin Logout Button -->
+            <button id="btn-header-admin-logout" type="button" class="hidden w-full px-2.5 py-2 rounded-lg bg-rose-500/15 text-rose-300 border border-rose-500/30 font-bold text-xs hover:bg-rose-500/25 transition-all flex items-center justify-between" title="Log out of Admin Session">
+              <span>🔒 Admin Logout</span>
+              <span class="text-[10px] font-mono text-rose-400/70">End Session</span>
+            </button>
+          </div>
+        </div>
+
+        <button id="btn-open-route-preview" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold text-xs border border-emerald-500/40 hover:bg-emerald-500/30 transition-all flex items-center gap-1.5 shadow-sm" title="Top-Down Route Preview: View photos, addresses, and schedule times in chronological order">
+          🗺️ Route Preview
+        </button>
+
+        <button id="btn-generate-report" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-sky-500 to-blue-600 text-slate-950 font-bold text-xs shadow-md shadow-sky-500/20 hover:from-sky-400 hover:to-blue-500 transition-all flex items-center gap-1.5">
+          <svg class="w-4 h-4 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          Executive Report
+        </button>
+
+        <button id="btn-export-csv" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition-all flex items-center gap-1">
+          <svg class="w-3.5 h-3.5 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Export CSV
+        </button>
+
+        <button id="btn-open-quickstart" type="button" title="Show Quick Start Guide" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition-all flex items-center gap-1">
+          ℹ️ Quick Start
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid Layout (centered, max-width 1400px for even 2-column layout) -->
+  <main class="max-w-[1400px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6 px-4 lg:px-6 py-6 lg:py-8 flex-1">
+
+    <!-- Left Sidebar: Controls & Tour Setup -->
+    <aside class="no-print lg:col-span-5 bg-slate-900/60 border border-slate-800 rounded-2xl p-4 lg:p-6 flex flex-col justify-between">
+      <div class="space-y-5">
+        
+        <!-- Setup Header -->
+        <div>
+          <h2 class="text-sm font-bold text-sky-400 uppercase tracking-wider mb-1">Tour Configuration</h2>
+          <p class="text-xs text-slate-400">Set your starting base, addresses, and stay time per site.</p>
+        </div>
+
+        <!-- Tour Name / Report Title Input -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Tour Name / Report Title</label>
+          <input id="input-tour-name" type="text" placeholder="e.g. House & Lot Scouting Tour" value="House & Lot Scouting Tour" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-sky-500 transition-colors">
+        </div>
+
+        <!-- Start Address Input -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Starting Address / Home Base</label>
+          <input id="input-start-address" type="text" placeholder="e.g. 100 Congress Ave, Austin, TX" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-sky-500 transition-colors">
+        </div>
+
+        <!-- Options Row: Loop Back Checkbox & Stay Duration Dropdown -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80 flex items-center gap-2">
+            <input id="input-loopback" type="checkbox" checked class="w-4 h-4 accent-sky-500 rounded cursor-pointer">
+            <label for="input-loopback" class="text-xs font-medium text-slate-300 cursor-pointer select-none">
+              Round Trip (Loop back to start)
+            </label>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Stay Time per House</label>
+            <select id="select-stay-duration" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-sky-500 cursor-pointer">
+              <option value="5">5 Minutes</option>
+              <option value="10">10 Minutes</option>
+              <option value="15">15 Minutes</option>
+              <option value="20" selected>20 Minutes (Standard)</option>
+              <option value="25">25 Minutes</option>
+              <option value="30">30 Minutes</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Property Match Preferences & Scoring Panel -->
+        <details class="p-3 rounded-xl bg-slate-950 border border-slate-800/80 group">
+          <summary class="flex items-center justify-between text-xs font-semibold text-sky-400 cursor-pointer select-none">
+            <span class="flex items-center gap-1.5">
+              🎯 Property Match Preferences & Scoring
+            </span>
+            <span class="text-slate-500 group-open:rotate-180 transition-transform">▼</span>
+          </summary>
+
+          <div class="mt-3 pt-3 border-t border-slate-800/80 space-y-3 text-xs">
+            
+            <div class="grid grid-cols-2 gap-2">
+              <!-- Max Price -->
+              <div>
+                <label class="block text-slate-400 mb-1">Max Price</label>
+                <select id="pref-max-price" class="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 focus:border-sky-500">
+                  <option value="">No max</option>
+                  <option value="400000">$400,000</option>
+                  <option value="500000">$500,000</option>
+                  <option value="600000">$600,000</option>
+                  <option value="700000">$700,000</option>
+                  <option value="800000">$800,000</option>
+                  <option value="900000">$900,000</option>
+                  <option value="1000000">$1,000,000</option>
+                  <option value="1250000">$1,250,000</option>
+                  <option value="1500000">$1,500,000</option>
+                  <option value="2000000">$2,000,000+</option>
+                </select>
+              </div>
+
+              <!-- Min Lot Size -->
+              <div>
+                <label class="block text-slate-400 mb-1">Min Lot Size</label>
+                <select id="pref-min-lot" class="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 focus:border-sky-500">
+                  <option value="">No min</option>
+                  <option value="2000">2,000 sq ft</option>
+                  <option value="4500">4,500 sq ft</option>
+                  <option value="6500">6,500 sq ft</option>
+                  <option value="8000">8,000 sq ft</option>
+                  <option value="9500">9,500 sq ft</option>
+                  <option value="10890">0.25 acres</option>
+                  <option value="21780">0.50 acres</option>
+                  <option value="43560">1.00 acre</option>
+                  <option value="87120">2.00 acres</option>
+                  <option value="130680">3.00 acres</option>
+                  <option value="174240">4.00 acres</option>
+                  <option value="217800">5.00 acres</option>
+                  <option value="435600">10.00 acres</option>
+                  <option value="871200">20.00 acres</option>
+                  <option value="1742400">40.00 acres</option>
+                  <option value="4356000">100.00 acres</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <!-- Min Home Sq Ft -->
+              <div>
+                <label class="block text-slate-400 mb-1">Min Home Sq Ft</label>
+                <select id="pref-min-sqft" class="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 focus:border-sky-500">
+                  <option value="">No min</option>
+                  <option value="1000">1,000 sq ft</option>
+                  <option value="1500">1,500 sq ft</option>
+                  <option value="2000">2,000 sq ft</option>
+                  <option value="2500">2,500 sq ft</option>
+                  <option value="3000">3,000 sq ft</option>
+                  <option value="3500">3,500 sq ft</option>
+                  <option value="4000">4,000 sq ft+</option>
+                </select>
+              </div>
+
+              <!-- Max HOA Dues -->
+              <div>
+                <label class="block text-slate-400 mb-1">Max HOA Cost</label>
+                <select id="pref-max-hoa" class="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 focus:border-sky-500">
+                  <option value="">No max</option>
+                  <option value="0">No HOA ($0)</option>
+                  <option value="25">$25/month</option>
+                  <option value="50">$50/month</option>
+                  <option value="75">$75/month</option>
+                  <option value="100">$100/month</option>
+                  <option value="150">$150/month</option>
+                  <option value="200">$200/month</option>
+                  <option value="250">$250/month</option>
+                  <option value="300">$300/month</option>
+                  <option value="400">$400/month</option>
+                  <option value="500">$500/month</option>
+                  <option value="750">$750/month</option>
+                  <option value="1000">$1,000/month</option>
+                  <option value="1500">$1,500/month</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <!-- Min Year Built -->
+              <div>
+                <label class="block text-slate-400 mb-1">Min Year Built</label>
+                <select id="pref-min-year" class="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 focus:border-sky-500">
+                  <option value="">No min</option>
+                  <option value="2026">2026</option>
+                  <option value="2025">2025</option>
+                  <option value="2024">2024</option>
+                  <option value="2023">2023</option>
+                  <option value="2022">2022</option>
+                  <option value="2021">2021</option>
+                  <option value="2020">2020</option>
+                  <option value="2015">2015</option>
+                  <option value="2010">2010</option>
+                  <option value="2005">2005</option>
+                  <option value="2000">2000</option>
+                  <option value="1990">1990</option>
+                  <option value="1980">1980</option>
+                  <option value="1970">1970</option>
+                  <option value="1960">1960</option>
+                </select>
+              </div>
+
+              <!-- Preferred House Facing -->
+              <div>
+                <label class="block text-slate-400 mb-1">House Facing 🧭</label>
+                <select id="pref-facing" class="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 focus:border-sky-500">
+                  <option value="">Any Direction</option>
+                  <option value="South">South (S)</option>
+                  <option value="North">North (N)</option>
+                  <option value="East">East (E)</option>
+                  <option value="West">West (W)</option>
+                  <option value="SE">Southeast (SE)</option>
+                  <option value="SW">Southwest (SW)</option>
+                  <option value="NE">Northeast (NE)</option>
+                  <option value="NW">Northwest (NW)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 items-center">
+              <!-- Terrain Preference -->
+              <div>
+                <label class="block text-slate-400 mb-1">Terrain Preference</label>
+                <select id="pref-terrain" class="w-full px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 focus:border-sky-500">
+                  <option value="">Any Terrain</option>
+                  <option value="Flat">Flat Only</option>
+                  <option value="Gentle Slope">Gentle Slope</option>
+                  <option value="Steep Slope">Steep Slope Ok</option>
+                </select>
+              </div>
+
+              <!-- Solar Panel Preference -->
+              <div class="flex items-center gap-2 pt-4">
+                <input id="pref-solar" type="checkbox" class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
+                <label for="pref-solar" class="text-xs text-slate-300 cursor-pointer select-none">Solar Required ☀️</label>
+              </div>
+            </div>
+
+          </div>
+        </details>
+
+        <!-- Scouting Sites Input & Interactive List Container -->
+        <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80 space-y-3">
+          <!-- Header with Label & Action Links -->
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-semibold text-slate-300">Scouting Sites / Lot Addresses</label>
+            <div class="flex items-center gap-2">
+              <button id="btn-open-paste-modal" type="button" class="text-[11px] text-sky-400 hover:underline flex items-center gap-1">
+                📋 Bulk Paste
+              </button>
+              <span class="text-slate-700">|</span>
+              <label for="csv-file-input" class="text-[11px] text-emerald-400 hover:underline cursor-pointer flex items-center gap-1">
+                📂 Import CSV
+              </label>
+              <input id="csv-file-input" type="file" accept=".csv" class="hidden">
+            </div>
+          </div>
+
+          <!-- Add Site: Redfin URL only. A pasted Redfin listing URL is the
+               single source for both this stop's map location and its
+               price/HOA/beds/baths/sqft (via the shared
+               backend/property-lookup.php lookup) — a free-typed address
+               has neither guarantee, so that input mode was removed
+               (2026-08-22). Off-Redfin lots still work via the "drop a pin
+               on the map" flow (initMapClickPinDropper), which stays
+               address/reverse-geocode based since it has no URL to start from. -->
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <input id="input-add-address" type="text" placeholder="Paste Redfin listing URL (e.g. https://www.redfin.com/CO/...)" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-sky-500 transition-colors">
+              <button id="btn-add-address" type="button" class="px-3 py-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold text-xs border border-sky-500/30 transition-colors flex items-center gap-1 flex-shrink-0">
+                ＋ Add
+              </button>
+            </div>
+            <p class="text-[10px] text-slate-500 leading-relaxed">
+              Only Redfin listing URLs are accepted here — that's what gets you accurate price, HOA, beds/baths, and sqft automatically. No Redfin listing for this lot? Click directly on the map to drop a pin instead.
+            </p>
+          </div>
+
+          <!-- Interactive Target Address List Cards -->
+          <div>
+            <div class="flex items-center justify-between text-xs text-slate-400 mb-1.5 px-0.5">
+              <span>Stops (<span id="target-count-badge" class="font-bold text-sky-400">0</span>)</span>
+              <span class="text-[10px] text-slate-500">Drag or use ▲/▼ to reorder</span>
+            </div>
+            <div id="target-address-list" class="space-y-2 max-h-[320px] overflow-y-auto pr-1"></div>
+          </div>
+        </div>
+
+        <!-- Geocoding Status Box -->
+        <div id="geocoding-status" class="hidden p-3 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-300 text-xs font-mono animate-pulse">
+          Geocoding addresses...
+        </div>
+
+        <!-- Primary Action Button -->
+        <button id="btn-optimize" class="w-full py-3 rounded-xl bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-400 hover:to-emerald-400 text-slate-950 font-extrabold text-sm shadow-lg shadow-sky-500/20 transition-all flex items-center justify-center gap-2">
+          <svg class="w-5 h-5 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          Optimize & Build Tour Route
+        </button>
+
+        <!-- Cross-Device Sync: bring field notes from a phone back to this device, or vice versa -->
+        <button id="btn-open-sync-modal" type="button" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-all flex items-center justify-center gap-2">
+          🔄 Sync Devices (Phone ⇄ PC)
+        </button>
+
+      </div>
+
+      <!-- Footer Quick Tools -->
+      <div class="pt-6 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+        <button id="btn-load-sample" class="hover:text-sky-400 transition-colors">✨ Load Sample Tour</button>
+        <button id="btn-export-json" class="hover:text-sky-400 transition-colors">💾 JSON Backup</button>
+        <button id="btn-clear-tour" class="hover:text-rose-400 transition-colors">🗑️ Clear</button>
+      </div>
+    </aside>
+
+    <!-- Center/Right Area: Map & Itinerary List -->
+    <section class="lg:col-span-7 flex flex-col gap-6">
+
+      <!-- Interactive Leaflet Map -->
+      <div class="h-[460px] relative rounded-2xl border border-slate-800 overflow-hidden bg-slate-950">
+        <div id="map"></div>
+      </div>
+
+      <!-- Itinerary Stop Cards List -->
+      <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 lg:p-6 space-y-4">
+
+        <!-- Summary Stats Header -->
+        <div id="tour-summary-header"></div>
+
+        <!-- Cards List Container -->
+        <div id="itinerary-list-container" class="space-y-3"></div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL 1: Inspection Notebook Modal -->
+  <div id="notebook-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden relative">
+      
+      <!-- Frozen Top Header Bar (Always Visible) -->
+      <div class="p-6 pb-4 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md flex items-start justify-between flex-shrink-0 z-10">
+        <div class="flex-1 pr-4">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-xs font-bold text-sky-400 uppercase tracking-wide">📝 Homeward Site Inspection Notebook</span>
+            <span id="notebook-match-score-badge" class="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">🎯 100% Match</span>
+          </div>
+          <input id="note-address-input" type="text" class="w-full text-lg font-bold text-slate-100 bg-transparent border-b border-slate-800 hover:border-slate-700 focus:border-sky-500 focus:outline-none py-0.5 transition-colors" placeholder="Property Address...">
+        </div>
+        <button id="close-notebook-btn" class="text-slate-400 hover:text-slate-200 text-xl font-bold p-1.5 rounded-lg hover:bg-slate-800 transition-colors">✕</button>
+      </div>
+
+      <!-- Scrollable Inner Content Area -->
+      <div class="p-6 space-y-4 overflow-y-auto flex-1">
+        
+        <!-- Section 1: Buyer Preference Match Banner -->
+        <div id="notebook-match-breakdown-box" class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5 text-xs">
+          <div class="flex items-center justify-between font-bold">
+            <span class="text-slate-300 flex items-center gap-1.5">🎯 Buyer Preference Match Score:</span>
+            <span id="notebook-match-score-text" class="text-emerald-400 font-extrabold">100% Match</span>
+          </div>
+          <div id="notebook-match-passed-list" class="text-[11px] text-emerald-400/90 grid grid-cols-1 sm:grid-cols-2 gap-1 pt-1 border-t border-slate-800/60"></div>
+          <div id="notebook-match-failed-list" class="text-[11px] text-rose-400/90 grid grid-cols-1 sm:grid-cols-2 gap-1 pt-0.5"></div>
+        </div>
+
+        <!-- Section 2: External Links & Quick Actions Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-slate-400 font-semibold">1-Click Links:</span>
+            <a id="note-googlemaps-link" href="#" target="_blank" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 font-semibold border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors">🟢 Google Maps ↗</a>
+            <a id="note-redfin-link" href="#" target="_blank" class="px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-300 font-semibold border border-rose-500/20 hover:bg-rose-500/20 transition-colors">🔴 Redfin Listing ↗</a>
+            <a id="note-zillow-link" href="#" target="_blank" class="px-2.5 py-1 rounded-lg bg-sky-500/10 text-sky-300 font-semibold border border-sky-500/20 hover:bg-sky-500/20 transition-colors">🔵 Zillow Listing ↗</a>
+            <a id="note-streetview-link" href="#" target="_blank" class="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 font-semibold border border-amber-500/20 hover:bg-amber-500/20 transition-colors">🟡 Street View ↗</a>
+          </div>
+          <button id="btn-autodetect-elevation" type="button" class="px-3 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold border border-sky-500/30 transition-all flex items-center gap-1.5 ml-auto">
+            ⚡ Auto-Detect Specs & Photo
+          </button>
+        </div>
+
+        <!-- Section 3: Property Specs & Attributes (Clean 3-Column Grid) -->
+        <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3">
+          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">📐 Key Property Specifications</h3>
+          
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+            <div>
+              <label class="block text-slate-400 mb-1">Est. Listing Price</label>
+              <input id="note-price" type="text" placeholder="Price e.g. $450k" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:border-sky-500 focus:outline-none">
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-slate-400">Lot Size</label>
+                <span id="badge-auto-size" class="hidden text-[10px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-semibold border border-sky-500/30">⚡ Auto</span>
+              </div>
+              <input id="note-size" type="text" placeholder="Size e.g. 1.2 Acres" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:border-sky-500 focus:outline-none">
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-slate-400">Home Sq Ft 🏠</label>
+                <span id="badge-auto-sqft" class="hidden text-[10px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-semibold border border-sky-500/30">⚡ Auto</span>
+              </div>
+              <input id="note-sqft" type="text" placeholder="Sq Ft e.g. 2,500 sq ft" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:border-sky-500 focus:outline-none">
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-slate-400">Elevation (ft) ⛰️</label>
+                <span id="badge-auto-elevation" class="hidden text-[10px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-semibold border border-sky-500/30">⚡ Auto</span>
+              </div>
+              <input id="note-elevation" type="text" placeholder="Elev e.g. 6,063 ft" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 font-semibold focus:border-sky-500 focus:outline-none">
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-slate-400">House Facing 🧭</label>
+                <span id="badge-auto-facing" class="hidden text-[10px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-semibold border border-sky-500/30">⚡ Auto</span>
+              </div>
+              <select id="note-facing" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 focus:border-sky-500 focus:outline-none">
+                <option value="South (S)">South (S)</option>
+                <option value="North (N)">North (N)</option>
+                <option value="East (E)">East (E)</option>
+                <option value="West (W)">West (W)</option>
+                <option value="Southeast (SE)">Southeast (SE)</option>
+                <option value="Southwest (SW)">Southwest (SW)</option>
+                <option value="Northeast (NE)">Northeast (NE)</option>
+                <option value="Northwest (NW)">Northwest (NW)</option>
+              </select>
+              <p class="mt-1 text-[11px] text-slate-400 italic">
+                💡 GIS Estimate — please validate orientation via Redfin map/photos.
+              </p>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-slate-400">Terrain / Slope</label>
+                <span id="badge-auto-terrain" class="hidden text-[10px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-semibold border border-sky-500/30">⚡ Auto</span>
+              </div>
+              <select id="note-terrain" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 focus:border-sky-500 focus:outline-none">
+                <option value="Flat">Flat</option>
+                <option value="Gentle Slope">Gentle Slope</option>
+                <option value="Steep Slope">Steep Slope</option>
+                <option value="Wooded">Wooded</option>
+                <option value="Cleared">Cleared</option>
+              </select>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-slate-400">HOA / Restrictions</label>
+                <span id="badge-auto-hoa" class="hidden text-[10px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-semibold border border-sky-500/30">⚡ Auto</span>
+              </div>
+              <input id="note-hoa" type="text" placeholder="HOA e.g. $100/mo or $0" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:border-sky-500 focus:outline-none">
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-slate-400">Year Built 🏗️</label>
+                <span id="badge-auto-year" class="hidden text-[10px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-semibold border border-sky-500/30">⚡ Auto</span>
+              </div>
+              <input id="note-year" type="text" placeholder="Year e.g. 1998" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:border-sky-500 focus:outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4: Rating & Inspection Status Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-xs items-center">
+          <div>
+            <label class="block text-slate-400 font-semibold mb-1">Star Rating (1-5)</label>
+            <div id="star-container" class="star-rating-input flex gap-1">
+              <span data-val="1">☆</span>
+              <span data-val="2">☆</span>
+              <span data-val="3">☆</span>
+              <span data-val="4">☆</span>
+              <span data-val="5">☆</span>
+            </div>
+            <input type="hidden" id="note-rating-val" value="3">
+          </div>
+
+          <div class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+            <input id="note-visited" type="checkbox" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer">
+            <label for="note-visited" class="text-xs font-semibold text-emerald-400 cursor-pointer select-none">Mark as Visited ✓</label>
+          </div>
+
+          <div class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+            <input id="note-solar" type="checkbox" class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
+            <label for="note-solar" class="text-xs font-semibold text-amber-400 cursor-pointer select-none">Has Solar Panels ☀️</label>
+          </div>
+        </div>
+
+        <!-- Section 5: Observations & Media -->
+        <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3 text-xs">
+          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">📝 Observations & Media</h3>
+          
+          <!-- Pros & Cons Side-by-Side -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-emerald-400 font-semibold mb-1">Pros (comma separated)</label>
+              <input id="note-pros" type="text" placeholder="Hill views, Oak trees, Quiet" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-emerald-500/20 text-slate-100 focus:border-emerald-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-rose-400 font-semibold mb-1">Cons (comma separated)</label>
+              <input id="note-cons" type="text" placeholder="Rocky soil, Sloped driveway" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-rose-500/20 text-slate-100 focus:border-rose-500 focus:outline-none">
+            </div>
+          </div>
+
+          <!-- Custom Thoughts / Inspection Notes -->
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">Our Thoughts & Detailed Notes</label>
+            <textarea id="note-text" rows="3" placeholder="Enter custom observations, builder talks, sun orientation..." class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:border-sky-500 focus:outline-none"></textarea>
+          </div>
+
+          <!-- Multi-Photo Manager & List -->
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">House / Lot Inspection Photos</label>
+            <div class="flex gap-2">
+              <input id="note-photo-url-input" type="text" placeholder="Paste image URL (e.g. https://...)" class="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:border-sky-500 focus:outline-none">
+              <button id="btn-add-photo-url" type="button" class="px-3.5 py-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold text-xs border border-sky-500/30 transition-colors flex-shrink-0">
+                ＋ Add Photo
+              </button>
+              <label for="note-photo-file" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer font-semibold text-xs border border-slate-700 flex items-center gap-1 transition-colors flex-shrink-0">
+                Upload 📷
+              </label>
+              <input id="note-photo-file" type="file" accept="image/*" multiple class="hidden">
+            </div>
+
+            <!-- Active Main Photo Previewer -->
+            <div id="photo-preview-container" class="hidden mt-3 relative rounded-xl overflow-hidden border border-slate-700 bg-slate-950 flex items-center justify-center p-2 min-h-[220px] max-h-[480px]">
+              <img id="note-photo-preview" src="" alt="Photo Preview" class="max-w-full max-h-[460px] w-auto h-auto object-contain rounded-lg cursor-pointer" title="Click to open image lightbox on screen" onclick="if(this.src) window.openImageLightbox(this.src, 'House Photo Preview')">
+              <div class="absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-slate-900/90 text-[11px] font-mono text-slate-300 border border-slate-700 shadow-md backdrop-blur-sm pointer-events-none">
+                <span id="photo-index-counter">Photo 1 of 1</span>
+              </div>
+            </div>
+
+            <!-- List of Added Photo URLs with Delete X -->
+            <div id="photo-url-list-container" class="mt-3 space-y-1.5 max-h-[180px] overflow-y-auto pr-1"></div>
+            <input type="hidden" id="note-photo-url" value="">
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Frozen Bottom Footer Bar (Auto-Saves on Closure) -->
+      <div class="p-4 px-6 border-t border-slate-800 bg-slate-900/95 backdrop-blur-md flex items-center justify-between gap-3 flex-shrink-0 z-10">
+        <span class="text-xs text-slate-400 font-medium flex items-center gap-1.5">
+          <span class="text-emerald-400">⚡</span> Edits auto-save on closure
+        </span>
+        <button id="save-note-btn" class="px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-all">
+          Done
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL 2: Executive Scouting Report Modal (Print Printable) -->
+  <div id="report-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950 p-4 lg:p-8">
+    <div class="max-w-5xl mx-auto bg-slate-950">
+      
+      <!-- Top Action Bar -->
+      <div class="no-print flex items-center justify-between pb-6 mb-6 border-b border-slate-800">
+        <button id="btn-close-report" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700">
+          ← Back to Map & Itinerary
+        </button>
+
+        <button id="btn-print-report" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-slate-950 font-extrabold text-sm shadow-lg shadow-sky-500/20 flex items-center gap-2">
+          🖨️ Print / Save Executive PDF
+        </button>
+      </div>
+
+      <!-- Report Printable Document Content -->
+      <div id="report-content" class="report-page"></div>
+
+    </div>
+  </div>
+
+  <!-- MODAL 3: Bulk Paste Addresses Modal -->
+  <div id="bulk-paste-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <h3 class="text-sm font-bold text-slate-100">📋 Bulk Paste Scouting Addresses</h3>
+        <button id="close-paste-modal-btn" type="button" class="text-slate-400 hover:text-slate-200 text-lg font-bold">✕</button>
+      </div>
+      <p class="text-xs text-slate-400 mb-3">Paste multiple house or lot addresses below (one address per line):</p>
+      <textarea id="bulk-paste-textarea" rows="8" placeholder="2200 Barton Creek Blvd, Austin, TX&#10;4500 Bee Cave Rd, West Lake Hills, TX&#10;7800 Ranch Rd 620 N, Austin, TX" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-mono text-xs focus:outline-none focus:border-sky-500 leading-relaxed"></textarea>
+      <div class="mt-4 flex justify-end gap-2">
+        <button id="cancel-paste-btn" type="button" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700">Cancel</button>
+        <button id="submit-paste-btn" type="button" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20">Add Addresses to List</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: Cross-Device Sync Modal -->
+  <div id="sync-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop" onclick="if(event.target === this) this.classList.add('hidden');">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+        <h3 class="text-sm font-bold text-slate-100">🔄 Sync Devices</h3>
+        <button id="close-sync-modal-btn" type="button" class="text-slate-400 hover:text-slate-200 text-lg font-bold p-1 rounded-lg hover:bg-slate-800 transition-colors">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-400 mb-4 leading-relaxed">Move this tour between your phone and PC without emailing yourself a file. Codes last 14 days and don't include photos attached by file upload — use JSON Backup for a full copy with photos.</p>
+
+      <!-- Push Section -->
+      <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 mb-3">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <span class="text-xs font-bold text-slate-200">📤 Push this device's tour</span>
+          <button id="btn-sync-push" type="button" class="px-3 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold text-xs border border-sky-500/30 transition-colors flex-shrink-0">
+            Generate Code
+          </button>
+        </div>
+        <div id="sync-push-result" class="hidden">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <span id="sync-push-code" class="flex-1 text-center text-2xl font-mono font-black tracking-[0.2em] text-emerald-400 bg-slate-900 border border-slate-800 rounded-lg py-2"></span>
+            <button id="btn-sync-copy-code" type="button" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-colors flex-shrink-0">Copy</button>
+          </div>
+          <p id="sync-push-expiry" class="text-[11px] text-slate-500 mt-1.5"></p>
+        </div>
+        <p id="sync-push-error" class="hidden text-[11px] text-rose-400 mt-1.5"></p>
+      </div>
+
+      <!-- Pull Section -->
+      <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+        <span class="text-xs font-bold text-slate-200 block mb-2">📥 Pull a tour from another device</span>
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <input id="sync-pull-code-input" type="text" maxlength="12" placeholder="ABC123" class="flex-1 px-3 py-2.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-100 font-mono text-sm uppercase tracking-widest text-center focus:outline-none focus:border-sky-500 transition-colors">
+          <button id="btn-sync-pull" type="button" class="px-4 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-colors flex-shrink-0 whitespace-nowrap">
+            Pull & Replace
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-1.5">Replaces current stops with the exact tour imported from the sync code.</p>
+        <p id="sync-pull-error" class="hidden text-[11px] text-rose-400 mt-1.5"></p>
+        <p id="sync-pull-success" class="hidden text-[11px] text-emerald-400 mt-1.5"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 5: Quick Start Guide -->
+  <div id="quickstart-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+      <div class="flex items-start justify-between border-b border-slate-800 pb-3 mb-4">
+        <h3 class="text-base font-bold text-sky-400">🧭 Homeward Quick Start</h3>
+        <button id="btn-close-quickstart" type="button" aria-label="Close Quick Start guide" class="text-slate-400 hover:text-slate-200 text-lg font-bold">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-400 mb-4">Follow these steps to plan a lot-scouting route, log field notes, and bring it all back for a report.</p>
+
+      <ol class="space-y-3 text-xs text-slate-300 mb-4">
+        <li class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <strong class="block text-slate-100 mb-0.5">1) Set your starting point & stops</strong>
+          Enter your home base address, then add scouting sites by pasting each one's Redfin listing URL (or click the map to drop a pin for lots with no Redfin listing) — use Bulk Paste for a list, or Import CSV.
+        </li>
+        <li class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <strong class="block text-slate-100 mb-0.5">2) Optimize & build your tour route</strong>
+          Click "Optimize & Build Tour Route" to auto-order every stop into the fastest driving loop, with live ETAs plotted on the map.
+        </li>
+        <li class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <strong class="block text-slate-100 mb-0.5">3) Take field notes at each stop</strong>
+          Open a stop's 📝 Inspection Notebook to star-rate it, jot pros/cons and thoughts, attach a photo, and jump straight to its Redfin/Zillow listing or Street View.
+        </li>
+        <li class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <strong class="block text-slate-100 mb-0.5">4) Sync between your phone and PC</strong>
+          Taking notes on your phone in the field? Tap 🔄 Sync Devices → Push to get a code, then Pull that code on your PC (or vice versa) to merge notes back in — no emailing files to yourself.
+        </li>
+        <li class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+          <strong class="block text-slate-100 mb-0.5">5) Export & report</strong>
+          Generate a printable Executive Report, or export CSV/JSON any time to back up or share your findings.
+        </li>
+      </ol>
+
+      <div class="flex items-start gap-2 p-3 rounded-xl bg-sky-500/10 border border-sky-500/30 text-[11px] text-sky-200">
+        <span>🔒</span>
+        <div>
+          <strong class="block text-sky-300">Mostly private, browser-based storage</strong>
+          Your tour is saved locally in this browser. It only leaves your device if you use Sync Devices, which stores it for 14 days under a random code that only you have.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin DB Sync & Data Quality Audit Modal -->
+  <div id="modal-admin-sync" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-5 text-slate-200 relative overflow-hidden">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center font-bold text-sm">
+            🔐
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-100">Admin DB Sync & Quality Audit</h3>
+            <p class="text-xs text-slate-400">Merge clean local Redfin lookups into production</p>
+          </div>
+        </div>
+        <button id="btn-close-admin-sync-modal" class="text-slate-400 hover:text-slate-200 text-lg font-bold p-1">✕</button>
+      </div>
+
+      <!-- State 1: Admin Login Form -->
+      <div id="admin-sync-login-section" class="space-y-4">
+        <p class="text-xs text-slate-300 leading-relaxed">
+          Enter your admin password (default: <code class="bg-slate-950 px-1 py-0.5 rounded text-amber-300">admin123</code>). The sync engine will perform a Data Quality Audit on your local records before merging to ensure incomplete test data never poisons the production dataset.
+        </p>
+        <div class="space-y-2">
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Target Sync Destination</label>
+          <select id="admin-sync-target-select" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:border-amber-500">
+            <option value="prod">🌐 Production Server (https://nycto.ninja/backend/sync-db.php)</option>
+            <option value="local">🖥️ Local Server (http://127.0.0.1:8888/backend/sync-db.php)</option>
+          </select>
+        </div>
+        <div class="space-y-2">
+          <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin Password</label>
+          <input type="password" id="admin-sync-password-input" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:border-amber-500" placeholder="Enter admin password (default: admin123)...">
+          <p class="text-[11px] text-slate-500">To set a custom password, set <code class="text-slate-400">ADMIN_PASSWORD</code> or <code class="text-slate-400">ADMIN_PASSWORD_HASH</code> in <code class="text-slate-400">api.env</code>.</p>
+        </div>
+        <div id="admin-sync-login-error" class="hidden text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 p-2.5 rounded-lg"></div>
+        <button id="btn-admin-sync-login" type="button" class="w-full py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all">
+          Authenticate & Audit Local DB
+        </button>
+      </div>
+
+      <!-- State 2: Data Quality Audit Preview & Merge Execute -->
+      <div id="admin-sync-audit-section" class="hidden space-y-4">
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl">
+            <span class="block text-lg font-black text-slate-100" id="audit-stat-total">0</span>
+            <span class="text-[10px] uppercase font-semibold text-slate-400">Total Scanned</span>
+          </div>
+          <div class="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+            <span class="block text-lg font-black text-emerald-400" id="audit-stat-clean">0</span>
+            <span class="text-[10px] uppercase font-semibold text-emerald-300">🟢 Clean to Merge</span>
+          </div>
+          <div class="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl">
+            <span class="block text-lg font-black text-rose-400" id="audit-stat-skipped">0</span>
+            <span class="text-[10px] uppercase font-semibold text-rose-300">⚠️ Test Data Skipped</span>
+          </div>
+        </div>
+
+        <div id="audit-skipped-details" class="hidden space-y-2">
+          <h4 class="text-xs font-bold text-slate-300">Skipped Test Records (Excluded from Merge):</h4>
+          <div id="audit-skipped-list" class="max-h-36 overflow-y-auto space-y-1.5 p-2 bg-slate-950 border border-slate-800 rounded-lg text-[11px] font-mono"></div>
+        </div>
+
+        <div id="admin-sync-result" class="hidden text-xs p-3 rounded-lg"></div>
+
+        <div id="admin-sync-log-section" class="hidden space-y-2 pt-2 border-t border-slate-800">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-slate-300">📜 Detailed Merge Audit Log (<code class="text-amber-400">db_sync_audit.log</code>):</h4>
+            <button id="btn-refresh-sync-logs" type="button" class="text-[10px] text-amber-400 hover:text-amber-300 font-normal underline">Refresh Log</button>
+          </div>
+          <pre id="admin-sync-log-content" class="max-h-48 overflow-y-auto p-3 bg-slate-950 border border-slate-800 rounded-lg text-[11px] font-mono text-slate-300 leading-relaxed whitespace-pre-wrap select-text"></pre>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 pt-2">
+          <div class="flex items-center gap-2">
+            <button id="btn-admin-logout" type="button" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition-all">
+              Logout
+            </button>
+            <button id="btn-toggle-sync-logs" type="button" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition-all flex items-center gap-1">
+              📜 Audit Log
+            </button>
+          </div>
+          <button id="btn-execute-merge-sync" type="button" class="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-500 transition-all flex items-center gap-1.5">
+            🔄 Execute 2-Way Bidirectional Sync
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Local DB Inspector Modal -->
+  <div id="modal-local-db" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-indigo-500/40 rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-xl">
+            🗄️
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+              Local Database Inspector
+              <span id="local-db-badge" class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-mono">0 Records</span>
+            </h3>
+            <p class="text-xs text-slate-400">View, search, audit, and clean records stored in local <code class="text-amber-400">property_cache.db</code></p>
+          </div>
+        </div>
+        <button id="btn-close-local-db-modal" type="button" onclick="closeLocalDbModal();" class="text-slate-400 hover:text-slate-200 text-xl font-bold p-1">
+          ✕
+        </button>
+      </div>
+
+      <!-- Controls & Search Toolbar -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+        <div class="relative w-full sm:w-72">
+          <input id="local-db-search" type="text" placeholder="🔍 Search address or cache key..." class="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <button id="btn-refresh-local-db" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition-all flex items-center gap-1">
+            🔄 Refresh
+          </button>
+          <button id="btn-clear-test-stubs" type="button" class="px-3 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-semibold text-xs border border-rose-800/60 transition-all flex items-center gap-1" title="Remove incomplete or error test records from local DB">
+            🧹 Clear Test Stubs
+          </button>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="flex-1 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/90 text-[11px] text-slate-400 font-semibold uppercase sticky top-0 border-b border-slate-800">
+            <tr>
+              <th class="p-3">Property Address</th>
+              <th class="p-3">Price</th>
+              <th class="p-3">Beds / Baths</th>
+              <th class="p-3">Sqft</th>
+              <th class="p-3">Year</th>
+              <th class="p-3">Cached Date</th>
+              <th class="p-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="local-db-table-body" class="divide-y divide-slate-800/60 font-mono">
+            <!-- Rows dynamically rendered by JS -->
+          </tbody>
+        </table>
+        <div id="local-db-empty-msg" class="hidden p-8 text-center text-slate-500 text-xs">
+          No database records found matching your search.
+        </div>
+      </div>
+
+      <!-- Footer Info -->
+      <div class="flex items-center justify-between pt-2 text-[11px] text-slate-400 font-mono border-t border-slate-800">
+        <div>📁 File Path: <span class="text-slate-300">backend/data/property_cache.db</span></div>
+        <div id="local-db-status-bar" class="text-slate-400">Total Disk Size: ...</div>
+  <!-- MODAL: Dev Mode Admin Authentication Modal -->
+  <div id="modal-dev-auth" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-amber-500/40 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center font-bold text-lg">
+            🔐
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-100">Admin Authorization Required</h3>
+            <p class="text-xs text-slate-400">Unlock Dev Mode (Local Residential Ingestion)</p>
+          </div>
+        </div>
+        <button id="btn-close-dev-auth-modal" type="button" class="text-slate-400 hover:text-slate-200 text-xl font-bold p-1">✕</button>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Activating Dev Mode bypasses Scrape.do proxying and uses local residential IP fetches directly. Enter admin credentials to proceed.
+      </p>
+      <div class="space-y-2">
+        <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin Password</label>
+        <input type="password" id="dev-auth-password-input" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:border-amber-500" placeholder="Enter admin password...">
+      </div>
+      <div id="dev-auth-error-msg" class="hidden text-xs text-rose-400 bg-rose-500/10 border border-rose-500/30 p-2.5 rounded-lg"></div>
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button id="btn-cancel-dev-auth" type="button" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition-all">
+          Cancel
+        </button>
+        <button id="btn-submit-dev-auth" type="button" class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider transition-all">
+          Authenticate & Enable Dev Mode
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Top-Down Visual Route Preview Modal -->
+  <div id="route-preview-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden relative">
+      
+      <!-- Modal Top Bar -->
+      <div class="p-6 pb-4 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md flex items-start justify-between flex-shrink-0 z-10">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold uppercase tracking-widest mb-1">
+            🗺️ Top-Down Visual Route Preview
+          </div>
+          <h2 class="text-xl font-extrabold text-slate-100">Chronological Scouting Route</h2>
+          <p class="text-xs text-slate-400">Step-by-step visual overview of property photos, addresses, drive times, and expected inspection schedule in order.</p>
+        </div>
+        <button id="btn-close-route-preview" type="button" aria-label="Close route preview modal" class="text-slate-400 hover:text-slate-200 text-xl font-bold p-1.5 rounded-lg hover:bg-slate-800 transition-colors">✕</button>
+      </div>
+
+      <!-- Modal Body Content -->
+      <div id="route-preview-content" class="p-6 overflow-y-auto flex-1 space-y-6">
+        <!-- Dynamically rendered by RoutePreviewManager -->
+      </div>
+
+      <!-- Modal Footer Bar -->
+      <div class="p-4 px-6 border-t border-slate-800 bg-slate-900/95 backdrop-blur-md flex items-center justify-between text-xs text-slate-400 flex-shrink-0">
+        <span>💡 Click any property image to view full photo, or click Inspection Notebook to view details.</span>
+        <button type="button" onclick="window.routePreviewManager.closePreview()" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold border border-slate-700 transition-all">
+          Close Preview
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: Fullscreen Image Lightbox Viewer -->
+  <div id="image-lightbox-modal" class="hidden fixed inset-0 z-[100000] flex flex-col items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md transition-all duration-200" onclick="if(event.target === this) window.openImageLightbox ? window.openImageLightbox(null) : null;">
+    <div class="relative max-w-5xl w-full max-h-[92vh] flex flex-col items-center justify-center bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+      <!-- Lightbox Header -->
+      <div class="w-full px-5 py-3 border-b border-slate-800 bg-slate-900/95 flex items-center justify-between gap-3 z-10">
+        <div class="flex items-center gap-2 truncate">
+          <span class="text-sky-400">🖼️</span>
+          <span id="lightbox-title" class="text-xs sm:text-sm font-bold text-slate-200 truncate">Property Photo</span>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <a id="lightbox-external-link" href="#" target="_blank" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-colors flex items-center gap-1">
+            Open Original ↗
+          </a>
+          <button type="button" onclick="if(window.homewardApp) window.homewardApp.closeImageLightbox();" class="text-slate-400 hover:text-slate-100 text-lg font-bold p-1 rounded-lg hover:bg-slate-800 transition-colors px-2.5">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- Lightbox Main Image Display -->
+      <div class="p-3 w-full flex items-center justify-center flex-1 overflow-hidden bg-slate-950/90 min-h-[300px] max-h-[80vh]">
+        <img id="lightbox-img" src="" alt="Property Photo Lightbox" class="max-w-full max-h-[78vh] w-auto h-auto object-contain rounded-xl shadow-2xl">
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- Application Modules -->
+  <script src="js/property-links.js?v=4"></script>
+  <script src="js/scoring.js?v=4"></script>
+  <script src="js/geocoder.js?v=4"></script>
+  <script src="js/autocomplete.js?v=4"></script>
+  <script src="js/optimizer.js?v=4"></script>
+  <script src="js/map.js?v=4"></script>
+  <script src="js/notes.js?v=4"></script>
+  <script src="js/storage.js?v=4"></script>
+  <script src="js/sync.js?v=4"></script>
+  <script src="js/report.js?v=4"></script>
+  <script src="js/admin-sync.js?v=4"></script>
+  <script src="js/local-db-viewer.js?v=4"></script>
+  <script src="js/route-preview.js?v=4"></script>
+  <script src="js/app.js?v=4"></script>
+
+</body>
+</html>

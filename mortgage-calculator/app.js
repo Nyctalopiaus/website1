@@ -15,7 +15,8 @@ import {
   setButtonLoading,
   updateRatesAttribution,
   updateSellProceedsUI,
-  updateStaleValueWarning
+  updateStaleValueWarning,
+  updateDownPaymentBreakdownUI
 } from './ui.js';
 
 // ============================================================================
@@ -87,11 +88,79 @@ function markSellHomeValueFresh() {
 }
 
 /**
+ * Computes applied house sale proceeds for down payment calculation if active
+ */
+function getHouseProceedsAmount() {
+  const sellInputs = getSellInputs();
+  const proceeds = calculateSaleProceeds(sellInputs);
+  return Math.max(0, proceeds.amountToDownPayment);
+}
+
+/**
+ * Unified down payment synchronization for cash, house proceeds, total amount, percent, and slider.
+ * @param {'cash'|'amount'|'percent'|'slider'|'house'} source - The input source that triggered sync
+ */
+function syncDownPaymentFields(source) {
+  const homePrice = parseFloat(domRefs.homePriceInput.value) || 0;
+  const houseProceeds = getHouseProceedsAmount();
+  let cash = parseFloat(domRefs.cashDownPaymentInput.value) || 0;
+  let total = parseFloat(domRefs.downPaymentAmountInput.value) || 0;
+  let percent = parseFloat(domRefs.downPaymentPercentInput.value) || 0;
+
+  if (source === 'cash') {
+    total = houseProceeds + cash;
+    if (homePrice > 0 && total > homePrice) {
+      total = homePrice;
+      cash = Math.max(0, total - houseProceeds);
+      domRefs.cashDownPaymentInput.value = Math.round(cash);
+    }
+    percent = homePrice > 0 ? clamp((total / homePrice) * 100, 0, 100) : 0;
+    domRefs.downPaymentAmountInput.value = Math.round(total);
+    domRefs.downPaymentPercentInput.value = Math.round(percent);
+    domRefs.downPaymentSlider.value = Math.round(percent);
+  } else if (source === 'amount') {
+    if (homePrice > 0 && total > homePrice) {
+      total = homePrice;
+      domRefs.downPaymentAmountInput.value = Math.round(total);
+    }
+    cash = Math.max(0, total - houseProceeds);
+    domRefs.cashDownPaymentInput.value = Math.round(cash);
+    percent = homePrice > 0 ? clamp((total / homePrice) * 100, 0, 100) : 0;
+    domRefs.downPaymentPercentInput.value = Math.round(percent);
+    domRefs.downPaymentSlider.value = Math.round(percent);
+  } else if (source === 'percent' || source === 'slider') {
+    if (source === 'slider') {
+      percent = parseFloat(domRefs.downPaymentSlider.value) || 0;
+      domRefs.downPaymentPercentInput.value = Math.round(percent);
+    } else {
+      percent = clamp(percent, 0, 100);
+      domRefs.downPaymentSlider.value = Math.round(percent);
+    }
+    total = (percent / 100) * homePrice;
+    domRefs.downPaymentAmountInput.value = Math.round(total);
+    cash = Math.max(0, total - houseProceeds);
+    domRefs.cashDownPaymentInput.value = Math.round(cash);
+  } else if (source === 'house') {
+    total = houseProceeds + cash;
+    if (homePrice > 0 && total > homePrice) {
+      total = homePrice;
+    }
+    percent = homePrice > 0 ? clamp((total / homePrice) * 100, 0, 100) : 0;
+    domRefs.downPaymentAmountInput.value = Math.round(total);
+    domRefs.downPaymentPercentInput.value = Math.round(percent);
+    domRefs.downPaymentSlider.value = Math.round(percent);
+  }
+
+  updateDownPaymentBreakdownUI(cash, houseProceeds, total, percent, domRefs);
+}
+
+/**
  * Debounced save function to reduce API calls
  */
 const debouncedSave = debounce(() => {
   const data = {
     homePrice: parseFloat(domRefs.homePriceInput.value),
+    cashDownPayment: parseFloat(domRefs.cashDownPaymentInput.value) || 0,
     downPaymentAmount: parseFloat(domRefs.downPaymentAmountInput.value),
     downPaymentPercent: parseFloat(domRefs.downPaymentPercentInput.value),
     interest30: parseFloat(domRefs.interest30Input.value),
@@ -139,17 +208,7 @@ function attachInputListeners() {
     const badge = getElement('badge-redfin-price');
     if (badge) badge.style.display = 'none';
 
-    // Keep the down payment dollar amount fixed (it's the more static number
-    // for most buyers) and recompute its percentage against the new price.
-    let amount = parseFloat(domRefs.downPaymentAmountInput.value) || 0;
-    if (amount > val) {
-      amount = val;
-      domRefs.downPaymentAmountInput.value = Math.round(amount);
-    }
-    const percent = val > 0 ? clamp((amount / val) * 100, 0, 100) : 0;
-    domRefs.downPaymentPercentInput.value = Math.round(percent);
-    domRefs.downPaymentSlider.value = Math.round(percent);
-
+    syncDownPaymentFields('amount');
     debouncedCalculate();
   });
 
@@ -160,59 +219,32 @@ function attachInputListeners() {
     const badge = getElement('badge-redfin-price');
     if (badge) badge.style.display = 'none';
 
-    // Keep the down payment dollar amount fixed and recompute its percentage
-    // against the new price (same logic as the Home Price number input above).
-    let amount = parseFloat(domRefs.downPaymentAmountInput.value) || 0;
-    if (amount > val) {
-      amount = val;
-      domRefs.downPaymentAmountInput.value = Math.round(amount);
-    }
-    const percent = val > 0 ? clamp((amount / val) * 100, 0, 100) : 0;
-    domRefs.downPaymentPercentInput.value = Math.round(percent);
-    domRefs.downPaymentSlider.value = Math.round(percent);
-
+    syncDownPaymentFields('amount');
     debouncedCalculate();
   });
 
-  // Down payment amount syncing
+  // Cash down payment syncing
+  if (domRefs.cashDownPaymentInput) {
+    domRefs.cashDownPaymentInput.addEventListener('input', () => {
+      syncDownPaymentFields('cash');
+      debouncedCalculate();
+    });
+  }
+
+  // Total down payment amount syncing
   domRefs.downPaymentAmountInput.addEventListener('input', () => {
-    let amount = parseFloat(domRefs.downPaymentAmountInput.value) || 0;
-    const homePrice = parseFloat(domRefs.homePriceInput.value) || 0;
-
-    if (amount > homePrice) {
-      domRefs.downPaymentAmountInput.value = homePrice;
-      amount = homePrice;
-    }
-
-    if (homePrice > 0) {
-      const percent = clamp((amount / homePrice) * 100, 0, 100);
-      domRefs.downPaymentPercentInput.value = Math.round(percent);
-      domRefs.downPaymentSlider.value = Math.round(percent);
-    }
-
+    syncDownPaymentFields('amount');
     debouncedCalculate();
   });
 
   // Down payment percent syncing
   domRefs.downPaymentPercentInput.addEventListener('input', () => {
-    const percent = parseFloat(domRefs.downPaymentPercentInput.value) || 0;
-    const homePrice = parseFloat(domRefs.homePriceInput.value) || 0;
-
-    domRefs.downPaymentSlider.value = clamp(percent, 0, 100);
-    const amount = (percent / 100) * homePrice;
-    domRefs.downPaymentAmountInput.value = Math.round(amount);
-
+    syncDownPaymentFields('percent');
     debouncedCalculate();
   });
 
   domRefs.downPaymentSlider.addEventListener('input', () => {
-    const percent = parseFloat(domRefs.downPaymentSlider.value);
-    const homePrice = parseFloat(domRefs.homePriceInput.value) || 0;
-
-    domRefs.downPaymentPercentInput.value = percent;
-    const amount = (percent / 100) * homePrice;
-    domRefs.downPaymentAmountInput.value = Math.round(amount);
-
+    syncDownPaymentFields('slider');
     debouncedCalculate();
   });
 
@@ -282,8 +314,9 @@ function attachSellHouseListeners() {
   domRefs.hasHouseToSellInput.addEventListener('change', () => {
     const isChecked = domRefs.hasHouseToSellInput.checked;
     domRefs.sellHouseFieldsPanel.style.display = isChecked ? 'block' : 'none';
-    if (isChecked) updateSellProceeds();
-    debouncedSave();
+    updateSellProceeds();
+    syncDownPaymentFields('house');
+    debouncedCalculate();
   });
 
   // Every field that feeds the net-proceeds math
@@ -298,7 +331,8 @@ function attachSellHouseListeners() {
   sellNumericInputs.forEach(input => {
     input.addEventListener('input', () => {
       updateSellProceeds();
-      debouncedSave();
+      syncDownPaymentFields('house');
+      debouncedCalculate();
     });
   });
 
@@ -310,23 +344,27 @@ function attachSellHouseListeners() {
     if (redfinBadge) redfinBadge.style.display = 'none';
     markSellHomeValueFresh();
     updateSellProceeds();
-    debouncedSave();
+    syncDownPaymentFields('house');
+    debouncedCalculate();
   });
 
   // Proceeds-to-down-payment slider
   domRefs.sellProceedsPercentSliderInput.addEventListener('input', () => {
     updateSellProceeds();
-    debouncedSave();
+    syncDownPaymentFields('house');
+    debouncedCalculate();
   });
 
   // Redfin value lookup
   domRefs.btnSearchSellRedfin.addEventListener('click', () => handleSearchSellRedfin(false));
 
-  // "Overwrite cache" — forces a fresh lookup bypassing mls-proxy.php's own
-  // response cache, for when a cached value is known stale or was wrong
-  // (this is how the redfin_estimate parsing bug's old cached $217,888
-  // would otherwise keep showing up for up to its 20-minute TTL even after
-  // the underlying fix is deployed). Requires a URL already entered — reuses
+  // "Overwrite cache" — forces a fresh lookup bypassing the shared
+  // backend/property-lookup.php 7-day cache, for when a cached value is
+  // known stale or was wrong (this is how the redfin_estimate parsing
+  // bug's old cached $217,888 would otherwise keep showing up until the
+  // cache expired even after the underlying fix is deployed). Costs a
+  // Scrape.do pull — don't wire this to anything automated. Requires a
+  // URL already entered — reuses
   // the same validation as the normal lookup button.
   if (domRefs.btnForceRefreshSellRedfin) {
     domRefs.btnForceRefreshSellRedfin.addEventListener('click', () => handleSearchSellRedfin(true));
@@ -460,8 +498,8 @@ function handleSearchMls() {
 /**
  * Handles the sell-side Redfin value lookup — fills sellHomeValue only,
  * never touches the main purchase fields.
- * @param {boolean} [force=false] - Bypass mls-proxy.php's cache (see the
- * small "↻ overwrite cache" button) — for when a cached value is known
+ * @param {boolean} [force=false] - Bypass the shared backend/property-lookup.php
+ * cache (see the small "↻ overwrite cache" button) — for when a cached value is known
  * stale or was wrong (e.g. the redfin_estimate parsing bug found 2026-08-20).
  */
 async function handleSearchSellRedfin(force = false) {
@@ -508,15 +546,22 @@ async function handleSearchSellRedfin(force = false) {
  */
 function handleApplyProceeds() {
   const proceeds = updateSellProceeds();
-  const amount = Math.round(proceeds.amountToDownPayment);
+  const houseProceeds = Math.round(Math.max(0, proceeds.amountToDownPayment));
 
-  domRefs.downPaymentAmountInput.value = amount;
-  domRefs.downPaymentAmountInput.dispatchEvent(new Event('input', { bubbles: true }));
+  syncDownPaymentFields('house');
+  debouncedCalculate();
 
-  setButtonLoading(domRefs.btnApplyProceeds, `✅ Applied ${amount > 0 ? '$' + amount.toLocaleString() : '$0'}`, false);
+  const cash = parseFloat(domRefs.cashDownPaymentInput.value) || 0;
+  const total = houseProceeds + cash;
+
+  setButtonLoading(
+    domRefs.btnApplyProceeds,
+    `✅ Applied ${houseProceeds > 0 ? '$' + houseProceeds.toLocaleString() : '$0'} Proceeds (${total > 0 ? '$' + Math.round(total).toLocaleString() + ' Total' : '$0 Total'})`,
+    false
+  );
   setTimeout(() => {
     setButtonLoading(domRefs.btnApplyProceeds, '⬇ Apply to Down Payment', false);
-  }, 2000);
+  }, 2500);
 }
 
 /**
@@ -595,10 +640,11 @@ async function initializeApp() {
     attachActionListeners();
     attachSellHouseListeners();
 
-    // Update UI and calculate
+    // Update UI, sync down payment, and calculate
     updateTermCardSelection(activeTerm, domRefs);
-    calculateAll();
     updateSellProceeds();
+    syncDownPaymentFields('house');
+    calculateAll();
 
     // Load live rates on startup
     loadLiveMortgageRates();

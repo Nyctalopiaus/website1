@@ -8,7 +8,7 @@
  * Scrape.do budget status.
  *
  * This stub intentionally does NOT scrape or proxy anything — it just
- * tells any leftover caller where to go. config.js's API_MLS already
+ * tells any leftover caller where to go. js/property-links.js already
  * points at /backend/property-lookup.php; if you're seeing this response,
  * something is still calling this old path directly and should be
  * updated instead.

@@ -60,6 +60,7 @@ export function applyLoadedDataToDOM(data, domRefs) {
 
   safeSet(domRefs.homePriceInput, data.homePrice);
   safeSet(domRefs.homePriceSlider, data.homePrice);
+  safeSet(domRefs.cashDownPaymentInput, data.cashDownPayment !== undefined ? data.cashDownPayment : data.downPaymentAmount);
   safeSet(domRefs.downPaymentAmountInput, data.downPaymentAmount);
   safeSet(domRefs.downPaymentPercentInput, data.downPaymentPercent);
   safeSet(domRefs.downPaymentSlider, data.downPaymentPercent);

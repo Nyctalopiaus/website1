@@ -1,6 +1,7 @@
 /**
  * Property Scraper Module - Fetches and parses property data from Redfin
- * Uses secure mls-proxy.php backend with URL encoding
+ * Uses the shared backend/property-lookup.php endpoint (URL-encoded),
+ * which also maintains the 7-day cache shared with homeward.
  */
 
 import { CONFIG } from './config.js';
@@ -12,10 +13,11 @@ import { looksLikeUrl, encodeUrlParam } from './utils.js';
  * @param {Object} domRefs - DOM element references for updating UI
  * @param {Object} callbacks - Callback functions: onSuccess, onError, onStart, onComplete
  */
-// NOTE: Property fetching always routes through mls-proxy.php (server-side).
-// Do not add a client-side scrape API call here — any token embedded in this
-// file ships to every visitor's browser in plain text (view-source, network
-// tab). Keep scrape/proxy credentials server-side only (see api.env).
+// NOTE: Property fetching always routes through backend/property-lookup.php
+// (server-side). Do not add a client-side scrape API call here — any token
+// embedded in this file ships to every visitor's browser in plain text
+// (view-source, network tab). Keep scrape/proxy credentials server-side
+// only (see api.env).
 
 function parseAddressFromRedfinUrl(url) {
   try {
@@ -116,17 +118,17 @@ function applyPropertyData(data, homePrice, domRefs) {
     domRefs.downPaymentAmountInput.value = Math.round(amount);
   }
 
-  // Apply HOA fee
-  const hoaFee = data.hoa_fee !== undefined ? data.hoa_fee : data.hoaFee;
-  if (hoaFee !== undefined && domRefs.hoaFeesInput) {
+  // Apply HOA fee (canonical field: hoaFee — raw monthly dollar amount)
+  const hoaFee = data.hoaFee;
+  if (hoaFee !== undefined && hoaFee !== null && domRefs.hoaFeesInput) {
     domRefs.hoaFeesInput.value = hoaFee;
     const badge = document.getElementById('badge-redfin-hoa');
     if (badge) badge.style.display = 'inline-block';
   }
 
-  // Apply property tax rate
-  const propertyTax = data.property_tax || data.taxRate;
-  if (propertyTax !== undefined && domRefs.taxRateInput) {
+  // Apply property tax rate (canonical field: propertyTaxRate)
+  const propertyTax = data.propertyTaxRate;
+  if (propertyTax !== undefined && propertyTax !== null && domRefs.taxRateInput) {
     domRefs.taxRateInput.value = parseFloat(propertyTax).toFixed(2);
     const badge = document.getElementById('badge-redfin-tax');
     if (badge) badge.style.display = 'inline-block';
@@ -148,7 +150,7 @@ function renderPreviewBox(data, homePrice, domRefs) {
     return;
   }
 
-  const hoaFee = data.hoa_fee !== undefined ? data.hoa_fee : data.hoaFee;
+  const hoaFee = data.hoaFee;
   previewAddress.textContent = data.address || 'Property Parsed Successfully';
   previewDetails.textContent = `Home Price: $${parseInt(homePrice).toLocaleString()} | HOA: $${hoaFee || 0}/mo`;
   previewBox.style.display = 'block';
@@ -158,20 +160,23 @@ function renderPreviewBox(data, homePrice, domRefs) {
 
 /**
  * Fetches a value estimate for the "Have a house to sell?" section, reusing
- * the same mls-proxy.php backend as the purchase-side Redfin auto-fill.
- * Unlike fetchPropertyData() above, this does NOT touch any of the main
- * purchase inputs (home price, HOA, tax rate) — it only returns the parsed
- * price/address so the caller can apply it to the sell-side fields.
+ * the same shared backend/property-lookup.php endpoint (and its 7-day
+ * cache) as the purchase-side Redfin auto-fill. Unlike fetchPropertyData()
+ * above, this does NOT touch any of the main purchase inputs (home price,
+ * HOA, tax rate) — it only returns the parsed price/address so the caller
+ * can apply it to the sell-side fields.
  *
- * This is genuinely best-effort: the proxy's extraction was built against
- * active Redfin *listing* pages, and an off-market home's page (the case
- * here — you're not selling on Redfin, just looking up its estimate) can
- * carry the value under a different JSON key. mls-proxy.php tries a few
+ * This is genuinely best-effort: the extraction was built against active
+ * Redfin *listing* pages, and an off-market home's page (the case here —
+ * you're not selling on Redfin, just looking up its estimate) can carry
+ * the value under a different JSON key. The shared endpoint tries a few
  * known field name patterns, but if Redfin changes their page structure
- * this may need re-tuning against a real URL.
+ * this may need re-tuning against a real URL — see backend/tests/ for the
+ * fixture-based test harness (do NOT re-tune by hitting the live endpoint
+ * repeatedly; Scrape.do pulls are a shared, metered budget — see MEMORY.md).
  *
  * @param {string} inputUrl - Full Redfin property page URL for the user's current home
- * @param {boolean} [force=false] - Bypass mls-proxy.php's 20-minute response cache and fetch live (still writes a fresh cache entry on success). Used by the "overwrite cache" button when a cached value is known-stale or was wrong.
+ * @param {boolean} [force=false] - Bypass the shared 7-day cache and fetch live (still writes a fresh cache entry on success). Used by the "overwrite cache" button when a cached value is known-stale or was wrong. Costs a Scrape.do pull — don't call this in a loop or automated test.
  * @returns {Promise<{ price: number, address: string|null }|null>} Parsed result, or null on failure
  */
 export async function fetchRedfinValueOnly(inputUrl, force = false) {

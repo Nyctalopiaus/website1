@@ -207,10 +207,26 @@
 
 
   async function fetchFeedData(isBackground = false) {
-    if (!isBackground) {
+    // Skeleton placeholders only make sense before we've ever rendered real
+    // cards (the true first load). A manual Sync click also lands here with
+    // isBackground=false, but if State.allItems is already populated the
+    // Kanban columns already hold real, taller cards — wiping them down to
+    // short skeleton cards and then swapping back up once the refetch
+    // resolves creates a large, avoidable layout shift (skeleton cards are
+    // ~152px vs a real card's ~255px average, and a full column can hold up
+    // to DEFAULT_COLUMN_LIMIT cards), especially disruptive if the user is
+    // mid-scroll through the grid when they click Sync. Only flash the
+    // skeleton on the genuine first load; a manual/background refresh with
+    // existing data just updates the status text and swaps cards in place
+    // once the new data arrives.
+    const isFirstLoad = State.allItems.length === 0;
+    if (!isBackground && isFirstLoad) {
       State.isLoading = true;
       renderSkeletonScreens();
       setStatus('Loading latest feeds...', true);
+    } else if (!isBackground) {
+      State.isLoading = true;
+      setStatus('Syncing latest feeds...', true);
     } else {
       State.isBackgroundRefreshing = true;
       setStatus('Refreshing feeds in background...', true);
@@ -852,13 +868,18 @@
       engineering_homelab: DOM.viewKanban.querySelector('[data-category="informational"] .col-items')
     };
 
-    // 5 cards (up from 3) with a header/title/summary/tag row each, so the
-    // placeholder column height is a closer match to a typical rendered
-    // column (up to DEFAULT_COLUMN_LIMIT real cards) — this shrinks the
-    // layout shift that happens when skeletons are swapped for real cards.
+    // 6 cards (up from 5) with a header/title/summary/tag/actions row each —
+    // a real item-card (js/components.js renderItemCard) ALWAYS ends in a
+    // bordered actions row (Mark Read / Bookmark), which the skeleton was
+    // missing entirely, plus real cards average noticeably taller than the
+    // skeleton's original 2-line title/text estimate. Adding the actions
+    // row (and one more card) narrows — without fully closing, since real
+    // card height still varies with per-item content like CVSS/EPSS/due-date
+    // badges — the gap between placeholder and real column height, which is
+    // what drives the layout shift when skeletons swap for real cards.
     Object.values(colMap).forEach(col => {
       if (col) {
-        col.innerHTML = Array(5).fill(0).map(() => `
+        col.innerHTML = Array(6).fill(0).map(() => `
           <div class="skeleton-card">
             <div class="skeleton-row">
               <div class="skeleton-line skeleton-badge"></div>
@@ -871,6 +892,10 @@
             <div class="skeleton-row">
               <div class="skeleton-line skeleton-tag"></div>
               <div class="skeleton-line skeleton-tag"></div>
+            </div>
+            <div class="skeleton-actions-row">
+              <div class="skeleton-line skeleton-badge-sm"></div>
+              <div class="skeleton-line skeleton-badge-sm"></div>
             </div>
           </div>
         `).join('');
@@ -945,6 +970,22 @@
     });
 
     // 4. Map Cards into 3 Physical Columns Following the Exact Approved Plan
+    //
+    // When a single category's items expand to fill more than one physical column, they are
+    // distributed ROUND-ROBIN (item 0 -> col A, item 1 -> col B, item 2 -> col A, ...) rather
+    // than split into contiguous top-to-bottom chunks. Because `items` arrives here already
+    // sorted (urgency or recency, whichever sort mode is active), round-robin means reading
+    // across the expanded columns left-to-right, then down, reproduces that sorted order --
+    // e.g. the single most urgent item lands in column A row 1, the 2nd-most-urgent in column
+    // B row 1, the 3rd-most-urgent back in column A row 2, and so on. A plain slice() would
+    // instead dump the top third of the sorted list straight down column A before column B
+    // ever saw the next-most-urgent item.
+    function distributeRoundRobin(items, parts) {
+      const buckets = Array.from({ length: parts }, () => []);
+      items.forEach((it, i) => buckets[i % parts].push(it));
+      return buckets;
+    }
+
     const colItemsMap = { active_threats: [], security_advisories: [], informational: [] };
     const hasActive = vis.has('active_threats');
     const hasSec = vis.has('security_advisories');
@@ -957,40 +998,40 @@
       colItemsMap.informational = infoItems;
     } else if (hasActive && hasSec && !hasInfo) {
       // Scenario 2: Active + Sec Checked (Info dimmed) -> Active expands across Left & Center (Col 1 & Col 2); Sec takes Right (Col 3)
-      const half = Math.ceil(activeItems.length / 2);
-      colItemsMap.active_threats = activeItems.slice(0, half);
-      colItemsMap.security_advisories = activeItems.slice(half);
+      const [a, b] = distributeRoundRobin(activeItems, 2);
+      colItemsMap.active_threats = a;
+      colItemsMap.security_advisories = b;
       colItemsMap.informational = advisoryItems;
     } else if (hasActive && !hasSec && hasInfo) {
       // Scenario 3: Active + Info Checked (Sec dimmed) -> Active expands across Left & Center (Col 1 & Col 2); Info takes Right (Col 3)
-      const half = Math.ceil(activeItems.length / 2);
-      colItemsMap.active_threats = activeItems.slice(0, half);
-      colItemsMap.security_advisories = activeItems.slice(half);
+      const [a, b] = distributeRoundRobin(activeItems, 2);
+      colItemsMap.active_threats = a;
+      colItemsMap.security_advisories = b;
       colItemsMap.informational = infoItems;
     } else if (hasActive && !hasSec && !hasInfo) {
       // Scenario 4: Only Active Checked (Sec & Info dimmed) -> Active expands across ALL 3 COLUMNS!
-      const third = Math.ceil(activeItems.length / 3);
-      colItemsMap.active_threats = activeItems.slice(0, third);
-      colItemsMap.security_advisories = activeItems.slice(third, third * 2);
-      colItemsMap.informational = activeItems.slice(third * 2);
+      const [a, b, c] = distributeRoundRobin(activeItems, 3);
+      colItemsMap.active_threats = a;
+      colItemsMap.security_advisories = b;
+      colItemsMap.informational = c;
     } else if (!hasActive && hasSec && hasInfo) {
       // Scenario 5: Sec + Info Checked (Active dimmed) -> Sec expands across Col 1 & Col 2; Info takes Col 3
-      const half = Math.ceil(advisoryItems.length / 2);
-      colItemsMap.active_threats = advisoryItems.slice(0, half);
-      colItemsMap.security_advisories = advisoryItems.slice(half);
+      const [a, b] = distributeRoundRobin(advisoryItems, 2);
+      colItemsMap.active_threats = a;
+      colItemsMap.security_advisories = b;
       colItemsMap.informational = infoItems;
     } else if (!hasActive && hasSec && !hasInfo) {
       // Scenario 6: Only Sec Checked (Active & Info dimmed) -> Sec expands across ALL 3 COLUMNS!
-      const third = Math.ceil(advisoryItems.length / 3);
-      colItemsMap.active_threats = advisoryItems.slice(0, third);
-      colItemsMap.security_advisories = advisoryItems.slice(third, third * 2);
-      colItemsMap.informational = advisoryItems.slice(third * 2);
+      const [a, b, c] = distributeRoundRobin(advisoryItems, 3);
+      colItemsMap.active_threats = a;
+      colItemsMap.security_advisories = b;
+      colItemsMap.informational = c;
     } else if (!hasActive && !hasSec && hasInfo) {
       // Scenario 7: Only Info Checked (Active & Sec dimmed) -> Info expands across ALL 3 COLUMNS!
-      const third = Math.ceil(infoItems.length / 3);
-      colItemsMap.active_threats = infoItems.slice(0, third);
-      colItemsMap.security_advisories = infoItems.slice(third, third * 2);
-      colItemsMap.informational = infoItems.slice(third * 2);
+      const [a, b, c] = distributeRoundRobin(infoItems, 3);
+      colItemsMap.active_threats = a;
+      colItemsMap.security_advisories = b;
+      colItemsMap.informational = c;
     }
 
     // 5. Render Cards into the 3 Permanent Columns (progressively, per-column limit)

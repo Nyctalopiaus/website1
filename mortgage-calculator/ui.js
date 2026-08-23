@@ -18,9 +18,15 @@ export function createDOMReferences() {
     // Inputs
     homePriceInput: getEl('homePrice'),
     homePriceSlider: getEl('homePriceSlider'),
+    cashDownPaymentInput: getEl('cashDownPayment'),
+    houseSaleDownPaymentInput: getEl('houseSaleDownPayment'),
+    houseSaleDownPaymentWrapper: getEl('house-sale-downpayment-wrapper'),
     downPaymentAmountInput: getEl('downPaymentAmount'),
     downPaymentPercentInput: getEl('downPaymentPercent'),
     downPaymentSlider: getEl('downPaymentSlider'),
+    dpBreakdownHouse: getEl('dp-breakdown-house'),
+    dpBreakdownCash: getEl('dp-breakdown-cash'),
+    dpBreakdownTotal: getEl('dp-breakdown-total'),
     interest30Input: getEl('interest30'),
     interest15Input: getEl('interest15'),
     taxRateInput: getEl('taxRate'),
@@ -573,5 +579,42 @@ export function updateStaleValueWarning(updatedAtMs, domRefs) {
     const ageText = age === 1 ? '1 day' : `${age} days`;
     domRefs.sellStaleWarningTextEl.textContent =
       `This value is ${ageText} old — home prices can shift. You may want to refresh it.`;
+  }
+}
+
+/**
+ * Renders the down payment breakdown pills and house sale visibility
+ * @param {number} cash
+ * @param {number} houseProceeds
+ * @param {number} totalAmount
+ * @param {number} percent
+ * @param {Object} domRefs
+ */
+export function updateDownPaymentBreakdownUI(cash, houseProceeds, totalAmount, percent, domRefs) {
+  const formatCurrencyLocal = (val) => '$' + Math.round(val).toLocaleString();
+
+  if (domRefs.dpBreakdownHouse) {
+    if (houseProceeds > 0) {
+      domRefs.dpBreakdownHouse.textContent = `🏡 House: ${formatCurrencyLocal(houseProceeds)}`;
+      domRefs.dpBreakdownHouse.style.display = 'inline';
+    } else {
+      domRefs.dpBreakdownHouse.style.display = 'none';
+    }
+  }
+
+  if (domRefs.dpBreakdownCash) {
+    domRefs.dpBreakdownCash.textContent = `💵 Cash: ${formatCurrencyLocal(cash)}`;
+  }
+
+  if (domRefs.dpBreakdownTotal) {
+    domRefs.dpBreakdownTotal.textContent = `Total: ${formatCurrencyLocal(totalAmount)} (${Math.round(percent)}%)`;
+  }
+
+  if (domRefs.houseSaleDownPaymentWrapper) {
+    domRefs.houseSaleDownPaymentWrapper.style.display = houseProceeds > 0 ? 'block' : 'none';
+  }
+
+  if (domRefs.houseSaleDownPaymentInput) {
+    domRefs.houseSaleDownPaymentInput.value = Math.round(houseProceeds);
   }
 }

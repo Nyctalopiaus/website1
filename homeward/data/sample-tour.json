@@ -1,0 +1,59 @@
+{
+  "tourName": "House & Lot Scouting Tour",
+  "startAddress": "100 Congress Ave, Austin, TX 78701",
+  "loopBack": true,
+  "stayDurationMins": 20,
+  "stops": [
+    {
+      "id": "stop-1",
+      "address": "2200 Barton Creek Blvd, Austin, TX 78735",
+      "lat": 30.2741,
+      "lng": -97.8542,
+      "price": "$450,000",
+      "lotSize": "1.2 Acres",
+      "rating": 5,
+      "terrain": "Gentle Slope",
+      "utilities": "All Available",
+      "hoaNotes": "Low HOA ($250/yr), 2,500 sqft min build requirement.",
+      "pros": ["Panoramic hill views", "Mature oak trees", "Utilities at street"],
+      "cons": ["Slight rocky excavation needed"],
+      "notes": "Beautiful hilltop lot with great southern exposure for solar orientation. Quiet cul-de-sac location.",
+      "photoUrl": "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
+      "visited": true
+    },
+    {
+      "id": "stop-2",
+      "address": "4500 Bee Cave Rd, West Lake Hills, TX 78746",
+      "lat": 30.2825,
+      "lng": -97.8189,
+      "price": "$620,000",
+      "lotSize": "0.85 Acres",
+      "rating": 4,
+      "terrain": "Wooded",
+      "utilities": "Electric Only",
+      "hoaNotes": "No HOA restrictions. Eanes ISD school district.",
+      "pros": ["Prime school district", "Thick privacy woods"],
+      "cons": ["Well & septic installation required", "Sloped driveway needed"],
+      "notes": "Secluded feeling lot close to downtown. Will need clearing for house footprint.",
+      "photoUrl": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80",
+      "visited": false
+    },
+    {
+      "id": "stop-3",
+      "address": "7800 Ranch Rd 620 N, Austin, TX 78732",
+      "lat": 30.3912,
+      "lng": -97.8821,
+      "price": "$385,000",
+      "lotSize": "1.5 Acres",
+      "rating": 3,
+      "terrain": "Flat",
+      "utilities": "All Available",
+      "hoaNotes": "Steiner Ranch HOA ($600/yr), access to lake club.",
+      "pros": ["Level building pad", "Easy utility hookups", "Community amenities"],
+      "cons": ["Traffic noise from RR 620"],
+      "notes": "Very easy lot to build on, but road noise might be an issue during rush hours.",
+      "photoUrl": "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80",
+      "visited": false
+    }
+  ]
+}

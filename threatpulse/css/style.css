@@ -830,6 +830,14 @@ footer {
   width: 3.25rem;
   border-radius: 9999px;
 }
+.skeleton-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.625rem;
+  margin-top: 0.25rem;
+}
 @keyframes skeletonShimmer {
   0% { background-position: 100% 50%; }
   100% { background-position: -100% 50%; }

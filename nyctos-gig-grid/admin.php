@@ -47,22 +47,28 @@ function logAdminSecurityEvent($eventType, $details = '') {
 $loginError = '';
 
 // Handle Admin Login POST
+if (file_exists(__DIR__ . '/../backend/admin-auth.php')) {
+    require_once __DIR__ . '/../backend/admin-auth.php';
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action']) && $_POST['admin_action'] === 'login') {
     $username = trim((string)($_POST['username'] ?? ''));
     $submittedToken = $_POST['csrf_token'] ?? '';
-    if (!hash_equals($_SESSION['csrf_token'], $submittedToken)) {
+    if (function_exists('verifyCsrfToken') && !verifyCsrfToken($submittedToken)) {
         $loginError = 'Security token validation failed.';
         logAdminSecurityEvent('FAILED_LOGIN_CSRF', 'CSRF token mismatch for username: ' . $username);
     } else {
         $password = (string)($_POST['password'] ?? '');
-
-        // Rate limiting check (max 5 failed attempts per 15 mins)
-        $failedAttempts = $_SESSION['admin_login_fails'] ?? 0;
-        $lastFailTime = $_SESSION['admin_last_fail_time'] ?? 0;
-        if ($failedAttempts >= 5 && (time() - $lastFailTime) < 900) {
-            $loginError = 'Too many failed login attempts. Please wait 15 minutes.';
-            logAdminSecurityEvent('FAILED_LOGIN_RATE_LIMITED', 'Rate limit blocked attempt for username: ' . $username);
+        if (function_exists('verifyAdminUser')) {
+            $res = verifyAdminUser($username, $password);
+            if ($res['success']) {
+                header("Location: admin.php");
+                exit;
+            } else {
+                $loginError = $res['error'] ?? 'Invalid admin credentials.';
+            }
         } else {
+            // Fallback legacy verification if shared module is absent
             $db = getDbConnection();
             $stmt = $db->prepare("SELECT * FROM admin_users WHERE username = :user LIMIT 1");
             $stmt->execute([':user' => $username]);
@@ -78,10 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['admin_action']) && $_
                 header("Location: admin.php");
                 exit;
             } else {
-                $_SESSION['admin_login_fails'] = ($failedAttempts + 1);
-                $_SESSION['admin_last_fail_time'] = time();
                 $loginError = 'Invalid admin credentials.';
-                logAdminSecurityEvent('FAILED_LOGIN_INVALID_CREDENTIALS', 'Invalid password attempt for username: ' . $username);
             }
         }
     }

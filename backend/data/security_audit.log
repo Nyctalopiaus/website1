@@ -1,0 +1,166 @@
+[2026-08-22 18:02:03] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated successfully | UA: Unknown
+[2026-08-22 18:02:03] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt | UA: Unknown
+[2026-08-22 18:02:08] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated successfully | UA: Unknown
+[2026-08-22 18:02:08] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt | UA: Unknown
+[2026-08-22 18:03:20] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated successfully | UA: Unknown
+[2026-08-22 18:03:20] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt | UA: Unknown
+[2026-08-22 18:05:03] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated successfully | UA: Unknown
+[2026-08-22 18:05:03] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt | UA: Unknown
+[2026-08-22 18:11:18] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated successfully | UA: Unknown
+[2026-08-22 18:11:18] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt | UA: Unknown
+[2026-08-22 18:18:54] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated successfully | UA: Unknown
+[2026-08-22 18:18:54] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt | UA: Unknown
+[2026-08-22 18:19:48] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated successfully | UA: Unknown
+[2026-08-22 18:19:48] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt | UA: Unknown
+[2026-08-22 18:22:02] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated successfully | UA: Unknown
+[2026-08-22 18:22:02] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt | UA: Unknown
+[2026-08-22 18:23:07] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 2 records: 2 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 18:23:13] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 2 records (0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 18:25:09] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 2 records: 2 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 18:25:14] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 2 records (0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 18:28:00] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated successfully | UA: Unknown
+[2026-08-22 18:28:00] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt | UA: Unknown
+[2026-08-22 18:35:16] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 2 records: 2 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 18:35:17] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 2 records (0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 18:36:02] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated successfully | UA: Unknown
+[2026-08-22 18:36:02] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt | UA: Unknown
+[2026-08-22 18:40:39] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated successfully | UA: Unknown
+[2026-08-22 18:40:39] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt | UA: Unknown
+[2026-08-22 18:43:09] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 18:43:15] [ADMIN_PASSWORD_UPDATED] IP: 127.0.0.1 | Password updated for user: admin | UA: Unknown
+[2026-08-22 18:43:17] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 18:43:17] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 18:45:37] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 18:45:37] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 18:47:09] [CSRF_MISMATCH_SYNC] IP: 127.0.0.1 | CSRF verification failed for action 'preview_sync'. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 18:49:13] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 18:49:13] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 18:50:33] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 2 records: 2 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 18:51:24] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 18:51:24] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 18:52:52] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 18:52:53] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 18:54:24] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 2 records: 2 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 18:56:03] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 18:56:03] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 18:56:42] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 2 records: 2 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 18:57:13] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 18:57:14] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 18:58:18] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 2 records: 2 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 18:59:02] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 18:59:02] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 18:59:43] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 2 records: 2 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 18:59:52] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 2 records: 2 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:00:33] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:00:33] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:01:10] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 2 records: 2 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:01:31] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:01:32] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:02:13] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 2 records: 2 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:03:29] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 3 records: 3 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:06:04] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:06:05] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:07:45] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:07:46] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:08:44] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:08:44] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:09:14] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:09:15] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:10:12] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:10:12] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:11:17] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:11:18] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:11:49] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:11:49] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:22:37] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 3 records: 3 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:22:39] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 3 records: 3 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:25:11] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:25:11] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:25:30] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:25:31] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:25:35] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:25:35] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:26:31] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 3 records: 3 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:26:33] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 5 records (2 inserted, 3 updated, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:26:33] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 5 records: 5 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:28:25] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:28:25] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:30:16] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:30:16] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:30:48] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 5 records: 5 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:30:50] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 5 records (0 inserted, 5 updated, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:30:50] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 5 records: 5 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:32:22] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:32:23] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:32:41] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 5 records: 5 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:32:42] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 5 records (0 inserted, 0 updated, 5 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:32:42] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 5 records: 5 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:35:17] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:35:18] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:37:30] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:37:30] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:40:13] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:40:13] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:40:28] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 5 records: 5 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 19:42:15] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:42:16] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 19:44:57] [SUCCESSFUL_LOGIN] IP: 127.0.0.1 | Admin authenticated: admin | UA: Unknown
+[2026-08-22 19:44:57] [FAILED_LOGIN_INVALID_PASSWORD] IP: 127.0.0.1 | Invalid password attempt for user: admin | UA: Unknown
+[2026-08-22 20:09:58] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 5 records: 5 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 20:09:59] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 5 records (0 inserted, 0 updated, 5 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 20:09:59] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 5 records: 5 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 21:52:32] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 6 records: 6 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 21:52:35] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 6 records (0 inserted, 0 updated, 6 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 21:52:35] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 6 records: 6 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 21:52:41] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 6 records (0 inserted, 0 updated, 6 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 21:52:41] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 6 records: 6 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 23:03:42] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 23:03:44] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 7 records (0 inserted, 0 updated, 7 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 23:03:44] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 23:09:04] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 23:09:07] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 7 records (0 inserted, 0 updated, 7 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-22 23:09:07] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:04:25] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:04:26] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 7 records (0 inserted, 0 updated, 7 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:04:26] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:06:31] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:06:32] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 7 records (0 inserted, 0 updated, 7 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:06:32] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:08:09] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Python-urllib/3.14
+[2026-08-23 00:08:09] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 1 records (1 inserted, 0 updated, 0 unchanged, 0 rejected by quality audit). | UA: Python-urllib/3.14
+[2026-08-23 00:08:16] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Python-urllib/3.14
+[2026-08-23 00:08:16] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 1 records (0 inserted, 1 updated, 0 unchanged, 0 rejected by quality audit). | UA: Python-urllib/3.14
+[2026-08-23 00:09:16] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:10:03] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Python-urllib/3.14
+[2026-08-23 00:10:52] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:10:54] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 2 records (0 inserted, 0 updated, 2 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:10:54] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 7 records (0 inserted, 0 updated, 7 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:10:54] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:11:12] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Python-urllib/3.14
+[2026-08-23 00:11:53] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:11:55] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 2 records (0 inserted, 0 updated, 2 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:11:55] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 7 records (0 inserted, 0 updated, 7 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:11:55] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:12:59] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:13:01] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 2 records (0 inserted, 0 updated, 2 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:13:01] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 7 records (0 inserted, 0 updated, 7 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:13:01] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:13:46] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:13:47] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 2 records (0 inserted, 0 updated, 2 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:13:47] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 7 records (0 inserted, 0 updated, 7 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:13:47] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:16:24] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:17:11] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:18:40] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:24:06] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:24:34] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:24:48] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:27:58] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 8 records: 8 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:32:28] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:33:16] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Python-urllib/3.14
+[2026-08-23 00:33:16] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 1 records (0 inserted, 1 updated, 0 unchanged, 0 rejected by quality audit). | UA: Python-urllib/3.14
+[2026-08-23 00:33:28] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:34:15] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:34:16] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 8 records (0 inserted, 7 updated, 1 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:34:16] [EXECUTE_SYNC] IP: 127.0.0.1 | Successfully merged 7 records (0 inserted, 0 updated, 7 unchanged, 0 rejected by quality audit). | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36
+[2026-08-23 00:34:16] [SYNC_PREVIEW] IP: 127.0.0.1 | Audited 7 records: 7 clean, 0 skipped. | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36

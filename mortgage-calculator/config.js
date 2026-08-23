@@ -10,6 +10,7 @@ export const CONFIG = {
   DEFAULT_HOME_PRICE: 400000,
   DEFAULT_DOWN_PAYMENT_PERCENT: 20,
   DEFAULT_DOWN_PAYMENT_AMOUNT: 80000,
+  DEFAULT_CASH_DOWN_PAYMENT: 80000,
   
   // Rate Defaults (used as fallback)
   DEFAULT_RATE_30: 6.5,
@@ -67,7 +68,12 @@ export const CONFIG = {
   // API Endpoints (server-side proxies only — calculator inputs are stored
   // locally in the browser and are never synced to a server; see storage.js)
   API_RATES: 'rates-proxy.php',
-  API_MLS: 'mls-proxy.php',
+  // Shared Redfin lookup + 7-day cache used by both mortgage-calculator and
+  // homeward (see backend/property-lookup.php). Absolute path since it
+  // lives in a sibling top-level folder, not under mortgage-calculator/.
+  // Superseded the old per-site mls-proxy.php (now a deprecation stub) —
+  // do not point this back at a local mls-proxy.php.
+  API_MLS: '/backend/property-lookup.php',
 
   // Debounce Timings
   SAVE_DEBOUNCE_MS: 500,
@@ -123,6 +129,7 @@ export const DEFAULTS = {
   homePrice: CONFIG.DEFAULT_HOME_PRICE,
   downPaymentPercent: CONFIG.DEFAULT_DOWN_PAYMENT_PERCENT,
   downPaymentAmount: CONFIG.DEFAULT_DOWN_PAYMENT_AMOUNT,
+  cashDownPayment: CONFIG.DEFAULT_CASH_DOWN_PAYMENT,
   interest30: CONFIG.DEFAULT_RATE_30,
   interest15: CONFIG.DEFAULT_RATE_15,
   taxRate: CONFIG.DEFAULT_TAX_RATE,

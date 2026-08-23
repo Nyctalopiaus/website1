@@ -4,6 +4,21 @@ This document serves as persistent master memory for AI assistants (Antigravity,
 
 ---
 
+## 🚨 Scrape.do API Budget — READ BEFORE TESTING ANYTHING THAT SCRAPES
+
+**Status as of 2026-08-22: 814 / 1,000 monthly API pulls used** across all sites/projects on this account that use Scrape.do (currently: `mortgage-calculator/mls-proxy.php`, `homeward/api/mls-proxy.php`, and the shared `backend/property-lookup.php` that supersedes both — see the "Shared Backend Service" section below). The token is shared across every project that reads `SCRAPE_DO_TOKEN` from `/home/nyctltlc/api.env`, so a call from ANY of them draws down the same pool.
+
+**Rule for AI assistants: do not trigger a live Scrape.do call as part of testing or verification, in production or locally, unless the user explicitly asks for a live test and confirms they're OK spending a pull.** This applies to code review, "let me verify this works" checks, and especially anything automated/repeated (a loop, a test suite, a script that hits the proxy multiple times). Concretely:
+
+- Verify PHP changes with `php -l` (syntax) and by exercising the parsing/caching logic against **synthetic/fixture HTML**, never a live fetch.
+- The 7-day and negative caches exist specifically to avoid burning pulls on repeat lookups — don't defeat that by testing with `?force=1` or by looking up many distinct real addresses "just to check it works."
+- If a live end-to-end test is genuinely necessary, use ONE known URL, without `force=1`, and say so explicitly before doing it so the user can weigh in.
+- When this budget is close to the monthly cap, prefer manual entry / cached data over a fresh lookup even for real usage, and flag it to the user rather than assuming it's fine.
+
+Update the usage number above whenever it's checked (Scrape.do dashboard) or whenever the user reports a new figure, so this stays a reliable signal rather than going stale.
+
+---
+
 ## 🌐 Server Ecosystem Overview
 
 **Production Domain:** [https://nycto.ninja/](https://nycto.ninja/) — this is where the contents of this `vm_code` folder are published live. Reference this URL for local dev testing comparisons and when debugging production issues.
@@ -25,6 +40,7 @@ All applications are hosted under your public web root (`/home/nyctltlc/public_h
 | **`threatpulse`** | `/threatpulse/` | Security & tech intelligence dashboard — high-signal, distraction-free security advisory and technical news feed. Ingests RSS/Atom/JSON feeds, dedupes via URL hashing + fuzzy title matching (48h window), extracts CVEs/severity tags. | Python fetcher (`fetcher.py`, feedparser/BeautifulSoup/lxml) writing to SQLite + a static `data/feed.json`, consumed by a vanilla JS front end. Self-contained (does not use the shared Node backend). |
 | **`hf-model-matcher`** | `/hf-model-matcher/` | Hardware-aware AI discovery engine — recommends Hugging Face models that fit a user's VRAM/RAM without OOM errors. | Python **FastAPI** backend (`backend/main.py`, `hardware.py`, `hf_client.py`, `engine.py`) + vanilla JS front end. Self-contained, separate from the shared Node backend. |
 | **`status`** | `/status/` | Outbound Connection & Infrastructure Status page — site-wide uptime/status dashboard for the Nycto Lab. | Vanilla JS, local `data/monitoring.db` (SQLite) + `status-data.json`. |
+| **`homeward`** | `/homeward/` | Home build & lot scouting route optimizer — TSP route solver with customizable stay durations, inspection notebook, Redfin/Zillow links, multi-stop Google Maps navigation, executive report generator. | Vanilla JS, Leaflet JS, Nominatim geocoding, localStorage. |
 
 ### ⚙️ Shared Backend Service (`/backend/`)
 

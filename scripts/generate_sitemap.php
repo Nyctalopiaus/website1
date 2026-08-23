@@ -85,6 +85,13 @@ $pages = [
         'changefreq' => 'weekly',
         'priority' => '0.9',
         'is_root' => false
+    ],
+    [
+        'loc' => $baseUrl . '/homeward/',
+        'dir' => $baseDir . '/homeward',
+        'changefreq' => 'weekly',
+        'priority' => '0.9',
+        'is_root' => false
     ]
 
     // NOTE: crypto-game and game-rating-log are intentionally NOT listed above.

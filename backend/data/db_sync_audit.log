@@ -1,0 +1,229 @@
+================================================================================
+[2026-08-22 19:26:33 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 5 | Merged: 5 (2 new inserted, 3 existing updated) | Rejected: 0
+- Merged Records (5):
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+================================================================================
+================================================================================
+[2026-08-22 19:30:50 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 5 | Merged: 5 (0 new inserted, 5 existing updated) | Rejected: 0
+- Merged Records (5):
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+================================================================================
+================================================================================
+[2026-08-22 19:32:42 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 5 | Merged: 5 (New: 0, Updated: 0, Unchanged: 5) | Rejected: 0
+- Merged Records (5):
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+================================================================================
+================================================================================
+[2026-08-22 20:09:59 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 5 | Merged: 5 (New: 0, Updated: 0, Unchanged: 5) | Rejected: 0
+- Merged Records (5):
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-22 21:52:35 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 6 | Merged: 6 (New: 0, Updated: 0, Unchanged: 6) | Rejected: 0
+- Merged Records (6):
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-22 21:52:41 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 6 | Merged: 6 (New: 0, Updated: 0, Unchanged: 6) | Rejected: 0
+- Merged Records (6):
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-22 23:03:44 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 7 | Merged: 7 (New: 0, Updated: 0, Unchanged: 7) | Rejected: 0
+- Merged Records (7):
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 2,291 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-22 23:09:07 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 7 | Merged: 7 (New: 0, Updated: 0, Unchanged: 7) | Rejected: 0
+- Merged Records (7):
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:04:26 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 7 | Merged: 7 (New: 0, Updated: 0, Unchanged: 7) | Rejected: 0
+- Merged Records (7):
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:06:32 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 7 | Merged: 7 (New: 0, Updated: 0, Unchanged: 7) | Rejected: 0
+- Merged Records (7):
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:08:09 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 1 | Merged: 1 (New: 1, Updated: 0, Unchanged: 0) | Rejected: 0
+- Merged Records (1):
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 1,826 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:08:16 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 1 | Merged: 1 (New: 0, Updated: 1, Unchanged: 0) | Rejected: 0
+- Merged Records (1):
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 1,826 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:10:54 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 2 | Merged: 2 (New: 0, Updated: 0, Unchanged: 2) | Rejected: 0
+- Merged Records (2):
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:10:54 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 7 | Merged: 7 (New: 0, Updated: 0, Unchanged: 7) | Rejected: 0
+- Merged Records (7):
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:11:55 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 2 | Merged: 2 (New: 0, Updated: 0, Unchanged: 2) | Rejected: 0
+- Merged Records (2):
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:11:55 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 7 | Merged: 7 (New: 0, Updated: 0, Unchanged: 7) | Rejected: 0
+- Merged Records (7):
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:13:01 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 2 | Merged: 2 (New: 0, Updated: 0, Unchanged: 2) | Rejected: 0
+- Merged Records (2):
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:13:01 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 7 | Merged: 7 (New: 0, Updated: 0, Unchanged: 7) | Rejected: 0
+- Merged Records (7):
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:13:47 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 2 | Merged: 2 (New: 0, Updated: 0, Unchanged: 2) | Rejected: 0
+- Merged Records (2):
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:13:47 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 7 | Merged: 7 (New: 0, Updated: 0, Unchanged: 7) | Rejected: 0
+- Merged Records (7):
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:33:16 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 1 | Merged: 1 (New: 0, Updated: 1, Unchanged: 0) | Rejected: 0
+- Merged Records (1):
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($492,615 | 1,826 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:34:16 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 8 | Merged: 8 (New: 0, Updated: 7, Unchanged: 1) | Rejected: 0
+- Merged Records (8):
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($572,100 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-23 00:34:16 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 7 | Merged: 7 (New: 0, Updated: 0, Unchanged: 7) | Rejected: 0
+- Merged Records (7):
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($572,100 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
