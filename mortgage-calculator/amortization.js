@@ -48,8 +48,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const loanAmount = Math.max(0, price - down);
   const activeRate = term === 30 ? rate30 : rate15;
 
+  const paymentFrequency = data.paymentFrequency || 'monthly';
+  const biweeklyExtra = parseFloat(data.biweeklyExtra) || 0;
+
   // Update Header Text
-  document.getElementById('amort-title').textContent = `${term}-Year Amortization Schedule`;
+  const freqLabel = paymentFrequency === 'accelerated' ? ' (⚡ Accelerated Biweekly)' : (paymentFrequency === 'biweekly' ? ' (Biweekly 26x)' : '');
+  document.getElementById('amort-title').textContent = `${term}-Year Amortization Schedule${freqLabel}`;
   document.getElementById('amort-subtitle').textContent = `Based on a $${price.toLocaleString()} home price, $${down.toLocaleString()} down payment, and ${activeRate}% interest rate.`;
 
   // Helper for Currency
@@ -66,6 +70,13 @@ document.addEventListener('DOMContentLoaded', () => {
     regularPi = loanAmount * (r * Math.pow(1 + r, originalMonths)) / (Math.pow(1 + r, originalMonths) - 1);
   } else {
     regularPi = loanAmount / originalMonths;
+  }
+
+  let biweeklyPi = 0;
+  if (paymentFrequency === 'biweekly') {
+    biweeklyPi = (regularPi * 12) / 26;
+  } else if (paymentFrequency === 'accelerated') {
+    biweeklyPi = regularPi / 2;
   }
 
   // Escrow and PMI calculations
@@ -86,9 +97,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   while (balance > 0.01 && month < 1200) {
     month++;
+    
+    let requiredPiThisMonth = regularPi;
+    let biweeklyExtraThisMonth = 0;
+    if (paymentFrequency === 'biweekly' || paymentFrequency === 'accelerated') {
+      const numPayments = (month % 6 === 0) ? 3 : 2;
+      requiredPiThisMonth = numPayments * biweeklyPi;
+      biweeklyExtraThisMonth = numPayments * biweeklyExtra;
+    }
+
     const interestThisMonth = balance * r;
-    const requiredPrincipal = Math.max(0, regularPi - interestThisMonth);
-    const extraPaid = additional;
+    const requiredPrincipal = Math.max(0, requiredPiThisMonth - interestThisMonth);
+    const extraPaid = additional + biweeklyExtraThisMonth;
     let bonusPayment = 0;
     if (lumpSumAmt > 0 && month % lumpSumFreq === 0) { bonusPayment = lumpSumAmt; }
     const totalPrincipal = requiredPrincipal + extraPaid + bonusPayment;
@@ -106,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Build Table Row
     const isLastRow = balance <= 0.01;
     const rowClass = isLastRow ? 'payoff-highlight' : '';
-    const trueTotalPayment = regularPi + extraPaid + bonusPayment + staticEscrow + activePmi;
+    const trueTotalPayment = requiredPiThisMonth + extraPaid + bonusPayment + staticEscrow + activePmi;
 
     htmlRows += `<tr class="${rowClass}">
       <td><strong>Month ${month}</strong></td>

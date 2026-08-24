@@ -124,7 +124,7 @@ class NotesManager {
         if (autoDetectBtn.disabled) return;
         autoDetectBtn.disabled = true;
         autoDetectBtn.classList.add('opacity-60', 'cursor-not-allowed');
-        autoDetectBtn.textContent = '⏳ Fetching Specs & Photo...';
+        autoDetectBtn.textContent = '⏳ Fetching GIS Lot Specs...';
 
         try {
           const [gisRes, redfinMeta] = await Promise.all([
@@ -132,62 +132,99 @@ class NotesManager {
             window.propertyLinks.fetchRedfinMetadata(stopData.redfinUrl || stopData.address).catch(() => null)
           ]);
 
+          const updatedFieldIds = [];
+
           if (gisRes || redfinMeta) {
-            if (elevInput && gisRes && gisRes.elevationFt) elevInput.value = `${gisRes.elevationFt.toLocaleString()} ft`;
-            if (terrainEl && gisRes && gisRes.terrain) terrainEl.value = gisRes.terrain;
-            if (facingEl && gisRes && gisRes.facingDirection) facingEl.value = gisRes.facingDirection;
+            if (elevInput && gisRes && gisRes.elevationFt) {
+              const formattedElev = `${gisRes.elevationFt.toLocaleString()} ft`;
+              if (elevInput.value !== formattedElev) {
+                elevInput.value = formattedElev;
+                updatedFieldIds.push('note-elevation');
+              }
+            }
+            if (terrainEl && gisRes && gisRes.terrain) {
+              if (terrainEl.value !== gisRes.terrain) {
+                terrainEl.value = gisRes.terrain;
+                updatedFieldIds.push('note-terrain');
+              }
+            }
             if (sizeInput && ((redfinMeta && redfinMeta.lotSize) || (gisRes && gisRes.lotSize))) {
-              sizeInput.value = (redfinMeta && redfinMeta.lotSize) ? redfinMeta.lotSize : (gisRes ? gisRes.lotSize : '');
+              const newSize = (redfinMeta && redfinMeta.lotSize) ? redfinMeta.lotSize : (gisRes ? gisRes.lotSize : '');
+              if (sizeInput.value !== newSize && newSize) {
+                sizeInput.value = newSize;
+                updatedFieldIds.push('note-size');
+              }
             }
             if (redfinMeta) {
               if (redfinMeta.redfinUrl) stopData.redfinUrl = redfinMeta.redfinUrl;
-              if (redfinMeta.price) document.getElementById('note-price').value = redfinMeta.price;
-              if (redfinMeta.sqft && document.getElementById('note-sqft')) document.getElementById('note-sqft').value = redfinMeta.sqft;
-              if (redfinMeta.yearBuilt && document.getElementById('note-year')) document.getElementById('note-year').value = redfinMeta.yearBuilt;
+
+              const priceEl = document.getElementById('note-price');
+              if (redfinMeta.price && priceEl && priceEl.value !== redfinMeta.price) {
+                priceEl.value = redfinMeta.price;
+                updatedFieldIds.push('note-price');
+              }
+
+              const sqftEl = document.getElementById('note-sqft');
+              if (redfinMeta.sqft && sqftEl && sqftEl.value !== redfinMeta.sqft) {
+                sqftEl.value = redfinMeta.sqft;
+                updatedFieldIds.push('note-sqft');
+              }
+
+              const yearEl = document.getElementById('note-year');
+              if (redfinMeta.yearBuilt && yearEl && yearEl.value !== String(redfinMeta.yearBuilt)) {
+                yearEl.value = redfinMeta.yearBuilt;
+                updatedFieldIds.push('note-year');
+              }
+
               if (redfinMeta.photoUrl && redfinMeta.photoUrl !== 'https:' && redfinMeta.photoUrl !== 'http:') {
                 this.addPhotoUrl(redfinMeta.photoUrl);
               }
-              if (redfinMeta.hoaNotes) document.getElementById('note-hoa').value = redfinMeta.hoaNotes;
+
+              const hoaEl = document.getElementById('note-hoa');
+              if (redfinMeta.hoaNotes && hoaEl && hoaEl.value !== redfinMeta.hoaNotes) {
+                hoaEl.value = redfinMeta.hoaNotes;
+                updatedFieldIds.push('note-hoa');
+              }
             }
 
-          stopData.isAutoDetected = true;
-          toggleAutoBadges(true);
+            stopData.isAutoDetected = true;
+            toggleAutoBadges(true);
 
-          // Save combined specs to 7-day DB cache
-          const combinedCache = {
-            elevationFt: gisRes ? gisRes.elevationFt : null,
-            terrain: gisRes ? gisRes.terrain : 'Flat',
-            facingDirection: (facingEl && facingEl.value) ? facingEl.value : (gisRes ? gisRes.facingDirection : ''),
-            lotSize: sizeInput ? sizeInput.value : '',
-            sqft: document.getElementById('note-sqft') ? document.getElementById('note-sqft').value : '',
-            yearBuilt: document.getElementById('note-year') ? document.getElementById('note-year').value : '',
-            price: document.getElementById('note-price') ? document.getElementById('note-price').value : '',
-            photoUrl: document.getElementById('note-photo-url') ? document.getElementById('note-photo-url').value : '',
-            hoaNotes: document.getElementById('note-hoa') ? document.getElementById('note-hoa').value : ''
-          };
-          window.storageManager.setCachedProperty(stopData.address, combinedCache);
+            // Save combined specs to 7-day DB cache
+            const combinedCache = {
+              elevationFt: gisRes ? gisRes.elevationFt : null,
+              terrain: gisRes ? gisRes.terrain : 'Flat',
+              facingDirection: (facingEl && facingEl.value) ? facingEl.value : '',
+              lotSize: sizeInput ? sizeInput.value : '',
+              sqft: document.getElementById('note-sqft') ? document.getElementById('note-sqft').value : '',
+              yearBuilt: document.getElementById('note-year') ? document.getElementById('note-year').value : '',
+              price: document.getElementById('note-price') ? document.getElementById('note-price').value : '',
+              photoUrl: document.getElementById('note-photo-url') ? document.getElementById('note-photo-url').value : '',
+              hoaNotes: document.getElementById('note-hoa') ? document.getElementById('note-hoa').value : ''
+            };
+            window.storageManager.setCachedProperty(stopData.address, combinedCache);
 
-          this.updateNotebookScoreLive(stopData);
+            this.updateNotebookScoreLive(stopData);
 
-          // Visual Pulse Highlight on updated fields
-          ['note-price', 'note-size', 'note-sqft', 'note-year', 'note-elevation', 'note-facing', 'note-terrain', 'note-hoa'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-              el.classList.add('ring-2', 'ring-sky-400');
-              setTimeout(() => el.classList.remove('ring-2', 'ring-sky-400'), 1500);
-            }
-          });
+            // Visual Pulse Highlight strictly on fields that were actually updated in this run
+            updatedFieldIds.forEach(id => {
+              const el = document.getElementById(id);
+              if (el) {
+                el.classList.add('ring-2', 'ring-sky-400');
+                setTimeout(() => el.classList.remove('ring-2', 'ring-sky-400'), 1500);
+              }
+            });
 
-          autoDetectBtn.textContent = redfinMeta ? '✓ Auto-Detected All Specs & Photo!' : '✓ GIS Lot Specs Auto-Detected!';
-          autoDetectBtn.classList.add('bg-emerald-500/30', 'text-emerald-300', 'border-emerald-500/50');
-          setTimeout(() => {
-            autoDetectBtn.textContent = '⚡ Auto-Detect Specs & Photo';
-            autoDetectBtn.classList.remove('bg-emerald-500/30', 'text-emerald-300', 'border-emerald-500/50');
-          }, 3000);
-        } else {
-          autoDetectBtn.textContent = '❌ Fetch Failed';
-          setTimeout(() => { autoDetectBtn.textContent = '⚡ Auto-Detect Lot Details'; }, 2000);
-        }
+            autoDetectBtn.textContent = '✓ GIS Lot Specs Auto-Detected!';
+            autoDetectBtn.classList.add('bg-emerald-500/30', 'text-emerald-300', 'border-emerald-500/50');
+            setTimeout(() => {
+              autoDetectBtn.textContent = '⚡ Auto-Detect GIS Lot Details';
+              autoDetectBtn.classList.remove('bg-emerald-500/30', 'text-emerald-300', 'border-emerald-500/50');
+            }, 3000);
+          } else {
+            autoDetectBtn.textContent = '❌ Fetch Failed';
+            setTimeout(() => { autoDetectBtn.textContent = '⚡ Auto-Detect GIS Lot Details'; }, 2000);
+          }
         } finally {
           autoDetectBtn.disabled = false;
           autoDetectBtn.classList.remove('opacity-60', 'cursor-not-allowed');
@@ -206,20 +243,52 @@ class NotesManager {
 
     const updateQuickLinks = (addrText) => {
       if (gmapsBtn) gmapsBtn.href = window.propertyLinks.getGoogleMapsUrl(addrText, stopData.lat, stopData.lng);
+      if (streetViewBtn) streetViewBtn.href = window.propertyLinks.getStreetViewUrl(stopData.lat, stopData.lng, addrText);
+
       if (redfinBtn) {
-        const cached = (window.storageManager && typeof window.storageManager.getCachedPropertySync === 'function') ? window.storageManager.getCachedPropertySync(addrText) : null;
-        const redfinSource = stopData.redfinUrl || (cached ? (cached.redfinUrl || cached.url) : null) || addrText;
-        redfinBtn.href = window.propertyLinks.getRedfinUrl(redfinSource);
-        if (window.propertyLinks.needsRedfinAddressCopy(redfinSource)) {
-          redfinBtn.setAttribute('data-redfin-copy-address', redfinSource.trim());
-          redfinBtn.title = "Opens Redfin and copies this address so you can paste it into Redfin's search bar";
-        } else {
+        const cached = (window.storageManager && typeof window.storageManager.getCachedPropertySync === 'function')
+          ? window.storageManager.getCachedPropertySync(addrText)
+          : null;
+
+        const cachedUrl = (cached ? (cached.url || cached.redfinUrl) : null) || stopData.redfinUrl || stopData.url || '';
+        const hasDirectUrl = cachedUrl.startsWith('http://') || cachedUrl.startsWith('https://');
+
+        if (hasDirectUrl) {
+          const provider = window.propertyLinks.getProviderLabel(cachedUrl, cached ? cached.provider : '');
+          redfinBtn.href = cachedUrl;
           redfinBtn.removeAttribute('data-redfin-copy-address');
           redfinBtn.removeAttribute('title');
+
+          if (provider === 'Zillow') {
+            redfinBtn.textContent = '🔵 Zillow Listing ↗';
+            redfinBtn.className = 'px-2.5 py-1 rounded-lg bg-sky-500/10 text-sky-300 font-semibold border border-sky-500/20 hover:bg-sky-500/20 transition-colors';
+          } else if (provider === 'Realtor.com') {
+            redfinBtn.textContent = '📍 Realtor.com Listing ↗';
+            redfinBtn.className = 'px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-300 font-semibold border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors';
+          } else if (provider === 'Homes.com') {
+            redfinBtn.textContent = '📍 Homes.com Listing ↗';
+            redfinBtn.className = 'px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 font-semibold border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors';
+          } else {
+            redfinBtn.textContent = '🔴 Redfin Listing ↗';
+            redfinBtn.className = 'px-2.5 py-1 rounded-lg bg-rose-500/10 text-rose-300 font-semibold border border-rose-500/20 hover:bg-rose-500/20 transition-colors';
+          }
+          redfinBtn.onclick = null;
+        } else {
+          redfinBtn.textContent = '🔖 Ingest via Bookmarklet';
+          redfinBtn.className = 'px-2.5 py-1 rounded-lg bg-slate-800 text-sky-400 font-semibold border border-slate-700 hover:bg-slate-700 transition-colors cursor-pointer';
+          redfinBtn.href = '#';
+          redfinBtn.onclick = (e) => {
+            e.preventDefault();
+            if (window.propertyLinks && window.propertyLinks.openBookmarkletModal) {
+              window.propertyLinks.openBookmarkletModal();
+            }
+          };
         }
       }
-      if (zillowBtn) zillowBtn.href = window.propertyLinks.getZillowUrl(stopData.zillowUrl || addrText);
-      if (streetViewBtn) streetViewBtn.href = window.propertyLinks.getStreetViewUrl(stopData.lat, stopData.lng, addrText);
+
+      if (zillowBtn) {
+        zillowBtn.classList.add('hidden');
+      }
     };
 
     updateQuickLinks(stopData.address);

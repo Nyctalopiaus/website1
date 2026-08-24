@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nycto's Rent vs. Sell Calculator</title>
+  <meta name="description" content="Calculate whether it is financially better to rent out your departing house or sell it when moving. Head-to-head financial wealth comparison, cash flow analyzer, and Section 121 tax rules." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=1" />
+</head>
+<body>
+  <div class="ambient-glow glow-gold"></div>
+  <div class="ambient-glow glow-violet"></div>
+
+  <header class="header">
+    <div class="header-nav">
+      <a href="../index.html" class="btn-back">← Back to Lab</a>
+      <a href="../mortgage-calculator/index.html" class="btn-subnav">🏠 Housing Cost Calculator</a>
+      <h1>Nycto's Rent vs. Sell Calculator</h1>
+    </div>
+    <div class="header-actions">
+      <span class="badge badge-gold">Solar Gold &amp; Violet Engine</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Privacy Notice -->
+    <div class="privacy-banner">
+      <span class="privacy-icon">🔒</span>
+      <div>
+        <strong>100% Private &amp; Local.</strong>
+        Your financial figures stay completely inside your browser. No server storage, tracking, or external data transmission.
+      </div>
+    </div>
+
+    <!-- Head to Head Verdict Banner -->
+    <div id="verdict-card" class="verdict-card verdict-rent">
+      <div class="verdict-header">
+        <span class="verdict-icon">🏆</span>
+        <div>
+          <div class="verdict-subtitle">DECISION ANALYSIS</div>
+          <h2 id="verdict-title">Renting Out Builds More Wealth</h2>
+        </div>
+      </div>
+      <p id="verdict-desc" class="verdict-desc">
+        Holding the house as a rental yields an estimated <strong>+$42,150</strong> more in total net worth over 10 years compared to selling today and reinvesting the net cash proceeds.
+      </p>
+      <div class="verdict-stats-row">
+        <div class="stat-box">
+          <span class="stat-label">Rent Strategy Net Worth</span>
+          <span id="stat-rent-wealth" class="stat-value text-violet">$184,500</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Sell Strategy Net Worth</span>
+          <span id="stat-sell-wealth" class="stat-value text-gold">$142,350</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Crossover / Break-Even</span>
+          <span id="stat-crossover" class="stat-value">Year 3</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Core Metrics Dashboard (Matching User Screenshot) -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <span id="metric-monthly-cashflow" class="metric-value">$70</span>
+        <span class="metric-label">Year 1 Net Monthly Cashflow</span>
+      </div>
+      <div class="metric-card-divider"></div>
+      <div class="metric-card">
+        <span id="metric-horizon-cashflow" class="metric-value">$4,668</span>
+        <span class="metric-label">Total Net Cashflow Over Horizon</span>
+      </div>
+    </section>
+
+    <!-- Chart Panel -->
+    <section class="panel-card chart-panel">
+      <div class="chart-header">
+        <div>
+          <h3 id="chart-title">Cumulative Net Rental Surplus</h3>
+          <p class="chart-subtitle">Projected financial performance across selected holding period</p>
+        </div>
+        <div class="chart-toggles">
+          <button type="button" id="btn-chart-cashflow" class="btn-toggle active">Cash Flow View</button>
+          <button type="button" id="btn-chart-wealth" class="btn-toggle">Rent vs Sell Net Worth</button>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <canvas id="mainChart" height="260"></canvas>
+      </div>
+
+      <div id="chart-legend" class="chart-legend">
+        <span class="legend-item"><span class="legend-dot dot-violet"></span> Cumulative Net Rental Cash Flow</span>
+      </div>
+    <!-- Cash Flow Recovery Recommendation Card -->
+    <div id="cashflow-recovery-card" class="recovery-card" style="display: none;">
+      <div class="recovery-header">
+        <span class="recovery-icon">💡</span>
+        <div>
+          <h3 class="recovery-title">Cash Flow Recovery Recommendations</h3>
+          <p id="recovery-subtitle" class="recovery-subtitle">Your inputs result in a negative cash flow. Below are 4 ways to turn cash flow positive:</p>
+        </div>
+      </div>
+
+      <div class="recovery-grid">
+        <!-- Target Rent -->
+        <div class="recovery-item">
+          <div class="recovery-item-header">
+            <span class="recovery-item-title">1. Increase Monthly Rent</span>
+            <button type="button" id="btn-fix-rent" class="btn-fix-action">⚡ Set Rent to <span id="fix-rent-val">$3,800</span></button>
+          </div>
+          <p id="recovery-rent-text" class="recovery-text">Increase rent from $2,800 to <strong>$3,800/mo</strong> (+ $1,000/mo) to break even on Year 1 cash flow.</p>
+        </div>
+
+        <!-- Eliminate HELOC -->
+        <div class="recovery-item">
+          <div class="recovery-item-header">
+            <span class="recovery-item-title">2. Reduce HELOC Debt Service</span>
+            <button type="button" id="btn-fix-heloc" class="btn-fix-action">⚡ Set HELOC to $0</button>
+          </div>
+          <p id="recovery-heloc-text" class="recovery-text">Paying off or refinancing your HELOC saves <strong>$650/mo</strong>, cutting your monthly deficit by 87%.</p>
+        </div>
+
+        <!-- Optimize Reserves -->
+        <div class="recovery-item">
+          <div class="recovery-item-header">
+            <span class="recovery-item-title">3. Lower Management / Reserve %</span>
+            <button type="button" id="btn-fix-reserves" class="btn-fix-action">⚡ Set Reserves to 10%</button>
+          </div>
+          <p id="recovery-reserves-text" class="recovery-text">Self-managing or reducing reserves from 25% to 10% saves <strong>+$420/mo</strong>.</p>
+        </div>
+
+        <!-- Balanced Plan -->
+        <div class="recovery-item recovery-item-highlight">
+          <div class="recovery-item-header">
+            <span class="recovery-item-title">4. Recommended Balanced Plan</span>
+            <button type="button" id="btn-fix-balanced" class="btn-fix-action btn-fix-gold">⚡ Apply Balanced Plan</button>
+          </div>
+          <p id="recovery-balanced-text" class="recovery-text">Raise rent to <strong>$3,200</strong>, set reserves to <strong>15%</strong>, and reduce HELOC to <strong>$300</strong> to yield <strong>+$220/mo</strong> net positive cash flow.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 121 Tax Warning Banner -->
+    <div id="tax-warning-box" class="tax-warning-box">
+      <div class="tax-header">
+        <span class="tax-icon">⚠️</span>
+        <div>
+          <strong class="tax-title">Section 121 Tax Exclusion Deadline Warning</strong>
+          <p class="tax-text">
+            Because you lived in this home as your primary residence, selling within <strong>3 years</strong> of moving keeps up to <strong>$250,000 (Single) / $500,000 (Married)</strong> of gain completely tax-free.
+            Renting past Year 3 forfeits this exclusion, triggering estimated capital gains tax + depreciation recapture when you sell.
+          </p>
+        </div>
+      </div>
+      <div id="tax-impact-tag" class="tax-impact-tag">
+        Impact: Moving past Year 3 adds an estimated <strong>$18,400</strong> in taxes upon sale.
+      </div>
+    </div>
+
+    <!-- Inputs Section: Dual Column -->
+    <section class="panel-card inputs-panel">
+      <div class="inputs-header">
+        <h2>Adjust rental income &amp; expense assumptions</h2>
+        <p>Fine-tune rent, mortgage, debt payments, and selling reinvestment rates</p>
+      </div>
+
+      <!-- Auto-Fetch Property & Rent Lookup Bar -->
+      <div class="property-import-bar" style="margin-top: 1rem; margin-bottom: 0.5rem; padding: 1rem 1.25rem; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 0.75rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+          <strong style="color: var(--accent-cyan); font-family: var(--font-display); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em;">
+            🔍 Auto-Fetch Rent &amp; Property Data
+          </strong>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Redfin • Zillow • Realtor.com</span>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+          <input type="text" id="importUrlInput" placeholder="Paste Redfin, Zillow, or Realtor.com URL..." style="flex: 1 1 280px; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); border-radius: 0.4rem; padding: 0.6rem 0.85rem; color: #fff; font-size: 0.85rem; outline: none;" />
+          <button type="button" id="btn-import-property" class="btn-import-property">⚡ Load Property</button>
+          <button type="button" id="btn-open-bookmarklet" class="btn-bookmarklet-tool" title="Drag bookmarklet to your browser toolbar to import any listing in 1 click">🔖 Bookmarklet</button>
+        </div>
+        <div id="import-status-msg" style="display: none; font-size: 0.8rem; margin-top: 0.65rem; padding: 0.5rem 0.75rem; border-radius: 0.4rem; background: rgba(0, 0, 0, 0.3);"></div>
+      </div>
+
+      <div class="inputs-grid">
+        <!-- Left Column: Rental Property Assumptions -->
+        <div class="input-column">
+          <h3 class="column-title text-violet">🏡 Rental Property Assumptions</h3>
+
+          <div class="input-group">
+            <div class="input-label-row">
+              <label for="rentAmount">Estimated market rent if rented out</label>
+              <div class="input-with-prefix">
+                <span class="prefix">$</span>
+                <input type="number" id="rentAmount" min="500" max="25000" step="50" value="2800" />
+              </div>
+            </div>
+            <input type="range" id="rentAmountSlider" min="500" max="10000" step="50" value="2800" class="slider slider-violet" />
+            <span class="input-hint" style="color: var(--accent-violet-bright); font-weight: 500;">💵 Potential Income (What a tenant would pay you monthly if you keep &amp; rent it)</span>
+          </div>
+
+          <div class="input-group">
+            <div class="input-label-row">
+              <label for="mortgagePITI">Current house mortgage + tax/ins</label>
+              <div class="input-with-prefix">
+                <span class="prefix">$</span>
+                <input type="number" id="mortgagePITI" min="200" max="25000" step="50" value="2200" />
+              </div>
+            </div>
+            <input type="range" id="mortgagePITISlider" min="500" max="10000" step="50" value="2200" class="slider slider-violet" />
+            <span class="input-hint" style="color: #f87171; font-weight: 500;">💸 Existing Expenses (Your current monthly payment for this house: principal, interest, taxes, insurance)</span>
+          </div>
+
+          <div class="input-group">
+            <div class="input-label-row">
+              <label for="helocPayment">Monthly HELOC/equity payment</label>
+              <div class="input-with-prefix">
+                <span class="prefix">$</span>
+                <input type="number" id="helocPayment" min="0" max="10000" step="25" value="650" />
+              </div>
+            </div>
+            <input type="range" id="helocPaymentSlider" min="0" max="3000" step="25" value="650" class="slider slider-violet" />
+          </div>
+
+          <div class="input-group">
+            <div class="input-label-row">
+              <label for="rentGrowth">Annual rent growth (%)</label>
+              <div class="input-with-suffix">
+                <input type="number" id="rentGrowth" min="0" max="15" step="0.1" value="3.0" />
+                <span class="suffix">%</span>
+              </div>
+            </div>
+            <input type="range" id="rentGrowthSlider" min="0" max="10" step="0.1" value="3.0" class="slider slider-violet" />
+          </div>
+
+          <div class="input-group">
+            <div class="input-label-row">
+              <label for="holdingPeriod">Holding period (years)</label>
+              <div class="input-with-suffix">
+                <input type="number" id="holdingPeriod" min="1" max="30" step="1" value="10" />
+                <span class="suffix">yrs</span>
+              </div>
+            </div>
+            <input type="range" id="holdingPeriodSlider" min="1" max="30" step="1" value="10" class="slider slider-violet" />
+          </div>
+
+          <!-- Advanced Rental Reserve Toggle -->
+          <div class="advanced-section">
+            <button type="button" id="btn-toggle-reserves" class="btn-advanced-toggle">
+              ⚙️ Advanced Rental Expenses (Vacancy &amp; Maintenance) <span class="arrow">▼</span>
+            </button>
+
+            <div id="reserves-collapse" class="advanced-collapse" style="display: none;">
+              <div class="input-group">
+                <div class="input-label-row">
+                  <label for="reserveRate">Reserve Rate (Vacancy/Maintenance)</label>
+                  <div class="input-with-suffix">
+                    <input type="number" id="reserveRate" min="0" max="50" step="1" value="25" />
+                    <span class="suffix">%</span>
+                  </div>
+                </div>
+                <input type="range" id="reserveRateSlider" min="0" max="40" step="1" value="25" class="slider slider-violet" />
+                <span class="input-hint">*Reference screenshot defaults to 25% for vacancy, maintenance, &amp; management.</span>
+              </div>
+
+              <div class="input-group">
+                <div class="input-label-row">
+                  <label for="appreciationRate">Annual Home Appreciation (%)</label>
+                  <div class="input-with-suffix">
+                    <input type="number" id="appreciationRate" min="0" max="15" step="0.1" value="3.5" />
+                    <span class="suffix">%</span>
+                  </div>
+                </div>
+                <input type="range" id="appreciationRateSlider" min="0" max="10" step="0.1" value="3.5" class="slider slider-violet" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Selling & Reinvestment Assumptions -->
+        <div class="input-column">
+          <h3 class="column-title text-gold">💰 Sell Now &amp; Reinvest Assumptions</h3>
+
+          <div class="input-group">
+            <div class="input-label-row">
+              <label for="homeValue">Current estimated home value</label>
+              <div class="input-with-prefix">
+                <span class="prefix">$</span>
+                <input type="number" id="homeValue" min="50000" max="5000000" step="5000" value="450000" />
+              </div>
+            </div>
+            <input type="range" id="homeValueSlider" min="100000" max="1500000" step="5000" value="450000" class="slider slider-gold" />
+          </div>
+
+          <div class="input-group">
+            <div class="input-label-row">
+              <label for="mortgageBalance">Remaining mortgage balance</label>
+              <div class="input-with-prefix">
+                <span class="prefix">$</span>
+                <input type="number" id="mortgageBalance" min="0" max="5000000" step="5000" value="300000" />
+              </div>
+            </div>
+            <input type="range" id="mortgageBalanceSlider" min="0" max="1200000" step="5000" value="300000" class="slider slider-gold" />
+          </div>
+
+          <div class="input-group">
+            <div class="input-label-row">
+              <label for="sellingCostsRate">Realtor &amp; closing cost fees (%)</label>
+              <div class="input-with-suffix">
+                <input type="number" id="sellingCostsRate" min="1" max="12" step="0.5" value="6.0" />
+                <span class="suffix">%</span>
+              </div>
+            </div>
+            <input type="range" id="sellingCostsRateSlider" min="1" max="10" step="0.5" value="6.0" class="slider slider-gold" />
+          </div>
+
+          <div class="input-group">
+            <div class="input-label-row">
+              <label for="investmentReturn">Reinvestment Return Rate (S&amp;P 500 / Next Down Payment %)</label>
+              <div class="input-with-suffix">
+                <input type="number" id="investmentReturn" min="0" max="20" step="0.1" value="7.5" />
+                <span class="suffix">%</span>
+              </div>
+            </div>
+            <input type="range" id="investmentReturnSlider" min="0" max="15" step="0.5" value="7.5" class="slider slider-gold" />
+          </div>
+
+          <div class="input-group">
+            <div class="input-label-row">
+              <label for="taxFilingStatus">Tax Filing Status (Sec 121 Cap Limit)</label>
+              <select id="taxFilingStatus" class="select-field">
+                <option value="married" selected>Married Filing Jointly ($500,000 Tax-Free Limit)</option>
+                <option value="single">Single ($250,000 Tax-Free Limit)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Liquid Cash Summary -->
+          <div class="cash-summary-box">
+            <div class="cash-summary-row">
+              <span>Estimated Net Proceeds If Sold Today:</span>
+              <strong id="sell-net-proceeds-val" class="text-gold">$123,000</strong>
+            </div>
+            <p class="cash-summary-note">Gross Sale ($450k) − Mortgage ($300k) − Selling Costs (6% = $27k)</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="footnote-text">
+        *Models cumulative net cashflow and total equity build from the departing rental after accounting for reserve percentages (vacancy/maintenance) and primary debt service, compared against liquid net sale proceeds growing at the selected reinvestment rate.
+      </div>
+    </section>
+
+    <!-- Year-by-Year Financial Schedule Table -->
+    <section class="panel-card table-panel">
+      <div class="table-header">
+        <div>
+          <h3>Year-by-Year Financial Breakdown</h3>
+          <p>Compare yearly cash flows, mortgage paydown, property value, and net wealth side-by-side</p>
+        </div>
+        <button type="button" id="btn-toggle-table" class="btn-subnav">Show Yearly Schedule</button>
+      </div>
+
+      <div id="table-container" class="table-container" style="display: none;">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th>Year</th>
+              <th>Monthly Rent</th>
+              <th>Net Cash Flow</th>
+              <th>Cum. Cash Flow</th>
+              <th>Home Value</th>
+              <th>Mortgage Principal</th>
+              <th>Rent Net Worth</th>
+              <th>Sell Net Worth</th>
+              <th>Winner</th>
+            </tr>
+          </thead>
+          <tbody id="schedule-tbody">
+            <!-- Dynamic JS injected -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <p>© Nycto's Project Lab • Rent vs. Sell Decision Calculator • 100% Client-Side Financial Modeling</p>
+    </div>
+  </footer>
+
+  <script src="app.js?v=1"></script>
+</body>
+</html>

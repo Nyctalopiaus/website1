@@ -75,6 +75,25 @@ export function applyLoadedDataToDOM(data, domRefs) {
   safeSet(domRefs.additionalPaymentSlider, data.additionalPayment);
   safeSet(domRefs.lumpSumAmountInput, data.lumpSumAmount);
   safeSet(domRefs.lumpSumFrequencyInput, data.lumpSumFrequency);
+  safeSet(domRefs.biweeklyExtraInput, data.biweeklyExtra || 0);
+  safeSet(domRefs.biweeklyExtraSlider, data.biweeklyExtra || 0);
+
+  // Frequency toggle buttons
+  const freq = data.paymentFrequency || 'monthly';
+  [domRefs.btnFreqMonthly, domRefs.btnFreqBiweekly, domRefs.btnFreqAccelerated].forEach(btn => {
+    if (btn) btn.classList.remove('active');
+  });
+  if (freq === 'biweekly' && domRefs.btnFreqBiweekly) {
+    domRefs.btnFreqBiweekly.classList.add('active');
+  } else if (freq === 'accelerated' && domRefs.btnFreqAccelerated) {
+    domRefs.btnFreqAccelerated.classList.add('active');
+  } else if (domRefs.btnFreqMonthly) {
+    domRefs.btnFreqMonthly.classList.add('active');
+  }
+
+  if (domRefs.biweeklyExtraContainer) {
+    domRefs.biweeklyExtraContainer.style.display = (freq === 'biweekly' || freq === 'accelerated') ? 'block' : 'none';
+  }
 
   // "Have a house to sell?" section. The checkbox's checked state and the
   // panel's show/hide are handled by app.js (not value-based, so safeSet

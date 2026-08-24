@@ -74,12 +74,12 @@
           </button>
 
           <div id="dev-tools-panel" class="absolute right-0 top-full mt-2 w-64 rounded-xl bg-slate-900/95 border border-slate-700/80 shadow-2xl p-2.5 z-50 hidden flex-col gap-2 backdrop-blur-md">
-            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1 pt-0.5">Scraping Ingestion Mode</div>
+            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1 pt-0.5">Environment Mode</div>
             <!-- Dev / Prod Mode Toggle -->
             <div id="fetch-mode-toggle-container" class="flex items-center justify-between gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-300">
-              <span class="font-medium text-[11px] text-slate-400">Scrape Mode:</span>
-              <button id="btn-fetch-mode-toggle" type="button" class="font-bold text-[11px] px-2.5 py-1 rounded transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" title="Toggle between Dev (Local Residential IP, 0 Scrape.do tokens) and Prod (Scrape.do Proxy)">
-                ⚡ Dev (Local)
+              <span class="font-medium text-[11px] text-slate-400">Mode:</span>
+              <button id="btn-fetch-mode-toggle" type="button" class="font-bold text-[11px] px-2.5 py-1 rounded transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/40" title="Toggle between Dev and Prod Environment Mode">
+                ⚡ Dev Mode
               </button>
             </div>
 
@@ -105,6 +105,10 @@
             </button>
           </div>
         </div>
+
+        <button id="btn-open-bookmarklet" type="button" class="px-3 py-1.5 rounded-lg bg-sky-500/20 text-sky-300 font-bold text-xs border border-sky-500/40 hover:bg-sky-500/30 transition-all flex items-center gap-1.5 shadow-sm" title="Setup Browser Bookmarklet to import Redfin, Zillow, Realtor.com, or Homes.com listings in 1 click">
+          🔖 Bookmarklet
+        </button>
 
         <button id="btn-open-route-preview" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold text-xs border border-emerald-500/40 hover:bg-emerald-500/30 transition-all flex items-center gap-1.5 shadow-sm" title="Top-Down Route Preview: View photos, addresses, and schedule times in chronological order">
           🗺️ Route Preview
@@ -337,9 +341,9 @@
           <div class="flex items-center justify-between">
             <label class="text-xs font-semibold text-slate-300">Scouting Sites / Lot Addresses</label>
             <div class="flex items-center gap-2">
-              <button id="btn-open-paste-modal" type="button" class="text-[11px] text-sky-400 hover:underline flex items-center gap-1">
-                📋 Bulk Paste
-              </button>
+              <a id="header-bookmarklet-link" href="#" onclick="window.propertyLinks ? window.propertyLinks.openBookmarkletModal() : null; return false;" class="text-[11px] text-sky-400 hover:text-sky-300 font-bold transition-all flex items-center gap-1 cursor-grab active:cursor-grabbing" title="Drag to Bookmarks bar (or click for setup instructions)" draggable="true">
+                🔖 Bookmarklet
+              </a>
               <span class="text-slate-700">|</span>
               <label for="csv-file-input" class="text-[11px] text-emerald-400 hover:underline cursor-pointer flex items-center gap-1">
                 📂 Import CSV
@@ -348,23 +352,29 @@
             </div>
           </div>
 
-          <!-- Add Site: Redfin URL only. A pasted Redfin listing URL is the
-               single source for both this stop's map location and its
-               price/HOA/beds/baths/sqft (via the shared
-               backend/property-lookup.php lookup) — a free-typed address
-               has neither guarantee, so that input mode was removed
-               (2026-08-22). Off-Redfin lots still work via the "drop a pin
-               on the map" flow (initMapClickPinDropper), which stays
-               address/reverse-geocode based since it has no URL to start from. -->
+          <!-- Recent Import Notification Banner -->
+          <div id="recent-import-banner" class="hidden mb-3 p-3 rounded-xl bg-gradient-to-r from-emerald-950/80 to-sky-950/80 border border-emerald-500/40 shadow-lg transition-all">
+            <div class="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+              <div class="flex items-center gap-2 overflow-hidden">
+                <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30 shrink-0">✨ Recently Imported</span>
+                <span id="recent-import-address" class="text-xs font-semibold text-slate-100 truncate">Property</span>
+              </div>
+              <button id="btn-apply-recent-import" type="button" class="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow transition-all shrink-0">
+                ➕ Add to Scouting Tour
+              </button>
+            </div>
+          </div>
+
+          <!-- Add Site: Listing URL (Redfin, Zillow, Realtor.com, Homes.com) -->
           <div class="space-y-2">
             <div class="flex items-center gap-2">
-              <input id="input-add-address" type="text" placeholder="Paste Redfin listing URL (e.g. https://www.redfin.com/CO/...)" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-sky-500 transition-colors">
+              <input id="input-add-address" type="text" placeholder="Paste listing URL (Redfin, Zillow, Realtor.com, Homes.com)" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 text-xs focus:outline-none focus:border-sky-500 transition-colors">
               <button id="btn-add-address" type="button" class="px-3 py-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold text-xs border border-sky-500/30 transition-colors flex items-center gap-1 flex-shrink-0">
                 ＋ Add
               </button>
             </div>
             <p class="text-[10px] text-slate-500 leading-relaxed">
-              Only Redfin listing URLs are accepted here — that's what gets you accurate price, HOA, beds/baths, and sqft automatically. No Redfin listing for this lot? Click directly on the map to drop a pin instead.
+              Paste listing URLs from Redfin, Zillow, Realtor.com, or Homes.com to auto-populate price, HOA, beds/baths, sqft, and photos. No URL for this lot? Click directly on the map to drop a pin.
             </p>
           </div>
 
@@ -465,7 +475,7 @@
             <a id="note-streetview-link" href="#" target="_blank" class="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 font-semibold border border-amber-500/20 hover:bg-amber-500/20 transition-colors">🟡 Street View ↗</a>
           </div>
           <button id="btn-autodetect-elevation" type="button" class="px-3 py-1.5 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold border border-sky-500/30 transition-all flex items-center gap-1.5 ml-auto">
-            ⚡ Auto-Detect Specs & Photo
+            ⚡ Auto-Detect GIS Lot Details
           </button>
         </div>
 
@@ -506,9 +516,9 @@
             <div>
               <div class="flex items-center justify-between mb-1">
                 <label class="text-slate-400">House Facing 🧭</label>
-                <span id="badge-auto-facing" class="hidden text-[10px] px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 font-semibold border border-sky-500/30">⚡ Auto</span>
               </div>
               <select id="note-facing" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 focus:border-sky-500 focus:outline-none">
+                <option value="">-- Select House Facing (User Input Required) --</option>
                 <option value="South (S)">South (S)</option>
                 <option value="North (N)">North (N)</option>
                 <option value="East (E)">East (E)</option>
@@ -519,7 +529,7 @@
                 <option value="Northwest (NW)">Northwest (NW)</option>
               </select>
               <p class="mt-1 text-[11px] text-slate-400 italic">
-                💡 GIS Estimate — please validate orientation via Redfin map/photos.
+                💡 Select house front orientation (North, South, East, West, etc.)
               </p>
             </div>
 
@@ -666,22 +676,6 @@
     </div>
   </div>
 
-  <!-- MODAL 3: Bulk Paste Addresses Modal -->
-  <div id="bulk-paste-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-        <h3 class="text-sm font-bold text-slate-100">📋 Bulk Paste Scouting Addresses</h3>
-        <button id="close-paste-modal-btn" type="button" class="text-slate-400 hover:text-slate-200 text-lg font-bold">✕</button>
-      </div>
-      <p class="text-xs text-slate-400 mb-3">Paste multiple house or lot addresses below (one address per line):</p>
-      <textarea id="bulk-paste-textarea" rows="8" placeholder="2200 Barton Creek Blvd, Austin, TX&#10;4500 Bee Cave Rd, West Lake Hills, TX&#10;7800 Ranch Rd 620 N, Austin, TX" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-mono text-xs focus:outline-none focus:border-sky-500 leading-relaxed"></textarea>
-      <div class="mt-4 flex justify-end gap-2">
-        <button id="cancel-paste-btn" type="button" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700">Cancel</button>
-        <button id="submit-paste-btn" type="button" class="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20">Add Addresses to List</button>
-      </div>
-    </div>
-  </div>
-
   <!-- MODAL 4: Cross-Device Sync Modal -->
   <div id="sync-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop" onclick="if(event.target === this) this.classList.add('hidden');">
     <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -739,7 +733,7 @@
       <ol class="space-y-3 text-xs text-slate-300 mb-4">
         <li class="p-3 rounded-xl bg-slate-950 border border-slate-800">
           <strong class="block text-slate-100 mb-0.5">1) Set your starting point & stops</strong>
-          Enter your home base address, then add scouting sites by pasting each one's Redfin listing URL (or click the map to drop a pin for lots with no Redfin listing) — use Bulk Paste for a list, or Import CSV.
+          Enter your home base address, then add scouting sites by pasting listing URLs (Redfin, Zillow, Realtor.com, Homes.com), using the 🔖 Bookmarklet, or importing a CSV file.
         </li>
         <li class="p-3 rounded-xl bg-slate-950 border border-slate-800">
           <strong class="block text-slate-100 mb-0.5">2) Optimize & build your tour route</strong>
@@ -922,6 +916,10 @@
       <div class="flex items-center justify-between pt-2 text-[11px] text-slate-400 font-mono border-t border-slate-800">
         <div>📁 File Path: <span class="text-slate-300">backend/data/property_cache.db</span></div>
         <div id="local-db-status-bar" class="text-slate-400">Total Disk Size: ...</div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: Dev Mode Admin Authentication Modal -->
   <div id="modal-dev-auth" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[9999] hidden items-center justify-center p-4">
     <div class="bg-slate-900 border border-amber-500/40 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
@@ -938,7 +936,7 @@
         <button id="btn-close-dev-auth-modal" type="button" class="text-slate-400 hover:text-slate-200 text-xl font-bold p-1">✕</button>
       </div>
       <p class="text-xs text-slate-300 leading-relaxed">
-        Activating Dev Mode bypasses Scrape.do proxying and uses local residential IP fetches directly. Enter admin credentials to proceed.
+        Activating Dev Mode unlocks administrative inspection tools. Enter admin credentials to proceed.
       </p>
       <div class="space-y-2">
         <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Admin Password</label>
@@ -1010,6 +1008,87 @@
       <!-- Lightbox Main Image Display -->
       <div class="p-3 w-full flex items-center justify-center flex-1 overflow-hidden bg-slate-950/90 min-h-[300px] max-h-[80vh]">
         <img id="lightbox-img" src="" alt="Property Photo Lightbox" class="max-w-full max-h-[78vh] w-auto h-auto object-contain rounded-xl shadow-2xl">
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Browser Bookmarklet Setup -->
+  <div id="modal-bookmarklet" class="hidden fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md transition-all" onclick="if(event.target === this) window.propertyLinks ? window.propertyLinks.closeBookmarkletModal() : null;">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl flex flex-col shadow-2xl overflow-hidden relative">
+      <div class="p-5 border-b border-slate-800 bg-slate-900/95 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-sky-400 text-lg">🔖</span>
+          <h2 class="text-base font-extrabold text-slate-100">Nycto.ninja Listing Importer Bookmarklet</h2>
+        </div>
+        <button id="btn-close-bookmarklet" type="button" class="text-slate-400 hover:text-slate-200 text-lg font-bold p-1 rounded-lg hover:bg-slate-800 transition-colors">✕</button>
+      </div>
+      <div class="p-6 space-y-4 text-xs text-slate-300 overflow-y-auto max-h-[75vh]">
+        <p class="leading-relaxed">
+          Import property listings from <strong>Redfin, Zillow, Realtor.com, or Homes.com</strong> into Nycto.ninja in 1 click directly from your browser.
+        </p>
+        <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col items-center gap-3 text-center">
+          <div class="text-[11px] text-slate-400 font-medium">Drag this button to your Browser Bookmarks bar:</div>
+          <a id="bookmarklet-link" href="#" onclick="alert('Drag this button to your Browser Bookmarks bar (Ctrl+Shift+O or Cmd+Option+B to show bookmarks bar).'); return false;" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 text-slate-950 font-extrabold text-xs shadow-lg hover:scale-105 transition-all cursor-grab active:cursor-grabbing">
+            🔖 Import to Nycto.ninja
+          </a>
+        </div>
+        <div class="space-y-2">
+          <div class="font-bold text-slate-200">How to use it:</div>
+          <ol class="list-decimal list-inside space-y-1.5 text-slate-400 pl-1">
+            <li>Open any listing on Redfin, Zillow, Realtor.com, or Homes.com in your browser.</li>
+            <li>Click the <strong class="text-slate-200">🔖 Import to Nycto.ninja</strong> bookmarklet in your bookmarks bar.</li>
+            <li>The property will be saved to the shared server cache, and Homeward will prompt you to add it directly to your scouting tour!</li>
+          </ol>
+        </div>
+        <div class="pt-2 border-t border-slate-800">
+          <div class="font-bold text-slate-200 mb-1">Manual Bookmarklet Code:</div>
+          <div class="flex gap-2">
+            <input id="bookmarklet-code-text" type="text" readonly class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-[10px] font-mono text-slate-400 select-all">
+            <button id="btn-copy-bookmarklet-code" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 font-bold text-xs shrink-0 transition-colors">
+              Copy Code
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="p-4 border-t border-slate-800 bg-slate-900/95 flex justify-end">
+        <button type="button" onclick="window.propertyLinks.closeBookmarkletModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold border border-slate-700 transition-all text-xs">
+          Got It
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Bookmarklet Ingestion Required -->
+  <div id="modal-bookmarklet-needed" class="hidden fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md transition-all" onclick="if(event.target === this) window.propertyLinks ? window.propertyLinks.closeBookmarkletNeededModal() : null;" style="display: none;">
+    <div class="bg-slate-900 border border-sky-500/30 rounded-2xl w-full max-w-lg flex flex-col shadow-2xl overflow-hidden relative p-6 space-y-4 text-slate-200">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">🔖</span>
+          <h2 id="bookmarklet-needed-modal-title" class="text-base font-extrabold text-sky-400">Bookmarklet Ingestion Required</h2>
+        </div>
+        <button id="btn-close-bookmarklet-needed" type="button" onclick="window.propertyLinks ? window.propertyLinks.closeBookmarkletNeededModal() : null;" class="text-slate-400 hover:text-slate-200 text-lg font-bold p-1 rounded-lg hover:bg-slate-800 transition-colors">✕</button>
+      </div>
+
+      <p id="bookmarklet-needed-modal-message" class="text-xs text-slate-300 leading-relaxed bg-slate-950 p-3 rounded-xl border border-slate-800">
+        This property URL hasn't been ingested into your Nycto.ninja cache yet. You need to ingest it using the bookmarklet on the listing page before you can import it here.
+      </p>
+      
+      <div class="p-3.5 rounded-xl bg-sky-500/10 border border-sky-500/30 space-y-2 text-xs">
+        <div class="font-bold text-sky-300 uppercase tracking-wider text-[11px]">How to ingest this listing:</div>
+        <ol class="list-decimal list-inside space-y-1.5 text-slate-300 leading-relaxed pl-1">
+          <li>Open the listing on <strong class="text-slate-100">Zillow, Redfin, Realtor.com, or Homes.com</strong>.</li>
+          <li>Click the <strong class="text-sky-300">🔖 Import to Nycto.ninja</strong> bookmarklet in your browser's bookmarks bar.</li>
+          <li>Return here and click <strong class="text-emerald-400">➕ Add</strong> again!</li>
+        </ol>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button id="btn-open-bookmarklet-from-needed" type="button" onclick="window.propertyLinks ? (window.propertyLinks.closeBookmarkletNeededModal(), window.propertyLinks.openBookmarkletModal()) : null;" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-slate-950 font-bold text-xs shadow-md shadow-sky-500/20 transition-all flex items-center gap-1.5">
+          <span>🔖</span> Get Bookmarklet
+        </button>
+        <button id="btn-dismiss-bookmarklet-needed" type="button" onclick="window.propertyLinks ? window.propertyLinks.closeBookmarkletNeededModal() : null;" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs border border-slate-700 transition-all">
+          Close
+        </button>
       </div>
     </div>
   </div>

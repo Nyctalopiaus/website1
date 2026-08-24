@@ -397,10 +397,7 @@ class Geocoder {
       const lons = [lng, lng, lng, lng + 0.0002, lng - 0.0002].map(n => n.toFixed(5)).join(',');
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m`;
 
-      const [elevResp, facingDir] = await Promise.all([
-        fetch(url).catch(() => null),
-        this.fetchLotFacingDirection(lat, lng).catch(() => null)
-      ]);
+      const elevResp = await fetch(url).catch(() => null);
 
       if (elevResp && elevResp.ok) {
         const data = await elevResp.json();
@@ -422,7 +419,7 @@ class Geocoder {
             elevationFt: centerElevFt,
             varianceFt: varianceFt,
             terrain: terrain,
-            facingDirection: facingDir || null,
+            facingDirection: null,
             lotSize: null
           };
         }

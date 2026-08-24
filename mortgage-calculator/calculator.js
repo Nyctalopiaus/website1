@@ -45,7 +45,9 @@ export function simulatePayoff(
   years,
   additionalPayment = 0,
   lumpSumAmount = 0,
-  lumpSumFreq = 12
+  lumpSumFreq = 12,
+  paymentFrequency = 'monthly',
+  biweeklyExtra = 0
 ) {
   const monthlyRate = annualRate / 12 / 100;
   const originalMonths = years * CONFIG.MONTHS_PER_YEAR;
@@ -60,6 +62,14 @@ export function simulatePayoff(
     regularPi = principal / originalMonths;
   }
 
+  // Calculate base biweekly payment according to frequency mode
+  let biweeklyPi = 0;
+  if (paymentFrequency === 'biweekly') {
+    biweeklyPi = (regularPi * 12) / 26;
+  } else if (paymentFrequency === 'accelerated') {
+    biweeklyPi = regularPi / 2;
+  }
+
   let balance = principal;
   let totalInterest = 0;
   let monthsCount = 0;
@@ -71,6 +81,7 @@ export function simulatePayoff(
   let cumInterest = 0;
   let cumPrincipal = 0;
   let totalExtraMonthly = 0;
+  let totalBiweeklyExtra = 0;
   let totalLumpsum = 0;
 
   // Month-by-month simulation
@@ -79,24 +90,40 @@ export function simulatePayoff(
     
     // Interest accrual this month
     const interestThisMonth = balance * monthlyRate;
-    const regularPrincipalPaid = Math.max(0, regularPi - interestThisMonth);
+    
+    let requiredPiThisMonth = regularPi;
+    let biweeklyExtraThisMonth = 0;
+    
+    if (paymentFrequency === 'biweekly' || paymentFrequency === 'accelerated') {
+      // 26 biweekly payments per year: 10 months have 2 payments, 2 months (months 6 & 12) have 3 payments
+      const numPayments = (monthsCount % 6 === 0) ? 3 : 2;
+      requiredPiThisMonth = numPayments * biweeklyPi;
+      biweeklyExtraThisMonth = numPayments * biweeklyExtra;
+    }
+
+    const regularPrincipalPaid = Math.max(0, requiredPiThisMonth - interestThisMonth);
     const maxExtra = Math.max(0, balance - regularPrincipalPaid);
+
+    // Apply biweekly extra payment (capped by remaining balance)
+    const actualBiweeklyExtra = Math.min(biweeklyExtraThisMonth, maxExtra);
+    totalBiweeklyExtra += actualBiweeklyExtra;
     
     // Apply extra monthly payment (capped by remaining balance)
-    const actualExtraMonthly = Math.min(additionalPayment, maxExtra);
+    const maxMonthlyExtra = Math.max(0, maxExtra - actualBiweeklyExtra);
+    const actualExtraMonthly = Math.min(additionalPayment, maxMonthlyExtra);
     totalExtraMonthly += actualExtraMonthly;
     
     // Apply lump sum if it's the right month
     let actualLumpSum = 0;
     if (lumpSumAmount > 0 && monthsCount % lumpSumFreq === 0) {
-      actualLumpSum = Math.min(lumpSumAmount, maxExtra - actualExtraMonthly);
+      actualLumpSum = Math.min(lumpSumAmount, Math.max(0, maxMonthlyExtra - actualExtraMonthly));
     }
     totalLumpsum += actualLumpSum;
     
     // Total principal paid this month
     const actualPrincipalPaid = Math.min(
       balance,
-      regularPrincipalPaid + actualExtraMonthly + actualLumpSum
+      regularPrincipalPaid + actualBiweeklyExtra + actualExtraMonthly + actualLumpSum
     );
     
     // Update running totals
@@ -129,6 +156,7 @@ export function simulatePayoff(
 
   return {
     regularPi,
+    biweeklyPi,
     totalInterest,
     monthsToPayoff: monthsCount,
     monthsSaved: Math.max(0, originalMonths - monthsCount),
@@ -136,6 +164,7 @@ export function simulatePayoff(
     yearlyInterest,
     yearlyPayments,
     totalExtraMonthly,
+    totalBiweeklyExtra,
     totalLumpsum
   };
 }
@@ -236,6 +265,13 @@ function clamp01Percent(value) {
  * @returns {Object} Extracted input values
  */
 export function extractInputValues(domRefs) {
+  let paymentFrequency = 'monthly';
+  if (domRefs.btnFreqBiweekly?.classList.contains('active')) {
+    paymentFrequency = 'biweekly';
+  } else if (domRefs.btnFreqAccelerated?.classList.contains('active')) {
+    paymentFrequency = 'accelerated';
+  }
+
   return {
     homePrice: parseFloatSafe(domRefs.homePriceInput.value, 0),
     downPayment: parseFloatSafe(domRefs.downPaymentAmountInput.value, 0),
@@ -249,7 +285,9 @@ export function extractInputValues(domRefs) {
     additionalPayment: parseFloatSafe(domRefs.additionalPaymentInput.value, 0),
     lumpSumAmount: parseFloatSafe(domRefs.lumpSumAmountInput.value, 0),
     lumpSumFrequency: parseInt(domRefs.lumpSumFrequencyInput.value, 10) || 12,
-    downPaymentPercent: parseFloatSafe(domRefs.downPaymentPercentInput.value, 0)
+    downPaymentPercent: parseFloatSafe(domRefs.downPaymentPercentInput.value, 0),
+    paymentFrequency,
+    biweeklyExtra: domRefs.biweeklyExtraInput ? parseFloatSafe(domRefs.biweeklyExtraInput.value, 0) : 0
   };
 }
 
@@ -271,7 +309,9 @@ export function performCalculations(inputs) {
     grossAnnualIncome,
     additionalPayment,
     lumpSumAmount,
-    lumpSumFrequency
+    lumpSumFrequency,
+    paymentFrequency = 'monthly',
+    biweeklyExtra = 0
   } = inputs;
 
   const loanAmount = Math.max(0, homePrice - downPayment);
@@ -287,24 +327,49 @@ export function performCalculations(inputs) {
   // 30-Year Calculations
   const baselinePi30 = calcPIPayment(loanAmount, interest30, CONFIG.LOAN_TERM_30);
   const baselineInterest30 = Math.max(0, (baselinePi30 * 360) - loanAmount);
-  const amort30 = simulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, additionalPayment, lumpSumAmount, lumpSumFrequency);
-  const totalMonthly30 = amort30.regularPi + monthlyTax + monthlyInsurance + monthlyPmi + hoaFees;
+  const amort30 = simulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, additionalPayment, lumpSumAmount, lumpSumFrequency, paymentFrequency, biweeklyExtra);
+  
+  // Effective regular monthly payment display
+  let regularMonthlyPI30 = amort30.regularPi;
+  if (paymentFrequency === 'biweekly') {
+    regularMonthlyPI30 = (amort30.biweeklyPi * 26) / 12;
+  } else if (paymentFrequency === 'accelerated') {
+    regularMonthlyPI30 = (amort30.biweeklyPi * 26) / 12;
+  }
+  const totalMonthly30 = regularMonthlyPI30 + monthlyTax + monthlyInsurance + monthlyPmi + hoaFees;
 
-  const amort30Monthly = simulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, additionalPayment, 0, 12);
+  const amort30Monthly = simulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, additionalPayment, 0, 12, 'monthly', 0);
+  const amort30BiweeklyOnly = simulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, 0, 0, 12, paymentFrequency, biweeklyExtra);
+  
+  const biweeklySaved30 = (paymentFrequency !== 'monthly' || biweeklyExtra > 0)
+    ? Math.max(0, baselineInterest30 - amort30BiweeklyOnly.totalInterest)
+    : 0;
   const monthlySaved30 = Math.max(0, baselineInterest30 - amort30Monthly.totalInterest);
   const totalSaved30 = Math.max(0, baselineInterest30 - amort30.totalInterest);
-  const lumpSumSaved30 = Math.max(0, totalSaved30 - monthlySaved30);
+  const lumpSumSaved30 = Math.max(0, totalSaved30 - monthlySaved30 - biweeklySaved30);
 
   // 15-Year Calculations
   const baselinePi15 = calcPIPayment(loanAmount, interest15, CONFIG.LOAN_TERM_15);
   const baselineInterest15 = Math.max(0, (baselinePi15 * 180) - loanAmount);
-  const amort15 = simulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, additionalPayment, lumpSumAmount, lumpSumFrequency);
-  const totalMonthly15 = amort15.regularPi + monthlyTax + monthlyInsurance + monthlyPmi + hoaFees;
+  const amort15 = simulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, additionalPayment, lumpSumAmount, lumpSumFrequency, paymentFrequency, biweeklyExtra);
+  
+  let regularMonthlyPI15 = amort15.regularPi;
+  if (paymentFrequency === 'biweekly') {
+    regularMonthlyPI15 = (amort15.biweeklyPi * 26) / 12;
+  } else if (paymentFrequency === 'accelerated') {
+    regularMonthlyPI15 = (amort15.biweeklyPi * 26) / 12;
+  }
+  const totalMonthly15 = regularMonthlyPI15 + monthlyTax + monthlyInsurance + monthlyPmi + hoaFees;
 
-  const amort15Monthly = simulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, additionalPayment, 0, 12);
+  const amort15Monthly = simulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, additionalPayment, 0, 12, 'monthly', 0);
+  const amort15BiweeklyOnly = simulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, 0, 0, 12, paymentFrequency, biweeklyExtra);
+  
+  const biweeklySaved15 = (paymentFrequency !== 'monthly' || biweeklyExtra > 0)
+    ? Math.max(0, baselineInterest15 - amort15BiweeklyOnly.totalInterest)
+    : 0;
   const monthlySaved15 = Math.max(0, baselineInterest15 - amort15Monthly.totalInterest);
   const totalSaved15 = Math.max(0, baselineInterest15 - amort15.totalInterest);
-  const lumpSumSaved15 = Math.max(0, totalSaved15 - monthlySaved15);
+  const lumpSumSaved15 = Math.max(0, totalSaved15 - monthlySaved15 - biweeklySaved15);
 
   return {
     loanAmount,
@@ -312,6 +377,8 @@ export function performCalculations(inputs) {
     monthlyTax,
     monthlyInsurance,
     monthlyPmi,
+    paymentFrequency,
+    biweeklyExtra,
     
     // 30-year
     baselinePi30,
@@ -319,6 +386,7 @@ export function performCalculations(inputs) {
     amort30,
     totalMonthly30,
     monthlySaved30,
+    biweeklySaved30,
     totalSaved30,
     lumpSumSaved30,
     
@@ -328,15 +396,16 @@ export function performCalculations(inputs) {
     amort15,
     totalMonthly15,
     monthlySaved15,
+    biweeklySaved15,
     totalSaved15,
     lumpSumSaved15,
     
     // For chart baselines (no extra payments)
-    baseline30: (additionalPayment > 0 || lumpSumAmount > 0)
-      ? simulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, 0, 0, 12)
+    baseline30: (additionalPayment > 0 || lumpSumAmount > 0 || biweeklyExtra > 0 || paymentFrequency !== 'monthly')
+      ? simulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, 0, 0, 12, 'monthly', 0)
       : null,
-    baseline15: (additionalPayment > 0 || lumpSumAmount > 0)
-      ? simulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, 0, 0, 12)
+    baseline15: (additionalPayment > 0 || lumpSumAmount > 0 || biweeklyExtra > 0 || paymentFrequency !== 'monthly')
+      ? simulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, 0, 0, 12, 'monthly', 0)
       : null
   };
 }

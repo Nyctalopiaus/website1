@@ -32,7 +32,7 @@
  * can use them directly in calculations, not just for display.
  */
 
-require __DIR__ . '/lib/property-parser.php';
+require __DIR__ . '/lib/multi-site-parser.php';
 
 if (isset($_SERVER['HTTP_ORIGIN'])) {
     header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
@@ -180,9 +180,9 @@ if (empty($url) || filter_var($url, FILTER_VALIDATE_URL) === false || !preg_matc
     jsonExit(['error' => 'Invalid or missing URL parameter. Ensure it starts with https:// or http://'], 400);
 }
 
-if (!isSafeRedfinUrl($url)) {
+if (!isAllowedImportUrl($url)) {
     logEvent('WARN', 'rejected_unsafe_url', ['ip' => clientIp(), 'url' => $url]);
-    jsonExit(['error' => 'This tool only fetches property pages from redfin.com. Please paste a Redfin property page URL.'], 400);
+    jsonExit(['error' => 'This tool supports property pages from Redfin, Zillow, Realtor.com, and Homes.com.'], 400);
 }
 
 // ---------------------------------------------------------------------
@@ -287,11 +287,25 @@ function purgeExpired($db) {
 }
 
 function rowToResponse($row, $cached, $cacheAgeDays) {
+    $provider = null;
+    $rentalEstimate = null;
+    if (!empty($row['json_data'])) {
+        $json = @json_decode($row['json_data'], true);
+        if (isset($json['provider'])) $provider = $json['provider'];
+        if (isset($json['rentalEstimate']) && $json['rentalEstimate'] !== null) {
+            $rentalEstimate = (float)$json['rentalEstimate'];
+        }
+    }
+    if (!$provider && !empty($row['url'])) {
+        $provider = detectProviderDomain($row['url']);
+    }
     return [
         'redfinId' => $row['redfin_id'],
         'url' => $row['url'],
         'address' => $row['address'],
+        'provider' => $provider ?: 'generic',
         'price' => $row['price'] !== null ? (float)$row['price'] : null,
+        'rentalEstimate' => $rentalEstimate,
         'propertyTaxRate' => $row['property_tax_rate'] !== null ? (float)$row['property_tax_rate'] : null,
         'hoaFee' => $row['hoa_fee'] !== null ? (float)$row['hoa_fee'] : null,
         'beds' => $row['beds'] !== null ? (float)$row['beds'] : null,
@@ -319,6 +333,23 @@ if (!$forceRefresh) {
     $stmt->bindValue(':key', $cacheKey, SQLITE3_TEXT);
     $row = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
 
+    // Fallback: match by street address if looking up via a different provider URL
+    if (!$row && !empty($fallbackAddress) && strlen($fallbackAddress) > 5) {
+        $streetMatch = $fallbackAddress;
+        if (preg_match('/^(\d+\s+[a-z0-9\s]+?)(?:,|\s+[a-z]+(?:\s+[a-z]{2})?(?:\s+\d{5})?|$)/i', $fallbackAddress, $stM)) {
+            $streetMatch = trim($stM[1]);
+        } else {
+            $streetMatch = preg_replace('/,.*$/', '', $fallbackAddress);
+        }
+
+        if (strlen($streetMatch) > 5) {
+            $fuzzyStmt = $db->prepare('SELECT * FROM property_cache WHERE address LIKE :addrPattern AND expires_at > :now LIMIT 1');
+            $fuzzyStmt->bindValue(':addrPattern', '%' . $streetMatch . '%', SQLITE3_TEXT);
+            $fuzzyStmt->bindValue(':now', time(), SQLITE3_INTEGER);
+            $row = $fuzzyStmt->execute()->fetchArray(SQLITE3_ASSOC);
+        }
+    }
+
     if ($row && $row['expires_at'] > time()) {
         $ageDays = round((time() - $row['created_at']) / 86400, 1);
         header('X-Property-Cache: HIT-7DAY');
@@ -331,10 +362,7 @@ if (!$forceRefresh) {
         jsonExit(rowToResponse($row, true, $ageDays));
     }
 
-    // Negative cache: a recent scrape found nothing parseable on this exact
-    // page. Don't burn another Scrape.do call re-fetching a page we just
-    // confirmed doesn't parse — return the same error without scraping
-    // again until the short negative TTL expires (or the caller forces).
+    // Negative cache check
     $negStmt = $db->prepare('SELECT * FROM property_cache_negative WHERE cache_key = :key');
     $negStmt->bindValue(':key', $cacheKey, SQLITE3_TEXT);
     $negRow = $negStmt->execute()->fetchArray(SQLITE3_ASSOC);
@@ -345,352 +373,14 @@ if (!$forceRefresh) {
         ]);
         jsonExit(['error' => $negRow['reason'], 'cached' => false, 'recentlyFailed' => true], 200);
     }
-
-    // Neither cache had a usable row — this is what actually triggers the
-    // live Scrape.do call below. staleRowFound/staleNegRowFound flag a row
-    // that existed but had already expired (as opposed to never having
-    // been cached at all), which is useful to see when eyeballing why a
-    // property that "should" be cached is scraping again.
-    logEvent('INFO', 'cache_miss', [
-        'cacheKey' => $cacheKey, 'url' => $url,
-        'staleRowFound' => (bool)$row, 'staleNegRowFound' => (bool)$negRow,
-    ]);
-} else {
-    logEvent('INFO', 'cache_skipped_force', ['cacheKey' => $cacheKey, 'url' => $url]);
 }
 
-// ---------------------------------------------------------------------
-// 4b. In-flight dedup lock. We're now committed to a live scrape unless
-// someone else already started one for this exact property. TTL (90s) is
-// set above CURLOPT_TIMEOUT (65s) + set_time_limit() (85s) below, so a
-// legitimately-still-running request's lock never expires out from under
-// it. register_shutdown_function() releases the lock on every exit path
-// — a normal jsonExit()/exit, a PHP fatal error, or the script hitting
-// max_execution_time — so a crashed worker can't leave a lock stuck for
-// its full 90s TTL under normal conditions; the TTL sweep below is just
-// the backstop for the rare case a host force-kills the process outright
-// (e.g. OOM), which bypasses shutdown functions entirely.
-// ---------------------------------------------------------------------
-define('IN_FLIGHT_LOCK_TTL_SECONDS', 90);
-
-$lockNow = time();
-$db->exec('DELETE FROM in_flight_lookup WHERE expires_at < ' . $lockNow);
-
-$lockStmt = $db->prepare('SELECT * FROM in_flight_lookup WHERE cache_key = :key');
-$lockStmt->bindValue(':key', $cacheKey, SQLITE3_TEXT);
-$existingLock = $lockStmt->execute()->fetchArray(SQLITE3_ASSOC);
-
-if ($existingLock && $existingLock['expires_at'] > $lockNow) {
-    logEvent('WARN', 'dedup_in_flight_skip', [
-        'cacheKey' => $cacheKey, 'url' => $url,
-        'lockAgeSec' => ($lockNow - $existingLock['started_at']),
-    ]);
-    jsonExit([
-        'error' => 'A lookup for this property is already in progress (started ' .
-            ($lockNow - $existingLock['started_at']) . 's ago). Please wait a moment and try again.',
-        'inFlight' => true,
-    ], 200);
-}
-
-$lockStmt2 = $db->prepare('INSERT OR REPLACE INTO in_flight_lookup (cache_key, started_at, expires_at) VALUES (:key, :started, :expires)');
-$lockStmt2->bindValue(':key', $cacheKey, SQLITE3_TEXT);
-$lockStmt2->bindValue(':started', $lockNow, SQLITE3_INTEGER);
-$lockStmt2->bindValue(':expires', $lockNow + IN_FLIGHT_LOCK_TTL_SECONDS, SQLITE3_INTEGER);
-$lockStmt2->execute();
-
-register_shutdown_function(function () use ($db, $cacheKey) {
-    $del = $db->prepare('DELETE FROM in_flight_lookup WHERE cache_key = :key');
-    $del->bindValue(':key', $cacheKey, SQLITE3_TEXT);
-    $del->execute();
-    logEvent('INFO', 'dedup_lock_released', ['cacheKey' => $cacheKey]);
-});
-
-// ---------------------------------------------------------------------
-// 5. Rate limit — only applies to requests that reach this point, i.e.
-// requests about to spend a real Scrape.do credit (cache miss or forced
-// refresh). Normal cache hits above never touch this.
-// ---------------------------------------------------------------------
-$ip = clientIp();
-$windowStart = time() - RATE_LIMIT_WINDOW_SECONDS;
-$countStmt = $db->prepare('SELECT COUNT(*) AS n FROM request_log WHERE ip = :ip AND ts > :windowStart');
-$countStmt->bindValue(':ip', $ip, SQLITE3_TEXT);
-$countStmt->bindValue(':windowStart', $windowStart, SQLITE3_INTEGER);
-$recentCount = (int)($countStmt->execute()->fetchArray(SQLITE3_ASSOC)['n'] ?? 0);
-
-if ($recentCount >= RATE_LIMIT_MAX_SCRAPES_PER_WINDOW) {
-    logEvent('WARN', 'rate_limited', ['ip' => $ip, 'recentCount' => $recentCount, 'url' => $url]);
-    jsonExit(['error' => 'Too many property lookups from this connection in a short time. Please wait a few minutes and try again.'], 429);
-}
-
-$logStmt = $db->prepare('INSERT INTO request_log (ip, ts) VALUES (:ip, :ts)');
-$logStmt->bindValue(':ip', $ip, SQLITE3_TEXT);
-$logStmt->bindValue(':ts', time(), SQLITE3_INTEGER);
-$logStmt->execute();
-
-// ---------------------------------------------------------------------
-// 6. Scrape.do / ScraperAPI fetch. Always request headless rendering
-// (render=true) — mortgage-calculator's old proxy skipped this for a
-// cheaper call, but that only ever got it price/HOA/tax; homeward needs
-// beds/baths/sqft/photo too, which need the rendered page. One shared
-// scrape has to satisfy the richer of the two consumers.
-// ---------------------------------------------------------------------
-define('SCRAPE_DO_TOKEN', getenv('SCRAPE_DO_TOKEN') ?: '');
-define('SCRAPER_API_KEY', getenv('SCRAPER_API_KEY') ?: '');
-
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
-curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
-curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
-curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
-
-// Timeout budget — history, most recent fix first:
-// 2026-08-22c: root cause wasn't "needs more time" after all. Switched the
-// scrape.do request from render=true (headless Chrome rendering, +timeout
-// param) to super=true (residential-IP proxy, NO headless browser).
-// Redfin's anti-bot layer was almost certainly fingerprinting Scrape.do's
-// headless Chrome session specifically — a plain fetch through a
-// residential IP reads as a normal browser request and doesn't trip it.
-// This also confirms render=true was never actually necessary for most of
-// what homeward needs: a successful super=true pull on 9454 Wolfe Pl
-// returned price/hoaFee/photoUrl/beds/baths/lotSqFt in ~4s (vs. the 30-60s+
-// render=true was taking, and often still failing). Only sqft came back
-// null on that same successful pull — that's a backend/lib/property-parser.php
-// gap (the raw page's markup apparently doesn't expose it the same way
-// beds/baths do), not a scrape-method problem; worth a fixture-driven look
-// separately.
-// 2026-08-22b (superseded by the above): logs showed curlErrno 28 ("0
-// bytes received") at 30002ms, then — after bumping curl's timeout —
-// Scrape.do itself returning HTTP 502 at 45670ms, meaning its OWN
-// render=true renderer was giving up right at the `timeout` param we were
-// passing it. Read as "this listing's render just needs longer" and the
-// budget was widened accordingly (30s->50s->65s curl / none->45s->60s
-// Scrape.do timeout param). That diagnosis was wrong: no amount of extra
-// time was going to help a request that was actually being fingerprinted,
-// not merely running slow.
-// Nesting still matters for whichever provider branch actually fires
-// (scrape.do below is fast now — ~15s ceiling is generous; the scraperapi
-// fallback branch still uses the old render=true+65s approach and hasn't
-// been revisited, since scrape.do is the one actually configured/in use —
-// see SCRAPE_DO_TOKEN vs SCRAPER_API_KEY below):
-//   innermost curl timeout (15s scrape.do / 65s scraperapi fallback)
-//   < PHP set_time_limit() above (85s) — script isn't killed mid-write
-//   < caller's fetch AbortController (see js/property-links.js, 75s)
-// These outer two are sized to the scraperapi fallback's larger 65s, not
-// scrape.do's fast path — don't shrink them without also revisiting that
-// fallback branch, or a request that legitimately falls back to it could
-// get killed by set_time_limit()/the client abort before curl's own
-// timeout ever decides "too slow".
-
-if ($isDirectDev) {
-    $provider = 'direct (dev mode)';
-    $pythonCmd = 'python ' . escapeshellarg(__DIR__ . '/lib/fetch_direct.py') . ' ' . escapeshellarg($url);
-    $pythonOutput = @shell_exec($pythonCmd);
-    if (!empty($pythonOutput)) {
-        $pyData = @json_decode($pythonOutput, true);
-        if (is_array($pyData) && isset($pyData['status'])) {
-            $httpCode = (int)$pyData['status'];
-            $html = isset($pyData['content']) ? $pyData['content'] : '';
-            $htmlBytes = strlen($html);
-            logEvent('INFO', 'scrape_completed', ['provider' => $provider, 'url' => $url, 'httpCode' => $httpCode, 'htmlBytes' => $htmlBytes]);
-            goto check_response_status;
-        }
-    }
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36");
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language: en-US,en;q=0.9',
-        'Referer: https://www.google.com/',
-        'Upgrade-Insecure-Requests: 1',
-        'DNT: 1'
-    ]);
-} elseif (defined('SCRAPE_DO_TOKEN') && !empty(SCRAPE_DO_TOKEN)) {
-    $provider = 'scrape.do';
-    // super=true (residential proxy) instead of render=true (headless
-    // Chrome) — see the timeout-budget comment above for why. Redfin's own
-    // server-rendered HTML already embeds most of what we need, so the
-    // headless render wasn't just slow, it was actively counterproductive.
-    $apiUrl = "https://api.scrape.do?token=" . SCRAPE_DO_TOKEN . "&super=true&url=" . urlencode($url);
-    curl_setopt($ch, CURLOPT_URL, $apiUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-} elseif (defined('SCRAPER_API_KEY') && !empty(SCRAPER_API_KEY)) {
-    $provider = 'scraperapi';
-    $apiUrl = "https://api.scraperapi.com?api_key=" . SCRAPER_API_KEY . "&render=true&url=" . urlencode($url);
-    curl_setopt($ch, CURLOPT_URL, $apiUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 65);
-} else {
-    $provider = 'direct';
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1");
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language: en-US,en;q=0.9',
-        'Referer: https://www.google.com/',
-        'Upgrade-Insecure-Requests: 1',
-        'DNT: 1'
-    ]);
-}
-
-logEvent('INFO', 'scrape_started', ['provider' => $provider, 'cacheKey' => $cacheKey, 'url' => $url]);
-
-$html = curl_exec($ch);
-
-if (curl_errno($ch)) {
-    $err = curl_error($ch);
-    $errno = curl_errno($ch);
-    curl_close($ch);
-    logEvent('ERROR', 'curl_error', ['provider' => $provider, 'url' => $url, 'curlErrno' => $errno, 'curlError' => $err]);
-    jsonExit(['error' => 'cURL Error: ' . $err], 502);
-}
-
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$htmlBytes = is_string($html) ? strlen($html) : 0;
-@curl_close($ch);
-
-check_response_status:
-
-// A short, single-line preview of whatever body came back on a
-// non-success response — the actual wording (a Scrape.do error JSON, a
-// Redfin challenge page, a proxy's own HTML error page) is what tells you
-// WHICH layer failed without having to reproduce it live.
-function bodySnippet($html, $len = 500) {
-    if (!is_string($html) || $html === '') return '';
-    $snippet = preg_replace('/\s+/', ' ', trim($html));
-    if (function_exists('mb_substr')) {
-        return mb_substr($snippet, 0, $len);
-    }
-    return substr($snippet, 0, $len);
-}
-
-if ($httpCode === 502) {
-    // Per Scrape.do's docs: 502 = "render didn't finish in time, please
-    // retry" and does NOT consume a credit — distinct from a real block
-    // or a dead proxy, so it gets its own branch/message rather than
-    // falling into the generic scrape_bad_status case below.
-    logEvent('WARN', 'scrape_timeout_502', [
-        'provider' => $provider, 'url' => $url, 'htmlBytes' => $htmlBytes,
-        'bodySnippet' => bodySnippet($html),
-    ]);
-    jsonExit(['error' => 'Property lookup timed out rendering the page. This did not use up a lookup credit — please try Auto-Detect again.', 'retryable' => true], 200);
-} elseif ($httpCode === 403 || $httpCode === 202 || $httpCode === 405) {
-    logEvent('WARN', 'scrape_blocked', [
-        'provider' => $provider, 'url' => $url, 'httpCode' => $httpCode, 'htmlBytes' => $htmlBytes,
-        'bodySnippet' => bodySnippet($html),
-    ]);
-    jsonExit([
-        'error' => 'Connection challenged or rate-limited by Redfin (HTTP ' . $httpCode . ').',
-        'rateLimited' => true,
-        'retryable' => true,
-        'recommendedDelaySec' => 6
-    ], 200);
-} elseif ($httpCode === 404) {
-    logEvent('WARN', 'scrape_404', ['provider' => $provider, 'url' => $url, 'bodySnippet' => bodySnippet($html)]);
-    jsonExit(['error' => 'Property page not found (HTTP 404). Please verify the URL.'], 200);
-} elseif ($httpCode !== 200) {
-    logEvent('ERROR', 'scrape_bad_status', [
-        'provider' => $provider, 'url' => $url, 'httpCode' => $httpCode, 'htmlBytes' => $htmlBytes,
-        'bodySnippet' => bodySnippet($html),
-    ]);
-    jsonExit(['error' => 'Failed to retrieve page. Server returned HTTP Status ' . $httpCode], 200);
-}
-
-logEvent('INFO', 'scrape_response_ok', ['provider' => $provider, 'url' => $url, 'httpCode' => $httpCode, 'htmlBytes' => $htmlBytes]);
-
-// ---------------------------------------------------------------------
-// 7. Parse (see backend/lib/property-parser.php) and store/respond.
-// ---------------------------------------------------------------------
-$parsed = parsePropertyHtml($html, $fallbackAddress);
-
-if (!$parsed['foundSomething']) {
-    // Negative-cache this exact page for a short window so a temporary
-    // Redfin layout change or an off-market page we can't parse doesn't
-    // get hit with another paid scrape every time someone looks it up
-    // again in the next hour. Deliberately a SEPARATE table from
-    // property_cache, so a page that fails to parse today never clobbers
-    // a good record fetched on a previous, successful pull.
-    $now = time();
-    $stmt = $db->prepare('INSERT OR REPLACE INTO property_cache_negative (cache_key, url, reason, created_at, expires_at) VALUES (:key, :url, :reason, :created_at, :expires_at)');
-    $stmt->bindValue(':key', $cacheKey, SQLITE3_TEXT);
-    $stmt->bindValue(':url', $url, SQLITE3_TEXT);
-    $stmt->bindValue(':reason', 'Could not find property data on the provided page.', SQLITE3_TEXT);
-    $stmt->bindValue(':created_at', $now, SQLITE3_INTEGER);
-    $stmt->bindValue(':expires_at', $now + NEGATIVE_CACHE_TTL_SECONDS, SQLITE3_INTEGER);
-    $stmt->execute();
-
-    logEvent('WARN', 'parse_failed', ['cacheKey' => $cacheKey, 'url' => $url, 'htmlBytes' => $htmlBytes]);
-    jsonExit(['error' => 'Could not find property data on the provided page.', 'cached' => false]);
-}
-
-$now = time();
-$expiresAt = $now + POSITIVE_CACHE_TTL_SECONDS;
-$jsonData = json_encode(array_merge($parsed, ['redfinId' => $redfinId, 'url' => $url]));
-
-$stmt = $db->prepare('INSERT OR REPLACE INTO property_cache
-    (cache_key, redfin_id, url, address, price, property_tax_rate, hoa_fee, beds, baths, sqft, lot_sqft, year_built, photo_url, json_data, created_at, expires_at)
-    VALUES (:key, :redfin_id, :url, :address, :price, :tax, :hoa, :beds, :baths, :sqft, :lot, :year, :photo, :json, :created_at, :expires_at)');
-$stmt->bindValue(':key', $cacheKey, SQLITE3_TEXT);
-$stmt->bindValue(':redfin_id', $redfinId, SQLITE3_TEXT);
-$stmt->bindValue(':url', $url, SQLITE3_TEXT);
-$stmt->bindValue(':address', $parsed['address'], SQLITE3_TEXT);
-$stmt->bindValue(':price', $parsed['price'], SQLITE3_FLOAT);
-$stmt->bindValue(':tax', $parsed['propertyTaxRate'], SQLITE3_FLOAT);
-$stmt->bindValue(':hoa', $parsed['hoaFee'], SQLITE3_FLOAT);
-$stmt->bindValue(':beds', $parsed['beds'], SQLITE3_FLOAT);
-$stmt->bindValue(':baths', $parsed['baths'], SQLITE3_FLOAT);
-$stmt->bindValue(':sqft', $parsed['sqft'], SQLITE3_FLOAT);
-$stmt->bindValue(':lot', $parsed['lotSqFt'], SQLITE3_FLOAT);
-$stmt->bindValue(':year', $parsed['yearBuilt'], SQLITE3_FLOAT);
-$stmt->bindValue(':photo', $parsed['photoUrl'], SQLITE3_TEXT);
-$stmt->bindValue(':json', $jsonData, SQLITE3_TEXT);
-$stmt->bindValue(':created_at', $now, SQLITE3_INTEGER);
-$stmt->bindValue(':expires_at', $expiresAt, SQLITE3_INTEGER);
-$stmt->execute();
-
-// Clear any stale negative-cache entry for this key now that we have a
-// good record — otherwise a future request could theoretically still see
-// an old negative row if it somehow outlived this write.
-$clearNeg = $db->prepare('DELETE FROM property_cache_negative WHERE cache_key = :key');
-$clearNeg->bindValue(':key', $cacheKey, SQLITE3_TEXT);
-$clearNeg->execute();
-
-logEvent('INFO', 'scrape_success', [
+// Neither cache had a usable row — return 200 cache miss instructing user to import via Bookmarklet
+logEvent('INFO', 'cache_miss_no_scrape', [
     'cacheKey' => $cacheKey, 'url' => $url,
-    'hasPrice' => ($parsed['price'] !== null), 'hasHoa' => ($parsed['hoaFee'] !== null),
-    'hasPhoto' => !empty($parsed['photoUrl']), 'hasBeds' => ($parsed['beds'] !== null),
-    'hasBaths' => ($parsed['baths'] !== null), 'hasSqft' => ($parsed['sqft'] !== null),
-    'hasLotSqFt' => ($parsed['lotSqFt'] !== null), 'hasYearBuilt' => ($parsed['yearBuilt'] !== null),
+    'staleRowFound' => (bool)$row, 'staleNegRowFound' => (bool)$negRow,
 ]);
-
-header('X-Property-Cache: MISS-SCRAPED');
 jsonExit([
-    'redfinId' => $redfinId,
-    'url' => $url,
-    'address' => $parsed['address'],
-    'price' => $parsed['price'],
-    'propertyTaxRate' => $parsed['propertyTaxRate'],
-    'hoaFee' => $parsed['hoaFee'],
-    'beds' => $parsed['beds'],
-    'baths' => $parsed['baths'],
-    'sqft' => $parsed['sqft'],
-    'lotSqFt' => $parsed['lotSqFt'],
-    'lotSizeLabel' => lotSizeLabel($parsed['lotSqFt']),
-    'yearBuilt' => $parsed['yearBuilt'],
-    'photoUrl' => $parsed['photoUrl'],
-    'cached' => false,
-    'cacheAgeDays' => 0,
-]);
+    'error' => 'Property not found in cache. Click the 🔖 Bookmarklet button while viewing the listing page in your browser to import it to Nycto.ninja!',
+    'cached' => false
+], 200);

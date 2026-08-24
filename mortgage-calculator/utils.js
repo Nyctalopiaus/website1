@@ -204,3 +204,25 @@ export function daysSince(timestampMs, nowMs = Date.now()) {
   if (elapsedMs < 0) return 0; // Clock skew / future timestamp guard
   return Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
 }
+
+/**
+ * Helper to detect human-readable provider name (Redfin, Zillow, Realtor.com, Homes.com, etc.)
+ * @param {string} [url] - Listing URL
+ * @param {string} [provider] - Provider string from API if available
+ * @returns {string} Formatted provider name for UI badges
+ */
+export function getProviderLabel(url = '', provider = '') {
+  const p = (provider || '').toLowerCase();
+  if (p === 'redfin') return 'Redfin';
+  if (p === 'zillow' || p === 'trulia') return 'Zillow';
+  if (p === 'realtor') return 'Realtor.com';
+  if (p === 'homes') return 'Homes.com';
+
+  const u = (url || '').toLowerCase();
+  if (u.includes('redfin.com')) return 'Redfin';
+  if (u.includes('zillow.com') || u.includes('trulia.com')) return 'Zillow';
+  if (u.includes('realtor.com')) return 'Realtor.com';
+  if (u.includes('homes.com')) return 'Homes.com';
+
+  return 'Imported';
+}

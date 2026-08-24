@@ -38,6 +38,15 @@ export function createDOMReferences() {
     additionalPaymentSlider: getEl('additionalPaymentSlider'),
     lumpSumAmountInput: getEl('lumpSumAmount'),
     lumpSumFrequencyInput: getEl('lumpSumFrequency'),
+    
+    // Frequency and Biweekly inputs
+    btnFreqMonthly: getEl('btn-freq-monthly'),
+    btnFreqBiweekly: getEl('btn-freq-biweekly'),
+    btnFreqAccelerated: getEl('btn-freq-accelerated'),
+    biweeklyExtraContainer: getEl('biweekly-extra-container'),
+    biweeklyExtraInput: getEl('biweeklyExtra'),
+    biweeklyExtraSlider: getEl('biweeklyExtraSlider'),
+    
     mlsNumberInput: getEl('mlsNumber'),
 
     // "Have a house to sell?" inputs
@@ -73,6 +82,11 @@ export function createDOMReferences() {
     interestSavings30El: getEl('interest-savings-30'),
     timeSavedRow30El: getEl('time-saved-row-30'),
     timeSaved30El: getEl('time-saved-30'),
+    biweeklyReadout30: getEl('biweekly-readout-30'),
+    biweeklyPayment30El: getEl('biweekly-payment-30'),
+    biweeklyBadge30El: getEl('biweekly-badge-30'),
+    savedBiweeklyRow30El: getEl('saved-biweekly-row-30'),
+    savedBiweeklyVal30El: getEl('saved-biweekly-val-30'),
     
     totalPayment15El: getEl('total-payment-15'),
     piPayment15El: getEl('pi-payment-15'),
@@ -80,6 +94,11 @@ export function createDOMReferences() {
     interestSavings15El: getEl('interest-savings-15'),
     timeSavedRow15El: getEl('time-saved-row-15'),
     timeSaved15El: getEl('time-saved-15'),
+    biweeklyReadout15: getEl('biweekly-readout-15'),
+    biweeklyPayment15El: getEl('biweekly-payment-15'),
+    biweeklyBadge15El: getEl('biweekly-badge-15'),
+    savedBiweeklyRow15El: getEl('saved-biweekly-row-15'),
+    savedBiweeklyVal15El: getEl('saved-biweekly-val-15'),
     
     // Interactive display
     chartTotalValEl: getEl('chart-total-val'),
@@ -105,11 +124,21 @@ export function createDOMReferences() {
     dtiProgressBar: getEl('dti-progress-bar'),
     dtiDescriptionEl: getEl('dti-description'),
     
-    // MLS/Rates
+    // MLS/Rates & Bookmarklet Import Banner
+    recentImportBanner: getEl('recent-import-banner'),
+    recentImportAddress: getEl('recent-import-address'),
+    btnApplyRecentImport: getEl('btn-apply-recent-import'),
     mlsPreviewBox: getEl('mls-preview-box'),
     mlsPreviewAddress: getEl('mls-preview-address'),
     mlsPreviewDetails: getEl('mls-preview-details'),
     ratesAttributionEl: getEl('rates-attribution'),
+
+    // Bookmarklet Needed Modal
+    bookmarkletNeededModal: getEl('bookmarklet-needed-modal'),
+    btnCloseBookmarkletNeeded: getEl('btn-close-bookmarklet-needed'),
+    btnOpenBookmarkletFromNeeded: getEl('btn-open-bookmarklet-from-needed'),
+    btnDismissBookmarkletNeeded: getEl('btn-dismiss-bookmarklet-needed'),
+    bookmarkletNeededModalMessage: getEl('bookmarklet-needed-modal-message'),
 
     // "Have a house to sell?" outputs
     sellLineValueEl: getEl('sell-line-value'),
@@ -157,9 +186,11 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
     monthlyTax,
     monthlyInsurance,
     monthlyPmi,
+    paymentFrequency = 'monthly',
+    biweeklyExtra = 0,
     
-    totalMonthly30, amort30,
-    totalMonthly15, amort15,
+    totalMonthly30, amort30, biweeklySaved30 = 0,
+    totalMonthly15, amort15, biweeklySaved15 = 0,
     monthlySaved30, totalSaved30, lumpSumSaved30,
     monthlySaved15, totalSaved15, lumpSumSaved15
   } = results;
@@ -169,6 +200,17 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
   domRefs.piPayment30El.textContent = formatCurrency(amort30.regularPi);
   domRefs.lifetimeInterest30El.textContent = formatCurrency(amort30.totalInterest);
 
+  if (paymentFrequency === 'biweekly' || paymentFrequency === 'accelerated') {
+    const bwPerPeriod30 = amort30.biweeklyPi + (biweeklyExtra || 0);
+    if (domRefs.biweeklyReadout30) {
+      domRefs.biweeklyReadout30.style.display = 'flex';
+      domRefs.biweeklyPayment30El.textContent = `${formatCurrency(bwPerPeriod30)} / 2 wks`;
+      domRefs.biweeklyBadge30El.textContent = paymentFrequency === 'accelerated' ? '⚡ Accelerated' : 'Standard 26x';
+    }
+  } else {
+    if (domRefs.biweeklyReadout30) domRefs.biweeklyReadout30.style.display = 'none';
+  }
+
   if (totalSaved30 > 0.01) {
     domRefs.interestSavings30El.textContent = `Total Saved ${formatCurrency(totalSaved30)}`;
     domRefs.interestSavings30El.style.display = 'block';
@@ -177,7 +219,17 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
       advSavings.style.display = 'flex';
       getElement('saved-monthly-val-30').textContent = formatCurrency(monthlySaved30);
       getElement('saved-lump-val-30').textContent = formatCurrency(lumpSumSaved30);
-      getElement('total-injected-30').textContent = formatCurrency(amort30.totalExtraMonthly + amort30.totalLumpsum);
+      
+      if (biweeklySaved30 > 0.01 && domRefs.savedBiweeklyRow30El) {
+        domRefs.savedBiweeklyRow30El.style.display = 'flex';
+        domRefs.savedBiweeklyVal30El.textContent = formatCurrency(biweeklySaved30);
+      } else if (domRefs.savedBiweeklyRow30El) {
+        domRefs.savedBiweeklyRow30El.style.display = 'none';
+      }
+
+      getElement('total-injected-30').textContent = formatCurrency(
+        (amort30.totalExtraMonthly || 0) + (amort30.totalBiweeklyExtra || 0) + (amort30.totalLumpsum || 0)
+      );
     }
   } else {
     domRefs.interestSavings30El.style.display = 'none';
@@ -185,7 +237,7 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
     if (advSavings) advSavings.style.display = 'none';
   }
 
-  if ((results.monthlyTax || 0) > 0 && amort30.monthsSaved > 0) {
+  if (amort30.monthsSaved > 0) {
     domRefs.timeSaved30El.textContent = formatTimeSaved(amort30.monthsSaved);
     domRefs.timeSavedRow30El.style.display = 'flex';
   } else {
@@ -197,6 +249,17 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
   domRefs.piPayment15El.textContent = formatCurrency(amort15.regularPi);
   domRefs.lifetimeInterest15El.textContent = formatCurrency(amort15.totalInterest);
 
+  if (paymentFrequency === 'biweekly' || paymentFrequency === 'accelerated') {
+    const bwPerPeriod15 = amort15.biweeklyPi + (biweeklyExtra || 0);
+    if (domRefs.biweeklyReadout15) {
+      domRefs.biweeklyReadout15.style.display = 'flex';
+      domRefs.biweeklyPayment15El.textContent = `${formatCurrency(bwPerPeriod15)} / 2 wks`;
+      domRefs.biweeklyBadge15El.textContent = paymentFrequency === 'accelerated' ? '⚡ Accelerated' : 'Standard 26x';
+    }
+  } else {
+    if (domRefs.biweeklyReadout15) domRefs.biweeklyReadout15.style.display = 'none';
+  }
+
   if (totalSaved15 > 0.01) {
     domRefs.interestSavings15El.textContent = `Total Saved ${formatCurrency(totalSaved15)}`;
     domRefs.interestSavings15El.style.display = 'block';
@@ -205,7 +268,17 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
       advSavings.style.display = 'flex';
       getElement('saved-monthly-val-15').textContent = formatCurrency(monthlySaved15);
       getElement('saved-lump-val-15').textContent = formatCurrency(lumpSumSaved15);
-      getElement('total-injected-15').textContent = formatCurrency(amort15.totalExtraMonthly + amort15.totalLumpsum);
+      
+      if (biweeklySaved15 > 0.01 && domRefs.savedBiweeklyRow15El) {
+        domRefs.savedBiweeklyRow15El.style.display = 'flex';
+        domRefs.savedBiweeklyVal15El.textContent = formatCurrency(biweeklySaved15);
+      } else if (domRefs.savedBiweeklyRow15El) {
+        domRefs.savedBiweeklyRow15El.style.display = 'none';
+      }
+
+      getElement('total-injected-15').textContent = formatCurrency(
+        (amort15.totalExtraMonthly || 0) + (amort15.totalBiweeklyExtra || 0) + (amort15.totalLumpsum || 0)
+      );
     }
   } else {
     domRefs.interestSavings15El.style.display = 'none';
@@ -213,7 +286,7 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
     if (advSavings) advSavings.style.display = 'none';
   }
 
-  if ((results.additionalPayment || 0) > 0 && amort15.monthsSaved > 0) {
+  if (amort15.monthsSaved > 0) {
     domRefs.timeSaved15El.textContent = formatTimeSaved(amort15.monthsSaved);
     domRefs.timeSavedRow15El.style.display = 'flex';
   } else {

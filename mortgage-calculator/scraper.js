@@ -5,7 +5,7 @@
  */
 
 import { CONFIG } from './config.js';
-import { looksLikeUrl, encodeUrlParam } from './utils.js';
+import { looksLikeUrl, encodeUrlParam, getProviderLabel } from './utils.js';
 
 /**
  * Fetches property data from a Redfin URL
@@ -65,9 +65,15 @@ export async function fetchPropertyData(inputUrl, domRefs, callbacks = {}) {
 
     if (data && data.price) {
       const homePrice = data.price;
-      applyPropertyData(data, homePrice, domRefs);
+      applyPropertyData(data, homePrice, domRefs, inputUrl);
       renderPreviewBox(data, homePrice, domRefs);
       onSuccess(data);
+      return;
+    }
+
+    // Check if backend returned a specific error message (e.g. cache miss / bookmarklet required)
+    if (data && data.error) {
+      onError(data.error);
       return;
     }
 
@@ -100,15 +106,21 @@ export async function fetchPropertyData(inputUrl, domRefs, callbacks = {}) {
  * @param {Object} data - Extracted property data
  * @param {number} homePrice - Property sale price
  * @param {Object} domRefs - DOM element references
+ * @param {string} [inputUrl] - Original input URL
  */
-function applyPropertyData(data, homePrice, domRefs) {
+function applyPropertyData(data, homePrice, domRefs, inputUrl = '') {
+  const providerLabel = getProviderLabel(data.url || inputUrl, data.provider);
+
   // Set home price
   if (domRefs.homePriceInput) {
     domRefs.homePriceInput.value = homePrice;
     domRefs.homePriceSlider.value = Math.min(Math.max(homePrice, CONFIG.MIN_HOME_PRICE), CONFIG.MAX_HOME_PRICE);
     
     const badge = document.getElementById('badge-redfin-price');
-    if (badge) badge.style.display = 'inline-block';
+    if (badge) {
+      badge.textContent = `✓ ${providerLabel}`;
+      badge.style.display = 'inline-block';
+    }
   }
 
   // Update down payment to maintain percentage
@@ -123,7 +135,10 @@ function applyPropertyData(data, homePrice, domRefs) {
   if (hoaFee !== undefined && hoaFee !== null && domRefs.hoaFeesInput) {
     domRefs.hoaFeesInput.value = hoaFee;
     const badge = document.getElementById('badge-redfin-hoa');
-    if (badge) badge.style.display = 'inline-block';
+    if (badge) {
+      badge.textContent = `✓ ${providerLabel}`;
+      badge.style.display = 'inline-block';
+    }
   }
 
   // Apply property tax rate (canonical field: propertyTaxRate)
@@ -131,7 +146,10 @@ function applyPropertyData(data, homePrice, domRefs) {
   if (propertyTax !== undefined && propertyTax !== null && domRefs.taxRateInput) {
     domRefs.taxRateInput.value = parseFloat(propertyTax).toFixed(2);
     const badge = document.getElementById('badge-redfin-tax');
-    if (badge) badge.style.display = 'inline-block';
+    if (badge) {
+      badge.textContent = `✓ ${providerLabel}`;
+      badge.style.display = 'inline-block';
+    }
   }
 }
 
@@ -172,12 +190,11 @@ function renderPreviewBox(data, homePrice, domRefs) {
  * the value under a different JSON key. The shared endpoint tries a few
  * known field name patterns, but if Redfin changes their page structure
  * this may need re-tuning against a real URL — see backend/tests/ for the
- * fixture-based test harness (do NOT re-tune by hitting the live endpoint
- * repeatedly; Scrape.do pulls are a shared, metered budget — see MEMORY.md).
+ * fixture-based test harness.
  *
  * @param {string} inputUrl - Full Redfin property page URL for the user's current home
- * @param {boolean} [force=false] - Bypass the shared 7-day cache and fetch live (still writes a fresh cache entry on success). Used by the "overwrite cache" button when a cached value is known-stale or was wrong. Costs a Scrape.do pull — don't call this in a loop or automated test.
- * @returns {Promise<{ price: number, address: string|null }|null>} Parsed result, or null on failure
+ * @param {boolean} [force=false] - Bypass the shared 7-day cache lookup.
+ * @returns {Promise<{ price?: number, address?: string|null, error?: string }|null>} Parsed result or error, or null on failure
  */
 export async function fetchRedfinValueOnly(inputUrl, force = false) {
   if (!looksLikeUrl(inputUrl)) {
@@ -195,7 +212,15 @@ export async function fetchRedfinValueOnly(inputUrl, force = false) {
 
     const data = JSON.parse(text);
     if (data && data.price) {
-      return { price: data.price, address: data.address || null };
+      return {
+        price: data.price,
+        address: data.address || null,
+        url: data.url || inputUrl,
+        provider: data.provider || null
+      };
+    }
+    if (data && data.error) {
+      return { error: data.error };
     }
   } catch (e) {
     console.error('[ERROR] Sell-side value lookup failed:', e);

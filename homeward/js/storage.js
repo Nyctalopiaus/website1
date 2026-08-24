@@ -180,12 +180,89 @@ class StorageManager {
     return result;
   }
 
+  // Sanitize helper functions for CSV data validation
+  sanitizeString(val, maxLength = 300) {
+    if (!val) return '';
+    let str = String(val).trim();
+    // Strip HTML tags
+    str = str.replace(/<[^>]*>/g, '');
+    // Strip javascript: and dangerous URI schemes / event handlers
+    str = str.replace(/javascript\s*:/gi, '');
+    str = str.replace(/on[a-z]+\s*=/gi, '');
+    return str.slice(0, maxLength);
+  }
+
+  sanitizeUrl(val, maxLength = 1000) {
+    if (!val) return '';
+    const str = String(val).trim();
+    if (!/^https?:\/\/[^\s<>'"]+$/i.test(str)) {
+      return '';
+    }
+    return str.slice(0, maxLength);
+  }
+
+  sanitizeCoordinate(val, isLat = true) {
+    if (val === null || val === undefined || val === '') return null;
+    const num = parseFloat(val);
+    if (isNaN(num)) return null;
+    if (isLat && (num < -90 || num > 90)) return null;
+    if (!isLat && (num < -180 || num > 180)) return null;
+    return num;
+  }
+
+  // Validate and sanitize CSV rows to prevent malicious payloads or invalid data
+  validateAndCleanCSVRows(csvRows) {
+    const validRows = [];
+    const errors = [];
+    let skippedCount = 0;
+
+    (csvRows || []).forEach((row, idx) => {
+      const rawAddress = row.address || row.location || row.streetaddress || row.houseaddress || '';
+      const address = this.sanitizeString(rawAddress, 300);
+
+      if (!address || address.length < 3) {
+        skippedCount++;
+        if (errors.length < 5) {
+          errors.push(`Row #${idx + 1}: Missing or invalid property address ("${rawAddress.slice(0, 30)}")`);
+        }
+        return;
+      }
+
+      const prosRaw = row.pros ? (Array.isArray(row.pros) ? row.pros : String(row.pros).split('|')) : [];
+      const consRaw = row.cons ? (Array.isArray(row.cons) ? row.cons : String(row.cons).split('|')) : [];
+
+      const cleanRow = {
+        address: address,
+        lat: this.sanitizeCoordinate(row.lat, true),
+        lng: this.sanitizeCoordinate(row.lng || row.lon, false),
+        price: this.sanitizeString(row.price, 50),
+        lotSize: this.sanitizeString(row.lotsize || row.size, 50),
+        sqft: this.sanitizeString(row.sqft || row.homesize, 50),
+        rating: Math.min(5, Math.max(1, parseInt(row.rating) || 3)),
+        terrain: this.sanitizeString(row.terrain, 100) || 'Flat',
+        utilities: this.sanitizeString(row.utilities, 100) || 'All Available',
+        hoaNotes: this.sanitizeString(row.hoanotes || row.hoa, 200),
+        pros: prosRaw.map(p => this.sanitizeString(p, 100)).filter(p => p.length > 0),
+        cons: consRaw.map(c => this.sanitizeString(c, 100)).filter(c => c.length > 0),
+        notes: this.sanitizeString(row.notes || row.thoughts, 1000),
+        photoUrl: this.sanitizeUrl(row.photourl || row.imageurl || row.photo),
+        redfinUrl: this.sanitizeUrl(row.redfinurl || row.url),
+        zillowUrl: this.sanitizeUrl(row.zillowurl),
+        visited: row.visited === 'true' || row.visited === '1' || row.visited === true
+      };
+
+      validRows.push(cleanRow);
+    });
+
+    return { validRows, skippedCount, errors };
+  }
+
   // Convert CSV rows to BuildRoute Stop Format & Merge
   mergeCSVRows(csvRows, existingStops = []) {
     const merged = [...existingStops];
 
     csvRows.forEach((row, idx) => {
-      const address = row.address || row.location || row.streetaddress || row.houseaddress || '';
+      const address = this.sanitizeString(row.address || row.location || row.streetaddress || row.houseaddress || '', 300);
       if (!address) return;
 
       // Check if address already exists in current stops
@@ -194,19 +271,21 @@ class StorageManager {
       const stopObj = {
         id: existingIdx !== -1 ? merged[existingIdx].id : `stop-csv-${Date.now()}-${idx}`,
         address: address,
-        lat: row.lat ? parseFloat(row.lat) : (existingIdx !== -1 ? merged[existingIdx].lat : null),
-        lng: row.lng || row.lon ? parseFloat(row.lng || row.lon) : (existingIdx !== -1 ? merged[existingIdx].lng : null),
+        lat: row.lat !== null && row.lat !== undefined ? parseFloat(row.lat) : (existingIdx !== -1 ? merged[existingIdx].lat : null),
+        lng: row.lng !== null && row.lng !== undefined ? parseFloat(row.lng) : (existingIdx !== -1 ? merged[existingIdx].lng : null),
         price: row.price || (existingIdx !== -1 ? merged[existingIdx].price : ''),
-        lotSize: row.lotsize || row.size || (existingIdx !== -1 ? merged[existingIdx].lotSize : ''),
+        lotSize: row.lotSize || row.lotsize || (existingIdx !== -1 ? merged[existingIdx].lotSize : ''),
+        sqft: row.sqft || (existingIdx !== -1 ? merged[existingIdx].sqft : ''),
         rating: row.rating ? parseInt(row.rating) : (existingIdx !== -1 ? merged[existingIdx].rating : 3),
         terrain: row.terrain || (existingIdx !== -1 ? merged[existingIdx].terrain : 'Flat'),
         utilities: row.utilities || (existingIdx !== -1 ? merged[existingIdx].utilities : 'All Available'),
-        hoaNotes: row.hoanotes || row.hoa || (existingIdx !== -1 ? merged[existingIdx].hoaNotes : ''),
-        pros: row.pros ? row.pros.split('|').map(s => s.trim()) : (existingIdx !== -1 ? merged[existingIdx].pros : []),
-        cons: row.cons ? row.cons.split('|').map(s => s.trim()) : (existingIdx !== -1 ? merged[existingIdx].cons : []),
-        notes: row.notes || row.thoughts || (existingIdx !== -1 ? merged[existingIdx].notes : ''),
-        photoUrl: row.photourl || row.imageurl || row.photo || (existingIdx !== -1 ? merged[existingIdx].photoUrl : ''),
-        visited: row.visited === 'true' || row.visited === '1' || (existingIdx !== -1 ? merged[existingIdx].visited : false)
+        hoaNotes: row.hoaNotes || row.hoanotes || (existingIdx !== -1 ? merged[existingIdx].hoaNotes : ''),
+        pros: Array.isArray(row.pros) ? row.pros : (row.pros ? row.pros.split('|').map(s => s.trim()) : (existingIdx !== -1 ? merged[existingIdx].pros : [])),
+        cons: Array.isArray(row.cons) ? row.cons : (row.cons ? row.cons.split('|').map(s => s.trim()) : (existingIdx !== -1 ? merged[existingIdx].cons : [])),
+        notes: row.notes || (existingIdx !== -1 ? merged[existingIdx].notes : ''),
+        photoUrl: row.photoUrl || row.photourl || (existingIdx !== -1 ? merged[existingIdx].photoUrl : ''),
+        redfinUrl: row.redfinUrl || (existingIdx !== -1 ? merged[existingIdx].redfinUrl : ''),
+        visited: row.visited === true || row.visited === 'true' || row.visited === '1' || (existingIdx !== -1 ? merged[existingIdx].visited : false)
       };
 
       if (existingIdx !== -1) {

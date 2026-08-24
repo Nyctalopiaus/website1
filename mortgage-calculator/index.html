@@ -18,7 +18,10 @@
       <a href="../index.html" class="btn-back">← Back to Lab</a>
       <h1>Nycto's Housing Cost Calculator</h1>
     </div>
-    <div style="display: flex; align-items: center; gap: 0.75rem;">
+    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+      <a href="../rent-vs-sell/index.html" class="btn-quickstart-mortgage" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;" title="Rent vs Sell Decision Calculator">
+        <span>🔑</span> <span>Rent vs Sell</span>
+      </a>
       <button type="button" id="btn-open-quickstart" class="btn-quickstart-mortgage" title="Show Quick Start Guide">
         <span>ℹ️</span> <span>Quick Start</span>
       </button>
@@ -43,13 +46,30 @@
           <h2>Purchase Details</h2>
           
             <div class="input-group" style="padding-bottom: 1.25rem; border-bottom: 1px dashed var(--border-color); margin-bottom: 1.25rem;">
+            <!-- RECENTLY IMPORTED PROPERTY BANNER -->
+            <div id="recent-import-banner" style="display: none; margin-bottom: 0.75rem; padding: 0.75rem 0.9rem; background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 0.4rem; font-size: 0.8rem; line-height: 1.45;">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <div style="flex: 1 1 auto; min-width: 160px;">
+                  <div style="color: var(--accent-cyan); font-weight: 600; font-family: var(--font-display); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em;">✨ Just Imported via Bookmarklet</div>
+                  <div id="recent-import-address" style="color: var(--text-bright); font-weight: 600; font-size: 0.8rem; margin-top: 0.15rem;"></div>
+                </div>
+                <button type="button" id="btn-apply-recent-import" style="background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.25rem; padding: 0.4rem 0.75rem; font-weight: 700; font-size: 0.75rem; cursor: pointer; white-space: nowrap;">⚡ Load Property</button>
+              </div>
+            </div>
+
             <div class="label-with-tooltip">
-              <label for="mlsNumber">New Home's Redfin URL</label>
-              <span class="tooltip-icon" data-tooltip="Securely pulls price, HOA, and tax data for the home you're buying from a Redfin property link.">?</span>
+              <label for="mlsNumber">New Home's Listing URL</label>
+              <span class="tooltip-icon" data-tooltip="Securely pulls price, HOA, and tax data for the home you're buying from Redfin, Zillow, Realtor.com, or Homes.com.">?</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
-              <input id="mlsNumber" type="text" placeholder="Paste Redfin property page URL..." aria-label="Redfin property page URL for auto-fill" style="width: 100%; background: rgba(7, 9, 8, 0.5); border: 1px solid var(--border-color); border-radius: 0.4rem; color: var(--text-bright); padding: 0.65rem 0.9rem; font-family: var(--font-sans); outline: none;" />
-              <button id="btn-search-mls" aria-label="Fetch property data from Redfin URL" style="width: 100%; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.65rem 1rem; font-weight: 600; cursor: pointer; text-align: center; transition: filter 0.2s ease;">🔍 Fetch Property</button>
+              <input id="mlsNumber" type="text" placeholder="Paste Redfin, Zillow, Realtor.com, or Homes.com URL..." aria-label="Property listing page URL for auto-fill" style="width: 100%; background: rgba(7, 9, 8, 0.5); border: 1px solid var(--border-color); border-radius: 0.4rem; color: var(--text-bright); padding: 0.65rem 0.9rem; font-family: var(--font-sans); outline: none;" />
+              <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                <span style="color: var(--accent-cyan); font-weight: 600;">Supported sites:</span> Redfin • Zillow • Realtor.com • Homes.com
+              </div>
+              <div style="display: flex; gap: 0.5rem;">
+                <button id="btn-search-mls" aria-label="Load property data from cache" style="flex: 1; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.65rem 1rem; font-weight: 600; cursor: pointer; text-align: center; transition: filter 0.2s ease;">🔍 Load Cached Property</button>
+                <button type="button" id="btn-open-bookmarklet" aria-label="Import to Nycto.ninja Bookmarklet" style="background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); color: var(--accent-cyan); border-radius: 0.4rem; padding: 0.65rem 0.85rem; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 0.35rem; white-space: nowrap;" title="Instant browser import bookmarklet">🔖 Bookmarklet</button>
+              </div>
             </div>
             
             <!-- NEW HOUSING PREVIEW CARD -->
@@ -88,15 +108,16 @@
               <div class="sell-house-card-heading">🏡 Selling Your Current Home — separate from the purchase details above</div>
               <div class="input-group">
                 <div class="label-with-tooltip">
-                  <label for="sellHomeRedfinUrl">Current Home's Redfin URL</label>
-                  <span class="tooltip-icon" data-tooltip="Paste your current home's Redfin property page to try auto-filling an estimated value. Works best when the page is public; you can always type the value in yourself.">?</span>
+                  <label for="sellHomeRedfinUrl">Current Home's Listing URL</label>
+                  <span class="tooltip-icon" data-tooltip="Paste your home's property URL from Redfin, Zillow, Realtor.com, or Homes.com to load its estimated value from your Nycto.ninja cache.">?</span>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
-                  <input id="sellHomeRedfinUrl" type="text" placeholder="Paste Redfin property URL..." aria-label="Redfin property page URL for your current home" style="width: 100%; background: rgba(7, 9, 8, 0.5); border: 1px solid var(--border-color); border-radius: 0.4rem; color: var(--text-bright); padding: 0.65rem 0.9rem; font-family: var(--font-sans); outline: none;" />
-                  <button id="btn-search-sell-redfin" type="button" aria-label="Look up value estimate from Redfin URL" style="width: 100%; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.65rem 1rem; font-weight: 600; cursor: pointer; text-align: center; transition: filter 0.2s ease;">🔍 Look Up Value</button>
+                  <input id="sellHomeRedfinUrl" type="text" placeholder="Paste Redfin, Zillow, Realtor.com, or Homes.com URL..." aria-label="Property page URL for your current home" style="width: 100%; background: rgba(7, 9, 8, 0.5); border: 1px solid var(--border-color); border-radius: 0.4rem; color: var(--text-bright); padding: 0.65rem 0.9rem; font-family: var(--font-sans); outline: none;" />
+                  <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
+                    <span style="color: var(--accent-cyan); font-weight: 600;">Supported sites:</span> Redfin • Zillow • Realtor.com • Homes.com
+                  </div>
+                  <button id="btn-search-sell-redfin" type="button" aria-label="Look up value estimate from cache" style="width: 100%; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.65rem 1rem; font-weight: 600; cursor: pointer; text-align: center; transition: filter 0.2s ease;">🔍 Load Cached Value</button>
                 </div>
-                <span class="help-text">Best-effort — Redfin's off-market page layout can vary, so double-check the value it fills in.</span>
-                <button id="btn-force-refresh-sell-redfin" type="button" class="btn-force-refresh" aria-label="Force a fresh Redfin lookup, bypassing the cache">↻ Overwrite cache (force fresh lookup)</button>
               </div>
 
               <div class="grid-2-col">
@@ -260,6 +281,30 @@
             </div>
             <span class="help-text">E.g., applying a work bonus or stock vest</span>
           </div>
+
+          <div class="input-group" style="padding-top: 1rem; border-top: 1px dashed var(--border-color); margin-top: 1rem;">
+            <div class="label-with-tooltip">
+              <label>Payment Schedule & Frequency</label>
+              <span class="tooltip-icon" data-tooltip="Choose between 12 standard monthly payments or 26 biweekly payments. Accelerated biweekly pays half your monthly bill every 2 weeks (26 times/year), automatically applying 1 extra full payment per year to cut years off your loan.">?</span>
+            </div>
+            <div class="frequency-toggle-group" id="frequency-toggle-group">
+              <button type="button" class="freq-btn active" id="btn-freq-monthly" data-freq="monthly">Monthly (12x)</button>
+              <button type="button" class="freq-btn" id="btn-freq-biweekly" data-freq="biweekly">Biweekly (26x)</button>
+              <button type="button" class="freq-btn" id="btn-freq-accelerated" data-freq="accelerated">⚡ Accelerated</button>
+            </div>
+          </div>
+
+          <div id="biweekly-extra-container" class="input-group" style="display: none;">
+            <div class="label-with-tooltip">
+              <label for="biweeklyExtra">Extra Biweekly Principal</label>
+              <span class="tooltip-icon" data-tooltip="Additional cash added to every biweekly payment, applied 100% directly to your loan principal.">?</span>
+            </div>
+            <div class="input-with-prefix">
+              <span class="prefix">$</span>
+              <input id="biweeklyExtra" type="number" min="0" max="5000" step="25" value="0" />
+            </div>
+            <input id="biweeklyExtraSlider" type="range" min="0" max="1000" step="25" value="0" class="slider" />
+          </div>
         </div>
 
         <div class="panel-card">
@@ -356,6 +401,10 @@
             <h3>30-Year Fixed</h3>
             <div class="payment-value" id="total-payment-30">$-.--</div>
             <span class="payment-label">Estimated Monthly</span>
+            <div id="biweekly-readout-30" style="display: none; font-size: 0.8rem; color: var(--accent-emerald); font-weight: 600; margin-top: 0.35rem; align-items: center; justify-content: center; gap: 0.4rem;">
+              <span id="biweekly-payment-30">$0 / 2 wks</span>
+              <span id="biweekly-badge-30" style="background: var(--accent-emerald-dim); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-size: 0.65rem; text-transform: uppercase; font-weight: 700;">⚡ Accelerated</span>
+            </div>
             <div class="card-details">
               <div class="detail-row">
                 <span>Principal & Interest</span>
@@ -373,6 +422,13 @@
                 <span id="time-saved-30" class="time-saved-val">0 years</span>
               </div>
               <div id="advanced-savings-30" style="display: none; flex-direction: column; gap: 0.35rem; padding-top: 0.6rem; margin-top: 0.4rem; border-top: 1px dashed var(--border-color); font-size: 0.725rem;">
+                <div id="saved-biweekly-row-30" style="display: none; justify-content: space-between; color: var(--accent-emerald);">
+                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                    <span>↳ Saved via Biweekly Schedule</span>
+                    <span class="tooltip-icon" data-tooltip="The total interest you avoided paying specifically by using a biweekly or accelerated biweekly schedule.">?</span>
+                  </div>
+                  <span id="saved-biweekly-val-30" style="font-weight: 500;">$0</span>
+                </div>
                 <div style="display: flex; justify-content: space-between; color: var(--accent-emerald);">
                   <div class="label-with-tooltip" style="gap: 0.3rem;">
                     <span>↳ Saved via Monthly Extra</span>
@@ -404,6 +460,10 @@
             <h3>15-Year Fixed</h3>
             <div class="payment-value" id="total-payment-15">$-.--</div>
             <span class="payment-label">Estimated Monthly</span>
+            <div id="biweekly-readout-15" style="display: none; font-size: 0.8rem; color: var(--accent-emerald); font-weight: 600; margin-top: 0.35rem; align-items: center; justify-content: center; gap: 0.4rem;">
+              <span id="biweekly-payment-15">$0 / 2 wks</span>
+              <span id="biweekly-badge-15" style="background: var(--accent-emerald-dim); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-size: 0.65rem; text-transform: uppercase; font-weight: 700;">⚡ Accelerated</span>
+            </div>
             <div class="card-details">
               <div class="detail-row">
                 <span>Principal & Interest</span>
@@ -421,6 +481,13 @@
                 <span id="time-saved-15" class="time-saved-val">0 years</span>
               </div>
               <div id="advanced-savings-15" style="display: none; flex-direction: column; gap: 0.35rem; padding-top: 0.6rem; margin-top: 0.4rem; border-top: 1px dashed var(--border-color); font-size: 0.725rem;">
+                <div id="saved-biweekly-row-15" style="display: none; justify-content: space-between; color: var(--accent-emerald);">
+                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                    <span>↳ Saved via Biweekly Schedule</span>
+                    <span class="tooltip-icon" data-tooltip="The total interest you avoided paying specifically by using a biweekly or accelerated biweekly schedule.">?</span>
+                  </div>
+                  <span id="saved-biweekly-val-15" style="font-weight: 500;">$0</span>
+                </div>
                 <div style="display: flex; justify-content: space-between; color: var(--accent-emerald);">
                   <div class="label-with-tooltip" style="gap: 0.3rem;">
                     <span>↳ Saved via Monthly Extra</span>
@@ -592,31 +659,78 @@
     </div>
   </div>
 
-  <!-- Features Modal -->
-  <div id="features-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
-    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
-      <button id="btn-close-features" class="modal-close-button" aria-label="Close feature overview">&times;</button>
-      <h2 id="feature-modal-title" class="feature-modal-title">Nycto's Housing Cost Calculator Features</h2>
-      <p class="feature-modal-intro">A fast, comprehensive real estate & mortgage planning tool designed to analyze home purchase costs, amortization schedules, and loan payoff strategies.</p>
-      <ul class="feature-modal-list">
-        <li><strong>Redfin Property Auto-Fill:</strong> Paste any Redfin listing URL to automatically extract price, property tax rate, and monthly HOA fees.</li>
-        <li><strong>Live Mortgage Rate Sync:</strong> Fetch current 30-year and 15-year fixed interest rates in real time.</li>
-        <li><strong>30-Yr vs 15-Yr Side-by-Side Comparison:</strong> Compare monthly payments, total interest costs, and lifetime savings across loan terms.</li>
-        <li><strong>Accelerated Payoff Simulator:</strong> Test monthly extra principal payments and recurring lump-sum boosts to calculate exact time and interest saved.</li>
-        <li><strong>Interactive Visualizations:</strong> Explore SVG payment breakdown donut charts and interactive loan burndown curves.</li>
-        <li><strong>DTI Affordability Analysis:</strong> Check front-end Debt-to-Income ratios against standard 28%/36% underwriting benchmarks.</li>
-        <li><strong>Have a House to Sell?:</strong> Estimate net proceeds from selling your current home — payoff balance, agent commission, closing costs, and more — then route a chosen share straight into your new down payment.</li>
-      </ul>
+  <!-- Bookmarklet Modal -->
+  <div id="bookmarklet-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="bookmarklet-modal-title" style="max-width: 580px;">
+      <button id="btn-close-bookmarklet" class="modal-close-button" aria-label="Close bookmarklet guide">&times;</button>
+      <h2 id="bookmarklet-modal-title" class="feature-modal-title">🔖 "Import to Nycto.ninja" Bookmarklet</h2>
+      <p class="feature-modal-intro">Bypass server anti-bot blocks on Redfin, Zillow, and Realtor.com by initiating lookups directly from your browser!</p>
+      
+      <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--accent-cyan); border-radius: 0.5rem; padding: 1.25rem; text-align: center; margin: 1rem 0 1.25rem;">
+        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.65rem;">Drag this button to your browser bookmarks bar:</div>
+        <a id="bookmarklet-link" href="#" onclick="return false;" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #ffffff; font-weight: 700; font-size: 0.95rem; padding: 0.75rem 1.5rem; border-radius: 0.4rem; text-decoration: none; box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4); cursor: move;">
+          🔖 Import to Nycto.ninja
+        </a>
+      </div>
+
+      <h4 style="color: var(--text-bright); font-size: 0.88rem; margin-bottom: 0.5rem;">Quick Setup Steps:</h4>
+      <ol style="padding-left: 1.25rem; margin-bottom: 1.25rem; font-size: 0.82rem; line-height: 1.6; color: var(--text-muted);">
+        <li style="margin-bottom: 0.4rem;">Drag the <strong>Import to Nycto.ninja</strong> button above to your browser's bookmarks bar.</li>
+        <li style="margin-bottom: 0.4rem;">Navigate to any home listing on <strong>Redfin, Zillow, Realtor.com, or Homes.com</strong>.</li>
+        <li style="margin-bottom: 0.4rem;">Click <strong>Import to Nycto.ninja</strong> in your toolbar. A notification will confirm it was saved to the shared 7-day cache.</li>
+        <li style="margin-bottom: 0.4rem;">Paste the listing URL into this calculator (or click Fetch) — it will load instantly!</li>
+      </ol>
+
+      <details style="background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border-color); border-radius: 0.4rem; padding: 0.75rem; margin-bottom: 1rem;">
+        <summary style="cursor: pointer; font-weight: 600; color: var(--accent-cyan); font-size: 0.8rem;">Manual Code Snippet (Click to copy)</summary>
+        <div style="margin-top: 0.75rem;">
+          <textarea id="bookmarklet-code-text" readonly rows="5" style="width: 100%; background: #080a0f; color: #38bdf8; font-family: monospace; font-size: 0.72rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem; outline: none; resize: none;"></textarea>
+          <button type="button" id="btn-copy-bookmarklet-code" style="margin-top: 0.5rem; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.25rem; padding: 0.4rem 0.8rem; font-weight: 600; font-size: 0.75rem; cursor: pointer;">📋 Copy Code</button>
+        </div>
+      </details>
+
       <div class="modal-privacy-notice">
         <span class="modal-privacy-icon">🔒</span>
         <div>
-          <strong>100% Private & Client-Side</strong>
-          All home prices, incomes, and loan calculations remain strictly inside your browser. No financial data is ever transmitted or stored remotely.
+          <strong>Shared 7-Day Cache</strong>
+          Properties imported via the bookmarklet are saved to the server's 7-day cache, making them instantly available across both mortgage-calculator and homeward.
         </div>
       </div>
     </div>
   </div>
 
-  <script type="module" src="app.js?v=29"></script>
+  <!-- Bookmarklet Ingestion Required Modal -->
+  <div id="bookmarklet-needed-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="bookmarklet-needed-modal-title" style="max-width: 540px;">
+      <button id="btn-close-bookmarklet-needed" class="modal-close-button" aria-label="Close dialog">&times;</button>
+      <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.75rem;">
+        <span style="font-size: 1.6rem;">🔖</span>
+        <h2 id="bookmarklet-needed-modal-title" class="feature-modal-title" style="margin: 0; color: var(--accent-cyan);">Bookmarklet Ingestion Required</h2>
+      </div>
+      <p class="feature-modal-intro" id="bookmarklet-needed-modal-message" style="margin-bottom: 1rem; color: var(--text-bright); line-height: 1.5;">
+        This property URL hasn't been ingested into your Nycto.ninja cache yet. You need to ingest it using the bookmarklet on the listing page before you can import it here.
+      </p>
+      
+      <div style="background: rgba(6, 182, 212, 0.06); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.25rem;">
+        <div style="font-weight: 600; color: var(--accent-cyan); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.04em;">How to ingest this listing:</div>
+        <ol style="padding-left: 1.2rem; margin: 0; font-size: 0.82rem; line-height: 1.65; color: var(--text-muted);">
+          <li style="margin-bottom: 0.35rem;">Open the listing on <strong>Zillow, Redfin, Realtor.com, or Homes.com</strong>.</li>
+          <li style="margin-bottom: 0.35rem;">Click the <strong>🔖 Import to Nycto.ninja</strong> bookmarklet in your browser's bookmarks bar.</li>
+          <li>Return here and click <strong>🔍 Load Cached Property</strong> again!</li>
+        </ol>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center;">
+        <button type="button" id="btn-open-bookmarklet-from-needed" style="background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.65rem 1.25rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 0.35rem;">
+          <span>🔖</span> <span>Get Bookmarklet</span>
+        </button>
+        <button type="button" id="btn-dismiss-bookmarklet-needed" style="background: rgba(255, 255, 255, 0.08); color: var(--text-bright); border: 1px solid var(--border-color); border-radius: 0.4rem; padding: 0.65rem 1rem; font-weight: 600; font-size: 0.85rem; cursor: pointer;">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js?v=30"></script>
 </body>
 </html>

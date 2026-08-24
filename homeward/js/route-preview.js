@@ -133,7 +133,7 @@ class RoutePreviewManager {
       const badgeColor = matchRes.scorePct >= 80 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : (matchRes.scorePct >= 50 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30');
 
       const photoUrl = stop.photoUrl || (stop.photoUrls && stop.photoUrls[0]);
-      const gmapsUrl = window.propertyLinks ? window.propertyLinks.getGoogleMapsUrl(stop.address, stop.lat, stop.lng) : '#';
+      const providerLabel = window.propertyLinks ? window.propertyLinks.getProviderLabel(stop.redfinUrl || stop.address, stop.provider) : 'Listing';
       const redfinUrl = window.propertyLinks ? window.propertyLinks.getRedfinUrl(stop.redfinUrl || stop.address) : '#';
 
       // Drive Connector Pill
@@ -214,7 +214,7 @@ class RoutePreviewManager {
                   <button type="button" onclick="window.routePreviewManager.closePreview(); window.homewardApp.openNotebookForStopId('${stop.id}');" class="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold border border-sky-500/30 transition-colors flex items-center gap-1">
                     📝 Inspection Notebook
                   </button>
-                  <a href="${redfinUrl}" target="_blank" class="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/20 transition-colors">🔴 Redfin ↗</a>
+                  <a href="${redfinUrl}" target="_blank" class="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/20 transition-colors">📍 ${providerLabel} ↗</a>
                   <a href="${gmapsUrl}" target="_blank" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/20 transition-colors">🟢 Map ↗</a>
                 </div>
               </div>

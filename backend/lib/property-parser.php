@@ -12,6 +12,9 @@
 // an incidental shorter number earlier in the slug (a street number or
 // zip) isn't mistaken for the property ID.
 function extractRedfinId($url) {
+    if (strpos(strtolower($url), 'redfin.com') === false) {
+        return null;
+    }
     if (preg_match_all('/\d{6,}/', $url, $matches) && !empty($matches[0])) {
         return end($matches[0]);
     }
@@ -19,15 +22,43 @@ function extractRedfinId($url) {
 }
 
 function normalizeAddressKey($input) {
-    return sha1(strtolower(trim(preg_replace('/[^a-zA-Z0-9]/', '', $input))));
+    // Extract street number + street name if present (e.g. '5578 S Telluride St' from '5578 S Telluride St, Aurora, CO')
+    // to unify cache keys across providers even if city/state naming varies slightly.
+    $cleaned = strtolower(trim($input));
+    if (preg_match('/^(\d+\s+[a-z0-9\s]+?)(?:,|\s+[a-z]+(?:\s+[a-z]{2})?(?:\s+\d{5})?|$)/i', $cleaned, $m)) {
+        $cleaned = $m[1];
+    }
+    return sha1(preg_replace('/[^a-zA-Z0-9]/', '', $cleaned));
 }
 
 function parseAddressFromRedfinUrl($url) {
+    return parseAddressFromUrl($url);
+}
+
+function parseAddressFromUrl($url) {
     if (preg_match('#redfin\.com/([A-Z]{2})/([^/]+)/([^/]+)/home#i', $url, $m)) {
         $state = strtoupper($m[1]);
         $city = str_replace('-', ' ', $m[2]);
         $street = str_replace('-', ' ', $m[3]);
         return trim("$street, $city, $state");
+    }
+    if (preg_match('#zillow\.com/homedetails/([^/]+)#i', $url, $m)) {
+        $slug = $m[1];
+        if (preg_match('#^(.*?)-([A-Z]{2})-(\d{5})#i', $slug, $parts)) {
+            $streetAndCity = str_replace('-', ' ', $parts[1]);
+            $state = strtoupper($parts[2]);
+            $zip = $parts[3];
+            
+            // Isolate street number & name from trailing city name in slug
+            if (preg_match('#^(.*?\b(?:st|ave|rd|dr|ln|ct|blvd|way|cir|pl|loop|pkwy|ter|cv|trl|path))\b#i', $streetAndCity, $stMatch)) {
+                return trim($stMatch[1] . ", $state $zip");
+            }
+            return trim("$streetAndCity, $state $zip");
+        }
+        return str_replace('-', ' ', $slug);
+    }
+    if (preg_match('#realtor\.com/realestateandhomes-detail/([^/]+)#i', $url, $m)) {
+        return str_replace(['_', '-'], ' ', $m[1]);
     }
     return null;
 }
@@ -39,15 +70,16 @@ function lotSizeLabel($lotSqFt) {
 }
 
 // Tolerates an optional leading/trailing backslash before the quote,
-// since Redfin frequently embeds this data as a JSON string nested
-// inside another JSON blob, where inner quotes come through
-// backslash-escaped rather than plain.
+// since Redfin and Zillow frequently embed this data as a JSON string nested
+// inside another JSON blob, where inner quotes come through backslash-escaped
+// or where numbers are formatted as quoted strings (e.g. "monthlyHoaFee": "150" or "taxAnnualAmount": "$4,212").
 function extractNumericField($keyNames, $haystacks) {
-    $pattern = '/\\\\?"(' . $keyNames . ')\\\\?"\s*:\s*([0-9.]+)/i';
+    $pattern = '/\\\\?"(' . $keyNames . ')\\\\?"\s*:\s*\\\\?"?\$?\s*([0-9,]+(?:\.[0-9]+)?)/i';
     foreach ($haystacks as $haystack) {
         if (!$haystack) continue;
         if (preg_match($pattern, $haystack, $m)) {
-            return floatval($m[2]);
+            $cleaned = str_replace(',', '', $m[2]);
+            return floatval($cleaned);
         }
     }
     return null;
@@ -120,13 +152,27 @@ function parsePropertyHtml($html, $fallbackAddress = null) {
     $lotSqFt = extractNumericField('lotSize|lotSqFt|sqftLot', $haystacks);
 
     $yearBuilt = extractNumericField('yearBuilt|year_built', $haystacks);
-    // Sanity-bound: extractNumericField will happily match a stray 4-digit
-    // number under a loosely-related key elsewhere in the page's JSON. A
-    // real construction year won't be before 1600 or after next year —
-    // outside that range, treat it as a bad match rather than showing
-    // obviously-wrong data (e.g. picking up a $1,900 fee formatted oddly).
     if ($yearBuilt !== null && ($yearBuilt < 1600 || $yearBuilt > (float)date('Y') + 1)) {
         $yearBuilt = null;
+    }
+
+    // Rental Estimate Extraction:
+    $rentalEstimate = extractNumericField('rentalEstimate|rental_estimate|rentEstimate|rent_estimate|rentZestimate|rentalValue|predictedRent|monthlyRentEstimate|estimatedRent', $haystacks);
+    if ($rentalEstimate === null) {
+        foreach ($haystacks as $haystack) {
+            if ($haystack && preg_match('/(?:Rental Estimate|Rent Zestimate|Estimated Rent)[^$0-9]*\$([0-9,]+)/i', $haystack, $m)) {
+                $rentalEstimate = floatval(str_replace(',', '', $m[1]));
+                break;
+            }
+        }
+    }
+    // Algorithmic estimate fallback if off-market / missing:
+    if ($rentalEstimate === null) {
+        if ($sqft !== null && $sqft > 200) {
+            $rentalEstimate = round(($sqft * 1.35) / 25) * 25;
+        } elseif ($price !== null && $price > 20000) {
+            $rentalEstimate = round(($price * 0.0065) / 50) * 50;
+        }
     }
 
     $photoUrl = null;
@@ -136,11 +182,11 @@ function parsePropertyHtml($html, $fallbackAddress = null) {
         $photoUrl = trim($m[1]);
     } elseif (preg_match('/<meta\s+content=["\']([^"\']+)["\']\s+(?:property|name)=["\'](?:og:image|twitter:image)["\']/i', $html, $m)) {
         $photoUrl = trim($m[1]);
-    } elseif (preg_match('/<link\s+rel=["\']image_src["\']\s+href=["\']([^"\']+)["\']/i', $html, $m)) {
+    } elseif (preg_match('/<link\s+rel=["\']image_src["\']\s+href=["\']([^"\']+)["\']\s*\/>/i', $html, $m)) {
         $photoUrl = trim($m[1]);
     }
 
-    // 2. Check embedded JSON state (primaryPhotoUrl, landscapeLargeUrl, fullScreenPhotoUrl, etc.)
+    // 2. Check embedded JSON state
     if (!$photoUrl || $photoUrl === 'https:' || $photoUrl === 'http:') {
         foreach ($haystacks as $haystack) {
             if (!$haystack) continue;
@@ -162,12 +208,13 @@ function parsePropertyHtml($html, $fallbackAddress = null) {
         }
     }
 
-    $foundSomething = $price !== null || $hoaFee !== null || $beds !== null || $baths !== null
+    $foundSomething = $price !== null || $rentalEstimate !== null || $hoaFee !== null || $beds !== null || $baths !== null
         || $sqft !== null || $lotSqFt !== null || $yearBuilt !== null || $photoUrl !== null;
 
     return [
         'address' => $address,
         'price' => $price,
+        'rentalEstimate' => $rentalEstimate,
         'propertyTaxRate' => $propertyTaxRate,
         'hoaFee' => $hoaFee,
         'beds' => $beds,

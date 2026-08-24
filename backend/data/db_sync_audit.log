@@ -446,3 +446,186 @@ Summary: Scanned: 14 | Merged: 14 (New: 0, Updated: 0, Unchanged: 14) | Rejected
   ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
   ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
 ================================================================================
+================================================================================
+[2026-08-23 15:25:54 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 15 | Merged: 15 (New: 0, Updated: 1, Unchanged: 14) | Rejected: 0
+- Merged Records (15):
+  ✓ 2380 S Waco Ct, Aurora, CO 80013 ($524,900 | 3,520 sqft)
+  ✓ 21504 Omaha Ave, Parker, CO 80138 ($594,788 | 2,517 sqft)
+  ✓ 10894 Willow Reed Cir E, Parker, CO 80134 ($596,464 | 3,775 sqft)
+  ✓ 3993 S Shawnee Way, Aurora, CO 80018 ($600,000 | 2,924 sqft)
+  ✓ 3754 S Orleans St, Aurora, CO 80013 ($595,000 | 4,222 sqft)
+  ✓ 4016 S Kirk Ct, Aurora, CO 80013 ($572,000 | 2,932 sqft)
+  ✓ 5494 S Pitkin St, Centennial, CO 80015 ($579,424 | 3,310 sqft)
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($572,100 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-23 15:25:54 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 18 | Merged: 15 (New: 1, Updated: 0, Unchanged: 14) | Rejected: 3
+- Merged Records (15):
+  ✓ 20422 E 52nd Ave, Denver, CO 80249 ($615,000 | 3,228 sqft)
+  ✓ 2380 S Waco Ct, Aurora, CO 80013 ($524,900 | 3,520 sqft)
+  ✓ 21504 Omaha Ave, Parker, CO 80138 ($594,788 | 2,517 sqft)
+  ✓ 10894 Willow Reed Cir E, Parker, CO 80134 ($596,464 | 3,775 sqft)
+  ✓ 3754 S Orleans St, Aurora, CO 80013 ($595,000 | 4,222 sqft)
+  ✓ 3993 S Shawnee Way, Aurora, CO 80018 ($600,000 | 2,924 sqft)
+  ✓ 4016 S Kirk Ct, Aurora, CO 80013 ($572,000 | 2,932 sqft)
+  ✓ 5494 S Pitkin St, Centennial, CO 80015 ($579,424 | 3,310 sqft)
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($572,100 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+- Quality Audit Rejected Records (3):
+  ✗ 5578 S Telluride St, Centennial, CO 80015 -> Reasons: Missing or non-Redfin URL
+  ✗ 3231 N Elk Way, Aurora, CO 80019 -> Reasons: Missing or non-Redfin URL
+  ✗ 697 N Ukraine St, Aurora, CO 80018 -> Reasons: Missing or non-Redfin URL
+================================================================================
+================================================================================
+[2026-08-23 18:59:25 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 16 | Merged: 16 (New: 0, Updated: 1, Unchanged: 15) | Rejected: 0
+- Merged Records (16):
+  ✓ 20422 E 52nd Ave, Denver, CO 80249 ($615,000 | 3,228 sqft)
+  ✓ 2380 S Waco Ct, Aurora, CO 80013 ($524,900 | 3,520 sqft)
+  ✓ 21504 Omaha Ave, Parker, CO 80138 ($594,788 | 2,517 sqft)
+  ✓ 10894 Willow Reed Cir E, Parker, CO 80134 ($596,464 | 3,775 sqft)
+  ✓ 3993 S Shawnee Way, Aurora, CO 80018 ($600,000 | 2,924 sqft)
+  ✓ 3754 S Orleans St, Aurora, CO 80013 ($595,000 | 4,222 sqft)
+  ✓ 4016 S Kirk Ct, Aurora, CO 80013 ($572,000 | 2,932 sqft)
+  ✓ 5494 S Pitkin St, Centennial, CO 80015 ($579,424 | 3,310 sqft)
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($572,100 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-23 18:59:25 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 19 | Merged: 16 (New: 1, Updated: 0, Unchanged: 15) | Rejected: 3
+- Merged Records (16):
+  ✓ 963 Chokecherry Ct, Elizabeth, CO 80107 ($639,000 | 2,887 sqft)
+  ✓ 20422 E 52nd Ave, Denver, CO 80249 ($615,000 | 3,228 sqft)
+  ✓ 2380 S Waco Ct, Aurora, CO 80013 ($524,900 | 3,520 sqft)
+  ✓ 21504 Omaha Ave, Parker, CO 80138 ($594,788 | 2,517 sqft)
+  ✓ 10894 Willow Reed Cir E, Parker, CO 80134 ($596,464 | 3,775 sqft)
+  ✓ 3754 S Orleans St, Aurora, CO 80013 ($595,000 | 4,222 sqft)
+  ✓ 3993 S Shawnee Way, Aurora, CO 80018 ($600,000 | 2,924 sqft)
+  ✓ 4016 S Kirk Ct, Aurora, CO 80013 ($572,000 | 2,932 sqft)
+  ✓ 5494 S Pitkin St, Centennial, CO 80015 ($579,424 | 3,310 sqft)
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($572,100 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+- Quality Audit Rejected Records (3):
+  ✗ 5578 S Telluride St, Centennial, CO 80015 -> Reasons: Missing or non-Redfin URL
+  ✗ 3231 N Elk Way, Aurora, CO 80019 -> Reasons: Missing or non-Redfin URL
+  ✗ 697 N Ukraine St, Aurora, CO 80018 -> Reasons: Missing or non-Redfin URL
+================================================================================
+================================================================================
+[2026-08-23 19:00:55 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 17 | Merged: 17 (New: 0, Updated: 1, Unchanged: 16) | Rejected: 0
+- Merged Records (17):
+  ✓ 963 Chokecherry Ct, Elizabeth, CO 80107 ($639,000 | 2,887 sqft)
+  ✓ 20422 E 52nd Ave, Denver, CO 80249 ($615,000 | 3,228 sqft)
+  ✓ 2380 S Waco Ct, Aurora, CO 80013 ($524,900 | 3,520 sqft)
+  ✓ 21504 Omaha Ave, Parker, CO 80138 ($594,788 | 2,517 sqft)
+  ✓ 10894 Willow Reed Cir E, Parker, CO 80134 ($596,464 | 3,775 sqft)
+  ✓ 3993 S Shawnee Way, Aurora, CO 80018 ($600,000 | 2,924 sqft)
+  ✓ 3754 S Orleans St, Aurora, CO 80013 ($595,000 | 4,222 sqft)
+  ✓ 4016 S Kirk Ct, Aurora, CO 80013 ($572,000 | 2,932 sqft)
+  ✓ 5494 S Pitkin St, Centennial, CO 80015 ($579,424 | 3,310 sqft)
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($572,100 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-23 19:00:55 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 18 | Merged: 16 (New: 0, Updated: 0, Unchanged: 16) | Rejected: 2
+- Merged Records (16):
+  ✓ 963 Chokecherry Ct, Elizabeth, CO 80107 ($639,000 | 2,887 sqft)
+  ✓ 20422 E 52nd Ave, Denver, CO 80249 ($615,000 | 3,228 sqft)
+  ✓ 2380 S Waco Ct, Aurora, CO 80013 ($524,900 | 3,520 sqft)
+  ✓ 21504 Omaha Ave, Parker, CO 80138 ($594,788 | 2,517 sqft)
+  ✓ 10894 Willow Reed Cir E, Parker, CO 80134 ($596,464 | 3,775 sqft)
+  ✓ 3754 S Orleans St, Aurora, CO 80013 ($595,000 | 4,222 sqft)
+  ✓ 3993 S Shawnee Way, Aurora, CO 80018 ($600,000 | 2,924 sqft)
+  ✓ 4016 S Kirk Ct, Aurora, CO 80013 ($572,000 | 2,932 sqft)
+  ✓ 5494 S Pitkin St, Centennial, CO 80015 ($579,424 | 3,310 sqft)
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($572,100 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+- Quality Audit Rejected Records (2):
+  ✗ 3231 N Elk Way, Aurora, CO 80019 -> Reasons: Missing or non-Redfin URL
+  ✗ 697 N Ukraine St, Aurora, CO 80018 -> Reasons: Missing or non-Redfin URL
+================================================================================
+================================================================================
+[2026-08-23 21:55:32 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 17 | Merged: 17 (New: 0, Updated: 1, Unchanged: 16) | Rejected: 0
+- Merged Records (17):
+  ✓ 963 Chokecherry Ct, Elizabeth, CO 80107 ($639,000 | 2,887 sqft)
+  ✓ 20422 E 52nd Ave, Denver, CO 80249 ($615,000 | 3,228 sqft)
+  ✓ 2380 S Waco Ct, Aurora, CO 80013 ($524,900 | 3,520 sqft)
+  ✓ 21504 Omaha Ave, Parker, CO 80138 ($594,788 | 2,517 sqft)
+  ✓ 10894 Willow Reed Cir E, Parker, CO 80134 ($596,464 | 3,775 sqft)
+  ✓ 3993 S Shawnee Way, Aurora, CO 80018 ($600,000 | 2,924 sqft)
+  ✓ 3754 S Orleans St, Aurora, CO 80013 ($595,000 | 4,222 sqft)
+  ✓ 4016 S Kirk Ct, Aurora, CO 80013 ($572,000 | 2,932 sqft)
+  ✓ 5494 S Pitkin St, Centennial, CO 80015 ($579,424 | 3,310 sqft)
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($572,100 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+================================================================================
+================================================================================
+[2026-08-23 21:55:32 UTC] [EXECUTE_SYNC] Admin: admin | IP: 127.0.0.1
+Summary: Scanned: 19 | Merged: 16 (New: 0, Updated: 0, Unchanged: 16) | Rejected: 3
+- Merged Records (16):
+  ✓ 963 Chokecherry Ct, Elizabeth, CO 80107 ($639,000 | 2,887 sqft)
+  ✓ 20422 E 52nd Ave, Denver, CO 80249 ($615,000 | 3,228 sqft)
+  ✓ 2380 S Waco Ct, Aurora, CO 80013 ($524,900 | 3,520 sqft)
+  ✓ 21504 Omaha Ave, Parker, CO 80138 ($594,788 | 2,517 sqft)
+  ✓ 10894 Willow Reed Cir E, Parker, CO 80134 ($596,464 | 3,775 sqft)
+  ✓ 3754 S Orleans St, Aurora, CO 80013 ($595,000 | 4,222 sqft)
+  ✓ 3993 S Shawnee Way, Aurora, CO 80018 ($600,000 | 2,924 sqft)
+  ✓ 4016 S Kirk Ct, Aurora, CO 80013 ($572,000 | 2,932 sqft)
+  ✓ 5494 S Pitkin St, Centennial, CO 80015 ($579,424 | 3,310 sqft)
+  ✓ 5200 S Memphis Ct, Centennial, CO 80015 ($615,000 | 3,516 sqft)
+  ✓ 5578 S Telluride St, Aurora, CO 80015 ($572,100 | 2,252 sqft)
+  ✓ 4454 S Himalaya Cir, Aurora, CO 80015 ($692,500 | 3,570 sqft)
+  ✓ 9454 Wolfe Pl, Highlands Ranch, CO 80129 ($675,000 | 2,551 sqft)
+  ✓ 4144 S Liverpool Way, Aurora, CO 80013 ($634,555 | 2,603 sqft)
+  ✓ 16623 E Powers Pl, Centennial, CO 80015 ($700,000 | 4,216 sqft)
+  ✓ 19913 E Progress Pl, Centennial, CO 80015 ($638,500 | 2,545 sqft)
+- Quality Audit Rejected Records (3):
+  ✗ 5578 S Telluride St, Centennial, CO 80015 -> Reasons: Missing or non-Redfin URL
+  ✗ 3231 N Elk Way, Aurora, CO 80019 -> Reasons: Missing or non-Redfin URL
+  ✗ 697 N Ukraine St, Aurora, CO 80018 -> Reasons: Missing or non-Redfin URL
+================================================================================

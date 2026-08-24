@@ -4,7 +4,7 @@
  */
 
 import { CONFIG, DEFAULTS } from './config.js';
-import { debounce, clamp, getElement } from './utils.js';
+import { debounce, clamp, getElement, getProviderLabel } from './utils.js';
 import { performCalculations, extractInputValues, calculateSaleProceeds } from './calculator.js';
 import { loadSavedInputs, applyLoadedDataToDOM, saveInputs, fetchMortgageRates } from './storage.js';
 import { fetchPropertyData, validateMLSInput, fetchRedfinValueOnly } from './scraper.js';
@@ -158,6 +158,13 @@ function syncDownPaymentFields(source) {
  * Debounced save function to reduce API calls
  */
 const debouncedSave = debounce(() => {
+  let paymentFreq = 'monthly';
+  if (domRefs.btnFreqBiweekly?.classList.contains('active')) {
+    paymentFreq = 'biweekly';
+  } else if (domRefs.btnFreqAccelerated?.classList.contains('active')) {
+    paymentFreq = 'accelerated';
+  }
+
   const data = {
     homePrice: parseFloat(domRefs.homePriceInput.value),
     cashDownPayment: parseFloat(domRefs.cashDownPaymentInput.value) || 0,
@@ -173,6 +180,8 @@ const debouncedSave = debounce(() => {
     additionalPayment: parseFloat(domRefs.additionalPaymentInput.value) || 0,
     lumpSumAmount: parseFloat(domRefs.lumpSumAmountInput.value) || 0,
     lumpSumFrequency: parseInt(domRefs.lumpSumFrequencyInput.value) || 12,
+    paymentFrequency: paymentFreq,
+    biweeklyExtra: domRefs.biweeklyExtraInput ? (parseFloat(domRefs.biweeklyExtraInput.value) || 0) : 0,
     activeTerm,
 
     // "Have a house to sell?" section — local-only, same as everything else
@@ -199,6 +208,39 @@ const debouncedCalculate = debounce(() => {
  * Helper: Attach change listeners to all input elements
  */
 function attachInputListeners() {
+  // Frequency toggle buttons
+  const freqButtons = [domRefs.btnFreqMonthly, domRefs.btnFreqBiweekly, domRefs.btnFreqAccelerated];
+  freqButtons.forEach(btn => {
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      freqButtons.forEach(b => b?.classList.remove('active'));
+      btn.classList.add('active');
+
+      const freq = btn.getAttribute('data-freq');
+      if (domRefs.biweeklyExtraContainer) {
+        domRefs.biweeklyExtraContainer.style.display = (freq === 'biweekly' || freq === 'accelerated') ? 'block' : 'none';
+      }
+
+      calculateAll();
+      debouncedSave();
+    });
+  });
+
+  // Biweekly extra slider & input sync
+  if (domRefs.biweeklyExtraInput && domRefs.biweeklyExtraSlider) {
+    domRefs.biweeklyExtraInput.addEventListener('input', () => {
+      const val = parseFloat(domRefs.biweeklyExtraInput.value) || 0;
+      domRefs.biweeklyExtraSlider.value = clamp(val, 0, 1000);
+      debouncedCalculate();
+    });
+
+    domRefs.biweeklyExtraSlider.addEventListener('input', () => {
+      const val = parseFloat(domRefs.biweeklyExtraSlider.value) || 0;
+      domRefs.biweeklyExtraInput.value = val;
+      debouncedCalculate();
+    });
+  }
+
   // Home price syncing
   domRefs.homePriceInput.addEventListener('input', () => {
     const val = parseFloat(domRefs.homePriceInput.value) || 0;
@@ -358,18 +400,6 @@ function attachSellHouseListeners() {
   // Redfin value lookup
   domRefs.btnSearchSellRedfin.addEventListener('click', () => handleSearchSellRedfin(false));
 
-  // "Overwrite cache" — forces a fresh lookup bypassing the shared
-  // backend/property-lookup.php 7-day cache, for when a cached value is
-  // known stale or was wrong (this is how the redfin_estimate parsing
-  // bug's old cached $217,888 would otherwise keep showing up until the
-  // cache expired even after the underlying fix is deployed). Costs a
-  // Scrape.do pull — don't wire this to anything automated. Requires a
-  // URL already entered — reuses
-  // the same validation as the normal lookup button.
-  if (domRefs.btnForceRefreshSellRedfin) {
-    domRefs.btnForceRefreshSellRedfin.addEventListener('click', () => handleSearchSellRedfin(true));
-  }
-
   // Apply computed proceeds to the main Down Payment field
   domRefs.btnApplyProceeds.addEventListener('click', handleApplyProceeds);
 
@@ -465,6 +495,139 @@ function attachActionListeners() {
       }
     });
   }
+
+  // Bookmarklet Modal Toggle & Code Setup
+  const BOOKMARKLET_CODE = `javascript:(function(){var u=window.location.href,s=['redfin.com','zillow.com','realtor.com','homes.com','trulia.com'];if(!s.some(function(d){return u.includes(d);}))return alert('Please run this bookmarklet while viewing a property listing on Redfin, Zillow, Realtor.com, or Homes.com.');try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u);}else{var c=document.createElement('textarea');c.value=u;document.body.appendChild(c);c.select();document.execCommand('copy');c.remove();}}catch(e){}function b64(str){return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,function(m,p1){return String.fromCharCode('0x'+p1);}));}var w=window.open('about:blank','nycto_import','width=460,height=340,resizable=yes,scrollbars=no');var f=document.createElement('form');f.method='POST';f.action='https://nycto.ninja/backend/import-property.php';f.target='nycto_import';var iU=document.createElement('input');iU.type='hidden';iU.name='url';iU.value=u;f.appendChild(iU);var iH=document.createElement('input');iH.type='hidden';iH.name='html';iH.value=b64(document.documentElement.outerHTML);f.appendChild(iH);document.body.appendChild(f);f.submit();setTimeout(function(){f.remove();},1000);})();`;
+
+  const btnOpenBookmarklet = document.getElementById('btn-open-bookmarklet');
+  const bookmarkletModal = document.getElementById('bookmarklet-modal');
+  const btnCloseBookmarklet = document.getElementById('btn-close-bookmarklet');
+  const bookmarkletLink = document.getElementById('bookmarklet-link');
+  const bookmarkletCodeText = document.getElementById('bookmarklet-code-text');
+  const btnCopyBookmarkletCode = document.getElementById('btn-copy-bookmarklet-code');
+
+  if (bookmarkletLink) bookmarkletLink.href = BOOKMARKLET_CODE;
+  if (bookmarkletCodeText) bookmarkletCodeText.value = BOOKMARKLET_CODE;
+
+  if (btnOpenBookmarklet && bookmarkletModal) {
+    btnOpenBookmarklet.addEventListener('click', openBookmarkletModal);
+    if (btnCloseBookmarklet) btnCloseBookmarklet.addEventListener('click', closeBookmarkletModal);
+    bookmarkletModal.addEventListener('click', (e) => {
+      if (e.target === bookmarkletModal) closeBookmarkletModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !bookmarkletModal.classList.contains('hidden')) {
+        closeBookmarkletModal();
+      }
+    });
+  }
+
+  // Bookmarklet Needed Modal Toggle & Action Listeners
+  if (domRefs.bookmarkletNeededModal) {
+    if (domRefs.btnCloseBookmarkletNeeded) {
+      domRefs.btnCloseBookmarkletNeeded.addEventListener('click', closeBookmarkletNeededModal);
+    }
+    if (domRefs.btnDismissBookmarkletNeeded) {
+      domRefs.btnDismissBookmarkletNeeded.addEventListener('click', closeBookmarkletNeededModal);
+    }
+    if (domRefs.btnOpenBookmarkletFromNeeded) {
+      domRefs.btnOpenBookmarkletFromNeeded.addEventListener('click', () => {
+        closeBookmarkletNeededModal();
+        openBookmarkletModal();
+      });
+    }
+    domRefs.bookmarkletNeededModal.addEventListener('click', (e) => {
+      if (e.target === domRefs.bookmarkletNeededModal) closeBookmarkletNeededModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !domRefs.bookmarkletNeededModal.classList.contains('hidden')) {
+        closeBookmarkletNeededModal();
+      }
+    });
+  }
+
+  if (btnCopyBookmarkletCode && bookmarkletCodeText) {
+    btnCopyBookmarkletCode.addEventListener('click', () => {
+      navigator.clipboard.writeText(bookmarkletCodeText.value).then(() => {
+        const orig = btnCopyBookmarkletCode.textContent;
+        btnCopyBookmarkletCode.textContent = '✅ Copied!';
+        setTimeout(() => { btnCopyBookmarkletCode.textContent = orig; }, 2000);
+      });
+    });
+  }
+}
+
+/**
+ * Opens the main Bookmarklet setup modal
+ */
+function openBookmarkletModal() {
+  const bookmarkletModal = document.getElementById('bookmarklet-modal');
+  if (bookmarkletModal) {
+    bookmarkletModal.style.display = 'flex';
+    bookmarkletModal.classList.remove('hidden');
+    bookmarkletModal.setAttribute('aria-hidden', 'false');
+  }
+}
+
+/**
+ * Closes the main Bookmarklet setup modal
+ */
+function closeBookmarkletModal() {
+  const bookmarkletModal = document.getElementById('bookmarklet-modal');
+  if (bookmarkletModal) {
+    bookmarkletModal.style.display = 'none';
+    bookmarkletModal.classList.add('hidden');
+    bookmarkletModal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+/**
+ * Opens the "Bookmarklet Ingestion Required" popup modal
+ * @param {string} [messageText] - Optional custom message string to display
+ */
+function openBookmarkletNeededModal(messageText) {
+  if (domRefs.bookmarkletNeededModal) {
+    if (domRefs.bookmarkletNeededModalMessage && messageText) {
+      domRefs.bookmarkletNeededModalMessage.textContent = messageText;
+    }
+    domRefs.bookmarkletNeededModal.style.display = 'flex';
+    domRefs.bookmarkletNeededModal.classList.remove('hidden');
+    domRefs.bookmarkletNeededModal.setAttribute('aria-hidden', 'false');
+  }
+}
+
+/**
+ * Closes the "Bookmarklet Ingestion Required" popup modal
+ */
+function closeBookmarkletNeededModal() {
+  if (domRefs.bookmarkletNeededModal) {
+    domRefs.bookmarkletNeededModal.style.display = 'none';
+    domRefs.bookmarkletNeededModal.classList.add('hidden');
+    domRefs.bookmarkletNeededModal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+/**
+ * Handles errors occurring during property fetching, showing a useful modal popup
+ * when a URL needs to be ingested by the bookmarklet first.
+ * @param {string|Object} error - Error message string or object
+ */
+function handlePropertyFetchError(error) {
+  const errStr = typeof error === 'string' ? error : (error?.message || '');
+  
+  if (
+    !errStr ||
+    errStr.includes('Bookmarklet') ||
+    errStr.includes('cache') ||
+    errStr.includes('not found') ||
+    errStr.includes('Live server scraping') ||
+    errStr.includes('parser backend') ||
+    errStr === CONFIG.ERROR_API_FETCH
+  ) {
+    openBookmarkletNeededModal(errStr || 'This property URL has not been ingested by the bookmarklet yet.');
+  } else {
+    alert(errStr);
+  }
 }
 
 /**
@@ -490,7 +653,7 @@ function handleSearchMls() {
       calculateAll();
       debouncedSave();
     },
-    onError: (error) => alert(error),
+    onError: (error) => handlePropertyFetchError(error),
     onComplete: () => setButtonLoading(domRefs.btnSearchMls, CONFIG.MSG_FETCH_PROPERTY, false)
   });
 }
@@ -518,18 +681,25 @@ async function handleSearchSellRedfin(force = false) {
     if (result && result.price) {
       domRefs.sellHomeValueInput.value = Math.round(result.price);
       const badge = getElement('badge-sell-redfin');
-      if (badge) badge.style.display = 'inline-block';
+      if (badge) {
+        const providerLabel = getProviderLabel(result.url || userInput, result.provider);
+        badge.textContent = `✓ ${providerLabel}`;
+        badge.style.display = 'inline-block';
+      }
       markSellHomeValueFresh();
       updateSellProceeds();
       debouncedSave();
       setButtonLoading(domRefs.btnSearchSellRedfin, CONFIG.MSG_UPDATED, false);
+    } else if (result && result.error) {
+      handlePropertyFetchError(result.error);
+      setButtonLoading(domRefs.btnSearchSellRedfin, CONFIG.MSG_FETCH_VALUE, false);
     } else {
-      alert(CONFIG.ERROR_SELL_NO_VALUE);
+      handlePropertyFetchError(CONFIG.ERROR_SELL_NO_VALUE);
       setButtonLoading(domRefs.btnSearchSellRedfin, CONFIG.MSG_FETCH_VALUE, false);
     }
   } catch (error) {
     console.error('[ERROR] Sell-side Redfin lookup failed:', error);
-    alert(CONFIG.ERROR_SELL_NO_VALUE);
+    handlePropertyFetchError(CONFIG.ERROR_SELL_NO_VALUE);
     setButtonLoading(domRefs.btnSearchSellRedfin, CONFIG.MSG_FETCH_VALUE, false);
   }
 
@@ -614,6 +784,35 @@ async function loadLiveMortgageRates() {
   }, 2000);
 }
 
+/**
+ * Checks localStorage for a property recently imported via the bookmarklet
+ */
+function checkRecentImportBanner() {
+  if (!domRefs.recentImportBanner || !domRefs.recentImportAddress) return;
+
+  try {
+    const raw = localStorage.getItem('nycto_recent_imported_property');
+    if (!raw) {
+      domRefs.recentImportBanner.style.display = 'none';
+      return;
+    }
+
+    const data = JSON.parse(raw);
+    const ageMs = Date.now() - (data.ts || 0);
+
+    // Only show if imported within the last 2 hours
+    if (data.url && ageMs < 2 * 60 * 60 * 1000) {
+      const priceText = data.price ? ` ($${Number(data.price).toLocaleString()})` : '';
+      domRefs.recentImportAddress.textContent = `${data.address || 'Property'}${priceText}`;
+      domRefs.recentImportBanner.style.display = 'block';
+    } else {
+      domRefs.recentImportBanner.style.display = 'none';
+    }
+  } catch (e) {
+    domRefs.recentImportBanner.style.display = 'none';
+  }
+}
+
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
@@ -640,11 +839,46 @@ async function initializeApp() {
     attachActionListeners();
     attachSellHouseListeners();
 
+    // Attach Recent Import Load button listener
+    if (domRefs.btnApplyRecentImport) {
+      domRefs.btnApplyRecentImport.addEventListener('click', () => {
+        try {
+          const raw = localStorage.getItem('nycto_recent_imported_property');
+          if (raw) {
+            const data = JSON.parse(raw);
+            if (data.url) {
+              domRefs.mlsNumberInput.value = data.url;
+              if (domRefs.recentImportBanner) domRefs.recentImportBanner.style.display = 'none';
+              handleSearchMls();
+            }
+          }
+        } catch (e) {}
+      });
+    }
+
     // Update UI, sync down payment, and calculate
     updateTermCardSelection(activeTerm, domRefs);
     updateSellProceeds();
     syncDownPaymentFields('house');
     calculateAll();
+
+    // Check URL query parameters (e.g. ?url=https://www.redfin.com/...)
+    const urlParams = new URLSearchParams(window.location.search);
+    const paramUrl = urlParams.get('url') || urlParams.get('mls');
+    if (paramUrl) {
+      domRefs.mlsNumberInput.value = paramUrl;
+      handleSearchMls();
+    } else {
+      checkRecentImportBanner();
+    }
+
+    // Listen for storage/focus events when switching tabs back to the calculator
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'nycto_recent_imported_property') {
+        checkRecentImportBanner();
+      }
+    });
+    window.addEventListener('focus', checkRecentImportBanner);
 
     // Load live rates on startup
     loadLiveMortgageRates();

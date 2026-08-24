@@ -54,6 +54,7 @@ class ReportGenerator {
     tourData.stops.forEach((stop, idx) => {
       const scheduleItem = scheduleData && scheduleData.orderedStops ? scheduleData.orderedStops[idx] : null;
       const gmapsUrl = window.propertyLinks.getGoogleMapsUrl(stop.address, stop.lat, stop.lng);
+      const providerLabel = window.propertyLinks ? window.propertyLinks.getProviderLabel(stop.redfinUrl || stop.address, stop.provider) : 'Listing';
       const redfinUrl = window.propertyLinks.getRedfinUrl(stop.redfinUrl || stop.address);
       const zillowUrl = window.propertyLinks.getZillowUrl(stop.address);
       const streetViewUrl = window.propertyLinks.getStreetViewUrl(stop.lat, stop.lng, stop.address);
@@ -78,7 +79,7 @@ class ReportGenerator {
               `}
               <div class="mt-3 flex items-center justify-around text-xs font-semibold no-print flex-wrap gap-1">
                 <a href="${gmapsUrl}" target="_blank" class="text-emerald-400 hover:text-emerald-300 transition-colors flex items-center gap-1">🟢 Google Maps ↗</a>
-                <a href="${redfinUrl}" target="_blank" class="text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-1">🔴 Redfin ↗</a>
+                <a href="${redfinUrl}" target="_blank" class="text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-1">📍 ${providerLabel} ↗</a>
                 <a href="${zillowUrl}" target="_blank" class="text-sky-400 hover:text-sky-300 transition-colors flex items-center gap-1">🔵 Zillow ↗</a>
                 <a href="${streetViewUrl}" target="_blank" class="text-amber-400 hover:text-amber-300 transition-colors flex items-center gap-1">🟡 Street View ↗</a>
               </div>

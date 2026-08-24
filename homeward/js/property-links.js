@@ -6,15 +6,28 @@
 class PropertyLinks {
   constructor() {
     this._initRedfinCopyDelegate();
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        this.initDevToolsDropdown();
-        this.initFetchModeToggle();
-      });
-    } else {
+    const initFn = () => {
       this.initDevToolsDropdown();
       this.initFetchModeToggle();
+      this.initBookmarkletLinks();
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initFn);
+    } else {
+      initFn();
     }
+  }
+
+  initBookmarkletLinks() {
+    const BOOKMARKLET_CODE = `javascript:(function(){var u=window.location.href,s=['redfin.com','zillow.com','realtor.com','homes.com','trulia.com'];if(!s.some(function(d){return u.includes(d);}))return alert('Please run this bookmarklet while viewing a property listing on Redfin, Zillow, Realtor.com, or Homes.com.');try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u);}else{var c=document.createElement('textarea');c.value=u;document.body.appendChild(c);c.select();document.execCommand('copy');c.remove();}}catch(e){}function b64(str){return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,function(m,p1){return String.fromCharCode('0x'+p1);}));}var w=window.open('about:blank','nycto_import','width=460,height=340,resizable=yes,scrollbars=no');var f=document.createElement('form');f.method='POST';f.action='https://nycto.ninja/backend/import-property.php';f.target='nycto_import';var iU=document.createElement('input');iU.type='hidden';iU.name='url';iU.value=u;f.appendChild(iU);var iH=document.createElement('input');iH.type='hidden';iH.name='html';iH.value=b64(document.documentElement.outerHTML);f.appendChild(iH);document.body.appendChild(f);f.submit();setTimeout(function(){f.remove();},1000);})();`;
+
+    ['bookmarklet-link', 'header-bookmarklet-link'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.href = BOOKMARKLET_CODE;
+    });
+
+    const codeText = document.getElementById('bookmarklet-code-text');
+    if (codeText) codeText.value = BOOKMARKLET_CODE;
   }
 
   // Redfin Direct Listing URL (if one has been saved) or Redfin's own
@@ -448,13 +461,13 @@ class PropertyLinks {
     const updateUI = () => {
       const mode = this.getFetchMode();
       if (mode === 'dev') {
-        btn.textContent = '⚡ Dev (Local)';
+        btn.textContent = '⚡ Dev Mode';
         btn.className = 'font-bold text-[11px] px-2 py-0.5 rounded transition-all bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30';
-        btn.title = 'Dev Mode Active: Uses local residential IP directly (0 Scrape.do tokens spent). Click to switch to Prod.';
+        btn.title = 'Dev Mode Active: Local development environment.';
       } else {
-        btn.textContent = '☁️ Prod (Scrape.do)';
+        btn.textContent = '☁️ Prod Mode';
         btn.className = 'font-bold text-[11px] px-2 py-0.5 rounded transition-all bg-sky-500/20 text-sky-300 border border-sky-500/40 hover:bg-sky-500/30';
-        btn.title = 'Prod Mode Active: Uses Scrape.do proxy network. Click to switch to Dev.';
+        btn.title = 'Prod Mode Active: Production environment.';
       }
     };
 
@@ -463,7 +476,7 @@ class PropertyLinks {
       if (currentMode === 'dev') {
         localStorage.setItem('homeward_fetch_mode', 'prod');
         updateUI();
-        this._showToast('Switched to Prod Mode (Scrape.do proxy)');
+        this._showToast('Switched to Prod Mode');
         return;
       }
 
@@ -471,7 +484,7 @@ class PropertyLinks {
       if (isAdmin) {
         localStorage.setItem('homeward_fetch_mode', 'dev');
         updateUI();
-        this._showToast('Switched to Dev Mode (Local fetch, 0 tokens)');
+        this._showToast('Switched to Dev Mode');
         return;
       }
 
@@ -479,7 +492,7 @@ class PropertyLinks {
         if (success) {
           localStorage.setItem('homeward_fetch_mode', 'dev');
           updateUI();
-          this._showToast('Authenticated! Switched to Dev Mode (Local fetch, 0 tokens)');
+          this._showToast('Authenticated! Switched to Dev Mode');
         }
       });
     });
@@ -487,11 +500,9 @@ class PropertyLinks {
     updateUI();
   }
 
-  // Fetch Redfin listing specs, price & high-res photo via the shared
+  // Fetch listing specs, price & high-res photo via the shared
   // backend/property-lookup.php endpoint (used by mortgage-calculator too).
-  // That endpoint holds its own 7-day server-side cache, so the local
-  // check below is just a same-browser speed-up, not the thing preventing
-  // duplicate Scrape.do calls across sites.
+  // That endpoint holds its own 7-day server-side cache.
   async fetchRedfinMetadata(redfinUrlOrAddress, force = false, attempt = 1) {
     if (!redfinUrlOrAddress) return null;
     let url = redfinUrlOrAddress.trim();
@@ -528,60 +539,163 @@ class PropertyLinks {
       const resp = await fetch(proxyUrl, { signal: controller.signal });
       clearTimeout(timeoutId);
 
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data && !data.error) {
-          let parsedLotSize = null;
-          const rawLot = data.lotSizeLabel || data.lotSize || data.lotSqFt;
-          if (rawLot) {
-            if (typeof rawLot === 'number') {
-              parsedLotSize = rawLot >= 43560 ? `${(rawLot / 43560).toFixed(2)} Acres` : `${rawLot.toLocaleString()} sq ft`;
+      const data = await resp.json().catch(() => null);
+
+      if (data && !data.error && data.price) {
+        let parsedLotSize = null;
+        const rawLot = data.lotSizeLabel || data.lotSize || data.lotSqFt;
+        if (rawLot) {
+          if (typeof rawLot === 'number') {
+            parsedLotSize = rawLot >= 43560 ? `${(rawLot / 43560).toFixed(2)} Acres` : `${rawLot.toLocaleString()} sq ft`;
+          } else {
+            const str = String(rawLot).trim();
+            const num = parseFloat(str.replace(/,/g, ''));
+            if (!isNaN(num) && !str.toLowerCase().includes('sq ft') && !str.toLowerCase().includes('acre')) {
+              parsedLotSize = num >= 43560 ? `${(num / 43560).toFixed(2)} Acres` : `${Math.round(num).toLocaleString()} sq ft`;
             } else {
-              const str = String(rawLot).trim();
-              const num = parseFloat(str.replace(/,/g, ''));
-              if (!isNaN(num) && !str.toLowerCase().includes('sq ft') && !str.toLowerCase().includes('acre')) {
-                parsedLotSize = num >= 43560 ? `${(num / 43560).toFixed(2)} Acres` : `${Math.round(num).toLocaleString()} sq ft`;
-              } else {
-                parsedLotSize = str;
-              }
+              parsedLotSize = str;
             }
           }
-
-          const result = {
-            redfinUrl: data.url || data.redfinUrl || (data.redfinId ? `https://www.redfin.com/home/${data.redfinId}` : null),
-            price: data.price ? (typeof data.price === 'number' ? `$${data.price.toLocaleString()}` : data.price) : null,
-            photoUrl: data.photoUrl || data.imageUrl || data.primaryPhotoUrl || data.mainPhoto || null,
-            lotSize: parsedLotSize,
-            hoaNotes: (data.hoaFee !== undefined && data.hoaFee !== null) ? (data.hoaFee > 0 ? `$${data.hoaFee}/mo HOA` : 'No HOA ($0)') : (data.hoaDues ? `$${data.hoaDues}/mo` : null),
-            beds: data.beds || null,
-            baths: data.baths || null,
-            sqft: data.sqft ? (typeof data.sqft === 'number' ? `${data.sqft.toLocaleString()} sq ft` : (String(data.sqft).includes('sq ft') ? data.sqft : `${data.sqft} sq ft`)) : null,
-            yearBuilt: data.yearBuilt || null
-          };
-
-          // Save fetched data into 7-Day Property Cache DB
-          if (window.storageManager && (result.price || result.hoaNotes || result.photoUrl)) {
-            window.storageManager.setCachedProperty(redfinUrlOrAddress, result);
-          }
-
-          if (attempt > 1) {
-            this._showToast('⚡ Auto-Detect recovered after rate-limit backoff!');
-          }
-
-          return result;
-        } else if (data && data.rateLimited && attempt < 3) {
-          const delaySec = attempt === 1 ? 6 : 12;
-          this._showToast(`⚠️ Redfin rate-limited this address. Retrying in ${delaySec}s (attempt ${attempt} of 2)...`);
-          await new Promise(res => setTimeout(res, delaySec * 1000));
-          return await this.fetchRedfinMetadata(redfinUrlOrAddress, force, attempt + 1);
-        } else if (data && data.error) {
-          this._showToast(`⚠️ Lookup notice: ${data.error}`);
         }
+
+        const result = {
+          redfinUrl: data.url || data.redfinUrl || (data.redfinId ? `https://www.redfin.com/home/${data.redfinId}` : null),
+          url: data.url || null,
+          provider: data.provider || null,
+          price: data.price ? (typeof data.price === 'number' ? `$${data.price.toLocaleString()}` : data.price) : null,
+          photoUrl: data.photoUrl || data.imageUrl || data.primaryPhotoUrl || data.mainPhoto || null,
+          lotSize: parsedLotSize,
+          hoaNotes: (data.hoaFee !== undefined && data.hoaFee !== null) ? (data.hoaFee > 0 ? `$${data.hoaFee}/mo HOA` : 'No HOA ($0)') : (data.hoaDues ? `$${data.hoaDues}/mo` : null),
+          beds: data.beds || null,
+          baths: data.baths || null,
+          sqft: data.sqft ? (typeof data.sqft === 'number' ? `${data.sqft.toLocaleString()} sq ft` : (String(data.sqft).includes('sq ft') ? data.sqft : `${data.sqft} sq ft`)) : null,
+          yearBuilt: data.yearBuilt || null
+        };
+
+        // Save fetched data into 7-Day Property Cache DB
+        if (window.storageManager && (result.price || result.hoaNotes || result.photoUrl)) {
+          window.storageManager.setCachedProperty(redfinUrlOrAddress, result);
+        }
+
+        if (attempt > 1) {
+          this._showToast('⚡ Auto-Detect recovered after rate-limit backoff!');
+        }
+
+        return result;
+      } else if (data && data.rateLimited && attempt < 3) {
+        const delaySec = attempt === 1 ? 6 : 12;
+        this._showToast(`⚠️ Redfin rate-limited this address. Retrying in ${delaySec}s (attempt ${attempt} of 2)...`);
+        await new Promise(res => setTimeout(res, delaySec * 1000));
+        return await this.fetchRedfinMetadata(redfinUrlOrAddress, force, attempt + 1);
+      } else {
+        const errMsg = (data && data.error) ? data.error : 'Property not found in cache. Click the 🔖 Bookmarklet button to import it from your browser!';
+        this.openBookmarkletNeededModal(errMsg);
+        return null;
       }
     } catch (e) {
-      console.warn('Redfin proxy fetch error:', e);
+      console.warn('Property proxy fetch error:', e);
+      this.openBookmarkletNeededModal('Property not found in cache. Click the 🔖 Bookmarklet button to import it from your browser!');
     }
     return null;
+  }
+
+  // Alias fetchPropertyMetadata to fetchRedfinMetadata for backward compatibility
+  async fetchPropertyMetadata(urlOrAddress, force = false) {
+    return await this.fetchRedfinMetadata(urlOrAddress, force);
+  }
+
+  getProviderLabel(url = '', provider = '') {
+    const p = (provider || '').toLowerCase();
+    if (p === 'redfin') return 'Redfin';
+    if (p === 'zillow' || p === 'trulia') return 'Zillow';
+    if (p === 'realtor') return 'Realtor.com';
+    if (p === 'homes') return 'Homes.com';
+
+    const u = (url || '').toLowerCase();
+    if (u.includes('redfin.com')) return 'Redfin';
+    if (u.includes('zillow.com') || u.includes('trulia.com')) return 'Zillow';
+    if (u.includes('realtor.com')) return 'Realtor.com';
+    if (u.includes('homes.com')) return 'Homes.com';
+
+    return 'Listing';
+  }
+
+  openBookmarkletModal() {
+    const modal = document.getElementById('modal-bookmarklet');
+    const bookmarkletLink = document.getElementById('bookmarklet-link');
+    const headerBookmarkletLink = document.getElementById('header-bookmarklet-link');
+    const bookmarkletCodeText = document.getElementById('bookmarklet-code-text');
+    const BOOKMARKLET_CODE = `javascript:(function(){var u=window.location.href,s=['redfin.com','zillow.com','realtor.com','homes.com','trulia.com'];if(!s.some(function(d){return u.includes(d);}))return alert('Please run this bookmarklet while viewing a property listing on Redfin, Zillow, Realtor.com, or Homes.com.');try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(u);}else{var c=document.createElement('textarea');c.value=u;document.body.appendChild(c);c.select();document.execCommand('copy');c.remove();}}catch(e){}function b64(str){return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,function(m,p1){return String.fromCharCode('0x'+p1);}));}var w=window.open('about:blank','nycto_import','width=460,height=340,resizable=yes,scrollbars=no');var f=document.createElement('form');f.method='POST';f.action='https://nycto.ninja/backend/import-property.php';f.target='nycto_import';var iU=document.createElement('input');iU.type='hidden';iU.name='url';iU.value=u;f.appendChild(iU);var iH=document.createElement('input');iH.type='hidden';iH.name='html';iH.value=b64(document.documentElement.outerHTML);f.appendChild(iH);document.body.appendChild(f);f.submit();setTimeout(function(){f.remove();},1000);})();`;
+
+    if (bookmarkletLink) bookmarkletLink.href = BOOKMARKLET_CODE;
+    if (headerBookmarkletLink) headerBookmarkletLink.href = BOOKMARKLET_CODE;
+    if (bookmarkletCodeText) bookmarkletCodeText.value = BOOKMARKLET_CODE;
+
+    if (modal) {
+      modal.style.setProperty('display', 'flex', 'important');
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+  }
+
+  closeBookmarkletModal() {
+    const modal = document.getElementById('modal-bookmarklet');
+    if (modal) {
+      modal.style.setProperty('display', 'none', 'important');
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  openBookmarkletNeededModal(messageText) {
+    const modal = document.getElementById('modal-bookmarklet-needed');
+    const msgEl = document.getElementById('bookmarklet-needed-modal-message');
+    if (modal) {
+      if (msgEl && messageText) {
+        msgEl.textContent = messageText;
+      }
+      modal.style.setProperty('display', 'flex', 'important');
+      modal.classList.remove('hidden');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+  }
+
+  closeBookmarkletNeededModal() {
+    const modal = document.getElementById('modal-bookmarklet-needed');
+    if (modal) {
+      modal.style.setProperty('display', 'none', 'important');
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  checkRecentImportBanner() {
+    const banner = document.getElementById('recent-import-banner');
+    const addrEl = document.getElementById('recent-import-address');
+    if (!banner || !addrEl) return;
+
+    try {
+      const raw = localStorage.getItem('nycto_recent_imported_property');
+      if (!raw) {
+        banner.classList.add('hidden');
+        return;
+      }
+
+      const data = JSON.parse(raw);
+      const ageMs = Date.now() - (data.ts || 0);
+
+      // Only show if imported within the last 2 hours
+      if (data.url && ageMs < 2 * 60 * 60 * 1000) {
+        const providerLabel = this.getProviderLabel(data.url, data.provider);
+        const priceText = data.price ? ` ($${Number(data.price).toLocaleString()})` : '';
+        addrEl.textContent = `${data.address || 'Property'}${priceText} • ${providerLabel}`;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    } catch (e) {
+      banner.classList.add('hidden');
+    }
   }
 }
 

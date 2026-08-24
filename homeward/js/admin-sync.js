@@ -199,7 +199,7 @@ class AdminSyncManager {
         localStorage.setItem('homeward_fetch_mode', 'prod');
         const btnFetch = document.getElementById('btn-fetch-mode-toggle');
         if (btnFetch) {
-          btnFetch.textContent = '☁️ Prod (Scrape.do)';
+          btnFetch.textContent = '☁️ Prod Mode';
           btnFetch.className = 'font-bold text-[11px] px-2 py-0.5 rounded transition-all bg-sky-500/20 text-sky-300 border border-sky-500/40 hover:bg-sky-500/30';
         }
       }

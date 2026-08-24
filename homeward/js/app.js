@@ -1012,7 +1012,7 @@ class HomewardApp {
       html += `
         <div class="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
           <button id="btn-autodetect-all-sites" onclick="window.homewardApp.handleAutoDetectAllSites()" class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 text-slate-950 font-bold text-xs shadow-md shadow-sky-500/20 hover:from-sky-400 hover:to-blue-500 transition-all">
-            ⚡ Auto-Detect Specs & Photos
+            ⚡ Auto-Detect GIS Lot Specs & Elevation
           </button>
           <button id="btn-sort-match-score" onclick="window.homewardApp.sortStopsByMatchScore()" class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-emerald-400 font-bold text-xs border border-emerald-500/30 shadow-md transition-all">
             🎯 Sort by Match Score
@@ -1031,9 +1031,9 @@ class HomewardApp {
         const stop = item.stopData;
         const gmapsUrl = window.propertyLinks.getGoogleMapsUrl(stop.address, stop.lat, stop.lng);
         const cachedProp = (window.storageManager && typeof window.storageManager.getCachedPropertySync === 'function') ? window.storageManager.getCachedPropertySync(stop.address) : null;
-        const effectiveRedfinUrl = stop.redfinUrl || (cachedProp ? (cachedProp.redfinUrl || cachedProp.url) : null) || stop.address;
-        const redfinUrl = window.propertyLinks.getRedfinUrl(effectiveRedfinUrl);
-        const zillowUrl = window.propertyLinks.getZillowUrl(stop.address);
+        const cachedListingUrl = (cachedProp ? (cachedProp.url || cachedProp.redfinUrl) : null) || stop.redfinUrl || stop.url || '';
+        const hasDirectListingUrl = cachedListingUrl.startsWith('http://') || cachedListingUrl.startsWith('https://');
+        const providerLabel = hasDirectListingUrl ? window.propertyLinks.getProviderLabel(cachedListingUrl, cachedProp ? cachedProp.provider : '') : 'Listing';
         const stars = '★'.repeat(stop.rating || 3);
         const photoUrl = stop.photoUrl || (stop.photoUrls && stop.photoUrls[0]);
 
@@ -1078,12 +1078,15 @@ class HomewardApp {
                     <a href="${gmapsUrl}" target="_blank" class="px-2 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 font-semibold transition-colors">
                       Google Maps ↗
                     </a>
-                    <a href="${redfinUrl}" target="_blank"${window.propertyLinks.getRedfinCopyAttr(stop.address)} class="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-semibold transition-colors">
-                      Redfin ↗
-                    </a>
-                    <a href="${zillowUrl}" target="_blank" class="px-2 py-1 rounded bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/20 font-semibold transition-colors">
-                      Zillow ↗
-                    </a>
+                    ${hasDirectListingUrl ? `
+                      <a href="${cachedListingUrl}" target="_blank" class="px-2 py-1 rounded ${providerLabel === 'Zillow' ? 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/20' : (providerLabel === 'Realtor.com' ? 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20' : (providerLabel === 'Homes.com' ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20'))} font-semibold transition-colors">
+                        ${providerLabel} Listing ↗
+                      </a>
+                    ` : `
+                      <a href="#" onclick="window.propertyLinks ? window.propertyLinks.openBookmarkletModal() : null; return false;" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 font-semibold transition-colors">
+                        🔖 Ingest Listing ↗
+                      </a>
+                    `}
                   </div>
                 </div>
               </div>

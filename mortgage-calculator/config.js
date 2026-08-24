@@ -11,6 +11,9 @@ export const CONFIG = {
   DEFAULT_DOWN_PAYMENT_PERCENT: 20,
   DEFAULT_DOWN_PAYMENT_AMOUNT: 80000,
   DEFAULT_CASH_DOWN_PAYMENT: 80000,
+  LOAN_BALANCE_THRESHOLD: 0.01,
+  MAX_MONTHS: 1200,
+  PMI_THRESHOLD_PERCENT: 20,
   
   // Rate Defaults (used as fallback)
   DEFAULT_RATE_30: 6.5,
@@ -21,6 +24,16 @@ export const CONFIG = {
   DEFAULT_GROSS_ANNUAL_INCOME: 120000,
   DEFAULT_HOA_FEES: 0,
   DEFAULT_LUMP_SUM_FREQUENCY: 12,
+  
+  // Sell Home Defaults
+  DEFAULT_SELL_HOME_VALUE: 350000,
+  DEFAULT_SELL_MORTGAGE_PAYOFF: 180000,
+  DEFAULT_SELL_COMMISSION_PERCENT: 6,
+  DEFAULT_SELL_CLOSING_COSTS_PERCENT: 1.5,
+  DEFAULT_SELL_REPAIR_COSTS: 0,
+  DEFAULT_SELL_CONCESSIONS: 0,
+  DEFAULT_SELL_MOVING_COSTS: 2000,
+  DEFAULT_SELL_PROCEEDS_PERCENT: 100,
   
   // DTI Thresholds
   DTI_HEALTHY_MAX: 28,
@@ -96,28 +109,9 @@ export const CONFIG = {
   MSG_SYNCING_RATES: '⏳ Syncing...',
   MSG_UPDATED: '✅ Updated',
   MSG_ERROR: '❌ Error',
-  MSG_FETCH_PROPERTY: '🔍 Fetch Property',
-  
-  // Down Payment Thresholds
-  PMI_THRESHOLD_PERCENT: 20,
-
-  // Amortization Precision
-  LOAN_BALANCE_THRESHOLD: 0.01, // Cents
-  MAX_MONTHS: 1200, // 100 years safety limit
-
-  // "Have a house to sell?" defaults — selling your current home to help
-  // fund the down payment on the new one.
-  DEFAULT_SELL_HOME_VALUE: 350000,
-  DEFAULT_SELL_MORTGAGE_PAYOFF: 180000,
-  DEFAULT_SELL_COMMISSION_PERCENT: 6,     // combined buyer+seller agent commission
-  DEFAULT_SELL_CLOSING_COSTS_PERCENT: 1.5, // title, escrow, attorney, etc.
-  DEFAULT_SELL_REPAIR_COSTS: 0,
-  DEFAULT_SELL_CONCESSIONS: 0,
-  DEFAULT_SELL_MOVING_COSTS: 2000,
-  DEFAULT_SELL_PROCEEDS_PERCENT: 100, // % of net proceeds routed to new down payment
-
-  MSG_SELL_LOOKUP: '⏳ Looking Up...',
-  MSG_FETCH_VALUE: '🔍 Look Up Value',
+  MSG_FETCH_PROPERTY: '🔍 Load Cached Property',
+  MSG_FETCH_VALUE: '🔍 Load Cached Value',
+  MSG_SELL_LOOKUP: '⏳ Looking Up Value...',
   ERROR_SELL_NO_VALUE: 'Could not extract a value estimate from this page. Please enter the value manually.',
 
   // How old a sell-side home value estimate can get before we gently
@@ -153,6 +147,10 @@ export const DEFAULTS = {
   sellConcessions: CONFIG.DEFAULT_SELL_CONCESSIONS,
   sellMovingCosts: CONFIG.DEFAULT_SELL_MOVING_COSTS,
   sellProceedsPercent: CONFIG.DEFAULT_SELL_PROCEEDS_PERCENT,
+
+  // Payment Frequency & Biweekly Strategy
+  paymentFrequency: 'monthly', // 'monthly' | 'biweekly' | 'accelerated'
+  biweeklyExtra: 0,
 
   // Epoch ms timestamp of the last time sellHomeValue was set (via lookup
   // or manual edit). null until the value has actually been touched once —

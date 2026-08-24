@@ -120,15 +120,57 @@ check('no-data: address comes from the page title when present', $noData['addres
 $noTitle = parsePropertyHtml('<html><body>no title tag here, no fields either</body></html>', 'Fallback Address, Denver, CO');
 check('no title tag: falls back to supplied fallback address', $noTitle['address'], 'Fallback Address, Denver, CO');
 
-// --- cache key derivation logic (mirrors property-lookup.php's own logic) ---
-function deriveCacheKey($url) {
-    $redfinId = extractRedfinId($url);
-    $fallbackAddress = parseAddressFromRedfinUrl($url);
-    return $redfinId ? ('rid_' . $redfinId) : ('addr_' . normalizeAddressKey($fallbackAddress ?: $url));
-}
-$keyByUrlA = deriveCacheKey('https://www.redfin.com/CO/Denver/123-Main-St-80202/home/12345678');
-$keyByUrlB = deriveCacheKey('https://www.redfin.com/CO/Denver/123-Main-St-Unit-2-80202/home/12345678');
-check('cache key: same redfin ID collapses to same key even if slug differs', $keyByUrlA, $keyByUrlB);
+require_once __DIR__ . '/../lib/multi-site-parser.php';
+
+// --- detectProviderDomain ---
+check('domain: redfin', detectProviderDomain('https://www.redfin.com/CO/Denver/123-Main-St/home/123'), 'redfin');
+check('domain: zillow', detectProviderDomain('https://www.zillow.com/homedetails/123-Main-St-Denver-CO/123456_zpid/'), 'zillow');
+check('domain: trulia', detectProviderDomain('https://www.trulia.com/p/co/denver/123-main-st-123456'), 'zillow');
+check('domain: realtor', detectProviderDomain('https://www.realtor.com/realestateandhomes-detail/123-Main-St_Denver_CO_80202'), 'realtor');
+check('domain: homes.com', detectProviderDomain('https://www.homes.com/property/123-main-st-denver-co/abc1234/'), 'homes');
+
+// --- isAllowedImportUrl ---
+check('allowed import URL: redfin', isAllowedImportUrl('https://www.redfin.com/CO/Denver/123-Main-St/home/123'), true);
+check('allowed import URL: zillow', isAllowedImportUrl('https://www.zillow.com/homedetails/123'), true);
+check('allowed import URL: rejected bad domain', isAllowedImportUrl('https://www.evildomain.com/hack'), false);
+
+// --- parseZillowHtml LD+JSON & gdpClientCache ---
+$zillowHtml = '<html><head><title>123 Main St, Denver, CO 80202 | Zillow</title><script type="application/ld+json">{"@type":"SingleFamilyResidence","name":"123 Main St","address":{"@type":"PostalAddress","streetAddress":"123 Main St","addressLocality":"Denver","addressRegion":"CO","postalCode":"80202"},"offers":{"@type":"Offer","price":650000},"numberOfBedrooms":4,"numberOfBathroomsTotal":3,"floorSize":{"@type":"QuantitativeValue","value":2400}}</script></head><body></body></html>';
+$parsedZillow = parsePropertyHtmlByUrl($zillowHtml, 'https://www.zillow.com/homedetails/123-Main-St-Denver-CO/123456_zpid/');
+check('zillow: provider', $parsedZillow['provider'], 'zillow');
+check('zillow: price', $parsedZillow['price'], 650000.0);
+check('zillow: beds', $parsedZillow['beds'], 4.0);
+check('zillow: baths', $parsedZillow['baths'], 3.0);
+check('zillow: sqft', $parsedZillow['sqft'], 2400.0);
+check('zillow: address', $parsedZillow['address'], '123 Main St, Denver, CO 80202');
+check('zillow: foundSomething', $parsedZillow['foundSomething'], true);
+
+// --- parseZillowHtml gdpClientCache / __NEXT_DATA__ fields ---
+$zillowFullHtml = '<html><head><title>3231 N Elk Way, Aurora, CO 80019 | Zillow</title></head><body><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"gdpClientCache":{"Property":{"price":"585,000","bedrooms":"4","bathrooms":"3","livingArea":"2,090","monthlyHoaFee":"$150","taxAnnualAmount":"$4,212","lotAreaValue":"0.22","lotAreaUnits":"Acres","yearBuilt":"2018","hiResImageLink":"https://photos.zillowstatic.com/fp/test.jpg"}}}}}</script></body></html>';
+$parsedZillowFull = parsePropertyHtmlByUrl($zillowFullHtml, 'https://www.zillow.com/homedetails/3231-N-Elk-Way-Aurora-CO-80019/464768226_zpid/');
+check('zillow full: price', $parsedZillowFull['price'], 585000.0);
+check('zillow full: beds', $parsedZillowFull['beds'], 4.0);
+check('zillow full: baths', $parsedZillowFull['baths'], 3.0);
+check('zillow full: sqft', $parsedZillowFull['sqft'], 2090.0);
+check('zillow full: hoaFee', $parsedZillowFull['hoaFee'], 150.0);
+check('zillow full: propertyTaxRate (4212/585000*100)', $parsedZillowFull['propertyTaxRate'], 0.72);
+check('zillow full: lotSqFt (0.22 acres)', $parsedZillowFull['lotSqFt'], 9583.2);
+check('zillow full: yearBuilt', $parsedZillowFull['yearBuilt'], 2018.0);
+check('zillow full: photoUrl', $parsedZillowFull['photoUrl'], 'https://photos.zillowstatic.com/fp/test.jpg');
+
+// --- parseZillowHtml HTML DOM text regex fallbacks (with HTML tags & classes) ---
+$zillowDomHtml = '<html><head><title>697 N Ukraine St, Aurora, CO 80018 | Zillow</title></head><body><div><span>$516,995</span><span>4 bd</span><span>3 ba</span><span>2,090 sqft</span><span class="label">HOA fee</span><span class="val">$120/mo</span><span class="label">Annual Taxes</span><span class="val">$3,618.96</span><li class="fact-lot-size"><span>0.18 Acres</span></li></div></body></html>';
+$parsedZillowDom = parsePropertyHtmlByUrl($zillowDomHtml, 'https://www.zillow.com/homedetails/697-N-Ukraine-St-Aurora-CO-80018/459315670_zpid/');
+check('zillow DOM text: price', $parsedZillowDom['price'], 516995.0);
+check('zillow DOM text: hoaFee', $parsedZillowDom['hoaFee'], 120.0);
+check('zillow DOM text: propertyTaxRate', round($parsedZillowDom['propertyTaxRate'], 2), 0.7);
+check('zillow DOM text: lotSqFt (0.18 Acres)', $parsedZillowDom['lotSqFt'], 7840.8);
+
+// --- parseZillowHtml Lot dimensions fallback ---
+$zillowDimHtml = '<html><head><title>123 Test | Zillow</title></head><body><div><span>Lot dimensions: 45 x 100</span></div></body></html>';
+$parsedDim = parsePropertyHtmlByUrl($zillowDimHtml, 'https://www.zillow.com/homedetails/123/1_zpid/');
+check('zillow lot dimensions (45x100)', $parsedDim['lotSqFt'], 4500.0);
 
 echo "\n$passed passed, $failures failed.\n";
 exit($failures > 0 ? 1 : 0);
+
