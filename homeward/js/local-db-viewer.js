@@ -186,7 +186,7 @@ class LocalDbViewer {
           <td class="p-3 text-right">
             <div class="flex items-center justify-end gap-1.5">
               ${row.url ? `<button onclick="window.localDbViewer.refreshRecord('${(row.url || '').replace(/'/g, "\\'")}', this)" class="px-2 py-1 rounded ${refreshBtnClass} text-[11px] transition-all flex items-center gap-1" title="Re-fetch & parse live Redfin listing to populate missing fields">🔄 Refresh Data</button>` : ''}
-              ${row.url ? `<button onclick="window.localDbViewer.copyUrl('${(row.url || '').replace(/'/g, "\\'")}', this)" class="px-2 py-1 rounded bg-sky-950/60 hover:bg-sky-900 border border-sky-800/60 text-sky-300 text-[11px] font-medium transition-all flex items-center gap-1" title="Copy Redfin URL & Auto-fill Scouting Input">📋 Copy URL</button>` : ''}
+              ${row.url ? `<button onclick="window.localDbViewer.copyUrl('${(row.url || '').replace(/'/g, "\\'")}', this)" class="px-2 py-1 rounded bg-sky-950/60 hover:bg-sky-900 border border-sky-800/60 text-sky-300 text-[11px] font-medium transition-all flex items-center gap-1" title="Copy Redfin URL & Auto-fill Address Input">📋 Copy URL</button>` : ''}
               ${row.url ? `<a href="${row.url}" target="_blank" class="p-1 px-1.5 rounded bg-slate-800 hover:bg-slate-700 text-sky-400 text-[11px]" title="Open Redfin Listing">🔗</a>` : ''}
               <button onclick="window.localDbViewer.deleteRecord('${(row.cache_key || '').replace(/'/g, "\\'")}')" class="p-1 px-1.5 rounded bg-rose-950/50 hover:bg-rose-900 text-rose-300 text-[11px]" title="Delete Record">🗑️</button>
             </div>
@@ -260,7 +260,7 @@ class LocalDbViewer {
         document.body.removeChild(textarea);
       }
 
-      // Auto-fill into scouting site entry input if present
+      // Auto-fill into address entry input if present
       const addInput = document.getElementById('input-add-address');
       if (addInput) {
         addInput.value = url;
@@ -281,7 +281,7 @@ class LocalDbViewer {
       }
 
       if (window.propertyLinks && typeof window.propertyLinks._showToast === 'function') {
-        window.propertyLinks._showToast('Copied Redfin URL to clipboard & auto-filled Scouting input!');
+        window.propertyLinks._showToast('Copied Redfin URL to clipboard & auto-filled address input!');
       }
     } catch (e) {
       console.warn('Copy Redfin URL failed:', e);

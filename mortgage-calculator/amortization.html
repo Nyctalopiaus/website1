@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body>
   <div class="glow-bg"></div>
@@ -42,6 +42,30 @@
 
     <!-- Main Schedule Content -->
     <div id="amort-content" style="display: none;">
+      <!-- Bridge Loan & Recast Summary (only shown when the saved profile
+           has "Have a house to sell?" set to Bridge Loan mode AND the
+           schedule actually reaches the planned sale month before payoff) -->
+      <div class="panel-card" id="amort-recast-box" style="display: none; margin-bottom: 2rem;">
+        <h2 id="amort-recast-box-title">🌉 Bridge Loan &amp; House Sale Proceeds</h2>
+        <div class="sell-proceeds-box" id="amort-recast-breakdown">
+          <div class="sell-house-card-heading">House Sale Breakdown — Month <span id="amort-recast-month-num">--</span></div>
+          <div class="detail-row"><span>Net Sale Proceeds</span><span id="amort-recast-net-proceeds">$-.--</span></div>
+          <div class="detail-row"><span>− Bridge Loan Payoff</span><span id="amort-recast-bridge-payoff">$-.--</span></div>
+          <div class="detail-row"><span>= Available After Bridge Payoff</span><span id="amort-recast-available">$-.--</span></div>
+          <div class="detail-row" id="amort-recast-fee-row"><span>− Recast Fee</span><span id="amort-recast-fee">$-.--</span></div>
+          <div class="detail-row sell-net-row"><span id="amort-recast-lump-sum-label">Lump Sum Applied to Principal</span><span id="amort-recast-lump-sum">$-.--</span></div>
+          <p id="amort-recast-underwater-warning" class="sell-warning-text" style="display: none;"></p>
+          <p id="amort-recast-min-lump-warning" class="sell-warning-text" style="display: none;"></p>
+        </div>
+        <div class="sell-proceeds-box" id="amort-recast-payment-box">
+          <div class="sell-house-card-heading" id="amort-recast-payment-title">Monthly Payment After Recast</div>
+          <div class="detail-row"><span>Payment Before House Sale</span><span id="amort-recast-before-payment">$-.--</span></div>
+          <div class="detail-row sell-net-row"><span id="amort-recast-after-payment-label">Payment After Recast</span><span id="amort-recast-after-payment">$-.--</span></div>
+          <div class="detail-row" id="amort-recast-savings-row"><span>Monthly Savings</span><span id="amort-recast-savings">$-.--</span></div>
+          <p id="amort-recast-tradeoff-note" class="sell-warning-text" style="display: none; color: var(--text-muted);"></p>
+        </div>
+      </div>
+
       <!-- Stats Panel -->
       <div class="amort-summary-grid">
         <div class="summary-card">
@@ -94,6 +118,6 @@
     <p>&copy; 2026 Nycto's Project Lab. Estimates only. Print-ready layout.</p>
   </footer>
 
-  <script src="amortization.js"></script>
+  <script type="module" src="amortization.js?v=2"></script>
 </body>
 </html>

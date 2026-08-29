@@ -5,18 +5,53 @@
 
 import { CONFIG, DEFAULTS } from './config.js';
 import { debounce, clamp, getElement, getProviderLabel } from './utils.js';
-import { performCalculations, extractInputValues, calculateSaleProceeds } from './calculator.js';
+import {
+  performCalculations,
+  extractInputValues,
+  calculateSaleProceeds,
+  calculateBridgeLoanCosts,
+  calculateRecast,
+  estimateNetAnnualIncome,
+  convertPaycheckToMonthly,
+  convertMonthlyToPaycheck
+} from './calculator.js';
 import { loadSavedInputs, applyLoadedDataToDOM, saveInputs, fetchMortgageRates } from './storage.js';
 import { fetchPropertyData, validateMLSInput, fetchRedfinValueOnly } from './scraper.js';
 import {
   createDOMReferences,
   updateTermCardSelection,
   updateAllOutputs,
+  updateAffordability,
   setButtonLoading,
   updateRatesAttribution,
   updateSellProceedsUI,
   updateStaleValueWarning,
-  updateDownPaymentBreakdownUI
+  updateDownPaymentBreakdownUI,
+  updateBridgeHoldingCostUI,
+  updateBridgeCltvWarning,
+  updateFinancingTypeLabelsUI,
+  updateBridgeHoldingDtiUI,
+  updateBackEndDTI,
+  updateBridgeHoldingBackEndDtiUI,
+  updateRecastSummaryUI,
+  setupDtiSwitcher,
+  updateDtiTabAvailability,
+  setupCollapsibleCards,
+  getCollapsedSectionsState,
+  applyCollapsedSectionsState,
+  setIncomeBasisToggleUI,
+  updateIncomeBasisBreakdownUI,
+  updateIncomeBasisAdjustLabelUI,
+  setPayFrequencyToggleUI,
+  configureIncomeBasisAdjustSlider,
+  updateDtiTabLabels,
+  updateDtiMarkers,
+  updateResidualCashFlowUI,
+  setBridgeDtiPhaseToggleUI,
+  updateDtiAccordionSummaries,
+  expandDtiCashFlowGroup,
+  setRecastStrategyUI,
+  updateStrategyComparisonUI
 } from './ui.js';
 
 // ============================================================================
@@ -27,6 +62,30 @@ let activeTerm = 30;
 // Epoch ms of the last time sellHomeValue was set (lookup or manual edit).
 // null until it's actually been touched once — see config.js DEFAULTS.
 let sellHomeValueUpdatedAt = null;
+// 'sellFirst' (simultaneous close, proceeds fund down payment now) or
+// 'bridgeLoan' (buy now with a short-term loan, pay it off + recast later).
+let saleMode = CONFIG.SALE_MODE_SELL_FIRST;
+// Which kind of financing Bridge Loan mode assumes — 'bridge' (traditional
+// short-term bridge loan) or 'heloc' (revolving home equity line of
+// credit). Only meaningful when saleMode is SALE_MODE_BRIDGE_LOAN.
+let bridgeFinancingType = DEFAULTS.bridgeFinancingType;
+// 'recast' (lower monthly payment) or 'extraPayment' (pay off loan sooner).
+let recastStrategy = CONFIG.SALE_PAYOFF_STRATEGY_RECAST;
+// 'holding' (carrying both homes) or 'recast' (after old home sells & recast applied) —
+// controls which bridge phase the DTI section evaluates when in Bridge Loan mode.
+let bridgeDtiPhase = 'recast';
+// 'gross' (default, what lenders actually qualify against) or 'net' (Best
+// Guess take-home estimate) — which income figure feeds every DTI panel.
+let incomeBasis = CONFIG.INCOME_BASIS_GROSS;
+// Net (Best Guess) fine-tune: which pay frequency the calibration control is
+// expressed in, and the user's pinned MONTHLY take-home figure (canonical
+// unit regardless of displayed frequency) once they've dragged/typed one —
+// null means "not yet calibrated," so the control auto-tracks the live Best
+// Guess estimate instead of a fixed dollar figure.
+let payFrequency = CONFIG.PAY_FREQUENCY_MONTHLY;
+let netMonthlyOverride = null;
+let cardPhase30 = 'post';
+let cardPhase15 = 'post';
 const domRefs = createDOMReferences();
 
 // ============================================================================
@@ -44,9 +103,281 @@ function calculateAll() {
   results.homePrice = inputs.homePrice;
   results.hoaFees = inputs.hoaFees;
   results.grossAnnualIncome = inputs.grossAnnualIncome;
+  results.otherMonthlyDebts = inputs.otherMonthlyDebts;
   results.additionalPayment = inputs.additionalPayment;
 
+  // Gross vs. Net (Best Guess) income basis: every DTI panel below reads
+  // results.effectiveMonthlyIncome instead of grossAnnualIncome directly, so
+  // switching the toggle re-bases all of them at once without touching any
+  // loan/payment math.
+  const incomeBasisData = getIncomeBasisData(results.grossAnnualIncome);
+  results.effectiveMonthlyIncome = incomeBasisData.effectiveMonthlyIncome;
+  results.isNetIncomeBasis = incomeBasisData.isNetIncome;
+  renderIncomeBasisAdjustControls(results.grossAnnualIncome, incomeBasisData);
+  updateIncomeBasisBreakdownUI(incomeBasisData.isNetIncome, incomeBasisData.netEstimate, domRefs, incomeBasisData.hasOverride);
+
+  const hasHouseToSell = !!domRefs.hasHouseToSellInput?.checked;
+  const isBridgeActive = hasHouseToSell && saleMode === CONFIG.SALE_MODE_BRIDGE_LOAN;
+
+  if (isBridgeActive) {
+    const sellInputs = getSellInputs();
+    const proceeds = calculateSaleProceeds(sellInputs);
+    const bridgeInputs = getBridgeInputs();
+    const recastLumpSum = Math.max(0, proceeds.netProceeds - (bridgeInputs.bridgeLoanAmount || 0));
+
+    if (proceeds.netProceeds > 0) {
+      results.recast30 = calculateRecast({
+        loanAmount: results.loanAmount,
+        annualRate: inputs.interest30,
+        termYears: 30,
+        monthsElapsed: bridgeInputs.monthsUntilSale || 4,
+        recastLumpSum,
+        recastFee: bridgeInputs.recastFee || 250
+      });
+      results.recast15 = calculateRecast({
+        loanAmount: results.loanAmount,
+        annualRate: inputs.interest15,
+        termYears: 15,
+        monthsElapsed: bridgeInputs.monthsUntilSale || 4,
+        recastLumpSum,
+        recastFee: bridgeInputs.recastFee || 250
+      });
+      results.isRecastActive = true;
+      results.recastStrategy = recastStrategy;
+      results.cardPhase30 = cardPhase30;
+      results.cardPhase15 = cardPhase15;
+    }
+  }
+
+  // Update dynamic tab labels and progress bar markers
+  setBridgeDtiPhaseToggleUI(bridgeDtiPhase, isBridgeActive, domRefs);
+  updateDtiTabLabels(results.isNetIncomeBasis, domRefs, isBridgeActive ? { isBridge: true, bridgePhase: bridgeDtiPhase } : null);
+  updateDtiMarkers(results.isNetIncomeBasis, domRefs);
+
   updateAllOutputs(results, activeTerm, domRefs);
+
+  const bankMonthlyTotal = activeTerm === 30 ? results.bankMonthlyTotal30 : results.bankMonthlyTotal15;
+  const effectiveMonthlyTotal = activeTerm === 30 ? results.effectiveMonthlyTotal30 : results.effectiveMonthlyTotal15;
+  const extraOutlay = activeTerm === 30 ? results.extraMonthlyOutlay30 : results.extraMonthlyOutlay15;
+
+  let bridgePayload = null;
+
+  if (isBridgeActive) {
+    const bridgeInputs = getBridgeInputs();
+    const bridgeCosts = calculateBridgeLoanCosts(bridgeInputs);
+    const combinedMonthlyCost = bridgeCosts.monthlyInterestOnlyPayment + bankMonthlyTotal;
+
+    const sellInputs = getSellInputs();
+    const proceeds = calculateSaleProceeds(sellInputs);
+    const recastLumpSum = Math.max(0, proceeds.netProceeds - bridgeInputs.bridgeLoanAmount);
+    const rate = activeTerm === 30 ? parseFloat(domRefs.interest30Input.value) || 0 : parseFloat(domRefs.interest15Input.value) || 0;
+    const recast = calculateRecast({
+      loanAmount: results.loanAmount,
+      annualRate: rate,
+      termYears: activeTerm,
+      monthsElapsed: bridgeInputs.monthsUntilSale,
+      recastLumpSum,
+      recastFee: bridgeInputs.recastFee
+    });
+
+    const isExtraStrategy = recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT;
+    const effectiveSavings = isExtraStrategy ? 0 : recast.monthlySavings;
+    const recastHousingTotal = Math.max(0, bankMonthlyTotal - effectiveSavings);
+    const recastEffectiveTotal = Math.max(0, effectiveMonthlyTotal - effectiveSavings);
+
+    const activeHousingCost = bridgeDtiPhase === 'holding' ? combinedMonthlyCost : recastHousingTotal;
+    const activeEffectiveCost = bridgeDtiPhase === 'holding' ? (combinedMonthlyCost + extraOutlay) : recastEffectiveTotal;
+
+    updateAffordability(activeHousingCost, activeEffectiveCost, extraOutlay, results.effectiveMonthlyIncome, domRefs, results.isNetIncomeBasis);
+    updateBackEndDTI(activeHousingCost, getOtherMonthlyDebts(), results.effectiveMonthlyIncome, domRefs, results.isNetIncomeBasis);
+
+    bridgePayload = {
+      isBridge: true,
+      holdingHousingCost: combinedMonthlyCost,
+      recastHousingCost: recastHousingTotal,
+      monthlySavings: effectiveSavings
+    };
+  } else {
+    updateBackEndDTI(bankMonthlyTotal, getOtherMonthlyDebts(), results.effectiveMonthlyIncome, domRefs, results.isNetIncomeBasis);
+  }
+
+  // Update Residual Cash Flow Banner (Net mode only)
+  updateResidualCashFlowUI(
+    results.effectiveMonthlyIncome,
+    bankMonthlyTotal,
+    getOtherMonthlyDebts(),
+    domRefs,
+    results.isNetIncomeBasis,
+    bridgePayload
+  );
+
+  updateBridgeAndRecast(results);
+  updateDtiAccordionSummaries(results, domRefs);
+}
+
+/**
+ * Sets the active DTI phase when in Bridge Loan mode ('holding' vs 'recast')
+ * @param {'holding'|'recast'} phase
+ */
+function setBridgeDtiPhase(phase) {
+  bridgeDtiPhase = phase === 'recast' ? 'recast' : 'holding';
+  calculateAll();
+  debouncedSave();
+}
+
+/**
+ * Computes the monthly income figure that feeds every DTI panel, honoring
+ * the Gross vs. Net (Best Guess) income-basis toggle. Net mode runs
+ * estimateNetAnnualIncome()'s national-average tax/FICA/state-tax
+ * assumptions (see calculator.js) as the "Best Guess" zero point, then
+ * substitutes the user's own calibrated paycheck figure (netMonthlyOverride)
+ * once they've set one via the fine-tune control — see
+ * setIncomeBasisPaycheckValue() below. The netEstimate returned when
+ * calibrated is recomputed against that pinned figure so its
+ * deductions/rate stay honest for display, not the stale unmodified guess.
+ * @param {number} grossAnnualIncome
+ * @returns {{ effectiveMonthlyIncome: number, netEstimate: Object|null, isNetIncome: boolean, hasOverride: boolean, baseEstimate: Object|null }}
+ */
+function getIncomeBasisData(grossAnnualIncome) {
+  if (incomeBasis !== CONFIG.INCOME_BASIS_NET) {
+    return {
+      effectiveMonthlyIncome: (grossAnnualIncome || 0) / CONFIG.MONTHS_PER_YEAR,
+      netEstimate: null,
+      isNetIncome: false,
+      hasOverride: false,
+      baseEstimate: null
+    };
+  }
+
+  const gross = grossAnnualIncome || 0;
+  const baseEstimate = estimateNetAnnualIncome(gross);
+  const hasOverride = netMonthlyOverride !== null;
+  const effectiveMonthlyIncome = hasOverride ? netMonthlyOverride : baseEstimate.netAnnualIncome / CONFIG.MONTHS_PER_YEAR;
+
+  const netEstimate = hasOverride
+    ? {
+        ...baseEstimate,
+        netAnnualIncome: effectiveMonthlyIncome * CONFIG.MONTHS_PER_YEAR,
+        totalDeductions: Math.max(0, gross - effectiveMonthlyIncome * CONFIG.MONTHS_PER_YEAR),
+        effectiveDeductionRate: gross > 0 ? (Math.max(0, gross - effectiveMonthlyIncome * CONFIG.MONTHS_PER_YEAR) / gross) * 100 : 0
+      }
+    : baseEstimate;
+
+  return { effectiveMonthlyIncome, netEstimate, isNetIncome: true, hasOverride, baseEstimate };
+}
+
+/**
+ * Number of pay periods per year for the currently selected pay frequency.
+ * @returns {number}
+ */
+function getPayPeriodsPerYear() {
+  return CONFIG.PAY_PERIODS_PER_YEAR[payFrequency] || CONFIG.MONTHS_PER_YEAR;
+}
+
+/**
+ * Refreshes the fine-tune slider/number field's bounds and displayed value
+ * to match the current calibration state (a pinned override, or the live
+ * Best Guess when nothing's pinned yet) and the selected pay frequency.
+ * Pure presentation — never changes netMonthlyOverride itself. Bounds are
+ * always expressed relative to whatever figure is currently in effect, so
+ * that figure is always within range by construction.
+ * @param {number} grossAnnualIncome
+ * @param {Object} incomeBasisData - Return value of getIncomeBasisData()
+ */
+function renderIncomeBasisAdjustControls(grossAnnualIncome, incomeBasisData) {
+  if (!incomeBasisData.isNetIncome) return;
+
+  const periodsPerYear = getPayPeriodsPerYear();
+  const referencePaycheck = convertMonthlyToPaycheck(incomeBasisData.effectiveMonthlyIncome, periodsPerYear);
+  const grossPaycheck = convertMonthlyToPaycheck((grossAnnualIncome || 0) / CONFIG.MONTHS_PER_YEAR, periodsPerYear);
+
+  configureIncomeBasisAdjustSlider(domRefs, {
+    valuePerPaycheck: referencePaycheck,
+    minPerPaycheck: Math.max(0, referencePaycheck * CONFIG.NET_ESTIMATE_ADJUST_MIN_FACTOR),
+    maxPerPaycheck: Math.max(referencePaycheck, Math.min(referencePaycheck * CONFIG.NET_ESTIMATE_ADJUST_MAX_FACTOR, grossPaycheck)),
+    step: CONFIG.NET_ESTIMATE_ADJUST_STEP
+  });
+
+  const baseMonthly = incomeBasisData.baseEstimate.netAnnualIncome / CONFIG.MONTHS_PER_YEAR;
+  updateIncomeBasisAdjustLabelUI(incomeBasisData.hasOverride, incomeBasisData.effectiveMonthlyIncome - baseMonthly, domRefs);
+}
+
+/**
+ * User dragged the fine-tune slider or typed a per-paycheck dollar figure —
+ * pins netMonthlyOverride to the monthly equivalent (using the currently
+ * selected pay frequency) and re-renders the controls immediately for a
+ * snappy feel. The caller still triggers the actual recalculation afterward.
+ * @param {number} perPaycheckValue
+ */
+function setIncomeBasisPaycheckValue(perPaycheckValue) {
+  const value = Math.max(0, parseFloat(perPaycheckValue) || 0);
+  netMonthlyOverride = convertPaycheckToMonthly(value, getPayPeriodsPerYear());
+  if (domRefs.btnResetIncomeBasisAdjust) domRefs.btnResetIncomeBasisAdjust.style.display = 'inline-block';
+
+  const grossAnnualIncome = parseFloat(domRefs.grossAnnualIncomeInput.value) || 0;
+  renderIncomeBasisAdjustControls(grossAnnualIncome, getIncomeBasisData(grossAnnualIncome));
+}
+
+/**
+ * Clears the pinned calibration — the fine-tune control goes back to
+ * auto-tracking the live Best Guess estimate.
+ */
+function resetIncomeBasisAdjust() {
+  netMonthlyOverride = null;
+  if (domRefs.btnResetIncomeBasisAdjust) domRefs.btnResetIncomeBasisAdjust.style.display = 'none';
+
+  const grossAnnualIncome = parseFloat(domRefs.grossAnnualIncomeInput.value) || 0;
+  renderIncomeBasisAdjustControls(grossAnnualIncome, getIncomeBasisData(grossAnnualIncome));
+}
+
+/**
+ * Switches which pay frequency the fine-tune control is expressed in.
+ * Purely a display re-chunking — any pinned calibration (netMonthlyOverride)
+ * is preserved exactly; only how it's divided into a single paycheck changes.
+ * @param {'biweekly'|'semiMonthly'|'monthly'} frequency
+ */
+function setPayFrequency(frequency) {
+  payFrequency = CONFIG.PAY_PERIODS_PER_YEAR[frequency] ? frequency : CONFIG.PAY_FREQUENCY_MONTHLY;
+  setPayFrequencyToggleUI(payFrequency, domRefs);
+
+  const grossAnnualIncome = parseFloat(domRefs.grossAnnualIncomeInput.value) || 0;
+  renderIncomeBasisAdjustControls(grossAnnualIncome, getIncomeBasisData(grossAnnualIncome));
+}
+
+/**
+ * Switches which income figure feeds every DTI panel: Gross (what lenders
+ * actually qualify against) or Net/Best Guess (an estimated take-home
+ * figure, so the pills show what this payment will actually look like
+ * against the user's paycheck). Purely a display lens for the DTI
+ * denominator — never touches any loan/payment math. Updates the toggle's
+ * own styling, the fine-tune control's visibility/values, and the
+ * breakdown line immediately for a snappy feel; the caller still triggers
+ * the actual recalculation afterward (same pattern as setSaleMode below).
+ * @param {'gross'|'net'} basis
+ */
+function setIncomeBasis(basis) {
+  const wasGross = incomeBasis === CONFIG.INCOME_BASIS_GROSS;
+  incomeBasis = basis === CONFIG.INCOME_BASIS_NET ? CONFIG.INCOME_BASIS_NET : CONFIG.INCOME_BASIS_GROSS;
+  setIncomeBasisToggleUI(incomeBasis === CONFIG.INCOME_BASIS_NET, domRefs);
+
+  // If switching to Net mode, auto-expand the Cash Flow sub-accordion group
+  if (incomeBasis === CONFIG.INCOME_BASIS_NET) {
+    expandDtiCashFlowGroup(domRefs);
+  }
+
+  // If switching to Gross mode and 'bank' (Housing Front-End) tab is active, default to 'backend' (Total Debt DTI) tab
+  if (incomeBasis === CONFIG.INCOME_BASIS_GROSS && !wasGross) {
+    const activeTabBtn = document.querySelector('.dti-tab-btn.active');
+    if (activeTabBtn && activeTabBtn.getAttribute('data-dti-tab') === 'bank') {
+      const backendBtn = document.querySelector('.dti-tab-btn[data-dti-tab="backend"]');
+      if (backendBtn) backendBtn.click();
+    }
+  }
+
+  const grossAnnualIncome = parseFloat(domRefs.grossAnnualIncomeInput.value) || 0;
+  const incomeBasisData = getIncomeBasisData(grossAnnualIncome);
+  renderIncomeBasisAdjustControls(grossAnnualIncome, incomeBasisData);
+  updateIncomeBasisBreakdownUI(incomeBasisData.isNetIncome, incomeBasisData.netEstimate, domRefs, incomeBasisData.hasOverride);
 }
 
 /**
@@ -88,9 +419,189 @@ function markSellHomeValueFresh() {
 }
 
 /**
- * Computes applied house sale proceeds for down payment calculation if active
+ * Switches between Sell First and Bridge Loan sub-panels within the
+ * "Have a house to sell?" section. The top part of the panel (Redfin
+ * lookup, home value, payoff, costs, net proceeds) is mode-agnostic and
+ * stays visible either way — only what happens with those proceeds differs.
+ * @param {'sellFirst'|'bridgeLoan'} mode
  */
-function getHouseProceedsAmount() {
+function setSaleMode(mode) {
+  saleMode = mode === CONFIG.SALE_MODE_BRIDGE_LOAN ? CONFIG.SALE_MODE_BRIDGE_LOAN : CONFIG.SALE_MODE_SELL_FIRST;
+  const isBridge = saleMode === CONFIG.SALE_MODE_BRIDGE_LOAN;
+
+  if (domRefs.saleModeSellFirstPanel) domRefs.saleModeSellFirstPanel.style.display = isBridge ? 'none' : 'block';
+  if (domRefs.saleModeBridgePanel) domRefs.saleModeBridgePanel.style.display = isBridge ? 'block' : 'none';
+  if (domRefs.btnSaleModeSellFirst) domRefs.btnSaleModeSellFirst.classList.toggle('active', !isBridge);
+  if (domRefs.btnSaleModeBridge) domRefs.btnSaleModeBridge.classList.toggle('active', isBridge);
+
+  // The Holding-Period DTI tabs on the Affordability card only make sense
+  // when both "Have a house to sell?" is on AND Bridge Loan mode is active.
+  updateDtiTabAvailability(isBridge && !!domRefs.hasHouseToSellInput?.checked);
+
+  // Auto-suggest a bridge loan amount the first time this mode is entered
+  // with nothing set yet — the gap the down payment currently needs. Always
+  // editable afterward, same "auto-fill, never locked" pattern as sellHomeValue.
+  if (isBridge && domRefs.bridgeLoanAmountInput && (parseFloat(domRefs.bridgeLoanAmountInput.value) || 0) === 0) {
+    const total = parseFloat(domRefs.downPaymentAmountInput.value) || 0;
+    const cash = parseFloat(domRefs.cashDownPaymentInput.value) || 0;
+    domRefs.bridgeLoanAmountInput.value = Math.max(0, Math.round(total - cash));
+  }
+}
+
+/**
+ * Switches the Financing Type sub-choice within Bridge Loan mode: a
+ * traditional bridge loan vs. a HELOC. Purely a display/defaults choice —
+ * calculateBridgeLoanCosts() takes whatever rate/fees/amount end up in the
+ * inputs either way, so this function's only real jobs are (1) toggling the
+ * button styling, (2) swapping the field labels/tooltips via
+ * updateFinancingTypeLabelsUI(), and (3) optionally resetting the rate/fee
+ * inputs to that type's default starting numbers.
+ * @param {'bridge'|'heloc'} type
+ * @param {Object} [options]
+ * @param {boolean} [options.resetDefaults=true] - Overwrite the rate/fee
+ *   inputs with the new type's defaults. True for a user-driven click on the
+ *   toggle (Josh confirmed: losing a manually-typed number on switch is
+ *   fine — you can just re-enter it). False when restoring a saved state on
+ *   page load, where the saved rate/fee values must win instead.
+ */
+function setBridgeFinancingType(type, { resetDefaults = true } = {}) {
+  bridgeFinancingType = type === CONFIG.FINANCING_TYPE_HELOC ? CONFIG.FINANCING_TYPE_HELOC : CONFIG.FINANCING_TYPE_BRIDGE_LOAN;
+  const isHeloc = bridgeFinancingType === CONFIG.FINANCING_TYPE_HELOC;
+
+  if (domRefs.btnFinancingTypeBridge) domRefs.btnFinancingTypeBridge.classList.toggle('active', !isHeloc);
+  if (domRefs.btnFinancingTypeHeloc) domRefs.btnFinancingTypeHeloc.classList.toggle('active', isHeloc);
+
+  updateFinancingTypeLabelsUI(bridgeFinancingType, domRefs);
+
+  if (resetDefaults) {
+    if (domRefs.bridgeLoanRateInput) {
+      domRefs.bridgeLoanRateInput.value = isHeloc ? CONFIG.DEFAULT_HELOC_RATE : CONFIG.DEFAULT_BRIDGE_LOAN_RATE;
+    }
+    if (domRefs.bridgeLoanFeesPercentInput) {
+      domRefs.bridgeLoanFeesPercentInput.value = isHeloc ? CONFIG.DEFAULT_HELOC_FEES_PERCENT : CONFIG.DEFAULT_BRIDGE_LOAN_FEES_PERCENT;
+    }
+  }
+}
+
+/**
+ * Switches the Sale Proceeds Strategy within Bridge Loan mode ('recast' vs 'extraPayment')
+ * @param {'recast'|'extraPayment'} strategy
+ */
+function setRecastStrategy(strategy) {
+  recastStrategy = strategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT ? CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT : CONFIG.SALE_PAYOFF_STRATEGY_RECAST;
+  setRecastStrategyUI(recastStrategy, domRefs);
+  calculateAll();
+  debouncedSave();
+}
+
+/**
+ * Typical lender combined-loan-to-value cap for the current Bridge Loan
+ * financing type: current mortgage payoff + the borrowed amount shouldn't
+ * usually exceed ~80% of the current home's value for a bridge loan, or
+ * ~85% for a HELOC. Informational only — not enforced as a hard limit.
+ */
+function getMaxTypicalBridgeAmount() {
+  const sellInputs = getSellInputs();
+  const maxCltvPercent = bridgeFinancingType === CONFIG.FINANCING_TYPE_HELOC
+    ? CONFIG.HELOC_TYPICAL_MAX_CLTV_PERCENT
+    : CONFIG.BRIDGE_LOAN_TYPICAL_MAX_CLTV_PERCENT;
+  const maxCombined = sellInputs.sellHomeValue * (maxCltvPercent / 100);
+  return Math.max(0, maxCombined - sellInputs.sellMortgagePayoff);
+}
+
+/**
+ * Recomputes and re-renders the Bridge Loan holding-cost and recast
+ * outputs. Only meaningful in Bridge Loan mode; runs as part of the main
+ * calculation pipeline (calculateAll) so it stays in sync with the active
+ * term's rate/loan amount without duplicating that math here.
+ * @param {Object} results - Output of performCalculations()
+ */
+function updateBridgeAndRecast(results) {
+  if (!domRefs.hasHouseToSellInput?.checked || saleMode !== CONFIG.SALE_MODE_BRIDGE_LOAN) return;
+
+  const bridgeInputs = getBridgeInputs();
+  const bridgeCosts = calculateBridgeLoanCosts(bridgeInputs);
+  const totalBridgePayoff = bridgeCosts.totalBorrowed;
+
+  const newMortgagePayment = activeTerm === 30 ? results.bankMonthlyTotal30 : results.bankMonthlyTotal15;
+  updateBridgeHoldingCostUI(bridgeCosts, newMortgagePayment, domRefs);
+  const isHelocFinancing = bridgeFinancingType === CONFIG.FINANCING_TYPE_HELOC;
+  const maxCltvPercent = isHelocFinancing ? CONFIG.HELOC_TYPICAL_MAX_CLTV_PERCENT : CONFIG.BRIDGE_LOAN_TYPICAL_MAX_CLTV_PERCENT;
+  updateBridgeCltvWarning(totalBridgePayoff, getMaxTypicalBridgeAmount(), domRefs, maxCltvPercent, isHelocFinancing);
+
+  const combinedMonthlyCost = bridgeCosts.monthlyInterestOnlyPayment + newMortgagePayment;
+  updateBridgeHoldingDtiUI(combinedMonthlyCost, results.effectiveMonthlyIncome, domRefs, results.isNetIncomeBasis);
+  updateBridgeHoldingBackEndDtiUI(combinedMonthlyCost, getOtherMonthlyDebts(), results.effectiveMonthlyIncome, domRefs, results.isNetIncomeBasis);
+
+  const sellInputs = getSellInputs();
+  const proceeds = calculateSaleProceeds(sellInputs);
+  const recastLumpSum = Math.max(0, proceeds.netProceeds - totalBridgePayoff);
+
+  const isExtraStrategy = recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT;
+  const effectiveFee = isExtraStrategy ? 0 : bridgeInputs.recastFee;
+  const rate = activeTerm === 30 ? parseFloat(domRefs.interest30Input.value) || 0 : parseFloat(domRefs.interest15Input.value) || 0;
+  const recast = calculateRecast({
+    loanAmount: results.loanAmount,
+    annualRate: rate,
+    termYears: activeTerm,
+    monthsElapsed: bridgeInputs.monthsUntilSale,
+    recastLumpSum,
+    recastFee: effectiveFee
+  });
+
+  updateRecastSummaryUI(proceeds, totalBridgePayoff, bridgeInputs.recastFee, recast, domRefs, newMortgagePayment, recastStrategy);
+  updateStrategyComparisonUI(recast, proceeds, totalBridgePayoff, recastStrategy, domRefs);
+
+  const effectiveSavings = isExtraStrategy ? 0 : recast.monthlySavings;
+  // Update Residual Cash Flow Banner with Bridge Loan multi-stage view (Holding vs Post-Recast)
+  updateResidualCashFlowUI(
+    results.effectiveMonthlyIncome,
+    newMortgagePayment,
+    getOtherMonthlyDebts(),
+    domRefs,
+    results.isNetIncomeBasis,
+    {
+      isBridge: true,
+      holdingHousingCost: combinedMonthlyCost,
+      recastHousingCost: Math.max(0, newMortgagePayment - effectiveSavings),
+      monthlySavings: effectiveSavings
+    }
+  );
+}
+
+/**
+ * Reads the "Other Monthly Debts" field used for Back-End DTI
+ */
+function getOtherMonthlyDebts() {
+  return Math.max(0, parseFloat(domRefs.otherMonthlyDebtsInput?.value) || 0);
+}
+
+/**
+ * Reads the Bridge Loan mode fields
+ */
+function getBridgeInputs() {
+  return {
+    bridgeLoanAmount: parseFloat(domRefs.bridgeLoanAmountInput?.value) || 0,
+    bridgeExtraCash: parseFloat(domRefs.bridgeExtraCashInput?.value) || 0,
+    monthsUntilSale: parseFloat(domRefs.monthsUntilSaleInput?.value) || 0,
+    bridgeLoanRate: parseFloat(domRefs.bridgeLoanRateInput?.value) || 0,
+    bridgeLoanFeesPercent: parseFloat(domRefs.bridgeLoanFeesPercentInput?.value) || 0,
+    recastFee: parseFloat(domRefs.recastFeeInput?.value) || 0
+  };
+}
+
+/**
+ * Computes the amount contributed to the down payment by whichever
+ * non-cash source applies to the current sale mode: net sale proceeds
+ * (Sell First — simultaneous close) or the bridge loan draw itself
+ * (Bridge Loan — the sale hasn't happened yet, so there are no proceeds
+ * to apply until it does).
+ */
+function getOtherDownPaymentSourceAmount() {
+  if (!domRefs.hasHouseToSellInput.checked) return 0;
+  if (saleMode === CONFIG.SALE_MODE_BRIDGE_LOAN) {
+    return Math.max(0, getBridgeInputs().bridgeLoanAmount);
+  }
   const sellInputs = getSellInputs();
   const proceeds = calculateSaleProceeds(sellInputs);
   return Math.max(0, proceeds.amountToDownPayment);
@@ -102,7 +613,7 @@ function getHouseProceedsAmount() {
  */
 function syncDownPaymentFields(source) {
   const homePrice = parseFloat(domRefs.homePriceInput.value) || 0;
-  const houseProceeds = getHouseProceedsAmount();
+  const houseProceeds = getOtherDownPaymentSourceAmount();
   let cash = parseFloat(domRefs.cashDownPaymentInput.value) || 0;
   let total = parseFloat(domRefs.downPaymentAmountInput.value) || 0;
   let percent = parseFloat(domRefs.downPaymentPercentInput.value) || 0;
@@ -119,6 +630,10 @@ function syncDownPaymentFields(source) {
     domRefs.downPaymentPercentInput.value = Math.round(percent);
     domRefs.downPaymentSlider.value = Math.round(percent);
   } else if (source === 'amount') {
+    if (domRefs.hasHouseToSellInput?.checked && total < houseProceeds) {
+      total = houseProceeds;
+      domRefs.downPaymentAmountInput.value = Math.round(total);
+    }
     if (homePrice > 0 && total > homePrice) {
       total = homePrice;
       domRefs.downPaymentAmountInput.value = Math.round(total);
@@ -151,7 +666,7 @@ function syncDownPaymentFields(source) {
     domRefs.downPaymentSlider.value = Math.round(percent);
   }
 
-  updateDownPaymentBreakdownUI(cash, houseProceeds, total, percent, domRefs);
+  updateDownPaymentBreakdownUI(cash, houseProceeds, total, percent, domRefs, saleMode, bridgeFinancingType);
 }
 
 /**
@@ -177,6 +692,10 @@ const debouncedSave = debounce(() => {
     hoaFees: parseFloat(domRefs.hoaFeesInput.value),
     pmiRate: parseFloat(domRefs.pmiRateInput.value),
     grossAnnualIncome: parseFloat(domRefs.grossAnnualIncomeInput.value),
+    otherMonthlyDebts: getOtherMonthlyDebts(),
+    incomeBasis,
+    payFrequency,
+    netMonthlyOverride,
     additionalPayment: parseFloat(domRefs.additionalPaymentInput.value) || 0,
     lumpSumAmount: parseFloat(domRefs.lumpSumAmountInput.value) || 0,
     lumpSumFrequency: parseInt(domRefs.lumpSumFrequencyInput.value) || 12,
@@ -187,7 +706,17 @@ const debouncedSave = debounce(() => {
     // "Have a house to sell?" section — local-only, same as everything else
     sellingHouse: domRefs.hasHouseToSellInput.checked,
     ...getSellInputs(),
-    sellHomeValueUpdatedAt
+    sellHomeValueUpdatedAt,
+
+    // Bridge Loan mode
+    saleMode,
+    bridgeFinancingType,
+    recastStrategy,
+    bridgeDtiPhase,
+    ...getBridgeInputs(),
+
+    // Left-column card open/closed state — local-only, same as everything else
+    collapsedSections: getCollapsedSectionsState()
   };
   saveInputs(data);
 }, CONFIG.SAVE_DEBOUNCE_MS);
@@ -321,26 +850,89 @@ function attachInputListeners() {
   const otherNumericInputs = [
     domRefs.homeInsuranceInput,
     domRefs.pmiRateInput,
-    domRefs.grossAnnualIncomeInput
+    domRefs.grossAnnualIncomeInput,
+    domRefs.otherMonthlyDebtsInput
   ];
 
   otherNumericInputs.forEach(input => {
     input.addEventListener('input', debouncedCalculate);
   });
 
+  // Gross vs. Net (Best Guess) income basis toggle
+  if (domRefs.btnIncomeBasisGross) {
+    domRefs.btnIncomeBasisGross.addEventListener('click', () => {
+      setIncomeBasis(CONFIG.INCOME_BASIS_GROSS);
+      debouncedCalculate();
+    });
+  }
+  if (domRefs.btnIncomeBasisNet) {
+    domRefs.btnIncomeBasisNet.addEventListener('click', () => {
+      setIncomeBasis(CONFIG.INCOME_BASIS_NET);
+      debouncedCalculate();
+    });
+  }
+
+  // Pay-frequency picker for the fine-tune control (only meaningful/visible in Net mode)
+  if (domRefs.btnPayFreqBiweekly) {
+    domRefs.btnPayFreqBiweekly.addEventListener('click', () => {
+      setPayFrequency(CONFIG.PAY_FREQUENCY_BIWEEKLY);
+      debouncedCalculate();
+    });
+  }
+  if (domRefs.btnPayFreqSemiMonthly) {
+    domRefs.btnPayFreqSemiMonthly.addEventListener('click', () => {
+      setPayFrequency(CONFIG.PAY_FREQUENCY_SEMIMONTHLY);
+      debouncedCalculate();
+    });
+  }
+  if (domRefs.btnPayFreqMonthly) {
+    domRefs.btnPayFreqMonthly.addEventListener('click', () => {
+      setPayFrequency(CONFIG.PAY_FREQUENCY_MONTHLY);
+      debouncedCalculate();
+    });
+  }
+
+  // Fine-tune slider + its paired number field stay in sync with each other
+  if (domRefs.incomeBasisAdjustSlider) {
+    domRefs.incomeBasisAdjustSlider.addEventListener('input', () => {
+      setIncomeBasisPaycheckValue(domRefs.incomeBasisAdjustSlider.value);
+      debouncedCalculate();
+    });
+  }
+  if (domRefs.incomeBasisPaycheckAmountInput) {
+    domRefs.incomeBasisPaycheckAmountInput.addEventListener('input', () => {
+      setIncomeBasisPaycheckValue(domRefs.incomeBasisPaycheckAmountInput.value);
+      debouncedCalculate();
+    });
+  }
+  if (domRefs.btnResetIncomeBasisAdjust) {
+    domRefs.btnResetIncomeBasisAdjust.addEventListener('click', () => {
+      resetIncomeBasisAdjust();
+      debouncedCalculate();
+    });
+  }
+
   // Lump sum inputs
-  domRefs.lumpSumAmountInput.addEventListener('input', debouncedCalculate);
-  domRefs.lumpSumFrequencyInput.addEventListener('change', debouncedCalculate);
+  domRefs.lumpSumAmountInput?.addEventListener('input', debouncedCalculate);
+  domRefs.lumpSumFrequencyInput?.addEventListener('change', debouncedCalculate);
+
+  // Bridge Loan DTI Phase Toggle listeners
+  if (domRefs.btnBridgePhaseHolding) {
+    domRefs.btnBridgePhaseHolding.addEventListener('click', () => setBridgeDtiPhase('holding'));
+  }
+  if (domRefs.btnBridgePhaseRecast) {
+    domRefs.btnBridgePhaseRecast.addEventListener('click', () => setBridgeDtiPhase('recast'));
+  }
 
   // Term card toggles
-  domRefs.card30.addEventListener('click', () => {
+  domRefs.card30?.addEventListener('click', () => {
     activeTerm = 30;
     updateTermCardSelection(activeTerm, domRefs);
     calculateAll();
     debouncedSave();
   });
 
-  domRefs.card15.addEventListener('click', () => {
+  domRefs.card15?.addEventListener('click', () => {
     activeTerm = 15;
     updateTermCardSelection(activeTerm, domRefs);
     calculateAll();
@@ -356,6 +948,7 @@ function attachSellHouseListeners() {
   domRefs.hasHouseToSellInput.addEventListener('change', () => {
     const isChecked = domRefs.hasHouseToSellInput.checked;
     domRefs.sellHouseFieldsPanel.style.display = isChecked ? 'block' : 'none';
+    updateDtiTabAvailability(isChecked && saleMode === CONFIG.SALE_MODE_BRIDGE_LOAN);
     updateSellProceeds();
     syncDownPaymentFields('house');
     debouncedCalculate();
@@ -417,6 +1010,93 @@ function attachSellHouseListeners() {
       }
     });
   }
+
+  // Sale mode switch (Sell First vs Bridge Loan)
+  if (domRefs.btnSaleModeSellFirst) {
+    domRefs.btnSaleModeSellFirst.addEventListener('click', () => {
+      setSaleMode(CONFIG.SALE_MODE_SELL_FIRST);
+      syncDownPaymentFields('house');
+      debouncedCalculate();
+    });
+  }
+  if (domRefs.btnSaleModeBridge) {
+    domRefs.btnSaleModeBridge.addEventListener('click', () => {
+      setSaleMode(CONFIG.SALE_MODE_BRIDGE_LOAN);
+      syncDownPaymentFields('house');
+      debouncedCalculate();
+    });
+  }
+
+  // Financing Type switch (Bridge Loan vs HELOC) — only relevant within
+  // Bridge Loan mode. Resets the rate/fee inputs to the newly-selected
+  // type's defaults (confirmed behavior — a manually-typed number is lost
+  // on switch, same as picking a fresh scenario).
+  if (domRefs.btnFinancingTypeBridge) {
+    domRefs.btnFinancingTypeBridge.addEventListener('click', () => {
+      setBridgeFinancingType(CONFIG.FINANCING_TYPE_BRIDGE_LOAN);
+      debouncedCalculate();
+    });
+  }
+  if (domRefs.btnFinancingTypeHeloc) {
+    domRefs.btnFinancingTypeHeloc.addEventListener('click', () => {
+      setBridgeFinancingType(CONFIG.FINANCING_TYPE_HELOC);
+      debouncedCalculate();
+    });
+  }
+
+  // Sale Proceeds Strategy switch (Recast vs Extra Payment)
+  if (domRefs.btnRecastStratRecast) {
+    domRefs.btnRecastStratRecast.addEventListener('click', () => {
+      setRecastStrategy(CONFIG.SALE_PAYOFF_STRATEGY_RECAST);
+    });
+  }
+  if (domRefs.btnRecastStratExtra) {
+    domRefs.btnRecastStratExtra.addEventListener('click', () => {
+      setRecastStrategy(CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT);
+    });
+  }
+
+  // Pre/Post Recast Card View Toggles
+  if (domRefs.btnRecastPhasePost30El) {
+    domRefs.btnRecastPhasePost30El.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cardPhase30 = 'post';
+      calculateAll();
+    });
+  }
+  if (domRefs.btnRecastPhasePre30El) {
+    domRefs.btnRecastPhasePre30El.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cardPhase30 = 'pre';
+      calculateAll();
+    });
+  }
+  if (domRefs.btnRecastPhasePost15El) {
+    domRefs.btnRecastPhasePost15El.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cardPhase15 = 'post';
+      calculateAll();
+    });
+  }
+  if (domRefs.btnRecastPhasePre15El) {
+    domRefs.btnRecastPhasePre15El.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cardPhase15 = 'pre';
+      calculateAll();
+    });
+  }
+
+  // Bridge loan amount feeds the down payment directly (live, like cash) —
+  // every other bridge field only affects holding-cost/recast math.
+  if (domRefs.bridgeLoanAmountInput) {
+    domRefs.bridgeLoanAmountInput.addEventListener('input', () => {
+      syncDownPaymentFields('house');
+      debouncedCalculate();
+    });
+  }
+  [domRefs.bridgeExtraCashInput, domRefs.monthsUntilSaleInput, domRefs.bridgeLoanRateInput, domRefs.bridgeLoanFeesPercentInput, domRefs.recastFeeInput].forEach(input => {
+    if (input) input.addEventListener('input', debouncedCalculate);
+  });
 }
 
 // ============================================================================
@@ -432,8 +1112,15 @@ function attachActionListeners() {
     window.location.href = 'amortization.html';
   });
 
-  // Load Live Rates
-  domRefs.loadRatesBtn.addEventListener('click', loadLiveMortgageRates);
+  // Load Live Rates — also expands the Rates & Taxes card if it's
+  // currently collapsed, so a synced rate isn't hidden from view.
+  domRefs.loadRatesBtn.addEventListener('click', () => {
+    const ratesToggle = document.getElementById('rates-toggle');
+    if (ratesToggle && ratesToggle.getAttribute('aria-expanded') !== 'true') {
+      ratesToggle.click();
+    }
+    loadLiveMortgageRates();
+  });
 
   // Fetch Property Data
   domRefs.btnSearchMls.addEventListener('click', handleSearchMls);
@@ -827,12 +1514,53 @@ async function initializeApp() {
     applyLoadedDataToDOM(savedData, domRefs);
     activeTerm = savedData.activeTerm || 30;
 
+    // Wire up the DTI switcher and collapsible cards before anything else
+    // touches them (setSaleMode below can fall back to the Bank Qualifying
+    // tab, which relies on the switcher's click handlers already being attached).
+    setupDtiSwitcher();
+    setupCollapsibleCards();
+
+    // Restore each left-column card's open/closed state (defaults to
+    // collapsed for any section not yet in a saved blob). Then save
+    // whenever a card is toggled, so the choice sticks across reloads —
+    // separate from the debounced input-save below since a toggle isn't
+    // itself an input value.
+    applyCollapsedSectionsState(savedData.collapsedSections);
+    document.querySelectorAll('.collapsible-header[data-section-key]').forEach(header => {
+      header.addEventListener('click', () => debouncedSave());
+    });
+
     // Restore "Have a house to sell?" panel visibility (applyLoadedDataToDOM
     // only restores input values, not this checkbox-driven show/hide state)
     // and the home-value freshness timestamp used by the stale-value suggestion.
     domRefs.hasHouseToSellInput.checked = !!savedData.sellingHouse;
     domRefs.sellHouseFieldsPanel.style.display = savedData.sellingHouse ? 'block' : 'none';
     sellHomeValueUpdatedAt = savedData.sellHomeValueUpdatedAt || null;
+    setSaleMode(savedData.saleMode || CONFIG.SALE_MODE_SELL_FIRST);
+    // resetDefaults: false — the saved rate/fee values (restored to the DOM
+    // by applyLoadedDataToDOM just above) must win here, not whichever
+    // default this financing type would normally reset them to.
+    setBridgeFinancingType(savedData.bridgeFinancingType || DEFAULTS.bridgeFinancingType, { resetDefaults: false });
+    recastStrategy = savedData.recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT
+      ? CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT
+      : CONFIG.SALE_PAYOFF_STRATEGY_RECAST;
+    setRecastStrategyUI(recastStrategy, domRefs);
+    bridgeDtiPhase = savedData.bridgeDtiPhase === 'recast' ? 'recast' : 'holding';
+
+    // Net (Best Guess) fine-tune state: payFrequency/netMonthlyOverride are
+    // plain JS state (not DOM-value-based, since the slider's displayed
+    // value depends on which frequency is active) — restore both before
+    // setIncomeBasis() below, since it immediately reads them to render the
+    // fine-tune control's initial bounds/value and the reset button's visibility.
+    payFrequency = CONFIG.PAY_PERIODS_PER_YEAR[savedData.payFrequency] ? savedData.payFrequency : CONFIG.PAY_FREQUENCY_MONTHLY;
+    netMonthlyOverride = (typeof savedData.netMonthlyOverride === 'number' && !Number.isNaN(savedData.netMonthlyOverride))
+      ? savedData.netMonthlyOverride
+      : null;
+    setPayFrequencyToggleUI(payFrequency, domRefs);
+    if (domRefs.btnResetIncomeBasisAdjust) {
+      domRefs.btnResetIncomeBasisAdjust.style.display = netMonthlyOverride !== null ? 'inline-block' : 'none';
+    }
+    setIncomeBasis(savedData.incomeBasis || CONFIG.INCOME_BASIS_GROSS);
 
     // Attach all listeners
     attachInputListeners();
@@ -891,4 +1619,8 @@ async function initializeApp() {
 // START APPLICATION
 // ============================================================================
 
-document.addEventListener('DOMContentLoaded', initializeApp);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+  initializeApp();
+}

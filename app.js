@@ -132,4 +132,43 @@ document.addEventListener('DOMContentLoaded', () => {
       synth.playHover();
     });
   }
+
+  // ==========================================
+  // CATEGORY FILTERING LOGIC
+  // ==========================================
+  const filterBtns = document.querySelectorAll('.filter-btn');
+  const domainGroups = document.querySelectorAll('.domain-group');
+
+  if (filterBtns.length > 0 && domainGroups.length > 0) {
+    filterBtns.forEach(btn => {
+      btn.addEventListener('mouseenter', () => {
+        synth.playHover();
+      });
+
+      btn.addEventListener('click', () => {
+        synth.playClick();
+
+        const targetFilter = btn.getAttribute('data-filter');
+
+        // Update active tab states
+        filterBtns.forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+
+        // Show/hide domain groups
+        domainGroups.forEach(group => {
+          const domain = group.getAttribute('data-domain');
+
+          if (targetFilter === 'all' || targetFilter === domain) {
+            group.classList.remove('hidden-domain');
+          } else {
+            group.classList.add('hidden-domain');
+          }
+        });
+      });
+    });
+  }
 });

@@ -52,9 +52,9 @@ class RoutePreviewManager {
         <div class="w-16 h-16 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 text-3xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-sky-500/10">
           🗺️
         </div>
-        <h3 class="text-lg font-bold text-slate-100 mb-1">No Scouting Sites in Tour Yet</h3>
+        <h3 class="text-lg font-bold text-slate-100 mb-1">No Homes in Tour Yet</h3>
         <p class="text-xs text-slate-400 leading-relaxed mb-6">
-          Add Redfin listing URLs, load a sample tour, or click on the map to add scouting locations. Once added, you can preview the full route in chronological order with house pictures, addresses, and expected inspection times.
+          Add Redfin listing URLs, load a sample tour, or click on the map to add homes. Once added, you can preview the full route in chronological order with house pictures, addresses, and expected inspection times.
         </p>
         <div class="flex items-center justify-center gap-3">
           <button type="button" onclick="window.routePreviewManager.closePreview(); if(window.homewardApp) window.homewardApp.loadSampleData();" class="px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-400 hover:to-emerald-400 text-slate-950 font-extrabold text-xs shadow-md transition-all">
@@ -81,8 +81,8 @@ class RoutePreviewManager {
       <!-- Summary Header Bar -->
       <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 mb-6 shadow-md flex flex-wrap items-center justify-between gap-4">
         <div>
-          <span class="text-[10px] font-bold text-sky-400 uppercase tracking-widest block mb-0.5">Top-Down Scouting Order</span>
-          <h2 class="text-lg font-bold text-slate-100">${tourData.tourName || 'House & Lot Scouting Tour'}</h2>
+          <span class="text-[10px] font-bold text-sky-400 uppercase tracking-widest block mb-0.5">Top-Down Viewing Order</span>
+          <h2 class="text-lg font-bold text-slate-100">${tourData.tourName || 'Home Viewing Tour'}</h2>
           <p class="text-xs text-slate-400">Starting from: <span class="text-slate-200 font-medium">${startAddr}</span></p>
         </div>
         <div class="flex flex-wrap items-center gap-2.5 text-xs">

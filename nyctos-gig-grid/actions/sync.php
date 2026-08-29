@@ -74,6 +74,11 @@ function handleSyncRequest(bool $isCli = false, ?string $targetMarket = null) {
         $maintenance = [
             'events_purged' => 0,
             'orphan_setlists_removed' => 0,
+            'duplicate_groups_merged' => 0,
+            'duplicate_rows_removed' => 0,
+            'ticket_id_groups_merged' => 0,
+            'ticket_id_rows_removed' => 0,
+            'double_bill_groups_flagged' => 0,
         ];
         $retentionDays = defined('EVENT_RETENTION_DAYS') ? (int)EVENT_RETENTION_DAYS : 4;
         try {
@@ -121,6 +126,9 @@ function handleSyncRequest(bool $isCli = false, ?string $targetMarket = null) {
             syncCliLog("[LAST.FM NORMALIZER] Normalized $lastFmNormalizedCount artist genres.", true);
             syncCliLog("[SETLIST SYNC] Checked and cached $setlistFetched past setlists.", true);
             syncCliLog("[MAINTENANCE] Purged {$maintenance['events_purged']} events older than {$retentionDays} days and removed {$maintenance['orphan_setlists_removed']} orphaned setlists.", true);
+            syncCliLog("[MAINTENANCE] Merged {$maintenance['duplicate_groups_merged']} duplicate event group(s), removing {$maintenance['duplicate_rows_removed']} redundant row(s).", true);
+            syncCliLog("[MAINTENANCE] Merged {$maintenance['ticket_id_groups_merged']} same-ticket-listing group(s), removing {$maintenance['ticket_id_rows_removed']} redundant row(s).", true);
+            syncCliLog("[MAINTENANCE] Flagged {$maintenance['double_bill_groups_flagged']} new possible-double-bill group(s) for review.", true);
             syncCliLog('[CLI SYNC] Sync completed successfully.', true);
             exit;
         }
@@ -135,6 +143,11 @@ function handleSyncRequest(bool $isCli = false, ?string $targetMarket = null) {
             'setlists_cached' => $setlistFetched,
             'events_purged' => $maintenance['events_purged'],
             'orphan_setlists_removed' => $maintenance['orphan_setlists_removed'],
+            'duplicate_groups_merged' => $maintenance['duplicate_groups_merged'],
+            'duplicate_rows_removed' => $maintenance['duplicate_rows_removed'],
+            'ticket_id_groups_merged' => $maintenance['ticket_id_groups_merged'],
+            'ticket_id_rows_removed' => $maintenance['ticket_id_rows_removed'],
+            'double_bill_groups_flagged' => $maintenance['double_bill_groups_flagged'],
             'sync_report' => $reportData,
             'logs' => $aggregator->getLogs()
         ]);

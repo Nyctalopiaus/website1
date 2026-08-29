@@ -69,17 +69,52 @@ function lotSizeLabel($lotSqFt) {
     return ($acres >= 0.1) ? number_format($acres, 2) . ' Acres' : number_format($lotSqFt) . ' sq ft';
 }
 
+// Shared rental-estimate extraction, used by every per-site parser (Redfin,
+// Zillow, Realtor.com/Homes.com/generic) so a rent figure is only ever
+// missing from the response because the page truly had nothing usable —
+// not because one site's parser forgot to look for it. Checks known
+// key names first (site-provided rent estimates), then a text-pattern
+// fallback, then finally an algorithmic estimate (sqft-based, else
+// price-based) so off-market/rent-estimate-less pages still populate the
+// calculators that depend on this field instead of silently returning null.
+function deriveRentalEstimate($haystacks, $sqft = null, $price = null) {
+    $rentalEstimate = extractNumericField('rentalEstimate|rental_estimate|rentEstimate|rent_estimate|rentZestimate|rentalValue|predictedRent|monthlyRentEstimate|estimatedRent', $haystacks);
+    if ($rentalEstimate === null) {
+        foreach ($haystacks as $haystack) {
+            if ($haystack && preg_match('/(?:Rental Estimate|Rent Zestimate|Estimated Rent)[^$0-9]*\$([0-9,]+)/i', $haystack, $m)) {
+                $rentalEstimate = floatval(str_replace(',', '', $m[1]));
+                break;
+            }
+        }
+    }
+    // Algorithmic estimate fallback if off-market / missing:
+    if ($rentalEstimate === null) {
+        if ($sqft !== null && $sqft > 200) {
+            $rentalEstimate = round(($sqft * 1.35) / 25) * 25;
+        } elseif ($price !== null && $price > 20000) {
+            $rentalEstimate = round(($price * 0.0065) / 50) * 50;
+        }
+    }
+    return $rentalEstimate;
+}
+
 // Tolerates an optional leading/trailing backslash before the quote,
 // since Redfin and Zillow frequently embed this data as a JSON string nested
 // inside another JSON blob, where inner quotes come through backslash-escaped
 // or where numbers are formatted as quoted strings (e.g. "monthlyHoaFee": "150" or "taxAnnualAmount": "$4,212").
-function extractNumericField($keyNames, $haystacks) {
+function extractNumericField($keyNames, $haystacks, $ignoreZero = false) {
     $pattern = '/\\\\?"(' . $keyNames . ')\\\\?"\s*:\s*\\\\?"?\$?\s*([0-9,]+(?:\.[0-9]+)?)/i';
     foreach ($haystacks as $haystack) {
         if (!$haystack) continue;
-        if (preg_match($pattern, $haystack, $m)) {
-            $cleaned = str_replace(',', '', $m[2]);
-            return floatval($cleaned);
+        if (preg_match_all($pattern, $haystack, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $m) {
+                $cleaned = str_replace(',', '', $m[2]);
+                $val = floatval($cleaned);
+                if ($ignoreZero && $val <= 0) {
+                    continue;
+                }
+                return $val;
+            }
         }
     }
     return null;
@@ -156,24 +191,7 @@ function parsePropertyHtml($html, $fallbackAddress = null) {
         $yearBuilt = null;
     }
 
-    // Rental Estimate Extraction:
-    $rentalEstimate = extractNumericField('rentalEstimate|rental_estimate|rentEstimate|rent_estimate|rentZestimate|rentalValue|predictedRent|monthlyRentEstimate|estimatedRent', $haystacks);
-    if ($rentalEstimate === null) {
-        foreach ($haystacks as $haystack) {
-            if ($haystack && preg_match('/(?:Rental Estimate|Rent Zestimate|Estimated Rent)[^$0-9]*\$([0-9,]+)/i', $haystack, $m)) {
-                $rentalEstimate = floatval(str_replace(',', '', $m[1]));
-                break;
-            }
-        }
-    }
-    // Algorithmic estimate fallback if off-market / missing:
-    if ($rentalEstimate === null) {
-        if ($sqft !== null && $sqft > 200) {
-            $rentalEstimate = round(($sqft * 1.35) / 25) * 25;
-        } elseif ($price !== null && $price > 20000) {
-            $rentalEstimate = round(($price * 0.0065) / 50) * 50;
-        }
-    }
+    $rentalEstimate = deriveRentalEstimate($haystacks, $sqft, $price);
 
     $photoUrl = null;
 

@@ -6,7 +6,7 @@
 class HomewardApp {
   constructor() {
     this.currentTour = {
-      tourName: 'Homeward Lot Scouting Tour',
+      tourName: 'Homeward Home Viewing Tour',
       startAddress: '100 Congress Ave, Austin, TX 78701',
       loopBack: true,
       stayDurationMins: 20,
@@ -31,7 +31,7 @@ class HomewardApp {
         }
       });
       if (!saved.tourName || saved.tourName.includes('Austin Hill Country')) {
-        saved.tourName = 'House & Lot Scouting Tour';
+        saved.tourName = 'Home Viewing Tour';
       }
       this.currentTour = saved;
       this.populateUIFromState();
@@ -77,7 +77,7 @@ class HomewardApp {
     if (window.mapManager) {
       window.mapManager.setMapClickCallback(async (lat, lng) => {
         const address = await window.geocoder.reverseGeocode(lat, lng);
-        if (confirm(`Add map location to your scouting tour?\n📍 ${address}`)) {
+        if (confirm(`Add map location to your tour?\n📍 ${address}`)) {
           await this.addStopFromGeocoded(address, lat, lng);
         }
       });
@@ -100,7 +100,7 @@ class HomewardApp {
 
   populateUIFromState() {
     const nameInput = document.getElementById('input-tour-name');
-    if (nameInput) nameInput.value = this.currentTour.tourName || 'House & Lot Scouting Tour';
+    if (nameInput) nameInput.value = this.currentTour.tourName || 'Home Viewing Tour';
 
     document.getElementById('input-start-address').value = this.currentTour.startAddress || '';
     document.getElementById('input-loopback').checked = !!this.currentTour.loopBack;
@@ -129,7 +129,7 @@ class HomewardApp {
     if (this.currentTour.stops.length === 0) {
       container.innerHTML = `
         <div class="text-center py-6 text-slate-500 text-xs">
-          <p>No scouting sites added yet.</p>
+          <p>No homes added yet.</p>
           <p class="text-[11px] text-slate-600 mt-1">Type an address above or click on the map to add pins.</p>
         </div>
       `;
@@ -365,7 +365,7 @@ class HomewardApp {
     const tourNameInput = document.getElementById('input-tour-name');
     if (tourNameInput) {
       tourNameInput.addEventListener('input', (e) => {
-        this.currentTour.tourName = e.target.value.trim() || 'House & Lot Scouting Tour';
+        this.currentTour.tourName = e.target.value.trim() || 'Home Viewing Tour';
         window.storageManager.saveTour(this.currentTour);
       });
     }

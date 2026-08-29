@@ -33,6 +33,12 @@
 
 body {
   background-color: var(--bg-dark);
+  background-image: 
+    linear-gradient(rgba(9, 13, 22, 0.86), rgba(9, 13, 22, 0.90)),
+    url('assets/rent_vs_sell_bg.webp');
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center;
   color: var(--text-bright);
   font-family: var(--font-sans);
   min-height: 100vh;

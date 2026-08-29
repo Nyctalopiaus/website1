@@ -45,8 +45,13 @@ class EventAggregator {
         $this->loadVenueWhitelist();
         $this->initRunMetrics();
 
-        // Rotate daily logs and purge log files older than 14 days (2 weeks)
-        $rotationMsgs = LogRotatorService::rotateAndPurge(__DIR__ . '/../logs/cron-sync-log', 14);
+        // Rotate daily logs and purge log files older than 14 days (2 weeks).
+        // Directory name must match the cPanel cron jobs' actual `>>` redirect target
+        // (logs/cron_sync_log/, underscore) -- a prior refactor briefly pointed this at a
+        // hyphenated logs/cron-sync-log/ that the live cron jobs never wrote to, which
+        // silently broke daily rotation/dating for ~2.5 weeks (Aug 10-27, 2026) even though
+        // the underlying syncs kept running fine. See project memory before renaming this again.
+        $rotationMsgs = LogRotatorService::rotateAndPurge(__DIR__ . '/../logs/cron_sync_log', 14);
         foreach ($rotationMsgs as $msg) {
             $this->log($msg);
         }
@@ -301,6 +306,14 @@ class EventAggregator {
                     $this->recordPurgedCount($sourceName, $market, 1);
                 }
 
+                // Clean up child-table rows first so purging an ignored/promo event
+                // (e.g. a "Suites" pseudo-listing or a promo upsell row) never leaves
+                // orphaned price-history/setlist/flag rows behind.
+                foreach (['event_price_history', 'attended_log', 'event_setlists', 'data_quality_event_flags', 'data_quality_double_bill_flags'] as $childTable) {
+                    $childDel = $this->db->prepare("DELETE FROM {$childTable} WHERE event_id = :id");
+                    $childDel->execute([':id' => $e['event_id']]);
+                }
+
                 $del = $this->db->prepare("DELETE FROM events WHERE event_id = :id");
                 $del->execute([':id' => $e['event_id']]);
                 $purgedCount++;
@@ -324,9 +337,9 @@ class EventAggregator {
         }
 
         $keywords = [
-            'tour', 'fest', 'festival', 'undercurrent', 'anniversary', 
-            'album release', 'live in', 'presents', 'world tour', 'n.a. tour', 
-            'north american tour', 'us tour', 'usa tour', 'summer tour', 
+            'tour', 'fest', 'festival', 'undercurrent', 'anniversary',
+            'album release', 'live in', 'world tour', 'n.a. tour',
+            'north american tour', 'us tour', 'usa tour', 'summer tour',
             'fall tour', 'spring tour', 'winter tour', 'experience',
             'years in', 'years of', 'atmosphere', 'celebrating', 'live on stage',
             'bus to show', 'pickup spot', 'shuttle'
@@ -336,6 +349,15 @@ class EventAggregator {
             if (strpos($clean, $kw) !== false) {
                 return true;
             }
+        }
+
+        // Word-boundary check for "present(s)" (e.g. "X & Y Present: Z", "The Orb present
+        // Metallic Spheres", "X presents Y") — a promo/lineup blurb standing in for a real
+        // venue name, seen from Bandsintown when its API returns event title text instead
+        // of the actual venue field. Matched via regex rather than the plain-substring
+        // keyword loop above so it doesn't also catch "represent"/"presentation"/"presently".
+        if (preg_match('/\bpresents?\b/i', $clean)) {
+            return true;
         }
 
         if (preg_match('/:\s*\d+\s*years/i', $clean) || preg_match('/\b\d+\s*years\s+in\b/i', $clean) || preg_match('/\b\d+\s*th\s+anniversary\b/i', $clean)) {
@@ -662,7 +684,12 @@ class EventAggregator {
             'front-range' => 'colorado',
             'colorado' => 'colorado',
             'co' => 'colorado',
+            'denver-boulder' => 'colorado',
+            'springs-pueblo' => 'colorado',
+            'ft-collins-north' => 'colorado',
+            'west-slope' => 'colorado',
             'socal' => 'california',
+            'norcal' => 'california',
             'california' => 'california',
             'ca' => 'california',
             'southern-california' => 'california',
@@ -819,7 +846,7 @@ class EventAggregator {
         return $markets;
     }
 
-    private function simplifyVenueName($venueName) {
+    public function simplifyVenueName($venueName) {
         $clean = preg_replace('/[^a-z0-9]/', '', strtolower((string)$venueName));
         $clean = str_replace(['theatre', 'ampitheater', 'ampitheatre'], ['theater', 'amphitheater', 'amphitheater'], $clean);
 
@@ -928,7 +955,7 @@ class EventAggregator {
     /**
      * Preserve all known performers by unioning two performer strings and resolving subsets.
      */
-    private function mergePerformerNames($existingArtist, $incomingArtist) {
+    public function mergePerformerNames($existingArtist, $incomingArtist) {
         $existingParts = $this->splitPerformerNames($existingArtist);
         $incomingParts = $this->splitPerformerNames($incomingArtist);
 
@@ -1031,7 +1058,7 @@ class EventAggregator {
         $this->venuesByMarket = [];
 
         try {
-            $rows = $this->db->query("SELECT venue_id, venue_name, city, address, maps_url, latitude, longitude, COALESCE(NULLIF(TRIM(market), ''), 'front-range') AS market FROM venues")->fetchAll(PDO::FETCH_ASSOC);
+            $rows = $this->db->query("SELECT venue_id, venue_name, city, address, maps_url, latitude, longitude, alternate_names, COALESCE(NULLIF(TRIM(market), ''), 'front-range') AS market FROM venues")->fetchAll(PDO::FETCH_ASSOC);
             foreach ($rows as $row) {
                 $market = $this->normalizeMarketKey($row['market'] ?? 'front-range') ?? 'front-range';
                 $name = trim((string)($row['venue_name'] ?? ''));
@@ -1046,7 +1073,7 @@ class EventAggregator {
 
                 $nameLower = strtolower($name);
                 if (!isset($this->venuesByMarket[$market][$nameLower])) {
-                    $this->venuesByMarket[$market][$nameLower] = [
+                    $entry = [
                         'venue_id' => isset($row['venue_id']) ? (int)$row['venue_id'] : null,
                         'name' => $name,
                         'city' => $city,
@@ -1057,6 +1084,25 @@ class EventAggregator {
                         'name_lower' => $nameLower,
                         'name_simple' => $this->simplifyVenueName($name)
                     ];
+                    $this->venuesByMarket[$market][$nameLower] = $entry;
+
+                    // Alternate spellings (set via admin_data_quality.php's Venue Review tab,
+                    // or folded in automatically when merging a duplicate venue) get registered
+                    // as extra lookup keys pointing at this same canonical $entry — 'name' stays
+                    // the canonical venue_name, so a match on an alias still resolves back to
+                    // the right venue_id/name below in resolveTargetVenue(). No-op for the vast
+                    // majority of venues that don't have any alternate names set.
+                    $altNames = explode(',', (string)($row['alternate_names'] ?? ''));
+                    foreach ($altNames as $altName) {
+                        $altLower = strtolower(trim($altName));
+                        if ($altLower === '' || isset($this->venuesByMarket[$market][$altLower])) {
+                            continue;
+                        }
+                        $this->venuesByMarket[$market][$altLower] = array_merge($entry, [
+                            'name_lower' => $altLower,
+                            'name_simple' => $this->simplifyVenueName($altLower)
+                        ]);
+                    }
                 }
             }
         } catch (Exception $e) {
@@ -1086,15 +1132,26 @@ class EventAggregator {
         $marketNorm = $this->normalizeMarketKey($market);
         $regionNorm = strtolower(trim((string)$region));
         $countryNorm = strtolower(trim((string)$country));
+        $cityNorm = strtolower(trim((string)$city));
+
+        // If market is null, 'all', or 'all-markets', test against ALL active monitored market regions.
+        if ($marketNorm === null || $marketNorm === 'all' || $marketNorm === 'all-markets') {
+            return $this->isEventInMarketRegion('colorado', $city, $region, $country)
+                || $this->isEventInMarketRegion('california', $city, $region, $country)
+                || $this->isEventInMarketRegion('texas', $city, $region, $country)
+                || $this->isEventInMarketRegion('england', $city, $region, $country)
+                || $this->isEventInMarketRegion('scotland', $city, $region, $country)
+                || $this->isEventInMarketRegion('wales', $city, $region, $country)
+                || $this->isEventInMarketRegion('ireland', $city, $region, $country);
+        }
 
         // 1. Country validation
         if ($countryNorm !== '') {
-            if ($marketNorm === 'colorado' || $marketNorm === 'california' || $marketNorm === 'texas') {
+            if (in_array($marketNorm, ['colorado', 'california', 'texas'], true)) {
                 if (!in_array($countryNorm, ['united states', 'us', 'usa', 'united states of america'], true)) {
                     return false;
                 }
             } elseif (in_array($marketNorm, ['england', 'scotland', 'wales', 'ireland'], true)) {
-                // Country-first validation for standalone intl markets.
                 if ($marketNorm === 'england') {
                     $allowedCountries = ['england', 'united kingdom', 'uk', 'gb', 'great britain'];
                 } elseif ($marketNorm === 'scotland') {
@@ -1102,7 +1159,6 @@ class EventAggregator {
                 } elseif ($marketNorm === 'wales') {
                     $allowedCountries = ['wales', 'united kingdom', 'uk', 'gb', 'great britain'];
                 } else {
-                    // Ireland market includes both Republic and Northern Ireland metros.
                     $allowedCountries = ['ireland', 'republic of ireland', 'ie', 'united kingdom', 'uk', 'gb', 'great britain', 'northern ireland'];
                 }
                 if (!in_array($countryNorm, $allowedCountries, true)) {
@@ -1111,28 +1167,49 @@ class EventAggregator {
             }
         }
 
-        $cityNorm = strtolower(trim((string)$city));
-
         // 2. Region / State & City validation
+        $outOfScopeUsStates = [
+            'al', 'ak', 'az', 'ar', 'ct', 'de', 'fl', 'ga', 'hi', 'id', 'il', 'in', 'ia', 'ks', 'ky', 'la',
+            'me', 'md', 'ma', 'mi', 'mn', 'ms', 'mo', 'mt', 'ne', 'nv', 'nh', 'nj', 'nm', 'ny', 'nc', 'nd',
+            'oh', 'ok', 'or', 'pa', 'ri', 'sc', 'sd', 'tn', 'ut', 'vt', 'va', 'wa', 'wv', 'wi', 'wy'
+        ];
+
         if ($marketNorm === 'colorado') {
-            if ($regionNorm !== '' && !in_array($regionNorm, ['co', 'colorado', 'co.'], true)) {
+            if ($regionNorm !== '') {
+                if (!in_array($regionNorm, ['co', 'colorado', 'co.'], true)) {
+                    return false;
+                }
+            }
+            if ($regionNorm === '' && preg_match('/\b(seattle|portland|chicago|kansas city|omaha|cincinnati|joplin|st louis|st\. louis|minneapolis|nashville|atlanta|miami|new york|boston|dallas|houston|austin|san francisco|los angeles)\b/i', $cityNorm)) {
                 return false;
             }
         } elseif ($marketNorm === 'california') {
-            if ($regionNorm !== '' && !in_array($regionNorm, ['ca', 'california', 'ca.'], true)) {
+            if ($regionNorm !== '') {
+                if (!in_array($regionNorm, ['ca', 'california', 'ca.'], true)) {
+                    return false;
+                }
+            }
+            if ($regionNorm === '' && preg_match('/\b(denver|seattle|portland|chicago|kansas city|omaha|cincinnati|joplin|st louis|st\. louis|minneapolis|nashville|atlanta|miami|new york|boston|dallas|houston|austin)\b/i', $cityNorm)) {
                 return false;
             }
         } elseif ($marketNorm === 'texas') {
-            if ($regionNorm !== '' && !in_array($regionNorm, ['tx', 'texas', 'tx.'], true)) {
+            if ($regionNorm !== '') {
+                if (!in_array($regionNorm, ['tx', 'texas', 'tx.'], true)) {
+                    return false;
+                }
+            }
+            if ($regionNorm === '' && preg_match('/\b(denver|seattle|portland|chicago|kansas city|omaha|cincinnati|joplin|st louis|st\. louis|minneapolis|nashville|atlanta|miami|new york|boston|los angeles|san francisco)\b/i', $cityNorm)) {
                 return false;
             }
         } elseif (in_array($marketNorm, ['england', 'scotland', 'wales', 'ireland'], true)) {
-            if ($regionNorm !== '' && in_array($regionNorm, ['co', 'colorado', 'ca', 'california', 'wa', 'washington', 'or', 'oregon', 'tx', 'texas', 'mo', 'missouri', 'ne', 'nebraska', 'il', 'illinois', 'ny', 'new york'], true)) {
+            if ($regionNorm !== '' && in_array($regionNorm, array_merge(['co', 'colorado', 'ca', 'california', 'tx', 'texas'], $outOfScopeUsStates), true)) {
                 return false;
             }
             if (preg_match('/\b(seattle|denver|omaha|kansas city|kansas|nashville|chicago|los angeles|san francisco|austin|portland|dallas|houston|atlanta|miami)\b/i', $cityNorm)) {
                 return false;
             }
+        } else {
+            return false;
         }
 
         return true;
@@ -1154,7 +1231,7 @@ class EventAggregator {
             $city = $locationHint['city'] ?? '';
             $region = $locationHint['region'] ?? '';
             $country = $locationHint['country'] ?? '';
-            if ($marketHint !== null && !$this->isEventInMarketRegion($marketHint, $city, $region, $country)) {
+            if (!$this->isEventInMarketRegion($marketHint ?? 'all-markets', $city, $region, $country)) {
                 return null;
             }
         }
@@ -1195,30 +1272,32 @@ class EventAggregator {
                 $cityMatches = ($hCityNorm !== '' && $candidateCity !== '' && $hCityNorm === $candidateCity);
                 $cityMismatches = ($hCityNorm !== '' && $candidateCity !== '' && $hCityNorm !== $candidateCity);
 
+                // If event city and candidate venue city explicitly mismatch, skip matching this candidate
+                if ($cityMismatches) {
+                    continue;
+                }
+
                 if ($cleanVenue === $candidate) {
                     $score = 1000 + strlen($candidate);
                     if ($cityMatches) {
                         $score += 200;
                     }
-                    if ($cityMismatches) {
-                        $score -= 400;
-                    }
                 } elseif (strlen($candidate) >= 6 && (strpos($cleanVenue, $candidate) !== false || strpos($candidate, $cleanVenue) !== false)) {
                     $lenDiff = abs(strlen($cleanVenue) - strlen($candidate));
-                    if ($lenDiff <= 10 && !$cityMismatches) {
+                    if ($lenDiff <= 10) {
                         $score = 800 + min(strlen($candidate), strlen($cleanVenue)) - $lenDiff;
                         if ($cityMatches) {
                             $score += 200;
                         }
                     }
                 } elseif ($cleanSimple !== '' && $candidateSimple !== '') {
-                    if ($cleanSimple === $candidateSimple && !$cityMismatches) {
+                    if ($cleanSimple === $candidateSimple) {
                         $score = 700 + strlen($candidateSimple);
                         if ($cityMatches) {
                             $score += 200;
                         }
                     } elseif (strlen($candidateSimple) >= 6 && strlen($cleanSimple) >= 6) {
-                        if ((strpos($cleanSimple, $candidateSimple) !== false || strpos($candidateSimple, $cleanSimple) !== false) && !$cityMismatches) {
+                        if (strpos($cleanSimple, $candidateSimple) !== false || strpos($candidateSimple, $cleanSimple) !== false) {
                             $lenDiff = abs(strlen($cleanSimple) - strlen($candidateSimple));
                             if ($lenDiff <= 8) {
                                 $score = 600 + min(strlen($cleanSimple), strlen($candidateSimple)) - $lenDiff;
@@ -1319,9 +1398,93 @@ class EventAggregator {
     }
 
     /**
+     * Normalizes raw upstream text before it feeds into dedupe-key generation.
+     * Different source APIs (and different pulls of the same API) can send the
+     * same event with byte-level differences that never survive to storage —
+     * HTML entities, curly vs. straight quotes, en/em dashes, doubled whitespace.
+     * Folding those away here (before splitPerformerNames/simplifyVenueName run)
+     * keeps the dedupe key stable across pulls even when the raw text isn't
+     * byte-identical, on top of the alnum-only stripping those functions already do.
+     */
+    private function normalizeIngestText($text) {
+        $text = (string)$text;
+        if ($text === '') {
+            return $text;
+        }
+        // Decode HTML entities (&amp;, &#39;, etc.)
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        // Fold common unicode punctuation variants to their ASCII equivalents
+        $text = strtr($text, [
+            "\xE2\x80\x98" => "'", "\xE2\x80\x99" => "'", // left/right single quote
+            "\xE2\x80\x9C" => '"', "\xE2\x80\x9D" => '"', // left/right double quote
+            "\xE2\x80\x93" => '-', "\xE2\x80\x94" => '-', // en dash, em dash
+            "\xC2\xA0" => ' ',                              // non-breaking space
+        ]);
+        // Fold accented Latin letters to their base ASCII form (é->e, í->i, ñ->n, etc.).
+        // Runs after the punctuation folding above, not before, so an already-normalized
+        // em dash isn't re-mangled by TRANSLIT (which renders a raw "—" as "--" if it hits
+        // it directly). Without this, two pulls of the same artist/venue that differ only by
+        // an accent (e.g. "Carín León" vs "Carin Leon") produce different dedupe keys, since
+        // generateDedupeKey()'s later alnum-only strip just deletes the accented byte instead
+        // of folding it to the matching plain letter.
+        if (function_exists('iconv')) {
+            $transliterated = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text);
+            if ($transliterated !== false && $transliterated !== '') {
+                $text = $transliterated;
+            }
+        }
+        // Collapse whitespace runs and trim
+        $text = trim(preg_replace('/\s+/u', ' ', $text));
+        return $text;
+    }
+
+    /**
+     * Pulls the vendor's own ticketing ID out of a ticket URL — the terminal path segment
+     * (after the last "/", query string stripped), e.g. "14256654" out of a ticketweb URL or
+     * "090064FBDF56BB98" out of a ticketmaster.com "/event/{id}" URL. Used to recognize when
+     * two rows are literally the same vendor listing even though their artist_name text
+     * differs (a branded show title vs. the lineup, or one scrape grabbing a different
+     * co-bill member than another) — see the same-ticket-ID matching layer in saveEvent().
+     *
+     * Deliberately strict about what counts as an ID: the segment must be at least 8
+     * characters and contain a digit, and callers must additionally require the two events
+     * fall on the same calendar date before treating a match as a real duplicate. Both
+     * guards exist because of real collisions found auditing production data:
+     *   - A short/word-like slug (e.g. an artist-name-based promoter URL like ".../zimmer90")
+     *     can legitimately repeat across different tour dates at different venues.
+     *   - Some Ticketmaster IDs contain a hyphen (e.g. "Z7r9jZ1A7-O4Y"); extracting only the
+     *     alphanumeric run up to the hyphen (rather than the full terminal segment) produced
+     *     a shared prefix across dozens of unrelated shows in testing.
+     *   - A handful of rows in production data carry a stale/reused ticket_url for a
+     *     different date entirely (likely a scrape/caching bug elsewhere), so matching by ID
+     *     alone without also requiring the same date would wrongly merge distinct shows.
+     * Returns null when the URL is empty or the terminal segment doesn't look ID-like.
+     */
+    public function extractTicketingId($url) {
+        $url = trim((string)$url);
+        if ($url === '') {
+            return null;
+        }
+        $path = parse_url($url, PHP_URL_PATH);
+        if (empty($path)) {
+            return null;
+        }
+        $path = rtrim($path, '/');
+        $slashPos = strrpos($path, '/');
+        $segment = $slashPos !== false ? substr($path, $slashPos + 1) : $path;
+        if (strlen($segment) < 8 || !preg_match('/[0-9]/', $segment)) {
+            return null;
+        }
+        return strtolower($segment);
+    }
+
+    /**
      * Creates a unique deduplication key based on venue and start date.
      */
     public function generateDedupeKey($artistName, $venueName, $startTimeStr, $marketHint = null) {
+        $artistName = $this->normalizeIngestText($artistName);
+        $venueName = $this->normalizeIngestText($venueName);
+
         $date = date('Y-m-d', strtotime($startTimeStr));
         // Isolate primary headliner so events from different feeds (single vs multi-artist) produce identical deduplication keys
         $parts = $this->splitPerformerNames($artistName);
@@ -2002,16 +2165,21 @@ class EventAggregator {
         $incomingMarket = $this->normalizeMarketKey($event['market'] ?? null);
         $originalIncomingMarket = $incomingMarket;
 
+        $region = $event['state_code'] ?? $event['region'] ?? '';
+        $country = $event['country'] ?? '';
+
         if ($resolvedVenue !== null) {
             $event['venue_name'] = $resolvedVenue['venue_name'];
             $incomingMarket = $this->normalizeMarketKey($resolvedVenue['market'] ?? null) ?? $incomingMarket;
             if (!empty($resolvedVenue['city'])) {
                 $event['city_name'] = $resolvedVenue['city'];
             }
+            if ($region !== '' && !$this->isEventInMarketRegion($incomingMarket, $event['city_name'] ?? '', $region, $country)) {
+                $this->log("[IGNORE] Rejecting venue match '{$resolvedVenue['venue_name']}' because raw event region '{$region}' contradicts venue market '{$incomingMarket}'.");
+                return false;
+            }
         } else {
             // Unverified venue: strictly validate region/state code to reject out-of-state shows (Nebraska, Utah, etc.)
-            $region = $event['state_code'] ?? $event['region'] ?? '';
-            $country = $event['country'] ?? '';
             if ($incomingMarket === null || !$this->isEventInMarketRegion($incomingMarket, $event['city_name'] ?? '', $region, $country)) {
                 $this->log("[IGNORE] Rejecting out-of-market unverified show for artist '{$event['artist_name']}' in city '{$event['city_name']}', region '{$region}'.");
                 return false;
@@ -2096,8 +2264,12 @@ class EventAggregator {
             $eventDate = date('Y-m-d', strtotime($event['start_time']));
 
             if (!empty($cleanPrimary) && !empty($eventDate)) {
-                $stmtFuzzy = $this->db->prepare("SELECT * FROM events WHERE market = :market AND DATE(start_time) = :edate");
-                executeWithRetry($stmtFuzzy, [':market' => $incomingMarket, ':edate' => $eventDate]);
+                // Match on date only, not date+market: a market-resolution mismatch between
+                // two ingestion runs of the same event (e.g. a stale venue-whitelist cache)
+                // used to make this query miss entirely, silently skipping the venue/performer
+                // similarity checks below and letting a real duplicate through.
+                $stmtFuzzy = $this->db->prepare("SELECT * FROM events WHERE DATE(start_time) = :edate");
+                executeWithRetry($stmtFuzzy, [':edate' => $eventDate]);
                 $candidates = $stmtFuzzy->fetchAll(PDO::FETCH_ASSOC);
                 $stmtFuzzy->closeCursor();
 
@@ -2131,6 +2303,60 @@ class EventAggregator {
                     if (!$isGenericWord && $sameVenue && ($hasPerformerOverlap || $candClean === $cleanPrimary || (strlen($candClean) > 5 && strpos($cleanPrimary, $candClean) !== false) || (strlen($cleanPrimary) > 5 && strpos($candClean, $cleanPrimary) !== false))) {
                         $existing = $cand;
                         $event['event_id'] = $cand['event_id']; // Reuse existing ID to update in place
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Layer 3 (exact-match backstop): if both the primary key and the fuzzy match
+        // missed, do one last exact check on venue_id + date + full artist string. This
+        // targets the case actually observed in production data: two ingestion runs of
+        // the identical event produced different dedupe keys (upstream text drift on the
+        // raw pull) even though the event ended up byte-identical once stored.
+        if (!$existing && !empty($resolvedVenue['venue_id'])) {
+            $exactEventDate = date('Y-m-d', strtotime($event['start_time']));
+            $stmtExact = $this->db->prepare("SELECT * FROM events WHERE venue_id = :venue_id AND DATE(start_time) = :edate AND LOWER(TRIM(artist_name)) = LOWER(TRIM(:artist))");
+            executeWithRetry($stmtExact, [
+                ':venue_id' => $resolvedVenue['venue_id'],
+                ':edate' => $exactEventDate,
+                ':artist' => $event['artist_name'],
+            ]);
+            $exactMatch = $stmtExact->fetch(PDO::FETCH_ASSOC);
+            $stmtExact->closeCursor();
+            if ($exactMatch) {
+                $existing = $exactMatch;
+                $event['event_id'] = $exactMatch['event_id']; // Reuse existing ID to update in place
+                $this->log("[DEDUPE BACKSTOP] Matched '{$event['artist_name']}' @ '{$event['venue_name']}' on {$exactEventDate} to existing event_id {$exactMatch['event_id']} via exact venue+date+artist match.");
+            }
+        }
+
+        // Layer 4 (same-listing backstop): if the artist-name-based checks above all missed,
+        // check whether an existing event on the same calendar date links to the exact same
+        // vendor ticketing ID (see extractTicketingId()). This catches the case where the
+        // *venue/artist* text differs too much for Layers 1-3 to match but it's provably the
+        // same real-world listing — a branded show title vs. its lineup ("Mosh For Youth Vol.
+        // 9" vs. "Bleeding Through & Torena & Sanity Slip"), a co-bill member captured as the
+        // headliner on one scrape and a different one on another ("Kingdom Collapse" vs.
+        // "Another Shade of Hate" for the same ticketweb page), or a sub-room vs. building name
+        // for the same Ticketmaster event ("Moon Room at Summit" vs. "Summit Music Hall"). The
+        // artist-name merge below (mergePerformerNames) already unions both display names into
+        // one "A & B" row, so this also directly fixes the "two artists off one real bill"
+        // case rather than just picking one side and discarding the other.
+        if (!$existing && !empty($event['ticket_url'])) {
+            $incomingTicketId = $this->extractTicketingId($event['ticket_url']);
+            if ($incomingTicketId !== null) {
+                $exactEventDate2 = date('Y-m-d', strtotime($event['start_time']));
+                $stmtTid = $this->db->prepare("SELECT * FROM events WHERE DATE(start_time) = :edate AND ticket_url IS NOT NULL AND ticket_url != ''");
+                executeWithRetry($stmtTid, [':edate' => $exactEventDate2]);
+                $tidCandidates = $stmtTid->fetchAll(PDO::FETCH_ASSOC);
+                $stmtTid->closeCursor();
+
+                foreach ($tidCandidates as $cand) {
+                    if ($this->extractTicketingId($cand['ticket_url']) === $incomingTicketId) {
+                        $existing = $cand;
+                        $event['event_id'] = $cand['event_id']; // Reuse existing ID to update in place
+                        $this->log("[DEDUPE BACKSTOP] Matched '{$event['artist_name']}' @ '{$event['venue_name']}' on {$exactEventDate2} to existing event_id {$cand['event_id']} via identical ticket-listing ID ({$incomingTicketId}).");
                         break;
                     }
                 }
@@ -2313,37 +2539,58 @@ class EventAggregator {
             $venueId = $resolvedVenue['venue_id'] ?? ($existing['venue_id'] ?? null);
             $isApproved = ($venueId !== null && $venueId > 0) ? 1 : 0;
                 
-            executeWithRetry($this->stmtSaveUpdate, [
-                ':artist' => $mergedArtist,
-                ':venue_id' => $venueId,
-                ':venue' => $mergedVenue,
-                ':market' => $mergedMarket,
-                ':start' => $mergedStartTime,
-                ':doors_time' => $doorsTime,
-                ':url' => $mergedUrl,
-                ':status' => $mergedStatus,
-                ':source' => $mergedSource,
-                ':genre' => $mergedGenre,
-                ':tags' => $mergedTags,
-                ':genre_source' => $mergedGenreSource,
-                ':genre_locked' => $mergedGenreLocked,
-                ':price_min' => $mergedPriceMin,
-                ':price_max' => $mergedPriceMax,
-                ':price_last_changed_at' => $priceLastChangedAt,
-                ':price_dropped_flag' => $priceDropFlag,
-                ':price_drop_amount' => $priceDropAmount,
-                ':price_drop_detected_at' => $priceDropDetectedAt,
-                ':low_ticket_flag' => $lowTicketFlag,
-                ':ticket_status_code' => $mergedTicketStatusCode,
-                ':availability_tag' => $mergedAvailabilityTag,
-                ':sold_out_flag' => $mergedSoldOutFlag,
-                ':is_approved' => $isApproved,
-                ':tm_url' => $tmUrl,
-                ':eb_url' => $ebUrl,
-                ':bit_url' => $bitUrl,
-                ':v_url' => $vUrl,
-                ':id' => $event['event_id']
-            ]);
+            // Unlike the INSERT branch below (INSERT OR REPLACE, which SQLite resolves a
+            // idx_events_dedupe_backstop collision for automatically), a plain UPDATE has no
+            // conflict-resolution clause: if the Layer 2/4 fuzzy/ticket-ID match above pulled
+            // in $existing via loose matching (not an exact key match) and the merged
+            // venue_id/date/artist_name now happens to equal a *different* pre-existing row's
+            // key, SQLite throws UNIQUE constraint failed here instead of silently corrupting
+            // data — and previously that exception was uncaught, aborting the entire sync run
+            // (the "[FATAL EXCEPTION IN SYNC] ... idx_events_dedupe_backstop" cron failures).
+            // Catch it, log which two events collided, and leave both rows as they were: the
+            // next sync's mergeDuplicateEvents()/mergeSameTicketingIdEvents() maintenance
+            // passes (services/SyncService.php) already handle this exact collision safely,
+            // re-pointing child rows (price history, attended_log, setlists) before removing
+            // the loser instead of just overwriting one side of it.
+            try {
+                executeWithRetry($this->stmtSaveUpdate, [
+                    ':artist' => $mergedArtist,
+                    ':venue_id' => $venueId,
+                    ':venue' => $mergedVenue,
+                    ':market' => $mergedMarket,
+                    ':start' => $mergedStartTime,
+                    ':doors_time' => $doorsTime,
+                    ':url' => $mergedUrl,
+                    ':status' => $mergedStatus,
+                    ':source' => $mergedSource,
+                    ':genre' => $mergedGenre,
+                    ':tags' => $mergedTags,
+                    ':genre_source' => $mergedGenreSource,
+                    ':genre_locked' => $mergedGenreLocked,
+                    ':price_min' => $mergedPriceMin,
+                    ':price_max' => $mergedPriceMax,
+                    ':price_last_changed_at' => $priceLastChangedAt,
+                    ':price_dropped_flag' => $priceDropFlag,
+                    ':price_drop_amount' => $priceDropAmount,
+                    ':price_drop_detected_at' => $priceDropDetectedAt,
+                    ':low_ticket_flag' => $lowTicketFlag,
+                    ':ticket_status_code' => $mergedTicketStatusCode,
+                    ':availability_tag' => $mergedAvailabilityTag,
+                    ':sold_out_flag' => $mergedSoldOutFlag,
+                    ':is_approved' => $isApproved,
+                    ':tm_url' => $tmUrl,
+                    ':eb_url' => $ebUrl,
+                    ':bit_url' => $bitUrl,
+                    ':v_url' => $vUrl,
+                    ':id' => $event['event_id']
+                ]);
+            } catch (PDOException $e) {
+                if (stripos($e->getMessage(), 'UNIQUE constraint failed') !== false) {
+                    $this->log("[DEDUPE COLLISION] Skipped update for event_id {$event['event_id']} (merging toward '{$mergedArtist}' @ '{$mergedVenue}' on " . date('Y-m-d', strtotime((string)$mergedStartTime)) . "): would violate idx_events_dedupe_backstop against a different existing row. Left both rows in place for the next sync's maintenance-pass merge instead of aborting the run. " . $e->getMessage());
+                    return false;
+                }
+                throw $e;
+            }
 
             if ($priceChanged) {
                 $this->recordPriceSnapshot(

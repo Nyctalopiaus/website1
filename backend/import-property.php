@@ -14,9 +14,13 @@
 require_once __DIR__ . '/lib/multi-site-parser.php';
 
 // CORS handling — allow cross-origin requests from redfin.com, zillow.com, realtor.com, etc.
+// This endpoint never reads or sets a session/cookie, so credentialed CORS
+// is never appropriate here (Access-Control-Allow-Credentials is
+// intentionally never sent) — a plain reflected/wildcard origin is safe
+// since there's nothing origin-specific for a browser to leak by reading
+// the response.
 if (isset($_SERVER['HTTP_ORIGIN'])) {
     header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
-    header("Access-Control-Allow-Credentials: true");
     header("Access-Control-Max-Age: 86400");
 } else {
     header("Access-Control-Allow-Origin: *");
@@ -132,8 +136,110 @@ function respondPayload($payload, $httpCode = 200) {
     exit;
 }
 
-// 1. Input Extraction
-$rawBody = file_get_contents('php://input');
+// Best-effort client IP for rate limiting only — not a security boundary
+// (a spoofed X-Forwarded-For just means the limit is looser for that
+// caller, same caveat as property-lookup.php's clientIp()).
+function clientIp() {
+    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        $parts = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
+        return trim($parts[0]);
+    }
+    return isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '0.0.0.0';
+}
+
+// Reject oversized submissions before doing any base64/regex work on them —
+// this endpoint is unauthenticated, so an unbounded body is a cheap CPU/DoS
+// lever against the regex-heavy parsers in multi-site-parser.php. 8MB is
+// generous for a real rendered listing page (even base64-encoded).
+define('MAX_IMPORT_BODY_BYTES', 8 * 1024 * 1024);
+// Read with a hard cap up front and reuse this same buffer below — a
+// second, uncapped file_get_contents('php://input') call would defeat the
+// whole point of this check on an oversized payload.
+$rawBody = file_get_contents('php://input', false, null, 0, MAX_IMPORT_BODY_BYTES + 1);
+if (strlen($rawBody) > MAX_IMPORT_BODY_BYTES) {
+    respondPayload(['error' => 'Submitted page content is too large.'], 413);
+}
+
+// Per-IP rate limit — this write endpoint previously had none at all,
+// unlike property-lookup.php's (unused) scaffolding. Cheap SQLite-backed
+// sliding window; failing "open" (allowing the request) if the DB write
+// itself errors, since a broken limiter must never block real imports.
+define('IMPORT_RATE_LIMIT_WINDOW_SECONDS', 5 * 60);
+define('IMPORT_RATE_LIMIT_MAX_PER_WINDOW', 20); // per IP, per 5 minutes
+function checkImportRateLimit($db, $ip) {
+    try {
+        $db->exec('CREATE TABLE IF NOT EXISTS import_request_log (ip TEXT, ts INTEGER)');
+        $cutoff = time() - IMPORT_RATE_LIMIT_WINDOW_SECONDS;
+        $db->exec("DELETE FROM import_request_log WHERE ts < $cutoff");
+        $stmt = $db->prepare('SELECT COUNT(*) AS c FROM import_request_log WHERE ip = :ip AND ts >= :cutoff');
+        $stmt->bindValue(':ip', $ip, SQLITE3_TEXT);
+        $stmt->bindValue(':cutoff', $cutoff, SQLITE3_INTEGER);
+        $row = $stmt->execute()->fetchArray(SQLITE3_ASSOC);
+        if ($row && (int)$row['c'] >= IMPORT_RATE_LIMIT_MAX_PER_WINDOW) {
+            return false;
+        }
+        $ins = $db->prepare('INSERT INTO import_request_log (ip, ts) VALUES (:ip, :ts)');
+        $ins->bindValue(':ip', $ip, SQLITE3_TEXT);
+        $ins->bindValue(':ts', time(), SQLITE3_INTEGER);
+        $ins->execute();
+        return true;
+    } catch (Throwable $t) {
+        return true;
+    }
+}
+
+// Origin/Referer allowlist — defense in depth, not a full authentication
+// control (a determined caller using curl can still forge these headers).
+// It does block casual scripted abuse and any browser-JS-triggered request
+// from an unrelated website, since a legitimate submission only ever comes
+// from a listing page's own JS context (the bookmarklet) or a browser
+// extension. Requests with no Origin/Referer at all are allowed through so
+// non-browser legitimate callers (documented "extensions/AJAX" support)
+// aren't broken by this.
+// Checks one already-non-empty header value against the allowlist. Callers
+// only invoke this when the header is actually present — an absent header
+// is handled separately below, not treated as "allowed" by this function,
+// so a forged bad Origin can't be waved through just because Referer
+// happened to be empty (or vice versa).
+function isAllowedImportOriginHost($originOrReferer) {
+    $host = strtolower(parse_url($originOrReferer, PHP_URL_HOST) ?: '');
+    if ($host === '') return true; // not a normal http(s) origin (e.g. extension scheme) — don't block
+    $allowedDomains = ['redfin.com', 'zillow.com', 'trulia.com', 'realtor.com', 'homes.com', 'nycto.ninja'];
+    foreach ($allowedDomains as $domain) {
+        if ($host === $domain || substr($host, -strlen('.' . $domain)) === '.' . $domain) {
+            return true;
+        }
+    }
+    return false;
+}
+$originHeader = $_SERVER['HTTP_ORIGIN'] ?? '';
+$refererHeader = $_SERVER['HTTP_REFERER'] ?? '';
+$originBad = ($originHeader !== '' && !isAllowedImportOriginHost($originHeader));
+$refererBad = ($refererHeader !== '' && !isAllowedImportOriginHost($refererHeader));
+if ($originBad || $refererBad) {
+    respondPayload(['error' => 'This import endpoint only accepts submissions originating from a supported listing page.'], 403);
+}
+
+// Rate limit — checked before any base64/regex parsing work, so a flood of
+// requests is rejected cheaply rather than after doing real work.
+$importDbDir = __DIR__ . '/data';
+if (!is_dir($importDbDir)) {
+    @mkdir($importDbDir, 0755, true);
+}
+try {
+    $rateLimitDb = new SQLite3($importDbDir . '/property_cache.db');
+    $rateLimitDb->busyTimeout(5000);
+    if (!checkImportRateLimit($rateLimitDb, clientIp())) {
+        $rateLimitDb->close();
+        header('Retry-After: ' . IMPORT_RATE_LIMIT_WINDOW_SECONDS);
+        respondPayload(['error' => 'Too many import requests from this address. Please wait a few minutes and try again.'], 429);
+    }
+    $rateLimitDb->close();
+} catch (Throwable $t) {
+    // Fail open — a broken rate limiter must never block a real import.
+}
+
+// 1. Input Extraction ($rawBody already captured above, size-checked)
 $body = @json_decode($rawBody, true) ?: [];
 
 $url = isset($body['url']) ? trim($body['url']) : (isset($_POST['url']) ? trim($_POST['url']) : (isset($_GET['url']) ? trim($_GET['url']) : ''));

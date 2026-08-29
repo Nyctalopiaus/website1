@@ -92,7 +92,7 @@
 
 <!-- Four-Column 2x2 Balanced Grid -->
 <section class="container skills-section">
-  <div class="projects-grid skills-grid">
+  <div class="skills-grid">
     
     <!-- 1. Infrastructure & Identity -->
     <article class="panel-card" style="padding: 1.5rem;">
@@ -151,420 +151,500 @@
       </p>
     </section>
 
-    <section class="projects-grid">
-      <!-- Project 1: Nycto's Mortgage & Housing Calculator -->
-      <article class="project-card active">
-        <div class="card-glow"></div>
-        <div class="card-inner">
-        <header class="card-header">
-          <div style="display: flex; gap: 0.5rem;">
-            <!-- "Pro" badge -->
-            <span class="badge badge-active">Active</span>
-            <span class="badge badge-pro">Pro</span>
-            <span class="badge badge-live">Live Data</span>
-          </div>
-        </header>
-          <div class="card-content">
-            <h2 class="project-title font-display">Nycto's Housing Cost Calculator</h2>
-            <p class="project-desc">
-              A comprehensive calculator to estimate monthly mortgage payments (15-yr vs. 30-yr side-by-side). Includes escrow (PMI, taxes, insurance), HOA fees, and debt-to-income affordability analysis. Now features one-click Redfin property parsing for automated tax/HOA data extraction and live mortgage rate syncing via integrated financial news feeds.
-            </p>
-            <details class="tech-dropdown">
-              <summary class="tech-toggle">Show tech stack</summary>
-              <div class="tech-tags">
-                <span>Amortization Math (For the side-by-side term comparison logic)</span>
-                <span>DTI Affordability (For the front-end Debt-to-Income analysis)</span>
-                <span>DOM Scraping (For the Redfin property parsing engine)</span>
-                <span>RSS Rate Integration (For the Mortgage News Daily live data)</span>
-                <span>Proxy/Caching Layer (For your API proxy and JSON caching logic)</span>
-                <span>State Persistence (For the LocalStorage input saving)</span>
-              </div>
-            </details>
-          </div>
-          <footer class="card-footer">
-            <a href="mortgage-calculator/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
-          </footer>
-        </div>
-      </article>
+    <!-- Category Filter Bar -->
+    <div class="category-filter-bar" role="tablist" aria-label="App Categories">
+      <button type="button" class="filter-btn active" data-filter="all" role="tab" aria-selected="true">
+        <span>⚡ All Applications</span>
+        <span class="filter-count">11</span>
+      </button>
+      <button type="button" class="filter-btn" data-filter="finance" role="tab" aria-selected="false">
+        <span>💰 Finance &amp; Real Estate</span>
+        <span class="filter-count">5</span>
+      </button>
+      <button type="button" class="filter-btn" data-filter="security" role="tab" aria-selected="false">
+        <span>🛡️ Cybersecurity &amp; AI</span>
+        <span class="filter-count">4</span>
+      </button>
+      <button type="button" class="filter-btn" data-filter="lifestyle" role="tab" aria-selected="false">
+        <span>🚗 Travel &amp; Lifestyle</span>
+        <span class="filter-count">2</span>
+      </button>
+    </div>
 
-      <!-- Project: Nycto's Rent vs. Sell Calculator -->
-      <article class="project-card active">
-        <div class="card-glow"></div>
-        <div class="card-inner">
-          <header class="card-header">
-            <div style="display: flex; gap: 0.5rem;">
-              <span class="badge badge-active">Active</span>
-              <span class="badge badge-pro" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-color: rgba(245, 158, 11, 0.3);">Solar Gold</span>
-              <span class="badge badge-live">Financial Engine</span>
+    <!-- DOMAIN GROUP 1: FINANCE & REAL ESTATE -->
+    <div class="domain-group" data-domain="finance">
+      <div class="domain-header domain-header-finance">
+        <div class="domain-header-badge font-display">Domain 01</div>
+        <div class="domain-header-main">
+          <h2 class="domain-title font-display">💰 Finance &amp; Real Estate Intelligence</h2>
+          <p class="domain-subtitle">Property acquisition, wealth modeling, rent vs. sell head-to-head calculations, and spatial livability analytics.</p>
+        </div>
+      </div>
+      <section class="projects-grid">
+        <!-- Project 1: Nycto's Mortgage & Housing Calculator -->
+        <article class="project-card active" data-category="finance">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div style="display: flex; gap: 0.5rem;">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-pro">Pro</span>
+                <span class="badge badge-live">Live Data</span>
+              </div>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">Nycto's Housing Cost Calculator</h2>
+              <p class="project-desc">
+                A comprehensive calculator to estimate monthly mortgage payments (15-yr vs. 30-yr side-by-side). Includes escrow (PMI, taxes, insurance), HOA fees, and debt-to-income affordability analysis. Now features one-click Redfin property parsing for automated tax/HOA data extraction and live mortgage rate syncing via integrated financial news feeds.
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>Amortization Math (For the side-by-side term comparison logic)</span>
+                  <span>DTI Affordability (For the front-end Debt-to-Income analysis)</span>
+                  <span>DOM Scraping (For the Redfin property parsing engine)</span>
+                  <span>RSS Rate Integration (For the Mortgage News Daily live data)</span>
+                  <span>Proxy/Caching Layer (For your API proxy and JSON caching logic)</span>
+                  <span>State Persistence (For the LocalStorage input saving)</span>
+                </div>
+              </details>
             </div>
-          </header>
-          <div class="card-content">
-            <h2 class="project-title font-display">Nycto's Rent vs. Sell Calculator</h2>
-            <p class="project-desc">
-              Head-to-head decision engine to evaluate whether renting out your departing house or selling it when moving yields a higher total net worth. Features year-by-year net cashflow modeling, equity paydown tracking, stock market reinvestment growth comparison, and Section 121 capital gains tax warnings.
-            </p>
-            <details class="tech-dropdown">
-              <summary class="tech-toggle">Show tech stack</summary>
-              <div class="tech-tags">
-                <span>Wealth Modeling (Head-to-head Rent vs. Sell net worth math)</span>
-                <span>Section 121 Engine (Primary residence tax exclusion deadline tracking)</span>
-                <span>HTML5 Canvas Graphics (Native dual-mode area and line graph rendering)</span>
-                <span>Granular Reserve Modeling (Vacancy, CapEx, & HELOC debt service)</span>
-                <span>100% Private (Local browser storage with zero telemetry)</span>
-              </div>
-            </details>
+            <footer class="card-footer">
+              <a href="mortgage-calculator/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
           </div>
-          <footer class="card-footer">
-            <a href="rent-vs-sell/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
-          </footer>
-        </div>
-      </article>
+        </article>
 
-      <!-- Project 2: Nycto's Open Road Advisor -->
-      <article class="project-card active">
-        <div class="card-glow"></div>
-        <div class="card-inner">
-          <header class="card-header">
-            <div style="display: flex; gap: 0.5rem;">
-              <!-- "Pro" badge -->
-              <span class="badge badge-active">Active</span>
-              
-              <!-- "LIVE" badge: added 'badge' AND 'badge-active' to inherit the bubble style -->
-              <!-- You can then override the color with the inline style -->
-              <span class="badge badge-pro">Pro</span>
-              <span class="badge badge-live">Live Data</span>
+        <!-- Project 2: Nycto's Rent vs. Sell Calculator -->
+        <article class="project-card active" data-category="finance">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div style="display: flex; gap: 0.5rem;">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-pro">Pro</span>
+                <span class="badge badge-live">Financial Engine</span>
+              </div>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">Nycto's Rent vs. Sell Calculator</h2>
+              <p class="project-desc">
+                Head-to-head decision engine to evaluate whether renting out your departing house or selling it when moving yields a higher total net worth. Features year-by-year net cashflow modeling, equity paydown tracking, stock market reinvestment growth comparison, and Section 121 capital gains tax warnings.
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>Wealth Modeling (Head-to-head Rent vs. Sell net worth math)</span>
+                  <span>Section 121 Engine (Primary residence tax exclusion deadline tracking)</span>
+                  <span>HTML5 Canvas Graphics (Native dual-mode area and line graph rendering)</span>
+                  <span>Granular Reserve Modeling (Vacancy, CapEx, &amp; HELOC debt service)</span>
+                  <span>100% Private (Local browser storage with zero telemetry)</span>
+                </div>
+              </details>
             </div>
-          </header>
-          <div class="card-content">
-            <h2 class="project-title font-display">Nycto's Open Road Advisor</h2>
-            <p class="project-desc">
-              A predictive travel advisor that maps custom multi-stop routes using OSRM, integrating real-time weather forecasts (Open-Meteo) to monitor wind and precipitation hazards. Features advanced logistics planning including automated fuel stop calculations, meal scheduling, curfew-aware layovers, and a dynamic elevation profile dashboard.
-            </p>
-            <details class="tech-dropdown">
-              <summary class="tech-toggle">Show tech stack</summary>
-              <div class="tech-tags">
-                <span>OSRM Routing (Optimized for driving paths)</span>
-                <span>Spatial Analysis (GIS-based coordinate math)</span>
-                <span>Predictive Weather (Open-Meteo API forecasting)</span>
-                <span>Logistical Engine (Fuel/meal/rest stop injection)</span>
-                <span>Geospatial Visualization (Leaflet map overlay & Elevation graphing)</span>
-                <span>GPX Exporting (Data interoperability)</span>
-                <span>Internationally Usable (Metric and Imperial Units including US Dollars/Euros/Pounds)</span>
-              </div>
-            </details>
+            <footer class="card-footer">
+              <a href="rent-vs-sell/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
           </div>
-          <footer class="card-footer">
-            <a href="open-road-advisor/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
-          </footer>
-        </div>
-      </article>
+        </article>
 
-      <!-- Project: Nycto's Gig Grid -->
-<article class="project-card active">
-<div class="card-glow"></div>
-<div class="card-inner">
-<header class="card-header">
-<div style="display: flex; gap: 0.5rem;">
-<span class="badge badge-active">Active</span>
-<span class="badge badge-pro">Pro</span>
-<span class="badge badge-live">Live Data</span>
-</div>
-</header>
-<div class="card-content">
-<h2 class="project-title font-display">Nycto's Gig Grid</h2>
-            <p class="project-desc">
-              A premium, multi-market live music intelligence grid with curated discovery, market-specific filtering, and backend sync automation. Integrates Ticketmaster and Bandsintown APIs, deduplicates incoming events, tracks setlists and venue metadata, and supports your personal interested-show workflow.
-            </p>
-            <details class="tech-dropdown">
-              <summary class="tech-toggle">Show tech stack</summary>
-              <div class="tech-tags">
-                <span>API Aggregator & Scraper (Ticketmaster & Bandsintown)</span>
-                <span>SQLite DB & Hashed Admin Security (Bcrypt verification)</span>
-                <span>Dynamic Search Filter (Artist, venue, subgenre tags)</span>
-                <span>Automated CLI Cron Sync (CGI-fcgi environment support)</span>
-                <span>Personal Show Logbook (Rating, media, journals, local cache)</span>
-                <span>Setlist.fm Backfill Integration (Automated cache)</span>
-                <span>Modern Backstage UI (High-contrast ticket-stub cards)</span>
+        <!-- Project 3: Nycto's Retirement Forecaster -->
+        <article class="project-card active" data-category="finance">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div class="badge-group">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-pro">Pro</span>
               </div>
-            </details>
-          </div>
-          <footer class="card-footer">
-            <a href="nyctos-gig-grid/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
-          </footer>
-        </div>
-      </article>
-
-      <!-- Project 3: Nycto's Retirement Command Center -->
-      <article class="project-card active">
-        <div class="card-glow"></div>
-        <div class="card-inner">
-          <header class="card-header">
-            <div class="badge-group">
-              <span class="badge badge-active">Active</span>
-              <span class="badge badge-pro">Pro</span>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">Nycto's Retirement Forecaster</h2>
+              <p class="project-desc">
+                A warm, client-side forecaster mapping long-term compound growth against strategic bucket drawdowns (HYSA → Taxable → Pre-Tax → Roth) with inflation toggle, max sustainable income solver, and real-time KPI projections.
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>Compound Interest &amp; Accumulation Phase Logic</span>
+                  <span>Strategic Bucket Drawdown Sequencing</span>
+                  <span>Binary Search Solver (Max Monthly Income)</span>
+                  <span>Nominal vs. Purchasing Power Toggle</span>
+                  <span>SVG Stacked Area Charts &amp; Hover Tooltips</span>
+                  <span>Real-Time KPI Recalculation (Max Income, Optimal Age)</span>
+                  <span>Client-Side Computation (100% Stateless)</span>
+                </div>
+              </details>
             </div>
-          </header>
-          <div class="card-content">
-            <h2 class="project-title font-display">Nycto's Retirement Forecaster</h2>
-            <p class="project-desc">
-              A warm, client-side forecaster mapping long-term compound growth against strategic bucket drawdowns (HYSA → Taxable → Pre-Tax → Roth) with inflation toggle, max sustainable income solver, and real-time KPI projections.
-            </p>
-            <details class="tech-dropdown">
-              <summary class="tech-toggle">Show tech stack</summary>
-              <div class="tech-tags">
-                <span>Compound Interest & Accumulation Phase Logic</span>
-                <span>Strategic Bucket Drawdown Sequencing</span>
-                <span>Binary Search Solver (Max Monthly Income)</span>
-                <span>Nominal vs. Purchasing Power Toggle</span>
-                <span>SVG Stacked Area Charts & Hover Tooltips</span>
-                <span>Real-Time KPI Recalculation (Max Income, Optimal Age)</span>
-                <span>Client-Side Computation (100% Stateless)</span>
-              </div>
-            </details>
+            <footer class="card-footer">
+              <a href="retirement-forecaster/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
           </div>
-          <footer class="card-footer">
-            <a href="retirement-forecaster/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
-          </footer>
-        </div>
-      </article>
+        </article>
 
-      <!-- Project 4: Nycto's CISM Practice Trainer -->
-      <article class="project-card active">
-        <div class="card-glow"></div>
-        <div class="card-inner">
-          <header class="card-header">
-            <div class="badge-group">
-              <span class="badge badge-active">Active</span>
-              <span class="badge badge-live">AI Created Training Data</span>
-            </div>
-          </header>
-          <div class="card-content">
-            <h2 class="project-title font-display">Nycto's CISM Practice Trainer</h2>
-            <p class="project-desc">
-              An interactive ISACA-aligned exam simulator console. Features active recall flashcards, domain accuracy tracking, custom question curators, and timed mock exams.
-            </p>
-            <details class="tech-dropdown">
-              <summary class="tech-toggle">Show tech stack</summary>
-              <div class="tech-tags">
-                <span>Adaptive Flashcards (For the active recall study flow)</span>
-                <span>Domain Analytics (For accuracy and mastery tracking)</span>
-                <span>Mock Exam Engine (For timed exam simulation)</span>
-                <span>Deck Curator (For custom question generation)</span>
-                <span>SQLite Sync (For persistent progress storage)</span>
+        <!-- Project 4: Relocation Analytics Dashboard -->
+        <article class="project-card active" data-category="finance">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div style="display: flex; gap: 0.5rem;">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-pro">Pro</span>
+                <span class="badge badge-live">Live Data</span>
               </div>
-            </details>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">Nycto's Relocation Analytics Dashboard</h2>
+              <p class="project-desc">
+                A home search assistant that compares any two addresses to see how convenient they are to live in. Instantly searches live map data to show nearby grocery stores, gas stations, parks, gyms, trails, and dining options within a customizable travel radius—helping you decide which location best fits your lifestyle.
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>Live Overpass GIS Engine (Queries OpenStreetMap NWR nodes/ways in real time)</span>
+                  <span>Photon Street Geocoder (Preserves full street names &amp; typeahead autocomplete)</span>
+                  <span>Side-by-Side Location Comparison (Dual-address score matrix &amp; comparison maps)</span>
+                  <span>Business Proximity Deduplication (Merges database noise while preserving unique venues)</span>
+                  <span>SVG Radar &amp; Leaflet Map Visualizer (Interactive Leaflet map layers &amp; radar charts)</span>
+                  <span>Custom Priority Weighting (Dynamic scoring for grocery, fitness, parks, dining, and trails)</span>
+                </div>
+              </details>
+            </div>
+            <footer class="card-footer">
+              <a href="relocation-assessment/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
           </div>
-          <footer class="card-footer">
-            <a href="cism-training/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
-          </footer>
-        </div>
-      </article>
+        </article>
 
-      <!-- Project 5: Handheld Gaming Log -->
-      <!-- article class="project-card active" -->
-      <article hidden>
-        <div class="card-glow"></div>
-        <div class="card-inner">
-          <header class="card-header">
-            <div class="badge-group">
-              <span class="badge badge-active">Active</span>
-              <span class="badge badge-live">Beta</span>
-            </div>
-          </header>
-          <div class="card-content">
-            <h2 class="project-title font-display">Handheld Gaming Log</h2>
-            <p class="project-desc">
-              A premium Steam Deck-inspired log book to track play sessions, frame performance ratings, and cumulative stats. Uses browser persistence to save logs.
-            </p>
-            <details class="tech-dropdown">
-              <summary class="tech-toggle">Show tech stack</summary>
-              <div class="tech-tags">
-                <span>Game Entry Tracking (For logging play sessions and hours)</span>
-                <span>Performance Rating System (For Great/Playable/Poor scoring)</span>
-                <span>Sorting & Filtering (For organizing the library by title, time, or rating)</span>
-                <span>Local Persistence (For saving entries in the browser)</span>
+        <!-- Project 5: Homeward — Home Viewing Route Planner -->
+        <article class="project-card active" data-category="finance">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div style="display: flex; gap: 0.5rem;">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-pro">Pro</span>
+                <span class="badge badge-live">Live Data</span>
               </div>
-            </details>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">Homeward — Home Viewing Route Planner</h2>
+              <p class="project-desc">
+                A personal tool for tracking homes I'm interested in buying and planning the most efficient route to go view them. Solves multi-stop Traveling Salesperson routes with customizable stay durations, features integrated inspection notebooks with Redfin/Zillow/Street View links and per-property notes, exports multi-stop Google Maps navigation links, and generates printable visit reports.
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>TSP Route Optimizer (Haversine &amp; nearest-neighbor distance matrix solver)</span>
+                  <span>Nominatim Geocoding API (Batch address geocoding &amp; location caching)</span>
+                  <span>Interactive Leaflet Map (Numbered pins &amp; polyline route visualization)</span>
+                  <span>Property Notes Notebook (Star ratings, pros/cons &amp; photos per address)</span>
+                  <span>1-Click Property Deep Links (Instant Redfin, Zillow &amp; Google Street View lookups)</span>
+                  <span>Multi-Stop Google Maps Exporter (1-click navigation handoff)</span>
+                  <span>Printable Visit Report Generator (Printable PDF/document layout)</span>
+                  <span>CSV &amp; JSON Data Import/Export (State backup &amp; batch list merging)</span>
+                </div>
+              </details>
+            </div>
+            <footer class="card-footer">
+              <a href="homeward/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
           </div>
-          <footer class="card-footer">
-            <a href="game-rating-log/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
-          </footer>
-        </div>
-      </article>
+        </article>
+      </section>
+    </div>
 
-      <!-- Project 6: Interactive Cryptographic Matrix -->
-      <!-- article class="project-card active" -->
-      <article hidden>
-        <div class="card-glow"></div>
-        <div class="card-inner">
-          <header class="card-header">
-            <div class="badge-group">
-              <span class="badge badge-active">Active</span>
-              <span class="badge badge-live">Beta</span>
-            </div>
-          </header>
-          <div class="card-content">
-            <h2 class="project-title font-display">Crypto Matrix Decoder</h2>
-            <p class="project-desc">
-              An interactive cryptographic analysis terminal. Features real-time frequency analysis histograms, dual hex/ASCII memory dump screens, and multiple cipher modules.
-            </p>
-            <details class="tech-dropdown">
-              <summary class="tech-toggle">Show tech stack</summary>
-              <div class="tech-tags">
-                <span>Cipher Engine (For Caesar, Vigenère, Rail Fence, and XOR transforms)</span>
-                <span>Shannon Entropy Analysis (For measuring information content)</span>
-                <span>Hex Dump Viewer (For raw byte inspection)</span>
-                <span>Frequency Spectrum Chart (For letter distribution analysis)</span>
-                <span>CTF Challenge Mode (For interactive decryption scenarios)</span>
-              </div>
-            </details>
-          </div>
-          <footer class="card-footer">
-            <a href="crypto-game/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
-          </footer>
+    <!-- DOMAIN GROUP 2: CYBERSECURITY, AI & TECHNICAL SYSTEMS -->
+    <div class="domain-group" data-domain="security">
+      <div class="domain-header domain-header-security">
+        <div class="domain-header-badge font-display">Domain 02</div>
+        <div class="domain-header-main">
+          <h2 class="domain-title font-display">🛡️ Cybersecurity, AI &amp; Technical Systems</h2>
+          <p class="domain-subtitle">Real-time threat intelligence ingestion, CVE extraction, ISACA exam simulator consoles, and hardware-aware AI model matchers.</p>
         </div>
-      </article>
+      </div>
+      <section class="projects-grid">
+        <!-- Project Card: DoorScout — Neighborhood Front Door Inspiration Planner -->
+        <article class="project-card active" data-category="security">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div style="display: flex; gap: 0.5rem;">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-pro">Pro</span>
+                <span class="badge badge-live">Live Data</span>
+              </div>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">DoorScout — Neighborhood Front Door Inspiration Planner</h2>
+              <p class="project-desc">
+                An interactive route planning application for homeowners seeking front door and architectural renovation inspiration. Generates neighborhood inspection drives or walks around target addresses with customizable street density, walking/driving modes, custom door style pin dropping, and PC-to-Mobile QR code sync. (Strictly for architectural scouting — definitely not for wardriving).
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>OSRM Routing Engine (Road-snapped walking &amp; driving routes)</span>
+                  <span>Nominatim Geocoder (Address autocomplete &amp; coordinate lookup)</span>
+                  <span>Street Inspection Density Engine (Tight, medium, &amp; loose coverage grid)</span>
+                  <span>Inspiration Pin Logger (Custom door style tags &amp; architectural notes)</span>
+                  <span>Cross-Device Sync (6-character code &amp; QR code PC-to-Mobile handoff)</span>
+                  <span>Multi-Waypoint Google Maps Exporter (1-click navigation handoff)</span>
+                </div>
+              </details>
+            </div>
+            <footer class="card-footer">
+              <a href="door-scout/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
+          </div>
+        </article>
+        <!-- Project 6: Nycto's ThreatPulse -->
+        <article class="project-card active" data-category="security">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div style="display: flex; gap: 0.5rem;">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-pro">Pro</span>
+                <span class="badge badge-live">Live Data</span>
+              </div>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">Nycto's ThreatPulse</h2>
+              <p class="project-desc">
+                A high-signal, distraction-free security advisory &amp; technical news aggregation engine. Ingests 11+ RSS/Atom/JSON feeds (CISA KEV, BleepingComputer, SANS ISC, Debian/Ubuntu Security, Cloudflare), executes 2-layer deduplication with fuzzy title matching, auto-extracts CVE tags, and delivers static JSON payloads via a dark-mode Kanban &amp; Compact dashboard.
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>Python Ingestion Engine (BeautifulSoup, feedparser, requests)</span>
+                  <span>SQLite WAL Mode Caching (30-day automated vacuum &amp; pruning)</span>
+                  <span>2-Layer Deduplication (URL SHA-256 hash &amp; 85%+ fuzzy title matching)</span>
+                  <span>CVE &amp; Keyword Extractor (Auto-hyperlinking to NIST NVD database)</span>
+                  <span>Executive Dark SPA (Tailwind CSS, Inter &amp; JetBrains Mono typography)</span>
+                  <span>Dual View Modes (Kanban 3-column &amp; Compact Ticker table)</span>
+                  <span>Vim Keyboard Shortcuts (j/k navigation, o open link, m read, b bookmark, / search)</span>
+                  <span>Stateless Client Storage (LocalStorage persistence)</span>
+                </div>
+              </details>
+            </div>
+            <footer class="card-footer">
+              <a href="threatpulse/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
+          </div>
+        </article>
 
-      <!-- Project 7: Relocation Analytics Dashboard -->
-      <article class="project-card active">
-        <div class="card-glow"></div>
-        <div class="card-inner">
-          <header class="card-header">
-            <div style="display: flex; gap: 0.5rem;">
-              <span class="badge badge-active">Active</span>
-              <span class="badge badge-pro">Pro</span>
-              <span class="badge badge-live">Live Data</span>
-            </div>
-          </header>
-          <div class="card-content">
-            <h2 class="project-title font-display">Nycto's Relocation Analytics Dashboard</h2>
-            <p class="project-desc">
-              A home search assistant that compares any two addresses to see how convenient they are to live in. Instantly searches live map data to show nearby grocery stores, gas stations, parks, gyms, trails, and dining options within a customizable travel radius—helping you decide which location best fits your lifestyle.
-            </p>
-            <details class="tech-dropdown">
-              <summary class="tech-toggle">Show tech stack</summary>
-              <div class="tech-tags">
-                <span>Live Overpass GIS Engine (Queries OpenStreetMap NWR nodes/ways in real time)</span>
-                <span>Photon Street Geocoder (Preserves full street names &amp; typeahead autocomplete)</span>
-                <span>Side-by-Side Location Comparison (Dual-address score matrix &amp; comparison maps)</span>
-                <span>Business Proximity Deduplication (Merges database noise while preserving unique venues)</span>
-                <span>SVG Radar &amp; Leaflet Map Visualizer (Interactive Leaflet map layers &amp; radar charts)</span>
-                <span>Custom Priority Weighting (Dynamic scoring for grocery, fitness, parks, dining, and trails)</span>
+        <!-- Project 7: Nycto's CISM Practice Trainer -->
+        <article class="project-card active" data-category="security">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div class="badge-group">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-live">AI Created Training Data</span>
               </div>
-            </details>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">Nycto's CISM Practice Trainer</h2>
+              <p class="project-desc">
+                An interactive ISACA-aligned exam simulator console. Features active recall flashcards, domain accuracy tracking, custom question curators, and timed mock exams.
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>Adaptive Flashcards (For the active recall study flow)</span>
+                  <span>Domain Analytics (For accuracy and mastery tracking)</span>
+                  <span>Mock Exam Engine (For timed exam simulation)</span>
+                  <span>Deck Curator (For custom question generation)</span>
+                  <span>SQLite Sync (For persistent progress storage)</span>
+                </div>
+              </details>
+            </div>
+            <footer class="card-footer">
+              <a href="cism-training/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
           </div>
-          <footer class="card-footer">
-            <a href="relocation-assessment/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
-          </footer>
-        </div>
-      </article>
+        </article>
 
-      <!-- Project 8: Nycto's Hugging Face Model Matcher -->
-      <article class="project-card active">
-        <div class="card-glow"></div>
-        <div class="card-inner">
-          <header class="card-header">
-            <div style="display: flex; gap: 0.5rem;">
-              <span class="badge badge-active">Active</span>
-              <span class="badge badge-pro">Pro</span>
-              <span class="badge badge-live">Live Data</span>
-            </div>
-          </header>
-          <div class="card-content">
-            <h2 class="project-title font-display">Nycto's HF Model Matcher</h2>
-            <p class="project-desc">
-              A hardware-aware AI model discovery engine that profiles GPU VRAM, system RAM, and CPU/GPU architecture to recommend optimal Hugging Face models based on intended goals (Coding, Image Gen, Vision, Chat) without OOM risks using a strict 4-tier filtering pipeline.
-            </p>
-            <details class="tech-dropdown">
-              <summary class="tech-toggle">Show tech stack</summary>
-              <div class="tech-tags">
-                <span>FastAPI Async Engine (Python REST API &amp; 4-tier scoring pipeline)</span>
-                <span>Hugging Face Hub API (Real-time model catalog &amp; metrics)</span>
-                <span>Tier-1 Memory Engine (Hardware VRAM cap math &amp; OOM protection)</span>
-                <span>Hardware Profiler (Web Memory API &amp; psutil system inspection)</span>
-                <span>Categorized UI Output (Best Overall, Speed Demon, Max Capability cards)</span>
-                <span>1-Click Code Launcher (Ollama, vLLM, &amp; Transformers snippets)</span>
+        <!-- Project 8: Nycto's Hugging Face Model Matcher -->
+        <article class="project-card active" data-category="security">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div style="display: flex; gap: 0.5rem;">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-pro">Pro</span>
+                <span class="badge badge-live">Live Data</span>
               </div>
-            </details>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">Nycto's HF Model Matcher</h2>
+              <p class="project-desc">
+                A hardware-aware AI model discovery engine that profiles GPU VRAM, system RAM, and CPU/GPU architecture to recommend optimal Hugging Face models based on intended goals (Coding, Image Gen, Vision, Chat) without OOM risks using a strict 4-tier filtering pipeline.
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>FastAPI Async Engine (Python REST API &amp; 4-tier scoring pipeline)</span>
+                  <span>Hugging Face Hub API (Real-time model catalog &amp; metrics)</span>
+                  <span>Tier-1 Memory Engine (Hardware VRAM cap math &amp; OOM protection)</span>
+                  <span>Hardware Profiler (Web Memory API &amp; psutil system inspection)</span>
+                  <span>Categorized UI Output (Best Overall, Speed Demon, Max Capability cards)</span>
+                  <span>1-Click Code Launcher (Ollama, vLLM, &amp; Transformers snippets)</span>
+                </div>
+              </details>
+            </div>
+            <footer class="card-footer">
+              <a href="hf-model-matcher/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
           </div>
-          <footer class="card-footer">
-            <a href="hf-model-matcher/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
-          </footer>
-        </div>
-      </article>
+        </article>
 
-      <!-- Project 9: Nycto's ThreatPulse Security Feed Aggregator -->
-      <article class="project-card active">
-        <div class="card-glow"></div>
-        <div class="card-inner">
-          <header class="card-header">
-            <div style="display: flex; gap: 0.5rem;">
-              <span class="badge badge-active">Active</span>
-              <span class="badge badge-pro">Pro</span>
-              <span class="badge badge-live">Live Data</span>
-            </div>
-          </header>
-          <div class="card-content">
-            <h2 class="project-title font-display">Nycto's ThreatPulse</h2>
-            <p class="project-desc">
-              A high-signal, distraction-free security advisory &amp; technical news aggregation engine. Ingests 11+ RSS/Atom/JSON feeds (CISA KEV, BleepingComputer, SANS ISC, Debian/Ubuntu Security, Cloudflare), executes 2-layer deduplication with fuzzy title matching, auto-extracts CVE tags, and delivers static JSON payloads via a dark-mode Kanban &amp; Compact dashboard.
-            </p>
-            <details class="tech-dropdown">
-              <summary class="tech-toggle">Show tech stack</summary>
-              <div class="tech-tags">
-                <span>Python Ingestion Engine (BeautifulSoup, feedparser, requests)</span>
-                <span>SQLite WAL Mode Caching (30-day automated vacuum &amp; pruning)</span>
-                <span>2-Layer Deduplication (URL SHA-256 hash &amp; 85%+ fuzzy title matching)</span>
-                <span>CVE &amp; Keyword Extractor (Auto-hyperlinking to NIST NVD database)</span>
-                <span>Executive Dark SPA (Tailwind CSS, Inter &amp; JetBrains Mono typography)</span>
-                <span>Dual View Modes (Kanban 3-column &amp; Compact Ticker table)</span>
-                <span>Vim Keyboard Shortcuts (j/k navigation, o open link, m read, b bookmark, / search)</span>
-                <span>Stateless Client Storage (LocalStorage persistence)</span>
+        <!-- Hidden Crypto Matrix Decoder -->
+        <article hidden data-category="security">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div class="badge-group">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-live">Beta</span>
               </div>
-            </details>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">Crypto Matrix Decoder</h2>
+              <p class="project-desc">
+                An interactive cryptographic analysis terminal. Features real-time frequency analysis histograms, dual hex/ASCII memory dump screens, and multiple cipher modules.
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>Cipher Engine (For Caesar, Vigenère, Rail Fence, and XOR transforms)</span>
+                  <span>Shannon Entropy Analysis (For measuring information content)</span>
+                  <span>Hex Dump Viewer (For raw byte inspection)</span>
+                  <span>Frequency Spectrum Chart (For letter distribution analysis)</span>
+                  <span>CTF Challenge Mode (For interactive decryption scenarios)</span>
+                </div>
+              </details>
+            </div>
+            <footer class="card-footer">
+              <a href="crypto-game/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
           </div>
-          <footer class="card-footer">
-            <a href="threatpulse/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
-          </footer>
-        </div>
-      </article>
+        </article>
+      </section>
+    </div>
 
-      <!-- Project 10: Homeward — Home Build & Lot Scouting Optimizer -->
-      <article class="project-card active">
-        <div class="card-glow"></div>
-        <div class="card-inner">
-          <header class="card-header">
-            <div style="display: flex; gap: 0.5rem;">
-              <span class="badge badge-active">Active</span>
-              <span class="badge badge-pro">Pro</span>
-              <span class="badge badge-live">Live Data</span>
-            </div>
-          </header>
-          <div class="card-content">
-            <h2 class="project-title font-display">Homeward — Lot Scouting Optimizer</h2>
-            <p class="project-desc">
-              An interactive route optimization tool for home builders and lot scouts. Solves multi-stop Traveling Salesperson routes with customizable stay durations, features integrated inspection notebooks with Redfin/Zillow/Street View links, exports multi-stop Google Maps navigation links, and generates printable executive scouting reports.
-            </p>
-            <details class="tech-dropdown">
-              <summary class="tech-toggle">Show tech stack</summary>
-              <div class="tech-tags">
-                <span>TSP Route Optimizer (Haversine &amp; nearest-neighbor distance matrix solver)</span>
-                <span>Nominatim Geocoding API (Batch address geocoding &amp; location caching)</span>
-                <span>Interactive Leaflet Map (Numbered pins &amp; polyline route visualization)</span>
-                <span>Site Inspection Notebook (Star ratings, terrain, utilities, pros/cons &amp; photos)</span>
-                <span>1-Click Property Deep Links (Instant Redfin, Zillow &amp; Google Street View lookups)</span>
-                <span>Multi-Stop Google Maps Exporter (1-click navigation handoff)</span>
-                <span>Executive Scouting Report Generator (Printable PDF/document layout)</span>
-                <span>CSV &amp; JSON Data Import/Export (State backup &amp; batch list merging)</span>
-              </div>
-            </details>
-          </div>
-          <footer class="card-footer">
-            <a href="homeward/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
-          </footer>
+    <!-- DOMAIN GROUP 3: TRAVEL, LOGISTICS & LIFESTYLE -->
+    <div class="domain-group" data-domain="lifestyle">
+      <div class="domain-header domain-header-lifestyle">
+        <div class="domain-header-badge font-display">Domain 03</div>
+        <div class="domain-header-main">
+          <h2 class="domain-title font-display">🚗 Travel, Logistics &amp; Lifestyle</h2>
+          <p class="domain-subtitle">OSRM trip planning with predictive weather overlays, and multi-market live concert discovery grids.</p>
         </div>
-      </article>
-    </section>
+      </div>
+      <section class="projects-grid">
+        <!-- Project 9: Nycto's Open Road Advisor -->
+        <article class="project-card active" data-category="lifestyle">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div style="display: flex; gap: 0.5rem;">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-pro">Pro</span>
+                <span class="badge badge-live">Live Data</span>
+              </div>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">Nycto's Open Road Advisor</h2>
+              <p class="project-desc">
+                A predictive travel advisor that maps custom multi-stop routes using OSRM, integrating real-time weather forecasts (Open-Meteo) to monitor wind and precipitation hazards. Features advanced logistics planning including automated fuel stop calculations, meal scheduling, curfew-aware layovers, and a dynamic elevation profile dashboard.
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>OSRM Routing (Optimized for driving paths)</span>
+                  <span>Spatial Analysis (GIS-based coordinate math)</span>
+                  <span>Predictive Weather (Open-Meteo API forecasting)</span>
+                  <span>Logistical Engine (Fuel/meal/rest stop injection)</span>
+                  <span>Geospatial Visualization (Leaflet map overlay &amp; Elevation graphing)</span>
+                  <span>GPX Exporting (Data interoperability)</span>
+                  <span>Internationally Usable (Metric and Imperial Units including US Dollars/Euros/Pounds)</span>
+                </div>
+              </details>
+            </div>
+            <footer class="card-footer">
+              <a href="open-road-advisor/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
+          </div>
+        </article>
+
+        <!-- Project 10: Nycto's Gig Grid -->
+        <article class="project-card active" data-category="lifestyle">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div style="display: flex; gap: 0.5rem;">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-pro">Pro</span>
+                <span class="badge badge-live">Live Data</span>
+              </div>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">Nycto's Gig Grid</h2>
+              <p class="project-desc">
+                A premium, multi-market live music intelligence grid with curated discovery, market-specific filtering, and backend sync automation. Integrates Ticketmaster and Bandsintown APIs, deduplicates incoming events, tracks setlists and venue metadata, and supports your personal interested-show workflow.
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>API Aggregator &amp; Scraper (Ticketmaster &amp; Bandsintown)</span>
+                  <span>SQLite DB &amp; Hashed Admin Security (Bcrypt verification)</span>
+                  <span>Dynamic Search Filter (Artist, venue, subgenre tags)</span>
+                  <span>Automated CLI Cron Sync (CGI-fcgi environment support)</span>
+                  <span>Personal Show Logbook (Rating, media, journals, local cache)</span>
+                  <span>Setlist.fm Backfill Integration (Automated cache)</span>
+                  <span>Modern Backstage UI (High-contrast ticket-stub cards)</span>
+                </div>
+              </details>
+            </div>
+            <footer class="card-footer">
+              <a href="nyctos-gig-grid/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
+          </div>
+        </article>
+
+        <!-- Hidden Handheld Gaming Log -->
+        <article hidden data-category="lifestyle">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div class="badge-group">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-live">Beta</span>
+              </div>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">Handheld Gaming Log</h2>
+              <p class="project-desc">
+                A premium Steam Deck-inspired log book to track play sessions, frame performance ratings, and cumulative stats. Uses browser persistence to save logs.
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>Game Entry Tracking (For logging play sessions and hours)</span>
+                  <span>Performance Rating System (For Great/Playable/Poor scoring)</span>
+                  <span>Sorting &amp; Filtering (For organizing the library by title, time, or rating)</span>
+                  <span>Local Persistence (For saving entries in the browser)</span>
+                </div>
+              </details>
+            </div>
+            <footer class="card-footer">
+              <a href="game-rating-log/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
+          </div>
+        </article>
+      </section>
+    </div>
   </main>
 
   <div class="section-divider" aria-hidden="true"></div>
@@ -597,32 +677,26 @@
 
 <!-- Certifications Section -->
 <section class="container certs-section">
-  <h2 class="project-title font-display" style="margin-bottom: 2rem; font-size: 1.75rem;">Professional Certifications</h2>
-  <div class="projects-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
-    
+  <h2 class="project-title font-display" style="margin-bottom: 1.5rem; font-size: 1.75rem;">Professional Certifications</h2>
+  <div class="projects-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">
+
     <!-- GCIH -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">GCIH</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">GCIH</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.giac.org/certifications/certified-incident-handler-gcih/" target="_blank" style="color: var(--text-muted); text-decoration: underline;">GIAC</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          Equips me with hands-on skills to detect, respond to, and resolve complex security incidents.
         </p>
         <a href="https://www.credly.com/badges/749022de-deac-471c-b5b6-4aa895eff1d4/public_url" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
       </div>
     </article>
-    
+
     <!-- CySA+ -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">CySA+</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">CySA+</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.comptia.org/certifications/cybersecurity-analyst" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          Crucial for my work in threat detection, focusing on behavioral analytics and incident response workflows.
         </p>
         <a href="https://www.credly.com/badges/c5017b74-6a78-494f-a9ab-961dea97ed9c" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
       </div>
@@ -630,13 +704,10 @@
 
     <!-- Security+ -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">Security+</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">Security+</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.comptia.org/certifications/security" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          My baseline for managing threat landscapes and hardening infrastructure against evolving vectors.
         </p>
         <a href="https://www.credly.com/badges/bb5dec5d-3623-4af0-b784-13891824451d" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
       </div>
@@ -644,13 +715,10 @@
 
     <!-- SSCP -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">SSCP</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">SSCP</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.isc2.org/Certifications/SSCP" target="_blank" style="color: var(--text-muted); text-decoration: underline;">ISC2</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          Validates my expertise in implementing and monitoring security policies to protect organizational assets.
         </p>
         <a href="https://www.credly.com/badges/65e853ba-d0d1-4065-97b1-b315ea91b096" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
       </div>
@@ -658,13 +726,10 @@
 
     <!-- PenTest+ -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">PenTest+</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">PenTest+</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.comptia.org/certifications/pentest" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          Enhances my threat-hunting mindset by simulating adversarial techniques to uncover vulnerabilities.
         </p>
         <a href="https://www.credly.com/badges/3e42cea1-22d3-437f-8a52-df0a41916528/public_url" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
       </div>
@@ -672,13 +737,10 @@
 
     <!-- Network+ -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">Network+</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">Network+</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.comptia.org/certifications/network" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          Provides the foundation for securing traffic and understanding network-level threats in hybrid environments.
         </p>
         <a href="https://www.credly.com/badges/65437474-b214-494d-b74a-e1ce5f6b0d49/public_url" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
       </div>
@@ -686,13 +748,10 @@
 
     <!-- A+ -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">A+</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">A+</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.comptia.org/certifications/a" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          Established my foundational understanding of hardware, software, and troubleshooting that underpins every layer of enterprise security operations.
         </p>
         <a href="https://www.credly.com/badges/98064b54-4053-4edd-b9b9-6cec49350074/public_url" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
       </div>
@@ -700,13 +759,10 @@
 
     <!-- Project+ -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">Project+</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">Project+</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.comptia.org/certifications/project" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          Strengthens my ability to plan, coordinate, and deliver cross-functional security initiatives and technology projects on time and within scope.
         </p>
         <a href="https://www.credly.com/badges/3c3af8cf-7237-4d78-bd11-d4fc8cde3d23/public_url" target="_blank" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
       </div>
@@ -714,13 +770,10 @@
 
     <!-- ITIL 4 -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">ITIL 4</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">ITIL 4</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.axelos.com/certifications/itil-certifications" target="_blank" style="color: var(--text-muted); text-decoration: underline;">PeopleCert</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          Helps me align security operations with broader enterprise service management and efficiency standards.
         </p>
         <span style="color: var(--text-light); font-size: 0.75rem;">ID: GR671475065JH</span>
       </div>
@@ -731,32 +784,26 @@
 
 <!-- Certifications Section -->
 <section class="container certs-section">
-  <h2 class="project-title font-display" style="margin-bottom: 2rem; font-size: 1.75rem;">CompTIA Stackable Certifications</h2>
-  <div class="projects-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));">
-    
+  <h2 class="project-title font-display" style="margin-bottom: 1.5rem; font-size: 1.75rem;">CompTIA Stackable Certifications</h2>
+  <div class="projects-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">
+
     <!-- CIOS -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">CIOS</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">CIOS</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.comptia.org/certifications/it-operations-specialist-cios" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          Validates my expertise in IT operations management, infrastructure support, and service delivery across enterprise environments.
         </p>
         <a href="https://www.credly.com/badges/c1735a50-ec33-4ad8-a8c8-00eb44692146/public_url" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
       </div>
     </article>
-    
+
     <!-- CNSP -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">CNSP</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">CNSP</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.comptia.org/certifications/network-security-professional-cnsp" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          Demonstrates my proficiency in network security architecture, threat mitigation, and defensive infrastructure deployment.
         </p>
         <a href="https://www.credly.com/badges/6c04bea3-0dc4-4e9d-836c-7ed4c160a245/public_url" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
       </div>
@@ -764,13 +811,10 @@
 
     <!-- CNVP -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">CNVP</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">CNVP</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.comptia.org/certifications/network-vulnerability-assessment-professional-cnvp" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          Focuses on vulnerability identification, assessment methodologies, and remediation strategies for network security hardening.
         </p>
         <a href="https://www.credly.com/badges/6bd72eba-8111-4706-a883-13e29706b2f1/public_url" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
       </div>
@@ -778,13 +822,10 @@
 
     <!-- CSIS -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">CSIS</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">CSIS</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.comptia.org/certifications/secure-infrastructure-specialist-csis" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          Validates expertise in building and maintaining secure infrastructure foundations for cloud and hybrid deployments.
         </p>
         <a href="https://www.credly.com/badges/66d5ac18-722e-4c0c-87ca-177a944a9bba/public_url" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
       </div>
@@ -792,13 +833,10 @@
 
     <!-- CSAP -->
     <article class="project-card" style="min-height: auto;">
-      <div class="card-inner" style="padding: 1.25rem;">
-        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright);">CSAP</h3>
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">
+      <div class="card-inner" style="padding: 1rem;">
+        <h3 class="font-display" style="margin-bottom: 0.25rem; color: var(--text-bright); font-size: 0.95rem;">CSAP</h3>
+        <p style="color: var(--text-muted); font-size: 0.75rem; margin-bottom: 0.5rem;">
           <a href="https://www.comptia.org/certifications/security-analytics-professional-csap" target="_blank" style="color: var(--text-muted); text-decoration: underline;">CompTIA</a>
-        </p>
-        <p style="font-size: 0.75rem; color: var(--text-medium); margin-bottom: 0.75rem; font-style: italic;">
-          Demonstrates my ability to analyze security data, interpret threat intelligence, and drive actionable detection strategies.
         </p>
         <a href="https://www.credly.com/badges/33e4a9a0-0bec-4523-b54f-ee2d7aa597ff/public_url" style="color: var(--primary-color); font-size: 0.75rem; text-decoration: none;">Verify Credential →</a>
       </div>

@@ -171,6 +171,34 @@ $zillowDimHtml = '<html><head><title>123 Test | Zillow</title></head><body><div>
 $parsedDim = parsePropertyHtmlByUrl($zillowDimHtml, 'https://www.zillow.com/homedetails/123/1_zpid/');
 check('zillow lot dimensions (45x100)', $parsedDim['lotSqFt'], 4500.0);
 
+// --- rentalEstimate now flows through every per-site parser, not just Redfin ---
+// Regression coverage for the rent-vs-sell "Auto-Fetch" bug: rentalEstimate
+// used to be extracted only inside parsePropertyHtml (Redfin) — Zillow,
+// Realtor.com, Homes.com and the generic LD+JSON path never set the key at
+// all, so any caller reading $data['rentalEstimate'] silently got null for
+// three of the four supported providers.
+
+// Zillow: explicit rentZestimate key in gdpClientCache-style JSON wins over the algorithmic fallback.
+$zillowRentHtml = '<html><head><title>44 Rent Ave, Denver, CO 80202 | Zillow</title></head><body><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"gdpClientCache":{"Property":{"price":"450000","livingArea":"1800","rentZestimate":"2450"}}}}}</script></body></html>';
+$parsedZillowRent = parsePropertyHtmlByUrl($zillowRentHtml, 'https://www.zillow.com/homedetails/44-Rent-Ave-Denver-CO/111_zpid/');
+check('zillow: rentalEstimate from rentZestimate key', $parsedZillowRent['rentalEstimate'], 2450.0);
+
+// Zillow: no rent field present anywhere -> algorithmic sqft-based fallback, not null.
+$zillowNoRentHtml = '<html><head><title>55 No Rent Blvd, Denver, CO 80202 | Zillow</title></head><body><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"gdpClientCache":{"Property":{"price":"450000","livingArea":"2000"}}}}}</script></body></html>';
+$parsedZillowNoRent = parsePropertyHtmlByUrl($zillowNoRentHtml, 'https://www.zillow.com/homedetails/55-No-Rent-Blvd-Denver-CO/112_zpid/');
+check('zillow: rentalEstimate algorithmic sqft fallback when absent from page', $parsedZillowNoRent['rentalEstimate'], round((2000 * 1.35) / 25) * 25);
+
+// Realtor.com (routed through parseGenericLdJsonHtml): LD+JSON has no rent field -> price-based algorithmic fallback.
+$realtorHtml = '<html><head><title>66 Realtor Way, Denver, CO 80202 | Realtor.com</title><script type="application/ld+json">{"@type":"SingleFamilyResidence","offers":{"@type":"Offer","price":410000}}</script></head><body></body></html>';
+$parsedRealtor = parsePropertyHtmlByUrl($realtorHtml, 'https://www.realtor.com/realestateandhomes-detail/66-Realtor-Way_Denver_CO_80202');
+check('realtor.com: rentalEstimate is populated (not silently null)', $parsedRealtor['rentalEstimate'] !== null, true);
+check('realtor.com: rentalEstimate price-based algorithmic fallback', $parsedRealtor['rentalEstimate'], round((410000 * 0.0065) / 50) * 50);
+
+// Homes.com (routed through the generic/default LD+JSON path): explicit "estimatedRent" key.
+$homesHtml = '<html><head><title>77 Homes Dr, Denver, CO 80202 | Homes.com</title></head><body><script>var x = {"price": 395000, "estimatedRent": 2100};</script></body></html>';
+$parsedHomes = parsePropertyHtmlByUrl($homesHtml, 'https://www.homes.com/property/77-homes-dr-denver-co/222abc/');
+check('homes.com: rentalEstimate from estimatedRent key', $parsedHomes['rentalEstimate'], 2100.0);
+
 echo "\n$passed passed, $failures failed.\n";
 exit($failures > 0 ? 1 : 0);
 

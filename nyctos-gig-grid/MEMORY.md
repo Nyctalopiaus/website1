@@ -35,7 +35,7 @@ This document acts as persistent project memory for AI assistants (Antigravity, 
 | [`services/LastFmNormalizer.php`](file:///c:/Users/joshu/OneDrive/Documents/AI%20Projects/Website1/vm_code/nyctos-gig-grid/services/LastFmNormalizer.php) | Normalizes event genres into 8 bucket categories using Last.fm top tags & local genre cache. |
 | [`aggregator.php`](file:///c:/Users/joshu/OneDrive/Documents/AI%20Projects/Website1/vm_code/nyctos-gig-grid/aggregator.php) | Entry point for CLI/cPanel cron sync execution and API action routing. |
 | [`assets/js/filters.js`](file:///c:/Users/joshu/OneDrive/Documents/AI%20Projects/Website1/vm_code/nyctos-gig-grid/assets/js/filters.js) | Client-side search, genre bucket filtering, multi-region toggles, and month auto-switch logic. |
-| [`logs/cron-sync-log/`](file:///c:/Users/joshu/OneDrive/Documents/AI%20Projects/Website1/vm_code/nyctos-gig-grid/logs/cron-sync-log) | Target directory for daily market sync logs, log rotation archives, and security audit logs. |
+| [`logs/cron_sync_log/`](file:///c:/Users/joshu/OneDrive/Documents/AI%20Projects/Website1/vm_code/nyctos-gig-grid/logs/cron_sync_log) | Target directory for daily market sync logs, log rotation archives, and security audit logs. Underscore, not hyphen -- must match the cPanel cron jobs' `>>` redirect target (those jobs live outside this codebase). |
 | [`cache/last_sync.txt`](file:///c:/Users/joshu/OneDrive/Documents/AI%20Projects/Website1/vm_code/nyctos-gig-grid/cache/last_sync.txt) | Plain-text timestamp updated after each successful sync. |
 
 ---

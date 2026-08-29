@@ -404,7 +404,16 @@ class VenueScraper {
                 if ($titleNode && $titleNode->length > 0) {
                     $artistName = trim($titleNode->item(0)->textContent);
                 }
-                
+
+                // Skip "empty state" / "no results" placeholder copy that some venue sites render
+                // inside a container that happens to match our generic event/show class selector
+                // (e.g. a "No Matching Upcoming Events Found" message on a filtered calendar view).
+                // That's page chrome, not a real event — scraping it produces a phantom event with
+                // a fallback date/link (see Red Rocks incident, Aug 2026).
+                if ($artistName !== '' && preg_match('/\bno\s+(?:matching\s+)?(?:upcoming\s+)?(?:events?|results?|shows?)\s+(?:found|available|scheduled)\b|\bnothing\s+found\b/i', $artistName)) {
+                    continue;
+                }
+
                 $dateNode = $xpath->query('.//span[contains(@class, "date")]|.//div[contains(@class, "date")]|.//time', $el);
                 if ($dateNode && $dateNode->length > 0) {
                     $startTime = trim($dateNode->item(0)->textContent);

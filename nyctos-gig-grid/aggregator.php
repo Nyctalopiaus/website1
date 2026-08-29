@@ -10,7 +10,7 @@ error_reporting(E_ALL);
 register_shutdown_function(function() {
     $error = error_get_last();
     if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR])) {
-        $logDir = __DIR__ . '/logs/cron-sync-log';
+        $logDir = __DIR__ . '/logs/cron_sync_log'; // must match cPanel cron jobs' actual log dir
         if (!is_dir($logDir)) @mkdir($logDir, 0755, true);
         $logMsg = "[" . date('Y-m-d H:i:s') . "] FATAL ERROR: " . $error['message'] . " in " . $error['file'] . " on line " . $error['line'] . "\n";
         @file_put_contents($logDir . '/sync_fatal_errors.log', $logMsg, FILE_APPEND);

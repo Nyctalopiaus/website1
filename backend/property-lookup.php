@@ -34,9 +34,13 @@
 
 require __DIR__ . '/lib/multi-site-parser.php';
 
+// This endpoint never reads or sets a session/cookie, so credentialed CORS
+// is never appropriate here (Access-Control-Allow-Credentials is
+// intentionally never sent) — a plain reflected/wildcard origin is safe
+// since there's nothing origin-specific for a browser to leak by reading
+// the response.
 if (isset($_SERVER['HTTP_ORIGIN'])) {
     header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
-    header("Access-Control-Allow-Credentials: true");
     header("Access-Control-Max-Age: 86400");
 } else {
     header("Access-Control-Allow-Origin: *");
@@ -101,6 +105,11 @@ function logEvent($level, $message, $context = []) {
         if (is_bool($v)) $v = $v ? 'true' : 'false';
         elseif ($v === null) $v = 'null';
         elseif (is_array($v)) $v = json_encode($v);
+        // Strip newlines/control chars from attacker-influenced values
+        // (e.g. rawUrl) before they go into the log line — otherwise a
+        // crafted request param could inject fake log lines that look
+        // like separate, unrelated log entries.
+        $v = preg_replace('/[\x00-\x1F\x7F]+/', ' ', (string)$v);
         $ctxParts[] = "$k=$v";
     }
     $line = sprintf(

@@ -21,6 +21,134 @@ function getKvCacheOverhead(contextK) {
     return map[contextK] || 1.5;
 }
 
+// Priority-ordered filename tokens to look for on the Hub when verifying a
+// model's real .gguf size, per requested quant level. Kept in sync with
+// QUANT_FILENAME_TOKENS in backend/hf_client.py.
+const QUANT_FILENAME_TOKENS = {
+    4: ['q4_k_m', 'q4_k_s', 'q4_k_l', 'q4_0', 'iq4_xs', 'iq4_nl'],
+    8: ['q8_0'],
+    16: ['f16', 'fp16']
+};
+
+// config.json field-name aliases to try, in order, for each architecture number
+// the real KV-cache formula needs. Kept in sync with ARCH_FIELD_ALIASES in
+// backend/hf_client.py.
+const ARCH_FIELD_ALIASES = {
+    num_hidden_layers: ['num_hidden_layers', 'n_layer', 'num_layers'],
+    num_attention_heads: ['num_attention_heads', 'n_head', 'num_heads'],
+    num_key_value_heads: ['num_key_value_heads', 'n_head_kv', 'num_kv_heads'],
+    hidden_size: ['hidden_size', 'n_embd', 'd_model']
+};
+
+function firstPresent(cfg, aliases) {
+    for (const key of aliases) {
+        const val = cfg[key];
+        if (typeof val === 'number' && val > 0) return val;
+    }
+    return null;
+}
+
+// Computes the model's REAL KV-cache memory footprint from its actual
+// architecture instead of the flat getKvCacheOverhead() table, which is blind
+// to model size entirely. Mirrors backend/hf_client.py's get_exact_kv_cache_gb()
+// - see that docstring for the full rationale (confirmed live: real cross-origin
+// fetch to a base model's config.json from the deployed nycto.ninja page works,
+// and Qwen2.5-Coder-7B's real 16k KV cache computes to ~0.92GB vs the flat
+// table's 1.5GB - GQA models have far fewer KV heads than query heads).
+async function getExactKvCacheGb(baseModelId, contextK) {
+    try {
+        const res = await fetch(`https://huggingface.co/${baseModelId}/raw/main/config.json`);
+        if (!res.ok) return null;
+        const cfg = await res.json();
+
+        const numLayers = firstPresent(cfg, ARCH_FIELD_ALIASES.num_hidden_layers);
+        const numHeads = firstPresent(cfg, ARCH_FIELD_ALIASES.num_attention_heads);
+        const hiddenSize = firstPresent(cfg, ARCH_FIELD_ALIASES.hidden_size);
+        // True MHA models don't publish a separate KV-head count - in that case
+        // KV heads equal query heads.
+        const numKvHeads = firstPresent(cfg, ARCH_FIELD_ALIASES.num_key_value_heads) || numHeads;
+
+        if (!(numLayers && numHeads && hiddenSize && numKvHeads)) return null;
+
+        const headDim = hiddenSize / numHeads;
+        const contextTokens = contextK * 1000;
+        // 2 (K and V) x layers x kv_heads x head_dim x tokens x 2 bytes (fp16 KV
+        // cache - llama.cpp's default). Decimal GB, matching the app convention.
+        const kvCacheBytes = 2 * numLayers * numKvHeads * headDim * contextTokens * 2;
+        const kvCacheGb = Math.round((kvCacheBytes / 1e9) * 100) / 100;
+
+        return {
+            exactKvOverheadGb: kvCacheGb,
+            kvArchitecture: {
+                baseModel: baseModelId,
+                numHiddenLayers: numLayers,
+                numAttentionHeads: numHeads,
+                numKeyValueHeads: numKvHeads,
+                hiddenSize: hiddenSize,
+                isGqa: numKvHeads < numHeads
+            }
+        };
+    } catch (e) {
+        return null;
+    }
+}
+
+// Looks up a model's REAL .gguf file size directly from the Hub instead of
+// relying on the params-times-bits estimate (which undercounts K-quants -
+// Q4_K_M runs closer to ~4.5-5 effective bits/weight than a clean 4), plus the
+// real architecture-derived KV-cache size when the repo tags its base model.
+// Mirrors backend/hf_client.py's get_exact_gguf_info() - see that docstring for
+// the full rationale. Only called for the 3 (deduped) hero picks after
+// selection, never the full search batch. Returns null on any failure so
+// callers always have a safe fallback to the estimate.
+async function getExactGgufInfo(repoId, quantBits, contextK) {
+    let data;
+    try {
+        const res = await fetch(`https://huggingface.co/api/models/${repoId}?blobs=true`);
+        if (!res.ok) return null;
+        data = await res.json();
+    } catch (e) {
+        return null;
+    }
+
+    const siblings = data.siblings || [];
+    const tokens = QUANT_FILENAME_TOKENS[quantBits] || QUANT_FILENAME_TOKENS[4];
+    const result = {};
+
+    for (const token of tokens) {
+        const files = siblings.filter(s =>
+            s.size && String(s.rfilename || '').toLowerCase().endsWith('.gguf') &&
+            String(s.rfilename || '').toLowerCase().includes(token)
+        );
+        if (files.length > 0) {
+            const bytes = files.reduce((sum, f) => sum + f.size, 0);
+            // Decimal GB (bytes / 1e9) - matches the app-wide convention used
+            // everywhere else (no binary/1024 math in this pipeline), since this
+            // gets compared directly against the estimate and the user's budget.
+            result.exactWeightGb = Math.round((bytes / 1e9) * 100) / 100;
+            result.matchedFiles = files.map(f => f.rfilename);
+            break;
+        }
+    }
+
+    const gguf = data.gguf || {};
+    if (typeof gguf.total === 'number' && gguf.total > 0) {
+        result.exactParamsB = Math.round((gguf.total / 1e9) * 100) / 100;
+    }
+    if (typeof gguf.context_length === 'number') {
+        result.nativeContextLength = gguf.context_length;
+    }
+
+    let baseModel = (data.cardData || {}).base_model;
+    if (Array.isArray(baseModel)) baseModel = baseModel[0];
+    if (typeof baseModel === 'string' && baseModel.trim()) {
+        const kvResult = await getExactKvCacheGb(baseModel.trim(), contextK);
+        if (kvResult) Object.assign(result, kvResult);
+    }
+
+    return Object.keys(result).length > 0 ? result : null;
+}
+
 // Helper: Generation Speed Status Rating
 export function getGenerationSpeed(vramReqTotal, userVramGb) {
     const pct = (vramReqTotal / Math.max(userVramGb, 1.0)) * 100.0;
@@ -205,13 +333,29 @@ export async function runClientSideEngine(params) {
         const vramWeight = Math.round((((paramsB * 4) / 8.0) * 1.25) * 100) / 100;
         const vramReqTotal = Math.round((vramWeight + kvOverhead) * 100) / 100;
 
-        if (vramReqTotal <= userVram * 1.05) {
+        // Tolerance matches backend/engine.py's run_pipeline (1.02x) - was 1.05x here,
+        // letting the client-side fallback admit models the backend would reject.
+        if (vramReqTotal <= userVram * 1.02) {
             const vramPct = Math.min(Math.round((vramReqTotal / userVram) * 1000) / 10, 100);
             const trendingScore = (likes * 1.5) + (downloads * 0.01);
 
+            // Keyword lists and boost values mirror backend/engine.py's task_relevance_boost
+            // exactly (kept in sync by hand - there's no shared module between Python and
+            // this client-side fallback). This used to only cover 'coding'/'image-gen' with
+            // a shorter keyword list, silently leaving 'vision' and 'chat' goals unboosted
+            // whenever the fallback engine served a request.
+            const tagsLower = tags.map(t => String(t).toLowerCase());
+            const matchesAny = (keywords) => keywords.some(k => repoLower.includes(k) || tagsLower.includes(k));
             let taskBoost = 1.0;
-            if (params.goal === 'coding' && (repoLower.includes('code') || repoLower.includes('coder'))) taskBoost = 1.35;
-            if (params.goal === 'image-gen' && (repoLower.includes('flux') || repoLower.includes('sdxl'))) taskBoost = 1.4;
+            if (params.goal === 'coding') {
+                if (matchesAny(['code', 'coder', 'starcoder', 'codellama', 'python', 'rust', 'codestral', 'sql'])) taskBoost = 1.35;
+            } else if (params.goal === 'image-gen') {
+                if (matchesAny(['diffusers', 'flux', 'sdxl', 'stable-diffusion', 'text-to-image'])) taskBoost = 1.4;
+            } else if (params.goal === 'vision') {
+                if (matchesAny(['vision', 'vlm', 'multimodal', 'llava', 'moondream', 'paligemma', 'image-to-text'])) taskBoost = 1.4;
+            } else if (params.goal === 'chat') {
+                if (matchesAny(['instruct', 'chat', 'r1', 'reasoning', 'llama', 'gemma', 'qwen'])) taskBoost = 1.25;
+            }
 
             const nameParts = repoId.split('/');
             const author = nameParts.length > 1 ? nameParts[0] : 'Community';
@@ -274,7 +418,10 @@ export async function runClientSideEngine(params) {
     const vettedPool = surviving.filter(m => (m.downloads || 0) >= 1000 && (m.likes || 0) >= 5);
     const heroPool = vettedPool.length > 0 ? vettedPool : surviving;
 
-    const sweetSpot = heroPool.filter(m => m.vram_usage_pct >= 48 && m.vram_usage_pct <= 92);
+    // Range matches backend/engine.py's sweet_spot (60-88%) - was 48-92% here, a
+    // wider window that could pick a different "Best Overall" than the backend
+    // would for the identical candidate list depending on which engine answered.
+    const sweetSpot = heroPool.filter(m => m.vram_usage_pct >= 60 && m.vram_usage_pct <= 88);
     const heroBest = sweetSpot.length > 0 ? sweetSpot[0] : (heroPool[0] || null);
 
     const speedCandidates = heroPool.filter(m => m.vram_usage_pct <= 45);
@@ -288,6 +435,65 @@ export async function runClientSideEngine(params) {
 
     const maxCandidates = [...heroPool].sort((a, b) => b.params_b - a.params_b || b.recommendation_score - a.recommendation_score);
     let heroMax = maxCandidates[0] || heroBest;
+
+    // Backend/engine.py de-dupes the three hero picks (used_ids) so the same model
+    // never fills two "different" hero slots; that logic wasn't ported here, so a
+    // small candidate pool could show one model recommended 2-3 times under
+    // different labels. Mirror the backend's reassignment approach, searching the
+    // full surviving list (not just heroPool) for a replacement.
+    const usedIds = new Set();
+    if (heroBest) usedIds.add(heroBest.id);
+
+    if (heroSpeed && usedIds.has(heroSpeed.id)) {
+        const others = surviving.filter(m => !usedIds.has(m.id));
+        if (others.length > 0) {
+            heroSpeed = [...others].sort((a, b) => a.params_b - b.params_b)[0];
+        }
+    }
+    if (heroSpeed) usedIds.add(heroSpeed.id);
+
+    if (heroMax && usedIds.has(heroMax.id)) {
+        const others = surviving.filter(m => !usedIds.has(m.id));
+        if (others.length > 0) {
+            heroMax = [...others].sort((a, b) => b.params_b - a.params_b)[0];
+        }
+    }
+
+    // Verify the (up to 3, deduped) hero picks against their real .gguf file size
+    // AND real architecture-derived KV-cache size, in parallel, replacing both
+    // estimates with exact numbers where possible. Mirrors backend/main.py's
+    // verification pass so both engines get the same accuracy upgrade. Scoped to
+    // just the heroes, never the full candidate list.
+    const verifyContextK = params.contextK || 16;
+    const heroModels = [heroBest, heroSpeed, heroMax].filter(Boolean);
+    const uniqueHeroesById = [...new Map(heroModels.map(m => [m.id, m])).values()];
+    await Promise.all(uniqueHeroesById.map(async (m) => {
+        const verified = await getExactGgufInfo(m.id, 4, verifyContextK); // client engine always sizes weights at 4-bit today
+
+        if (verified && verified.exactWeightGb) {
+            m.vram_weight_gb = verified.exactWeightGb;
+            m.vram_source = 'exact';
+            m.matched_quant_files = verified.matchedFiles;
+            if (verified.exactParamsB) m.exact_params_b = verified.exactParamsB;
+            if (verified.nativeContextLength) m.native_context_length = verified.nativeContextLength;
+        } else {
+            m.vram_source = 'estimated';
+        }
+
+        if (verified && verified.exactKvOverheadGb) {
+            m.kv_overhead_gb = verified.exactKvOverheadGb;
+            m.kv_overhead_source = 'exact';
+            m.kv_architecture = verified.kvArchitecture;
+        } else {
+            m.kv_overhead_source = 'estimated';
+        }
+
+        // Recompute totals once, after both pieces (weight, KV) have had their
+        // chance to be upgraded independently - either, both, or neither may
+        // have come back exact.
+        m.vram_req_gb = Math.round((m.vram_weight_gb + m.kv_overhead_gb) * 100) / 100;
+        m.vram_usage_pct = Math.min(Math.round((m.vram_req_gb / userVram) * 1000) / 10, 100);
+    }));
 
     return {
         source: dataSource,

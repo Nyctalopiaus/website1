@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Homeward — Home Build & Lot Scouting Route Optimizer</title>
-  <meta name="description" content="Optimize house build lot scouting routes, track inspection notes, view Redfin/Zillow listings, and generate executive scouting reports.">
+  <title>Homeward — Home Viewing Route Planner</title>
+  <meta name="description" content="Plan efficient routes to view homes you're interested in buying, track notes for each property, view Redfin/Zillow listings, and generate printable visit reports.">
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -58,7 +58,7 @@
         </div>
         <div>
           <h1 class="text-base font-bold text-slate-100 leading-tight tracking-tight">Homeward</h1>
-          <p class="text-[11px] text-slate-400">Home Build & Lot Scouting Optimizer</p>
+          <p class="text-[11px] text-slate-400">Home Viewing Route Planner</p>
         </div>
       </div>
 
@@ -147,7 +147,7 @@
         <!-- Tour Name / Report Title Input -->
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1">Tour Name / Report Title</label>
-          <input id="input-tour-name" type="text" placeholder="e.g. House & Lot Scouting Tour" value="House & Lot Scouting Tour" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-sky-500 transition-colors">
+          <input id="input-tour-name" type="text" placeholder="e.g. Home Viewing Tour" value="Home Viewing Tour" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-sky-500 transition-colors">
         </div>
 
         <!-- Start Address Input -->
@@ -335,11 +335,11 @@
           </div>
         </details>
 
-        <!-- Scouting Sites Input & Interactive List Container -->
+        <!-- Home Addresses Input & Interactive List Container -->
         <div class="p-3 rounded-xl bg-slate-950 border border-slate-800/80 space-y-3">
           <!-- Header with Label & Action Links -->
           <div class="flex items-center justify-between">
-            <label class="text-xs font-semibold text-slate-300">Scouting Sites / Lot Addresses</label>
+            <label class="text-xs font-semibold text-slate-300">Home Addresses</label>
             <div class="flex items-center gap-2">
               <a id="header-bookmarklet-link" href="#" onclick="window.propertyLinks ? window.propertyLinks.openBookmarkletModal() : null; return false;" class="text-[11px] text-sky-400 hover:text-sky-300 font-bold transition-all flex items-center gap-1 cursor-grab active:cursor-grabbing" title="Drag to Bookmarks bar (or click for setup instructions)" draggable="true">
                 🔖 Bookmarklet
@@ -360,7 +360,7 @@
                 <span id="recent-import-address" class="text-xs font-semibold text-slate-100 truncate">Property</span>
               </div>
               <button id="btn-apply-recent-import" type="button" class="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow transition-all shrink-0">
-                ➕ Add to Scouting Tour
+                ➕ Add to Tour
               </button>
             </div>
           </div>
@@ -609,12 +609,12 @@
           <!-- Custom Thoughts / Inspection Notes -->
           <div>
             <label class="block text-slate-300 font-semibold mb-1">Our Thoughts & Detailed Notes</label>
-            <textarea id="note-text" rows="3" placeholder="Enter custom observations, builder talks, sun orientation..." class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:border-sky-500 focus:outline-none"></textarea>
+            <textarea id="note-text" rows="3" placeholder="Enter custom observations, agent notes, sun orientation..." class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:border-sky-500 focus:outline-none"></textarea>
           </div>
 
           <!-- Multi-Photo Manager & List -->
           <div>
-            <label class="block text-slate-300 font-semibold mb-1">House / Lot Inspection Photos</label>
+            <label class="block text-slate-300 font-semibold mb-1">Property Photos</label>
             <div class="flex gap-2">
               <input id="note-photo-url-input" type="text" placeholder="Paste image URL (e.g. https://...)" class="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 focus:border-sky-500 focus:outline-none">
               <button id="btn-add-photo-url" type="button" class="px-3.5 py-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-bold text-xs border border-sky-500/30 transition-colors flex-shrink-0">
@@ -655,7 +655,7 @@
     </div>
   </div>
 
-  <!-- MODAL 2: Executive Scouting Report Modal (Print Printable) -->
+  <!-- MODAL 2: Home Visit Report Modal (Print Printable) -->
   <div id="report-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-950 p-4 lg:p-8">
     <div class="max-w-5xl mx-auto bg-slate-950">
       
@@ -728,12 +728,12 @@
         <button id="btn-close-quickstart" type="button" aria-label="Close Quick Start guide" class="text-slate-400 hover:text-slate-200 text-lg font-bold">✕</button>
       </div>
 
-      <p class="text-xs text-slate-400 mb-4">Follow these steps to plan a lot-scouting route, log field notes, and bring it all back for a report.</p>
+      <p class="text-xs text-slate-400 mb-4">Follow these steps to plan a home-viewing route, log field notes, and bring it all back for a report.</p>
 
       <ol class="space-y-3 text-xs text-slate-300 mb-4">
         <li class="p-3 rounded-xl bg-slate-950 border border-slate-800">
           <strong class="block text-slate-100 mb-0.5">1) Set your starting point & stops</strong>
-          Enter your home base address, then add scouting sites by pasting listing URLs (Redfin, Zillow, Realtor.com, Homes.com), using the 🔖 Bookmarklet, or importing a CSV file.
+          Enter your home base address, then add homes you're interested in by pasting listing URLs (Redfin, Zillow, Realtor.com, Homes.com), using the 🔖 Bookmarklet, or importing a CSV file.
         </li>
         <li class="p-3 rounded-xl bg-slate-950 border border-slate-800">
           <strong class="block text-slate-100 mb-0.5">2) Optimize & build your tour route</strong>
@@ -964,7 +964,7 @@
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold uppercase tracking-widest mb-1">
             🗺️ Top-Down Visual Route Preview
           </div>
-          <h2 class="text-xl font-extrabold text-slate-100">Chronological Scouting Route</h2>
+          <h2 class="text-xl font-extrabold text-slate-100">Chronological Viewing Route</h2>
           <p class="text-xs text-slate-400">Step-by-step visual overview of property photos, addresses, drive times, and expected inspection schedule in order.</p>
         </div>
         <button id="btn-close-route-preview" type="button" aria-label="Close route preview modal" class="text-slate-400 hover:text-slate-200 text-xl font-bold p-1.5 rounded-lg hover:bg-slate-800 transition-colors">✕</button>
@@ -1037,7 +1037,7 @@
           <ol class="list-decimal list-inside space-y-1.5 text-slate-400 pl-1">
             <li>Open any listing on Redfin, Zillow, Realtor.com, or Homes.com in your browser.</li>
             <li>Click the <strong class="text-slate-200">🔖 Import to Nycto.ninja</strong> bookmarklet in your bookmarks bar.</li>
-            <li>The property will be saved to the shared server cache, and Homeward will prompt you to add it directly to your scouting tour!</li>
+            <li>The property will be saved to the shared server cache, and Homeward will prompt you to add it directly to your tour!</li>
           </ol>
         </div>
         <div class="pt-2 border-t border-slate-800">

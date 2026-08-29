@@ -112,7 +112,7 @@ class Geocoder {
     // 2. Nominatim OpenStreetMap fallback
     try {
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleaned)}&limit=${limit}`;
-      const resp = await fetch(url, { headers: { 'User-Agent': 'Homeward-SiteScoutingApp/1.0' } });
+      const resp = await fetch(url, { headers: { 'User-Agent': 'Homeward-HomeViewingApp/1.0' } });
       if (resp.ok) {
         const data = await resp.json();
         if (Array.isArray(data) && data.length > 0) {
@@ -433,7 +433,7 @@ class Geocoder {
   async reverseGeocode(lat, lng) {
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`;
-      const resp = await fetch(url, { headers: { 'User-Agent': 'Homeward-SiteScoutingApp/1.0' } });
+      const resp = await fetch(url, { headers: { 'User-Agent': 'Homeward-HomeViewingApp/1.0' } });
       if (resp.ok) {
         const data = await resp.json();
         if (data && data.display_name) {

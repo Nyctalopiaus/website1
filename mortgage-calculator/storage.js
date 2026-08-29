@@ -71,6 +71,12 @@ export function applyLoadedDataToDOM(data, domRefs) {
   safeSet(domRefs.hoaFeesInput, data.hoaFees);
   safeSet(domRefs.pmiRateInput, data.pmiRate);
   safeSet(domRefs.grossAnnualIncomeInput, data.grossAnnualIncome);
+  safeSet(domRefs.otherMonthlyDebtsInput, data.otherMonthlyDebts);
+  // Income-basis toggle, pay frequency, and the fine-tune slider/number
+  // field are all restored by app.js (setIncomeBasis()/setPayFrequency())
+  // right after this runs — not simple value-based restores, since the
+  // fine-tune control's displayed value is always computed from
+  // payFrequency + netMonthlyOverride + the live income, not stored directly.
   safeSet(domRefs.additionalPaymentInput, data.additionalPayment);
   safeSet(domRefs.additionalPaymentSlider, data.additionalPayment);
   safeSet(domRefs.lumpSumAmountInput, data.lumpSumAmount);
@@ -106,6 +112,16 @@ export function applyLoadedDataToDOM(data, domRefs) {
   safeSet(domRefs.sellConcessionsInput, data.sellConcessions);
   safeSet(domRefs.sellMovingCostsInput, data.sellMovingCosts);
   safeSet(domRefs.sellProceedsPercentSliderInput, data.sellProceedsPercent);
+
+  // Bridge Loan mode fields. saleMode itself (which sub-panel is visible)
+  // is restored by app.js's setSaleMode() right after this runs — not
+  // value-based, so safeSet doesn't apply, same as the sell-house checkbox.
+  safeSet(domRefs.bridgeLoanAmountInput, data.bridgeLoanAmount);
+  safeSet(domRefs.bridgeExtraCashInput, data.bridgeExtraCash);
+  safeSet(domRefs.monthsUntilSaleInput, data.monthsUntilSale);
+  safeSet(domRefs.bridgeLoanRateInput, data.bridgeLoanRate);
+  safeSet(domRefs.bridgeLoanFeesPercentInput, data.bridgeLoanFeesPercent);
+  safeSet(domRefs.recastFeeInput, data.recastFee);
 }
 
 /**

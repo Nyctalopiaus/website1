@@ -23,10 +23,22 @@ export function debounce(fn, delayMs) {
  * @returns {string} Formatted currency string (e.g., "$1,234.56")
  */
 export function formatCurrency(value) {
-  return '$' + value.toLocaleString('en-US', {
+  const num = (typeof value === 'number' && !isNaN(value)) ? value : 0;
+  return '$' + num.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
+}
+
+/**
+ * Formats a signed number as USD currency (e.g. "+$1,234.56" or "-$500.00")
+ * @param {number} value
+ * @returns {string}
+ */
+export function formatSignedCurrency(value) {
+  const num = (typeof value === 'number' && !isNaN(value)) ? value : 0;
+  const sign = num >= 0 ? '+' : '-';
+  return `${sign}${formatCurrency(Math.abs(num))}`;
 }
 
 /**

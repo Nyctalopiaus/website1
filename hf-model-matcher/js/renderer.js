@@ -30,6 +30,91 @@ export function showErrorState(message) {
     }
 }
 
+/* ==========================================================================
+   HERO CARD JUSTIFICATION ("Why this pick?")
+   Reconstructs, in plain English, exactly what the selection code in
+   backend/engine.py (or its client-side mirror in recommendation-engine.js)
+   did to land on this specific model for this specific hero slot - using
+   only numbers already present on the model object and the candidate batch,
+   so it can never drift out of sync with a value the math didn't actually
+   produce. Kept honest on purpose: this describes the real ranking signal
+   (Hugging Face popularity + goal-keyword relevance), not a claim of
+   benchmarked quality.
+   ========================================================================== */
+function buildRoleRationale(cfg, model, state) {
+    const vramPct = model.vram_usage_pct;
+    if (cfg.key === 'best_overall') {
+        const vettingNote = ` Hero cards only draw from models with at least 1,000 downloads <em>and</em> 5 likes &mdash; downloads alone can come from tooling/mirrors with no human behind them, so likes are required too before a model can headline a pick.`;
+        if (vramPct >= 60 && vramPct <= 88) {
+            return `<strong>Best Overall</strong> is chosen from the models using <strong>60&ndash;88%</strong> of your ${state.vramGb}GB VRAM budget &mdash; enough headroom to avoid out-of-memory errors and leave room for your context window, without leaving a bigger, better-fitting model on the table. This model uses <strong>${vramPct}%</strong>, landing right in that window, and had the highest popularity + relevance score among the candidates that did.${vettingNote}`;
+        }
+        return `No candidate landed in the ideal 60&ndash;88% VRAM "sweet spot" for your ${state.vramGb}GB budget on this search, so <strong>Best Overall</strong> fell back to the single highest popularity + relevance score among everything that fit at all. This model uses <strong>${vramPct}%</strong> of your budget.${vettingNote}`;
+    }
+    if (cfg.key === 'speed_demon') {
+        if (vramPct <= 45) {
+            return `<strong>Speed Demon</strong> is the <em>smallest</em> model (by parameter count) using <strong>45% or less</strong> of your VRAM budget &mdash; guaranteeing it runs fully inside VRAM with headroom to spare, for the fastest, most consistent tokens/sec even with other apps open. This model uses ${vramPct}%.`;
+        }
+        return `No candidate fit under the 45% VRAM threshold on this search, so <strong>Speed Demon</strong> fell back to the smallest available model by parameter count (${model.params_b}B), which still uses ${vramPct}% of your budget.`;
+    }
+    if (cfg.key === 'max_capability') {
+        const paramsB = model.exact_params_b || model.params_b;
+        return `<strong>Max Capability</strong> is the <em>largest</em> model (by parameter count) that still fits inside your VRAM budget at ${model.active_quant_bits || 4}-bit quantization &mdash; maximizing reasoning depth and answer quality, at the cost of some speed headroom. At ${paramsB}B parameters, it's the biggest one your ${state.vramGb}GB budget can hold.`;
+    }
+    return '';
+}
+
+function buildKvCacheLine(model, contextK) {
+    if (model.kv_overhead_source === 'exact' && model.kv_architecture) {
+        const arch = model.kv_architecture;
+        const kvHeadNote = arch.isGqa
+            ? ` (this model uses grouped-query attention &mdash; only ${arch.numKeyValueHeads} KV heads vs ${arch.numAttentionHeads} query heads, which is why this differs from a generic estimate)`
+            : '';
+        return `Plus <strong>${model.kv_overhead_gb} GB</strong> for KV-cache at ${contextK}k context &mdash; calculated from this model's actual architecture (${arch.numHiddenLayers} layers, ${arch.numKeyValueHeads} KV heads, ${arch.hiddenSize / arch.numAttentionHeads}-dim per head), not a generic table${kvHeadNote}.`;
+    }
+    return `Plus <strong>${model.kv_overhead_gb} GB</strong> reserved for KV-cache at your ${contextK}k-token context setting (a generic estimate by context size only &mdash; we couldn't confirm this model's real architecture to compute it exactly).`;
+}
+
+function buildVramMath(model, state) {
+    const quantBits = model.active_quant_bits || 4;
+    const contextK = model.context_k || state.contextK;
+    const kvLine = `${buildKvCacheLine(model, contextK)} Total: <strong>${model.vram_req_gb} GB</strong> &mdash; ${model.vram_usage_pct}% of your ${state.vramGb} GB budget.`;
+
+    if (model.vram_source === 'exact') {
+        const filesLabel = (model.matched_quant_files || []).length > 1
+            ? `${model.matched_quant_files.length} split files`
+            : (model.matched_quant_files || [])[0] || 'the matching quant file';
+        const paramsNote = model.exact_params_b
+            ? ` (${model.exact_params_b}B parameters, read directly from the file's own GGUF metadata rather than guessed from the repo name)`
+            : '';
+        return `<strong>${model.vram_weight_gb} GB</strong> is this model's <em>actual</em> file size on Hugging Face &mdash; not an estimate &mdash; verified against ${filesLabel}${paramsNote}. ${kvLine}`;
+    }
+
+    const rawGb = ((model.params_b * quantBits) / 8).toFixed(2);
+    return `${model.params_b}B params (estimated from the repo name) &times; ${quantBits}-bit &divide; 8 = <strong>${rawGb} GB</strong> raw weights. &times;1.25 for runtime/framework overhead &asymp; <strong>${model.vram_weight_gb} GB</strong> (we couldn't verify this one's exact file size against the Hub, so this is the formula estimate). ${kvLine}`;
+}
+
+function buildScoreMath(model, candidates, state) {
+    const poolSize = candidates.length || 1;
+    const boostNote = model.task_boost > 1
+        ? ` Because its name/tags matched your "${state.goal}" goal, it also got a &times;${model.task_boost} relevance boost.`
+        : ` It didn't match any "${state.goal}"-specific keywords, so no relevance boost was applied.`;
+    return `Downloads (${model.downloads.toLocaleString()}) and likes (${model.likes.toLocaleString()}) are each log-scaled against the highest value seen among the ${poolSize} candidates found for this search &mdash; so one viral model can't swamp the scale &mdash; then combined as <strong>40% downloads + 40% likes + 20% trending momentum</strong> (momentum = likes&times;1.5 + downloads&times;0.01 = ${Math.round(model.trending_score).toLocaleString()}).${boostNote} If the top score in this batch would've exceeded 100, every score was scaled down proportionally so it tops out at 100 &mdash; rank order is unaffected. Final: <strong>${model.recommendation_score} / 100</strong>.`;
+}
+
+function buildJustificationHTML(model, cfg, state, candidates) {
+    return `
+        <details class="hero-justification">
+            <summary>Why this pick? 🔍</summary>
+            <div class="hero-justification-body">
+                <p>${buildRoleRationale(cfg, model, state)}</p>
+                <p><strong>VRAM math:</strong> ${buildVramMath(model, state)}</p>
+                <p><strong>Popularity/relevance score:</strong> ${buildScoreMath(model, candidates, state)}</p>
+                <p class="hero-justification-caveat">The VRAM number is deterministic math (exact when verified, a documented formula otherwise) &mdash; you can check it yourself. The score is a Hugging Face popularity + goal-relevance heuristic, a proxy for "well-vetted, likely to work well," not an independent benchmark of output quality.</p>
+            </div>
+        </details>
+    `;
+}
+
 // --- Main Renderer ---
 // `onLaunchClick(repoId)` is called when a hero card's or candidate row's
 // "Setup Guide" / "Setup" button is clicked - app.js passes its
@@ -64,6 +149,20 @@ export function renderResults(data, { state, onLaunchClick }) {
             const speed = model.generation_speed || getGenerationSpeed(model.vram_req_gb, state.vramGb);
             const suitabilityTag = getSuitabilityTag(state.goal, cfg.key);
 
+            // Weight size and KV-cache size are verified independently (different
+            // data sources, different failure modes), so the badge is precise about
+            // which piece(s) of the total are real numbers vs formula estimates.
+            const weightExact = model.vram_source === 'exact';
+            const kvExact = model.kv_overhead_source === 'exact';
+            let vramBadge = '';
+            if (weightExact && kvExact) {
+                vramBadge = ' <span class="vram-verified-badge" title="Both weight size and KV-cache size verified against real data (the actual .gguf file, and this model\'s real architecture)">✓ verified</span>';
+            } else if (weightExact) {
+                vramBadge = ' <span class="vram-verified-badge" title="Weight size verified against the actual .gguf file on Hugging Face (KV-cache is still a generic estimate)">✓ weight verified</span>';
+            } else if (kvExact) {
+                vramBadge = ' <span class="vram-verified-badge" title="KV-cache size calculated from this model\'s real architecture (weight size is still a formula estimate)">✓ KV verified</span>';
+            }
+
             const cardEl = document.createElement('div');
             cardEl.className = `hero-card ${cfg.typeClass}`;
             cardEl.innerHTML = `
@@ -82,7 +181,7 @@ export function renderResults(data, { state, onLaunchClick }) {
 
                     <div class="vram-bar-container" style="margin-top: 10px;" title="VRAM Footprint: Requires ${model.vram_req_gb} GB (Model: ${model.vram_weight_gb || model.vram_req_gb}GB + KV-Cache: ${model.kv_overhead_gb || 1.5}GB @ ${state.contextK}k tokens)">
                         <div class="vram-label">
-                            <span>VRAM (${state.contextK}k Context)</span>
+                            <span>VRAM (${state.contextK}k Context)${vramBadge}</span>
                             <span><strong>${model.vram_req_gb} GB</strong> (${vramPct}%)</span>
                         </div>
                         <div class="vram-track">
@@ -95,6 +194,8 @@ export function renderResults(data, { state, onLaunchClick }) {
                         <span class="stat-pill" title="Hugging Face Downloads: ${model.downloads.toLocaleString()} downloads">📥 ${(model.downloads / 1000).toFixed(0)}k Downloads</span>
                         <span class="stat-pill" title="Community Upvotes: ${model.likes.toLocaleString()} likes">❤️ ${model.likes} Likes</span>
                     </div>
+
+                    ${buildJustificationHTML(model, cfg, state, candidates)}
                 </div>
 
                 <div class="card-actions">

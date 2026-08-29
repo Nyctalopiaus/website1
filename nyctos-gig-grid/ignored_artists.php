@@ -22,6 +22,25 @@ function getIgnoredArtistsNormalized() {
         }
     }
 
+    // Promotional / ticket-upsell junk titles (rules/ignored_promos.txt) — this file already
+    // existed and is documented in rules/README.md, but nothing actually loaded it, so terms
+    // like "suite level" were never enforced. Folding it into the same ignored-terms set blocks
+    // it the same way ignored_artists.txt does: these aren't real shows, they're a second
+    // listing for a premium seating tier on an existing show (e.g. "Dickies Arena Suites"), so
+    // they should never become their own event.
+    $promoFile = __DIR__ . '/rules/ignored_promos.txt';
+    if (file_exists($promoFile)) {
+        $promoLines = file($promoFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if (is_array($promoLines)) {
+            foreach ($promoLines as $line) {
+                $line = trim($line);
+                if ($line !== '' && strpos($line, '#') !== 0) {
+                    $ignored[strtolower($line)] = true;
+                }
+            }
+        }
+    }
+
     // Default hardcoded list of non-music / family / non-concert events
     $defaults = [
         'day out with thomas',

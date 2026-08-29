@@ -1,5 +1,5 @@
 /**
- * BuildRoute Executive Scouting Report Module
+ * Homeward Home Visit Report Module
  * Renders print-optimized site visit report and triggers PDF export.
  */
 class ReportGenerator {
@@ -24,9 +24,9 @@ class ReportGenerator {
       <div class="border-b border-slate-700 pb-6 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold uppercase tracking-widest mb-2">
-            Executive Site Scouting Summary
+            Home Visit Summary
           </div>
-          <h1 class="text-3xl font-extrabold text-slate-100">${tourData.tourName || 'Build Site Scouting Tour'}</h1>
+          <h1 class="text-3xl font-extrabold text-slate-100">${tourData.tourName || 'Home Viewing Tour'}</h1>
           <p class="text-slate-400 text-sm mt-1">Generated on ${todayStr} • Starting from: <span class="text-slate-200">${tourData.startAddress || 'N/A'}</span></p>
         </div>
         <div class="bg-slate-800/80 border border-slate-700 rounded-xl p-4 flex gap-6 text-center">

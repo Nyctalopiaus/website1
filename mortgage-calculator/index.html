@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=19" />
 </head>
 <body>
   <div class="glow-bg"></div>
@@ -42,9 +42,12 @@
     <div class="calculator-grid">
       <!-- Left Panel: Inputs -->
       <section class="inputs-panel">
-        <div class="panel-card">
-          <h2>Purchase Details</h2>
-          
+        <div class="panel-card collapsible" id="property-card">
+          <button type="button" class="collapsible-header" id="property-toggle" data-section-key="property" aria-expanded="true" aria-controls="property-body">
+            <h2 style="margin-bottom: 0;">Property</h2>
+            <span class="chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="collapsible-body" id="property-body">
             <div class="input-group" style="padding-bottom: 1.25rem; border-bottom: 1px dashed var(--border-color); margin-bottom: 1.25rem;">
             <!-- RECENTLY IMPORTED PROPERTY BANNER -->
             <div id="recent-import-banner" style="display: none; margin-bottom: 0.75rem; padding: 0.75rem 0.9rem; background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 0.4rem; font-size: 0.8rem; line-height: 1.45;">
@@ -91,8 +94,11 @@
             </div>
             <input id="homePriceSlider" type="range" min="100000" max="1500000" step="10000" value="400000" class="slider" />
           </div>
+          </div>
+        </div>
 
-          <div class="input-group sell-house-group" style="margin-bottom: 1.25rem;">
+        <div class="panel-card collapsible sell-house-group" id="sell-house-card">
+          <div class="sell-house-header-row">
             <div class="sell-house-header">
               <label class="toggle-switch" for="hasHouseToSell">
                 <input type="checkbox" id="hasHouseToSell" aria-label="Have a house to sell?" />
@@ -103,10 +109,14 @@
                 <span class="tooltip-icon" data-tooltip="Estimate what you'll walk away with after selling your current home, then decide how much of that goes toward your new down payment.">?</span>
               </div>
             </div>
+            <button type="button" class="collapsible-header" id="sell-house-toggle" data-section-key="sellHouse" aria-expanded="false" aria-controls="sell-house-body" aria-label="Toggle Have a house to sell? details">
+              <span class="chevron" aria-hidden="true">▾</span>
+            </button>
+          </div>
 
-            <div id="sell-house-panel" class="sell-house-card" style="display: none; margin-top: 0.75rem;">
-              <div class="sell-house-card-heading">🏡 Selling Your Current Home — separate from the purchase details above</div>
-              <div class="input-group">
+          <div class="collapsible-body" id="sell-house-body" hidden>
+            <div id="sell-house-panel" class="sell-house-card" style="display: none;">
+                <div class="input-group">
                 <div class="label-with-tooltip">
                   <label for="sellHomeRedfinUrl">Current Home's Listing URL</label>
                   <span class="tooltip-icon" data-tooltip="Paste your home's property URL from Redfin, Zillow, Realtor.com, or Homes.com to load its estimated value from your Nycto.ninja cache.">?</span>
@@ -194,20 +204,215 @@
                 <p id="sell-underwater-warning" class="sell-warning-text" style="display: none;">⚠ You may owe money at closing instead of receiving proceeds.</p>
               </div>
 
-              <div class="input-group" style="margin-bottom: 0;">
-                <div class="label-with-tooltip"><label>% of Proceeds → New Down Payment</label><span class="tooltip-icon" data-tooltip="How much of your net sale proceeds you want to put toward the down payment on the new house, versus keeping as cash on hand.">?</span></div>
-                <input id="sellProceedsPercentSlider" type="range" min="0" max="100" step="5" value="100" class="slider" />
-                <div class="sell-proceeds-readout">
-                  <span id="sell-proceeds-percent-value">100%</span>
-                  <span id="sell-proceeds-dollar-value">$0.00</span>
+              <div class="input-group">
+                <div class="label-with-tooltip"><label>How Are You Funding the Down Payment?</label><span class="tooltip-icon" data-tooltip="Sell First assumes a simultaneous close — proceeds go straight into the new down payment. Bridge Loan assumes you buy now with a short-term loan against this home's equity, then pay it off (and recast the new mortgage) once it actually sells.">?</span></div>
+                <div class="frequency-toggle-group" id="sale-mode-switch">
+                  <button type="button" class="freq-btn active" id="btn-sale-mode-sell-first" data-sale-mode="sellFirst">💰 Sell First</button>
+                  <button type="button" class="freq-btn" id="btn-sale-mode-bridge" data-sale-mode="bridgeLoan">🌉 Bridge Loan</button>
                 </div>
-                <button id="btn-apply-proceeds" type="button" class="btn-apply-proceeds">⬇ Apply to Down Payment</button>
+              </div>
+
+              <div id="sale-mode-sell-first-panel">
+                <div class="input-group" style="margin-bottom: 0;">
+                  <div class="label-with-tooltip"><label>% of Proceeds → New Down Payment</label><span class="tooltip-icon" data-tooltip="How much of your net sale proceeds you want to put toward the down payment on the new house, versus keeping as cash on hand.">?</span></div>
+                  <input id="sellProceedsPercentSlider" type="range" min="0" max="100" step="5" value="100" class="slider" />
+                  <div class="sell-proceeds-readout">
+                    <span id="sell-proceeds-percent-value">100%</span>
+                    <span id="sell-proceeds-dollar-value">$0.00</span>
+                  </div>
+                  <button id="btn-apply-proceeds" type="button" class="btn-apply-proceeds">⬇ Apply to Down Payment</button>
+                </div>
+              </div>
+
+              <div id="sale-mode-bridge-panel" style="display: none;">
+                <div class="sell-house-card-heading" style="margin-top: 0.5rem;">🌉 Bridge Loan Details</div>
+
+                <div class="input-group">
+                  <div class="label-with-tooltip"><label>Financing Type</label><span class="tooltip-icon" data-tooltip="Bridge Loan: a lump-sum, short-term loan against this home's equity — usually a higher rate plus upfront origination points, typically capped around 80% combined loan-to-value. HELOC: a revolving line of credit against this home's equity — typically a lower but variable rate tied to prime, often no closing costs, and no hard payoff deadline if the sale takes longer than planned, usable up to about 85% combined loan-to-value. Switching this resets the rate/fee boxes below to that type's typical starting numbers (still editable).">?</span></div>
+                  <div class="frequency-toggle-group" id="financing-type-switch">
+                    <button type="button" class="freq-btn active" id="btn-financing-type-bridge" data-financing-type="bridge">🌉 Bridge Loan</button>
+                    <button type="button" class="freq-btn" id="btn-financing-type-heloc" data-financing-type="heloc">🏦 HELOC</button>
+                  </div>
+                </div>
+
+                <div class="grid-2-col">
+                  <div class="input-group">
+                    <div class="label-with-tooltip"><label for="bridgeLoanAmount" id="bridgeLoanAmountLabel">Bridge Loan Amount</label><span class="tooltip-icon" id="bridgeLoanAmountTooltip" data-tooltip="How much you're borrowing short-term against this home's equity to cover the new down payment before it sells.">?</span></div>
+                    <div class="input-with-prefix">
+                      <span class="prefix">$</span>
+                      <input id="bridgeLoanAmount" type="number" min="0" max="20000000" step="1000" value="0" />
+                    </div>
+                  </div>
+                  <div class="input-group">
+                    <div class="label-with-tooltip"><label for="bridgeExtraCash" id="bridgeExtraCashLabel">Extra Cash Pulled (Kept in Account)</label><span class="tooltip-icon" id="bridgeExtraCashTooltip" data-tooltip="Extra money drawn from your equity to keep in your bank account (for moving costs, reserves, or covering 2 mortgage payments during transition). Paid off when home sells, but not applied to down payment.">?</span></div>
+                    <div class="input-with-prefix">
+                      <span class="prefix">$</span>
+                      <input id="bridgeExtraCash" type="number" min="0" max="20000000" step="1000" value="0" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid-2-col">
+                  <div class="input-group">
+                    <div class="label-with-tooltip"><label for="monthsUntilSale">Months Until Expected Sale</label><span class="tooltip-icon" data-tooltip="Your best estimate for how long the old house will take to sell and close — drives the holding-cost and recast-timing math below.">?</span></div>
+                    <input id="monthsUntilSale" type="number" min="0" max="60" step="1" value="4" />
+                  </div>
+                  <div class="input-group">
+                    <div class="label-with-tooltip"><label for="bridgeLoanRate" id="bridgeLoanRateLabel">Bridge Loan Interest Rate</label><span class="tooltip-icon" id="bridgeLoanRateTooltip" data-tooltip="Bridge loans typically carry a higher, roughly-fixed rate for the short term. Usually interest-only during the holding period.">?</span></div>
+                    <div class="input-with-suffix">
+                      <input id="bridgeLoanRate" type="number" min="0" max="20" step="0.1" value="8.5" />
+                      <span class="suffix">%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid-2-col">
+                  <div class="input-group">
+                    <div class="label-with-tooltip"><label for="bridgeLoanFeesPercent" id="bridgeLoanFeesLabel">Origination Fee / Points</label><span class="tooltip-icon" id="bridgeLoanFeesTooltip" data-tooltip="Lender fee charged upfront, typically a percentage of the total borrowed bridge loan amount.">?</span></div>
+                    <div class="input-with-suffix">
+                      <input id="bridgeLoanFeesPercent" type="number" min="0" max="10" step="0.1" value="1.5" />
+                      <span class="suffix">%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <p id="bridge-cltv-warning" class="sell-warning-text" style="display: none;"></p>
+
+                <div id="bridge-holding-cost-box" class="sell-proceeds-box">
+                  <div class="sell-house-card-heading" style="margin-bottom: 0.6rem;">While You're Carrying Both Homes</div>
+                  <div class="detail-row"><span>Bridge Loan Interest-Only Payment</span><span id="bridge-monthly-interest">$-.--</span></div>
+                  <div class="detail-row"><span>+ New Mortgage Payment (PITI)</span><span id="bridge-new-mortgage-payment">$-.--</span></div>
+                  <div class="detail-row sell-net-row"><span>Combined Monthly Cost</span><span id="bridge-combined-monthly">$-.--</span></div>
+
+                  <p class="sell-warning-text" style="color: var(--text-muted); margin-top: 0.75rem;">
+                    See the <a href="#affordability-card" class="dti-jump-link">Affordability card</a> for your Holding-Period DTI (front-end and back-end) — it tracks this combined cost automatically.
+                  </p>
+
+                  <div class="detail-row" style="margin-top: 0.75rem;"><span>Total Bridge Interest (over holding period)</span><span id="bridge-total-interest">$-.--</span></div>
+                  <div class="detail-row"><span>Total Bridge Cost (interest + fee)</span><span id="bridge-total-cost">$-.--</span></div>
+                </div>
+
+                <div class="input-group">
+                  <div class="label-with-tooltip"><label>Sale Proceeds Strategy</label><span class="tooltip-icon" data-tooltip="Recast: your lender re-amortizes the remaining balance to lower your monthly payment for the rest of the term. Extra Payment: keep paying your original monthly amount to pay off the loan years earlier and save maximum interest.">?</span></div>
+                  <div class="frequency-toggle-group" id="recast-strategy-switch">
+                    <button type="button" class="freq-btn active" id="btn-recast-strat-recast" data-recast-strat="recast">📉 Recast (Lower Payment)</button>
+                    <button type="button" class="freq-btn" id="btn-recast-strat-extra" data-recast-strat="extraPayment">🚀 Extra Payment (Pay Off Sooner)</button>
+                  </div>
+                </div>
+
+                <!-- Real Numbers Comparison Card -->
+                <div id="recast-strategy-comparison-box" style="margin-bottom: 1.25rem; padding: 0.85rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 0.5rem; font-size: 0.78rem;">
+                  <div style="font-family: var(--font-display); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent-cyan); margin-bottom: 0.6rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.25rem;">
+                    <span>⚖️ Real Numbers Comparison</span>
+                    <span id="strat-comp-lump-sum-badge" style="font-size: 0.68rem; color: var(--text-muted); text-transform: none;">Applied proceeds: $-.--</span>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.6rem;">
+                    <!-- Recast Column -->
+                    <div id="strat-card-recast" style="padding: 0.65rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 0.4rem; transition: all 0.2s;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <span style="font-weight: 700; font-size: 0.72rem; color: var(--accent-emerald); text-transform: uppercase;">📉 Recast</span>
+                        <span id="strat-recast-active-tag" style="font-size: 0.62rem; font-weight: 700; color: var(--accent-emerald); background: var(--accent-emerald-dim); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.05rem 0.35rem; border-radius: 0.2rem; text-transform: uppercase;">Active</span>
+                      </div>
+                      <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                        <div>
+                          <span style="color: var(--text-muted); font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Monthly P&amp;I</span>
+                          <span id="strat-recast-piti" style="font-weight: 700; font-size: 0.9rem; color: var(--accent-emerald);">$-.--</span>
+                          <span id="strat-recast-savings" style="font-size: 0.68rem; color: var(--accent-emerald); font-weight: 600; display: block;">-$0/mo</span>
+                        </div>
+                        <div>
+                          <span style="color: var(--text-muted); font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Remaining Term</span>
+                          <span id="strat-recast-term" style="font-weight: 700; font-size: 0.82rem; color: var(--text-bright);">-- yrs</span>
+                          <span style="font-size: 0.68rem; color: var(--text-muted); display: block;">Full term</span>
+                        </div>
+                        <div>
+                          <span style="color: var(--text-muted); font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Total Interest</span>
+                          <span id="strat-recast-interest" style="font-weight: 700; font-size: 0.82rem; color: var(--text-bright);">$-.--</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Extra Payment Column -->
+                    <div id="strat-card-extra" style="padding: 0.65rem; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 0.4rem; transition: all 0.2s;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <span style="font-weight: 700; font-size: 0.72rem; color: var(--accent-cyan); text-transform: uppercase;">🚀 Extra Pay</span>
+                        <span id="strat-extra-active-tag" style="display: none; font-size: 0.62rem; font-weight: 700; color: var(--accent-cyan); background: var(--accent-cyan-dim); border: 1px solid rgba(6, 182, 212, 0.3); padding: 0.05rem 0.35rem; border-radius: 0.2rem; text-transform: uppercase;">Active</span>
+                      </div>
+                      <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                        <div>
+                          <span style="color: var(--text-muted); font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Monthly P&amp;I</span>
+                          <span id="strat-extra-piti" style="font-weight: 700; font-size: 0.9rem; color: var(--text-bright);">$-.--</span>
+                          <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600; display: block;">Unchanged</span>
+                        </div>
+                        <div>
+                          <span style="color: var(--text-muted); font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Remaining Term</span>
+                          <span id="strat-extra-term" style="font-weight: 700; font-size: 0.82rem; color: var(--accent-cyan);">-- yrs</span>
+                          <span id="strat-extra-time-saved" style="font-size: 0.68rem; color: var(--accent-cyan); font-weight: 600; display: block;">Saved 0 yrs</span>
+                        </div>
+                        <div>
+                          <span style="color: var(--text-muted); font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Total Interest</span>
+                          <span id="strat-extra-interest" style="font-weight: 700; font-size: 0.82rem; color: var(--accent-cyan);">$-.--</span>
+                          <span id="strat-extra-interest-saved" style="font-size: 0.68rem; color: var(--accent-cyan); font-weight: 600; display: block;">Saved $0</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div id="strat-comp-summary-text" style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.35; padding-top: 0.45rem; border-top: 1px dashed var(--border-color);">
+                    <!-- Dynamic tradeoff synthesis -->
+                  </div>
+
+                  <div id="strat-comp-best-of-both-note" style="margin-top: 0.5rem; padding: 0.55rem 0.65rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 0.4rem; font-size: 0.7rem; color: var(--text-bright); line-height: 1.35; display: none;">
+                    <!-- Dynamic Best of Both Worlds note -->
+                  </div>
+                </div>
+
+                <div class="input-group" id="recast-fee-group">
+                  <div class="label-with-tooltip"><label for="recastFee">Recast Fee</label><span class="tooltip-icon" data-tooltip="Small flat fee most lenders charge to recast a loan. Recasts are typically conventional-loan-only (not FHA/VA/USDA) and usually require a minimum principal reduction, often around $5,000+ — check with your servicer.">?</span></div>
+                  <div class="input-with-prefix">
+                    <span class="prefix">$</span>
+                    <input id="recastFee" type="number" min="0" max="5000" step="25" value="250" />
+                  </div>
+                </div>
+
+                <div id="recast-summary-box" class="sell-proceeds-box">
+                  <div class="sell-house-card-heading" style="margin-bottom: 0.6rem;">When Your House Sells</div>
+                  <div class="detail-row"><span>Net Sale Proceeds</span><span id="recast-line-net-proceeds">$-.--</span></div>
+                  <div class="detail-row"><span>− Bridge Loan Payoff</span><span id="recast-line-bridge-payoff">$-.--</span></div>
+                  <div class="detail-row"><span>= Available After Bridge Payoff</span><span id="recast-available">$-.--</span></div>
+                  <div class="detail-row" id="recast-fee-row"><span>− Recast Fee</span><span id="recast-line-fee">$-.--</span></div>
+                  <div class="detail-row sell-net-row"><span id="recast-lump-sum-label">Recast Lump Sum Applied to Principal</span><span id="recast-lump-sum">$-.--</span></div>
+                  <p id="recast-min-lump-warning" class="sell-warning-text" style="display: none;"></p>
+                </div>
+
+                <div id="recast-result-box" class="sell-proceeds-box">
+                  <div class="sell-house-card-heading" id="recast-result-heading" style="margin-bottom: 0.6rem;">Monthly Payment After Recast</div>
+                  <div id="recast-rows-recast-mode">
+                    <div class="detail-row"><span>Current Monthly P&I</span><span id="recast-current-payment">$-.--</span></div>
+                    <div class="detail-row sell-net-row"><span>New Monthly P&I After Recast</span><span id="recast-new-payment">$-.--</span></div>
+                    <div class="detail-row"><span>Monthly Savings</span><span id="recast-monthly-savings">$-.--</span></div>
+                    <div class="detail-row sell-net-row" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-color); color: var(--accent-emerald);"><span>New Total Payment (PITI)</span><span id="recast-new-piti">$-.--</span></div>
+                  </div>
+                  <div id="recast-rows-extra-mode" style="display: none;">
+                    <div class="detail-row"><span>Monthly P&I Payment (Unchanged)</span><span id="recast-extra-current-payment">$-.--</span></div>
+                    <div class="detail-row sell-net-row" style="color: var(--accent-emerald);"><span>Time Saved to Payoff</span><span id="recast-extra-time-saved">--</span></div>
+                    <div class="detail-row sell-net-row" style="color: var(--accent-emerald);"><span>Lifetime Interest Saved</span><span id="recast-extra-interest-saved">$-.--</span></div>
+                  </div>
+                  <p id="recast-tradeoff-note" class="sell-warning-text" style="display: none; color: var(--text-muted);"></p>
+                </div>
               </div>
             </div>
           </div>
+        </div>
 
+        <div class="panel-card collapsible" id="downpayment-card">
+          <button type="button" class="collapsible-header" id="downpayment-toggle" data-section-key="downPayment" aria-expanded="true" aria-controls="downpayment-body">
+            <h2 style="margin-bottom: 0;">Down Payment</h2>
+            <span class="chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="collapsible-body" id="downpayment-body">
           <div class="input-group">
-            <div class="label-with-tooltip"><label>Down Payment</label><span class="tooltip-icon" data-tooltip="Money paid upfront. Includes cash contribution plus any proceeds applied from selling your current home.">?</span></div>
+            <div class="label-with-tooltip"><label>Total &amp; Sources</label><span class="tooltip-icon" data-tooltip="Money paid upfront. Includes cash contribution plus any proceeds applied from selling your current home.">?</span></div>
 
             <div class="down-payment-sources-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 0.75rem;">
               <div class="input-group" style="margin-bottom: 0;">
@@ -223,11 +428,11 @@
 
               <div id="house-sale-downpayment-wrapper" class="input-group" style="margin-bottom: 0; display: none;">
                 <div class="label-with-tooltip">
-                  <label for="houseSaleDownPayment" style="font-size: 0.7rem; color: var(--text-muted);">🏡 From House Sale</label>
-                  <span class="tooltip-icon" data-tooltip="Net sale proceeds from your current home applied to this down payment (calculated in the 'Have a house to sell?' panel above).">?</span>
+                  <label id="house-sale-downpayment-label" for="houseSaleDownPayment" style="font-size: 0.7rem; color: var(--text-muted);">🏡 From House Sale</label>
+                  <span id="house-sale-downpayment-tooltip" class="tooltip-icon" data-tooltip="Net sale proceeds from your current home applied to this down payment (calculated in the 'Have a house to sell?' panel above).">?</span>
                 </div>
-                <div class="input-with-prefix" style="background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 0.4rem;">
-                  <span class="prefix" style="color: var(--accent-cyan);">$</span>
+                <div id="house-sale-downpayment-box" class="input-with-prefix" style="background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 0.4rem;">
+                  <span id="house-sale-downpayment-prefix" class="prefix" style="color: var(--accent-cyan);">$</span>
                   <input id="houseSaleDownPayment" type="number" readonly value="0" style="color: var(--accent-cyan); cursor: default; background: transparent; border: none;" />
                 </div>
               </div>
@@ -256,7 +461,15 @@
               <span id="dp-breakdown-total" style="color: var(--text-bright); font-weight: 600;">Total: $80,000 (20%)</span>
             </div>
           </div>
+          </div>
+        </div>
 
+        <div class="panel-card collapsible" id="extra-payments-card">
+          <button type="button" class="collapsible-header" id="extra-payments-toggle" data-section-key="extraPayments" aria-expanded="false" aria-controls="extra-payments-body">
+            <h2 style="margin-bottom: 0;">Extra Payments &amp; Schedule</h2>
+            <span class="chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="collapsible-body" id="extra-payments-body" hidden>
           <div class="input-group">
             <div class="label-with-tooltip"><label for="additionalPayment">Additional Monthly Payment</label><span class="tooltip-icon" data-tooltip="Extra cash paid each month that goes straight to your principal balance, paying off the loan much faster.">?</span></div>
             <div class="input-with-prefix">
@@ -285,12 +498,15 @@
           <div class="input-group" style="padding-top: 1rem; border-top: 1px dashed var(--border-color); margin-top: 1rem;">
             <div class="label-with-tooltip">
               <label>Payment Schedule & Frequency</label>
-              <span class="tooltip-icon" data-tooltip="Choose between 12 standard monthly payments or 26 biweekly payments. Accelerated biweekly pays half your monthly bill every 2 weeks (26 times/year), automatically applying 1 extra full payment per year to cut years off your loan.">?</span>
+              <span class="tooltip-icon" data-tooltip="Both Biweekly and Accelerated options make 26 payments per year (every 2 weeks). Standard Biweekly divides your annual total into 26 smaller payments ((Monthly × 12) / 26). Accelerated Biweekly pays half your monthly bill every 2 weeks (Monthly / 2), which equals 13 full monthly payments per year (1 extra payment straight to principal).">?</span>
             </div>
             <div class="frequency-toggle-group" id="frequency-toggle-group">
               <button type="button" class="freq-btn active" id="btn-freq-monthly" data-freq="monthly">Monthly (12x)</button>
               <button type="button" class="freq-btn" id="btn-freq-biweekly" data-freq="biweekly">Biweekly (26x)</button>
               <button type="button" class="freq-btn" id="btn-freq-accelerated" data-freq="accelerated">⚡ Accelerated</button>
+            </div>
+            <div id="freq-explanation-box" style="margin-top: 0.65rem; padding: 0.65rem 0.85rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.45;">
+              <!-- Populated dynamically via JS -->
             </div>
           </div>
 
@@ -305,17 +521,22 @@
             </div>
             <input id="biweeklyExtraSlider" type="range" min="0" max="1000" step="25" value="0" class="slider" />
           </div>
+          </div>
         </div>
 
-        <div class="panel-card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-            <h2 style="margin: 0;">Rates & Taxes</h2>
-            <button id="btn-load-rates" aria-label="Fetch current mortgage rates from live data" style="font-size: 0.75rem; color: var(--accent-emerald); background: var(--accent-emerald-dim); padding: 0.35rem 0.75rem; border-radius: 1rem; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 600; cursor: pointer; transition: all 0.2s;">
+        <div class="panel-card collapsible" id="rates-card">
+          <div class="collapsible-header-row">
+            <button type="button" class="collapsible-header" id="rates-toggle" data-section-key="ratesAndTaxes" aria-expanded="true" aria-controls="rates-body">
+              <h2 style="margin-bottom: 0;">Rates & Taxes</h2>
+              <span class="chevron" aria-hidden="true">▾</span>
+            </button>
+            <button id="btn-load-rates" aria-label="Fetch current mortgage rates from live data" style="font-size: 0.75rem; color: var(--accent-emerald); background: var(--accent-emerald-dim); padding: 0.35rem 0.75rem; border-radius: 1rem; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 600; cursor: pointer; transition: all 0.2s; flex-shrink: 0;">
               🔄 Sync Live Rates
             </button>
           </div>
+          <div class="collapsible-body" id="rates-body">
           <span id="rates-attribution" class="rates-attribution-text" style="display: block; margin-bottom: 1rem; font-size: 0.7rem; color: var(--text-muted);"></span>
-          
+
           <div class="grid-2-col">
             <div class="input-group">
               <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
@@ -349,11 +570,15 @@
               <span class="suffix">%</span>
             </div>
           </div>
+          </div>
         </div>
 
-        <div class="panel-card">
-          <h2>Insurance & Fees</h2>
-
+        <div class="panel-card collapsible" id="insurance-card">
+          <button type="button" class="collapsible-header" id="insurance-toggle" data-section-key="insuranceAndFees" aria-expanded="true" aria-controls="insurance-body">
+            <h2 style="margin-bottom: 0;">Insurance &amp; Fees</h2>
+            <span class="chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="collapsible-body" id="insurance-body">
           <div class="grid-2-col">
             <div class="input-group">
               <label for="homeInsurance">Home Insurance</label>
@@ -388,6 +613,7 @@
             </div>
             <span class="help-text">Applies if down payment is under 20%</span>
           </div>
+          </div>
         </div>
       </section>
 
@@ -400,7 +626,17 @@
             <div class="term-badge">Standard</div>
             <h3>30-Year Fixed</h3>
             <div class="payment-value" id="total-payment-30">$-.--</div>
-            <span class="payment-label">Estimated Monthly</span>
+            <span class="payment-label" id="payment-label-30">Estimated Monthly</span>
+            <div id="recast-readout-30" class="recast-readout-banner" style="display: none;">
+              <div class="recast-readout-values">
+                <span class="recast-tag">Recast Active</span>
+                <span id="recast-transition-30" class="recast-transition-text">$-.-- → $-.--</span>
+              </div>
+              <div class="recast-card-toggle" id="recast-toggle-30">
+                <button type="button" class="recast-toggle-btn active" id="btn-recast-phase-post-30" data-term="30" data-phase="post">Post-Recast</button>
+                <button type="button" class="recast-toggle-btn" id="btn-recast-phase-pre-30" data-term="30" data-phase="pre">Pre-Recast</button>
+              </div>
+            </div>
             <div id="biweekly-readout-30" style="display: none; font-size: 0.8rem; color: var(--accent-emerald); font-weight: 600; margin-top: 0.35rem; align-items: center; justify-content: center; gap: 0.4rem;">
               <span id="biweekly-payment-30">$0 / 2 wks</span>
               <span id="biweekly-badge-30" style="background: var(--accent-emerald-dim); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-size: 0.65rem; text-transform: uppercase; font-weight: 700;">⚡ Accelerated</span>
@@ -422,6 +658,13 @@
                 <span id="time-saved-30" class="time-saved-val">0 years</span>
               </div>
               <div id="advanced-savings-30" style="display: none; flex-direction: column; gap: 0.35rem; padding-top: 0.6rem; margin-top: 0.4rem; border-top: 1px dashed var(--border-color); font-size: 0.725rem;">
+                <div id="saved-recast-row-30" style="display: none; justify-content: space-between; color: var(--accent-emerald);">
+                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                    <span id="saved-recast-label-30">↳ Saved via House Sale Recast</span>
+                    <span class="tooltip-icon" id="saved-recast-tooltip-30" data-tooltip="Monthly payment drop and interest saved after applying house sale proceeds to recast your mortgage balance.">?</span>
+                  </div>
+                  <span id="saved-recast-val-30" style="font-weight: 500;">$0</span>
+                </div>
                 <div id="saved-biweekly-row-30" style="display: none; justify-content: space-between; color: var(--accent-emerald);">
                   <div class="label-with-tooltip" style="gap: 0.3rem;">
                     <span>↳ Saved via Biweekly Schedule</span>
@@ -459,7 +702,17 @@
             <div class="term-badge save-badge">Save Interest</div>
             <h3>15-Year Fixed</h3>
             <div class="payment-value" id="total-payment-15">$-.--</div>
-            <span class="payment-label">Estimated Monthly</span>
+            <span class="payment-label" id="payment-label-15">Estimated Monthly</span>
+            <div id="recast-readout-15" class="recast-readout-banner" style="display: none;">
+              <div class="recast-readout-values">
+                <span class="recast-tag">Recast Active</span>
+                <span id="recast-transition-15" class="recast-transition-text">$-.-- → $-.--</span>
+              </div>
+              <div class="recast-card-toggle" id="recast-toggle-15">
+                <button type="button" class="recast-toggle-btn active" id="btn-recast-phase-post-15" data-term="15" data-phase="post">Post-Recast</button>
+                <button type="button" class="recast-toggle-btn" id="btn-recast-phase-pre-15" data-term="15" data-phase="pre">Pre-Recast</button>
+              </div>
+            </div>
             <div id="biweekly-readout-15" style="display: none; font-size: 0.8rem; color: var(--accent-emerald); font-weight: 600; margin-top: 0.35rem; align-items: center; justify-content: center; gap: 0.4rem;">
               <span id="biweekly-payment-15">$0 / 2 wks</span>
               <span id="biweekly-badge-15" style="background: var(--accent-emerald-dim); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-size: 0.65rem; text-transform: uppercase; font-weight: 700;">⚡ Accelerated</span>
@@ -481,6 +734,13 @@
                 <span id="time-saved-15" class="time-saved-val">0 years</span>
               </div>
               <div id="advanced-savings-15" style="display: none; flex-direction: column; gap: 0.35rem; padding-top: 0.6rem; margin-top: 0.4rem; border-top: 1px dashed var(--border-color); font-size: 0.725rem;">
+                <div id="saved-recast-row-15" style="display: none; justify-content: space-between; color: var(--accent-emerald);">
+                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                    <span id="saved-recast-label-15">↳ Saved via House Sale Recast</span>
+                    <span class="tooltip-icon" id="saved-recast-tooltip-15" data-tooltip="Monthly payment drop and interest saved after applying house sale proceeds to recast your mortgage balance.">?</span>
+                  </div>
+                  <span id="saved-recast-val-15" style="font-weight: 500;">$0</span>
+                </div>
                 <div id="saved-biweekly-row-15" style="display: none; justify-content: space-between; color: var(--accent-emerald);">
                   <div class="label-with-tooltip" style="gap: 0.3rem;">
                     <span>↳ Saved via Biweekly Schedule</span>
@@ -567,60 +827,322 @@
           </div>
 
           <!-- Affordability Analysis -->
-          <div class="panel-card affordability-card">
-            <h2>Affordability Analysis (DTI)</h2>
+          <div class="panel-card collapsible affordability-card" id="affordability-card">
+            <button type="button" class="collapsible-header" id="affordability-toggle" data-section-key="affordability" aria-expanded="true" aria-controls="affordability-body">
+              <h2 style="margin-bottom: 0;">Affordability Analysis (DTI)</h2>
+              <span class="chevron" aria-hidden="true">▾</span>
+            </button>
 
-            <div class="input-group" style="margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px dashed var(--border-color);">
-              <div class="label-with-tooltip"><label for="grossAnnualIncome">Gross Annual Income</label><span class="tooltip-icon" data-tooltip="Your total household income BEFORE taxes, health insurance, and other deductions are taken out of your paycheck. Enter the full yearly amount — we'll divide by 12 for the math.">?</span></div>
-              <div class="input-with-prefix">
-                <span class="prefix">$</span>
-                <input id="grossAnnualIncome" type="number" min="1" max="12000000" step="1000" value="120000" />
-              </div>
-              <span class="help-text">Pre-tax annual household income (before taxes)</span>
-            </div>
+            <div class="collapsible-body" id="affordability-body">
+              <!-- Group 1: Income & Monthly Debts -->
+              <div class="dti-accordion-group" id="dti-group-inputs">
+                <button type="button" class="collapsible-header dti-accordion-header" id="dti-header-inputs" data-section-key="dtiGroupInputs" aria-expanded="true" aria-controls="dti-body-inputs">
+                  <div class="dti-accordion-title-wrap">
+                    <span class="dti-accordion-title">1. Income &amp; Monthly Debts</span>
+                    <span class="dti-summary-badge" id="dti-summary-inputs">--</span>
+                  </div>
+                  <span class="chevron" aria-hidden="true">▾</span>
+                </button>
+                <div class="collapsible-body dti-accordion-body" id="dti-body-inputs">
+                  <div class="input-group" style="margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px dashed var(--border-color);">
+                    <div class="label-with-tooltip"><label for="grossAnnualIncome">Gross Annual Income</label><span class="tooltip-icon" data-tooltip="Your total household income BEFORE taxes, health insurance, and other deductions are taken out of your paycheck. Enter the full yearly amount — we'll divide by 12 for the math.">?</span></div>
+                    <div class="input-with-prefix">
+                      <span class="prefix">$</span>
+                      <input id="grossAnnualIncome" type="number" min="1" max="12000000" step="1000" value="120000" />
+                    </div>
+                    <span class="help-text">Pre-tax annual household income (before taxes)</span>
+                  </div>
 
-            <div class="dti-metric">
-              <div class="dti-value" id="dti-ratio">--%</div>
-              <div class="dti-info">
-                <span class="dti-title">Front-End Debt-to-Income</span>
-                <span id="dti-status-badge" class="badge-dti">Calculating...</span>
+                  <div class="input-group" style="margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px dashed var(--border-color);">
+                    <div class="label-with-tooltip"><label for="otherMonthlyDebts">Other Monthly Debts</label><span class="tooltip-icon" data-tooltip="Car payments, student loans, credit card minimums, other loans — anything besides this house's own payment. Used for Back-End DTI, the fuller debt-load ratio most lenders actually qualify you on.">?</span></div>
+                    <div class="input-with-prefix">
+                      <span class="prefix">$</span>
+                      <input id="otherMonthlyDebts" type="number" min="0" max="100000" step="50" value="0" />
+                    </div>
+                    <span class="help-text">Everything besides the mortgage on this house — feeds Back-End DTI below</span>
+                  </div>
+
+                  <div class="input-group" style="margin-bottom: 0;">
+                    <div class="label-with-tooltip" style="margin: 0;">
+                      <label style="margin: 0;">Income Basis For DTI</label>
+                      <span class="tooltip-icon" data-tooltip="Gross measures every DTI panel below against your income before taxes — the figure lenders actually use to qualify you. Net (Best Guess) instead estimates take-home pay using national-average assumptions (federal tax brackets, FICA, and a blended average state income tax rate) so you can see what this payment will actually look like against your paycheck. This is a rough planning estimate, not tax advice — your real take-home depends on your state, filing status, withholdings, and retirement contributions.">?</span>
+                    </div>
+                    <div class="frequency-toggle-group" style="margin-top: 0.6rem;">
+                      <button type="button" class="freq-btn active" id="btn-income-basis-gross" data-income-basis="gross">Gross</button>
+                      <button type="button" class="freq-btn" id="btn-income-basis-net" data-income-basis="net">Net (Best Guess)</button>
+                    </div>
+
+                    <div id="income-basis-adjust-wrap" class="income-basis-adjust-wrap" style="display: none;">
+                      <div class="label-with-tooltip" style="margin: 0;">
+                        <label style="margin: 0;">Fine-Tune To Match Your Paycheck</label>
+                        <span class="tooltip-icon" data-tooltip="Our Best Guess is a national-average estimate and won't match everyone's real paycheck. Pick how you're paid, then set the per-paycheck amount to what you actually see land in your account — we'll convert that into the exact monthly figure the DTI panels below use. Still centered on the national-average estimate until you change it.">?</span>
+                      </div>
+
+                      <div class="frequency-toggle-group" style="margin-top: 0.6rem;">
+                        <button type="button" class="freq-btn" id="btn-pay-freq-biweekly" data-pay-freq="biweekly">Biweekly</button>
+                        <button type="button" class="freq-btn" id="btn-pay-freq-semimonthly" data-pay-freq="semiMonthly">Semi-Monthly</button>
+                        <button type="button" class="freq-btn active" id="btn-pay-freq-monthly" data-pay-freq="monthly">Monthly</button>
+                      </div>
+
+                      <div class="input-with-prefix" style="margin-top: 0.6rem;">
+                        <span class="prefix">$</span>
+                        <input id="incomeBasisPaycheckAmount" type="number" min="0" step="10" value="0" />
+                      </div>
+                      <span class="help-text" id="income-basis-paycheck-help">Take-home per monthly paycheck (12/year)</span>
+
+                      <input id="incomeBasisAdjustSlider" type="range" min="0" max="0" step="10" value="0" class="slider" style="margin-top: 0.5rem;" />
+                      <div class="income-basis-adjust-scale">
+                        <span>← Conservative</span>
+                        <span id="income-basis-adjust-value">Best Guess</span>
+                        <span>Liberal →</span>
+                      </div>
+
+                      <button type="button" id="btn-reset-income-basis-adjust" class="btn-force-refresh" style="display: none; margin-top: 0.4rem;">↻ Reset to Best Guess</button>
+                    </div>
+
+                    <div id="income-basis-breakdown" class="income-basis-breakdown" style="display: none;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Group 2: Monthly Cash Flow & Take-Home -->
+              <div class="dti-accordion-group" id="dti-group-cashflow">
+                <button type="button" class="collapsible-header dti-accordion-header" id="dti-header-cashflow" data-section-key="dtiGroupCashflow" aria-expanded="false" aria-controls="dti-body-cashflow">
+                  <div class="dti-accordion-title-wrap">
+                    <span class="dti-accordion-title">2. Monthly Cash Flow &amp; Take-Home</span>
+                    <span class="dti-summary-badge" id="dti-summary-cashflow">Net Mode Only</span>
+                  </div>
+                  <span class="chevron" aria-hidden="true">▾</span>
+                </button>
+                <div class="collapsible-body dti-accordion-body" id="dti-body-cashflow" hidden>
+                  <!-- Residual Monthly Cash Flow Banner (Net Mode Only) -->
+                  <div id="residual-cash-flow-banner" class="residual-cash-flow-banner" style="display: none; margin-bottom: 0; padding: 0.85rem 1rem; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 0.5rem;">
+                    <!-- Standard Single-Home View -->
+                    <div id="residual-cash-flow-standard-box" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                      <div>
+                        <span style="font-size: 0.725rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-emerald); display: block;">💵 Remaining Monthly Cash Flow</span>
+                        <span id="residual-cash-flow-subtitle" style="font-size: 0.75rem; color: var(--text-muted);">Available for groceries, utilities, savings &amp; lifestyle</span>
+                      </div>
+                      <div style="text-align: right;">
+                        <span id="residual-cash-flow-amount" style="font-size: 1.25rem; font-weight: 700; color: var(--accent-emerald); display: block;">+$0 / mo</span>
+                        <span id="residual-cash-flow-percent" style="font-size: 0.75rem; font-weight: 600; color: var(--text-bright);">0.0% of take-home</span>
+                      </div>
+                    </div>
+
+                    <!-- Bridge Loan Multi-Stage View -->
+                    <div id="residual-cash-flow-bridge-box" style="display: none; flex-direction: column; gap: 0.6rem;">
+                      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.3rem;">
+                        <span style="font-size: 0.725rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-emerald);">💵 Remaining Cash Flow by Bridge Stage</span>
+                        <span id="residual-bridge-income-note" style="font-size: 0.7rem; color: var(--text-muted);">out of take-home pay</span>
+                      </div>
+                      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
+                        <!-- Stage 1: Holding Period -->
+                        <div style="padding: 0.65rem 0.75rem; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 0.4rem;">
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                            <span style="font-size: 0.7rem; font-weight: 700; color: var(--color-moderate); text-transform: uppercase;">1. Carrying Both Homes</span>
+                            <span id="residual-holding-cost-tag" style="font-size: 0.68rem; color: var(--text-muted);">$0/mo cost</span>
+                          </div>
+                          <div id="residual-holding-amount" style="font-size: 1.1rem; font-weight: 700; color: var(--color-moderate);">$0 / mo</div>
+                          <span id="residual-holding-percent" style="font-size: 0.7rem; color: var(--text-muted); display: block;">0.0% remaining</span>
+                        </div>
+                        <!-- Stage 2: After Recast -->
+                        <div style="padding: 0.65rem 0.75rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 0.4rem;">
+                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                            <span style="font-size: 0.7rem; font-weight: 700; color: var(--accent-emerald); text-transform: uppercase;">2. After House Sells &amp; Recast</span>
+                            <span id="residual-recast-cost-tag" style="font-size: 0.68rem; color: var(--accent-emerald); font-weight: 600;">+$0/mo saved</span>
+                          </div>
+                          <div id="residual-recast-amount" style="font-size: 1.1rem; font-weight: 700; color: var(--accent-emerald);">$0 / mo</div>
+                          <span id="residual-recast-percent" style="font-size: 0.7rem; color: var(--text-bright); display: block;">0.0% remaining</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Group 3: DTI Ratios & Benchmarks -->
+              <div class="dti-accordion-group" id="dti-group-ratios">
+                <button type="button" class="collapsible-header dti-accordion-header" id="dti-header-ratios" data-section-key="dtiGroupRatios" aria-expanded="true" aria-controls="dti-body-ratios">
+                  <div class="dti-accordion-title-wrap">
+                    <span class="dti-accordion-title">3. DTI Ratios &amp; Benchmarks</span>
+                    <span class="dti-summary-badge" id="dti-summary-ratios">--% Back-End</span>
+                  </div>
+                  <span class="chevron" aria-hidden="true">▾</span>
+                </button>
+                <div class="collapsible-body dti-accordion-body" id="dti-body-ratios">
+                  <!-- Bridge Loan Phase Toggle (Bridge Loan Mode Only) -->
+                  <div id="bridge-dti-phase-toggle" class="bridge-dti-phase-toggle" style="display: none; margin-bottom: 0.85rem;">
+                    <div class="label-with-tooltip" style="margin-bottom: 0.35rem;">
+                      <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin: 0;">Bridge Loan DTI Lens</label>
+                      <span class="tooltip-icon" data-tooltip="Select whether the DTI ratios below evaluate standard bank qualification for your new home, or your temporary holding position while carrying both homes.">?</span>
+                    </div>
+                    <div class="frequency-toggle-group">
+                      <button type="button" class="freq-btn active" id="btn-bridge-phase-recast" data-bridge-phase="recast">🟢 Standard (New Home)</button>
+                      <button type="button" class="freq-btn" id="btn-bridge-phase-holding" data-bridge-phase="holding">🟠 Carrying Both Homes</button>
+                    </div>
+                  </div>
+
+                  <div class="dti-switcher" id="dti-switcher" role="tablist" aria-label="Choose which DTI metric to view">
+                    <button type="button" class="dti-tab-btn" id="dti-tab-btn-bank" data-dti-tab="bank">Housing DTI (Front-End)</button>
+                    <button type="button" class="dti-tab-btn active" id="dti-tab-btn-backend" data-dti-tab="backend">Total Debt DTI (Back-End)</button>
+                    <button type="button" class="dti-tab-btn" id="dti-tab-btn-effective" data-dti-tab="effective">Effective DTI (w/ Extras)</button>
+                    <button type="button" class="dti-tab-btn" id="dti-tab-btn-holding" data-dti-tab="holding" style="display: none;">Holding Period</button>
+                    <button type="button" class="dti-tab-btn" id="dti-tab-btn-holding-backend" data-dti-tab="holding-backend" style="display: none;">Holding + Debts</button>
+                  </div>
+
+                  <!-- Front-End / Housing DTI -->
+                  <div class="dti-panel" data-dti-panel="bank">
+                    <div class="dti-metric">
+                      <div class="dti-value" id="dti-ratio">--%</div>
+                      <div class="dti-info">
+                        <div class="label-with-tooltip" style="margin: 0; gap: 0.3rem;">
+                          <span class="dti-title" id="dti-title-bank">Housing DTI (Front-End)</span>
+                          <span class="tooltip-icon" id="dti-tooltip-bank" data-tooltip="The baseline debt-to-income ratio mortgage lenders use to evaluate and approve your loan for the house, based on required monthly costs (P&amp;I + tax + insurance + PMI + HOA).">?</span>
+                        </div>
+                        <span id="dti-status-badge" class="badge-dti">Calculating...</span>
+                      </div>
+                    </div>
+                    <div class="progress-bar-container">
+                      <div id="dti-progress-bar" class="progress-bar" style="width: 0%;"></div>
+                      <div class="progress-markers" id="dti-progress-markers-bank">
+                        <span class="marker marker-m1" style="left: 28%">28%</span>
+                        <span class="marker marker-m2" style="left: 36%">36%</span>
+                      </div>
+                    </div>
+                    <div id="dti-dollar-breakdown" class="dti-dollar-breakdown"></div>
+                    <p id="dti-description" class="dti-desc" style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted); margin-top: 0.75rem;">
+                      Please fill out purchase details and income to verify affordability status.
+                    </p>
+                  </div>
+
+                  <!-- Back-End DTI (housing + other monthly debts) -->
+                  <div class="dti-panel active" data-dti-panel="backend">
+                    <div class="dti-metric">
+                      <div class="dti-value" id="backend-dti-ratio" style="color: var(--color-pmi);">--%</div>
+                      <div class="dti-info">
+                        <div class="label-with-tooltip" style="margin: 0; gap: 0.3rem;">
+                          <span class="dti-title" id="dti-title-backend">Total Debt DTI (Back-End)</span>
+                          <span class="tooltip-icon" id="dti-tooltip-backend" data-tooltip="Housing payment PLUS your other monthly debts (car, student loans, credit cards, etc.), against income. This fuller ratio is what most lenders actually use to qualify you — thresholds are more lenient than housing-only DTI.">?</span>
+                        </div>
+                        <span id="backend-dti-badge" class="badge-dti">Calculating...</span>
+                      </div>
+                    </div>
+                    <div class="progress-bar-container">
+                      <div id="backend-dti-progress-bar" class="progress-bar" style="width: 0%;"></div>
+                      <div class="progress-markers" id="dti-progress-markers-backend">
+                        <span class="marker marker-m1" style="left: 36%">36%</span>
+                        <span class="marker marker-m2" style="left: 45%">45%</span>
+                      </div>
+                    </div>
+                    <div id="backend-dti-dollar-breakdown" class="dti-dollar-breakdown"></div>
+                    <p id="backend-dti-description" class="dti-desc" style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted); margin-top: 0.75rem;"></p>
+                  </div>
+
+                  <!-- Effective DTI (With Extra Payments) -->
+                  <div class="dti-panel" data-dti-panel="effective">
+                    <div class="dti-metric">
+                      <div class="dti-value" id="effective-dti-ratio" style="color: var(--accent-cyan);">--%</div>
+                      <div class="dti-info">
+                        <div class="label-with-tooltip" style="margin: 0; gap: 0.3rem;">
+                          <span class="dti-title" id="dti-title-effective">Effective DTI (w/ Extras)</span>
+                          <span class="tooltip-icon" id="dti-tooltip-effective" data-tooltip="Your true monthly income percentage committed to housing when adding optional extra principal, biweekly schedule extras, and lump sum payments.">?</span>
+                        </div>
+                        <span id="effective-dti-delta-badge" class="badge-dti-delta">0.0% change</span>
+                      </div>
+                    </div>
+                    <div class="progress-bar-container">
+                      <div id="effective-dti-progress-bar" class="progress-bar effective-bar" style="width: 0%;"></div>
+                      <div class="progress-markers" id="dti-progress-markers-effective">
+                        <span class="marker marker-m1" style="left: 28%">28%</span>
+                        <span class="marker marker-m2" style="left: 36%">36%</span>
+                      </div>
+                    </div>
+                    <div id="effective-dti-dollar-breakdown" class="dti-dollar-breakdown"></div>
+                    <p id="effective-dti-description" class="dti-desc" style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted); margin-top: 0.75rem;">
+                      Includes optional extra payments to show your total monthly budget commitment.
+                    </p>
+                  </div>
+
+                  <!-- Holding-Period DTI (Bridge Loan mode only) -->
+                  <div class="dti-panel" data-dti-panel="holding">
+                    <p class="dti-desc" style="margin-bottom: 0.75rem; color: var(--text-muted);">While you're carrying both homes — your bridge loan's interest-only payment plus your full new mortgage, against income. The riskiest window, since it's before any sale proceeds land.</p>
+                    <div class="dti-metric">
+                      <div class="dti-value" id="bridge-holding-dti-ratio">--%</div>
+                      <div class="dti-info">
+                        <div class="label-with-tooltip" style="margin: 0; gap: 0.3rem;">
+                          <span class="dti-title">Holding-Period DTI</span>
+                          <span class="tooltip-icon" data-tooltip="Debt-to-income ratio for the combined monthly cost (bridge interest-only payment + new mortgage), against your income — the riskiest window, since it's before any sale proceeds land.">?</span>
+                        </div>
+                        <span id="bridge-holding-dti-badge" class="badge-dti">Calculating...</span>
+                      </div>
+                    </div>
+                    <div class="progress-bar-container">
+                      <div id="bridge-holding-dti-progress-bar" class="progress-bar" style="width: 0%;"></div>
+                      <div class="progress-markers">
+                        <span class="marker" style="left: 28%">28%</span>
+                        <span class="marker" style="left: 36%">36%</span>
+                      </div>
+                    </div>
+                    <div id="bridge-holding-dti-dollar-breakdown" class="dti-dollar-breakdown"></div>
+                    <p id="bridge-holding-dti-description" class="dti-desc" style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted); margin-top: 0.75rem;"></p>
+                  </div>
+
+                  <!-- Holding-Period Back-End DTI (Bridge Loan mode only) -->
+                  <div class="dti-panel" data-dti-panel="holding-backend">
+                    <p class="dti-desc" style="margin-bottom: 0.75rem; color: var(--text-muted);">The holding-period cost above, plus your other monthly debts — the fuller lender-style ratio for that same window.</p>
+                    <div class="dti-metric">
+                      <div class="dti-value" id="bridge-holding-backend-dti-ratio" style="color: var(--color-pmi);">--%</div>
+                      <div class="dti-info">
+                        <div class="label-with-tooltip" style="margin: 0; gap: 0.3rem;">
+                          <span class="dti-title">Holding-Period Back-End DTI</span>
+                          <span class="tooltip-icon" data-tooltip="Combined monthly cost above PLUS your other monthly debts (car, student loans, credit cards, etc.), against income — the fuller lender-style ratio for the holding period.">?</span>
+                        </div>
+                        <span id="bridge-holding-backend-dti-badge" class="badge-dti">Calculating...</span>
+                      </div>
+                    </div>
+                    <div class="progress-bar-container">
+                      <div id="bridge-holding-backend-dti-progress-bar" class="progress-bar" style="width: 0%;"></div>
+                      <div class="progress-markers">
+                        <span class="marker" style="left: 36%">36%</span>
+                        <span class="marker" style="left: 45%">45%</span>
+                      </div>
+                    </div>
+                    <div id="bridge-holding-backend-dti-dollar-breakdown" class="dti-dollar-breakdown"></div>
+                    <p id="bridge-holding-backend-dti-description" class="dti-desc" style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted); margin-top: 0.75rem;"></p>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="progress-bar-container">
-              <div id="dti-progress-bar" class="progress-bar" style="width: 0%;"></div>
-              <div class="progress-markers">
-                <span class="marker" style="left: 28%">28%</span>
-                <span class="marker" style="left: 36%">36%</span>
-              </div>
-            </div>
-            <p id="dti-description" class="dti-desc">
-              Please fill out purchase details and income to verify affordability status.
-            </p>
           </div>
 
         </div>
 
         <!-- Amortization Burndown Charts -->
-        <div class="panel-card burndown-chart-card">
+        <div class="panel-card collapsible burndown-chart-card" id="burndown-chart-card">
           <div class="chart-header">
-            <h2>Loan Amortization Burndown</h2>
+            <button type="button" class="collapsible-header" id="burndown-toggle" data-section-key="burndownChart" aria-expanded="false" aria-controls="burndown-body">
+              <h2 style="margin-bottom: 0;">Loan Amortization Burndown</h2>
+              <span class="chevron" aria-hidden="true">▾</span>
+            </button>
             <div class="burndown-legend">
               <span class="legend-item"><span class="legend-dot color-balance"></span>Balance</span>
               <span class="legend-item"><span class="legend-dot color-interest"></span>Cum. Interest</span>
               <span class="legend-item"><span class="legend-dot color-payment"></span>Cum. Principal</span>
             </div>
           </div>
-          <div class="burndown-chart-grid">
-            <div class="burndown-chart-panel">
-              <h3>30-Year Fixed</h3>
-              <div class="burndown-chart-wrapper">
-                <svg id="burndown-svg-30" viewBox="0 0 500 200" preserveAspectRatio="none"></svg>
+          <div class="collapsible-body" id="burndown-body" hidden>
+            <div class="burndown-chart-grid">
+              <div class="burndown-chart-panel">
+                <h3>30-Year Fixed</h3>
+                <div class="burndown-chart-wrapper">
+                  <svg id="burndown-svg-30" viewBox="0 0 500 200" preserveAspectRatio="none"></svg>
+                </div>
               </div>
-            </div>
-            <div class="burndown-chart-panel">
-              <h3>15-Year Fixed</h3>
-              <div class="burndown-chart-wrapper">
-                <svg id="burndown-svg-15" viewBox="0 0 500 200" preserveAspectRatio="none"></svg>
+              <div class="burndown-chart-panel">
+                <h3>15-Year Fixed</h3>
+                <div class="burndown-chart-wrapper">
+                  <svg id="burndown-svg-15" viewBox="0 0 500 200" preserveAspectRatio="none"></svg>
+                </div>
               </div>
             </div>
           </div>
@@ -731,6 +1253,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=30"></script>
+  <script type="module" src="app.js?v=43"></script>
 </body>
 </html>

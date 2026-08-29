@@ -6,10 +6,19 @@
 
 require_once __DIR__ . '/admin-auth.php';
 
-if (isset($_SERVER['HTTP_ORIGIN'])) {
+// This endpoint is session/cookie-authenticated, so it must NOT blindly
+// reflect any Origin header while allowing credentials — that combination
+// would let any website make a credentialed request against it from a
+// logged-in admin's browser. Only an allowlisted origin (prod domain or a
+// local/private-network dev origin — see isAllowedCorsOrigin() in
+// admin-auth.php) gets the credentialed response; everything else gets a
+// plain, non-credentialed CORS header, which the browser's own CORS check
+// will refuse to pair with a credentialed fetch() anyway.
+if (!empty($_SERVER['HTTP_ORIGIN']) && isAllowedCorsOrigin($_SERVER['HTTP_ORIGIN'])) {
     header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
     header("Access-Control-Allow-Credentials: true");
     header("Access-Control-Max-Age: 86400");
+    header("Vary: Origin");
 } else {
     header("Access-Control-Allow-Origin: *");
 }

@@ -9,3 +9,6 @@ Paw Patrol Live
 Kidz Bop
 Peppa Pig Live
 Disney Worlds Collide
+
+# Scraper "empty state" junk (page chrome mistaken for an event title — see VenueScraper.php generic parser fix, Aug 2026)
+No Matching Upcoming Events Found

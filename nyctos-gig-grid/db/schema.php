@@ -82,6 +82,16 @@ function ensureDatabaseSchema(PDO $db) {
     } catch (PDOException $e) {
     }
 
+    // Comma-separated alternate spellings/names for a venue (e.g. "The Boileroom, Guildford"
+    // as an alt name on canonical venue "Boileroom"). Populated by admin_data_quality.php's
+    // Venue Review tab, both from manual edits and automatically when merging a duplicate
+    // venue. Also consumed by EventAggregator.php's loadVenueWhitelist() so a future scrape
+    // matching an alt name resolves to the canonical venue instead of creating a new row.
+    try {
+        @$db->exec("ALTER TABLE venues ADD COLUMN alternate_names TEXT");
+    } catch (PDOException $e) {
+    }
+
     $db->exec("CREATE TABLE IF NOT EXISTS events (
         event_id TEXT PRIMARY KEY,
         artist_name TEXT NOT NULL,
@@ -111,7 +121,9 @@ function ensureDatabaseSchema(PDO $db) {
         eventbrite_url TEXT,
         bandsintown_url TEXT,
         venue_url TEXT,
-        doors_time DATETIME
+        doors_time DATETIME,
+        last_url_checked_at DATETIME,
+        url_status TEXT DEFAULT 'unknown'
     )");
 
     foreach ([
@@ -138,7 +150,9 @@ function ensureDatabaseSchema(PDO $db) {
         "ALTER TABLE events ADD COLUMN ticket_status_code TEXT",
         "ALTER TABLE events ADD COLUMN availability_tag TEXT",
         "ALTER TABLE events ADD COLUMN sold_out_flag INTEGER NOT NULL DEFAULT 0",
-        "ALTER TABLE events ADD COLUMN doors_time DATETIME"
+        "ALTER TABLE events ADD COLUMN doors_time DATETIME",
+        "ALTER TABLE events ADD COLUMN last_url_checked_at DATETIME",
+        "ALTER TABLE events ADD COLUMN url_status TEXT DEFAULT 'unknown'"
     ] as $sql) {
         try {
             @$db->exec($sql);
@@ -159,6 +173,22 @@ function ensureDatabaseSchema(PDO $db) {
     $db->exec("CREATE INDEX IF NOT EXISTS idx_events_time ON events(start_time)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_events_status ON events(status)");
     $db->exec("CREATE INDEX IF NOT EXISTS idx_events_market_time ON events(market, start_time)");
+
+    // Defense-in-depth against duplicate events: EventAggregator's dedupe-key and fuzzy-match
+    // logic (services/EventAggregator.php) is the primary line of defense and should always
+    // catch a repeat before it reaches this INSERT. This index is the backstop for whatever
+    // slips past both of those checks (a race, a code path that bypasses saveEvent()) — it
+    // turns a silent duplicate insert into a catchable constraint violation instead.
+    // Scoped to venue_id IS NOT NULL because events without a resolved venue link have no
+    // canonical identity to key on and must keep relying on the free-text fuzzy match.
+    // NOTE: this will fail to create (silently, see try/catch) if duplicate rows already
+    // exist in the table — run a one-time dedupe pass before/alongside deploying this if so.
+    try {
+        $db->exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_events_dedupe_backstop
+            ON events(venue_id, DATE(start_time), LOWER(TRIM(artist_name)))
+            WHERE venue_id IS NOT NULL");
+    } catch (PDOException $e) {
+    }
 
     // Reconcile and link events.venue_id against canonical venues table
     try {
@@ -226,4 +256,50 @@ function ensureDatabaseSchema(PDO $db) {
         top_tags TEXT,
         last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
+
+    // Possible-double-bill review queue: rows sharing the same venue + exact start_time but
+    // under different artist_name text, where a support-act-vs-headliner or co-headline split
+    // across sources may have produced two events for what's really one show. Unlike
+    // data_quality_event_flags (a single event per flag row), a double-bill candidate is a
+    // *group* of 2+ events, so every event in the group gets its own row sharing group_key —
+    // see flagPossibleDoubleBills() in services/SyncService.php for how groups are detected
+    // (deliberately conservative: it skips venues whose events default to one generic
+    // time-of-day, since that's a false-collision risk, not a duplicate signal) and
+    // admin_double_bills.php for how a group is reviewed and merged or dismissed.
+    $db->exec("CREATE TABLE IF NOT EXISTS data_quality_double_bill_flags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        group_key TEXT NOT NULL,
+        event_id TEXT NOT NULL,
+        venue_id INTEGER,
+        venue_name TEXT,
+        start_time DATETIME,
+        artist_name TEXT,
+        reason TEXT NOT NULL DEFAULT 'possible_double_bill',
+        flagged_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        resolved INTEGER NOT NULL DEFAULT 0,
+        resolution TEXT,
+        resolved_at DATETIME
+    )");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_dbbf_group_key ON data_quality_double_bill_flags(group_key)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_dbbf_resolved ON data_quality_double_bill_flags(resolved)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_dbbf_event_id ON data_quality_double_bill_flags(event_id)");
+
+    // Possible-duplicate-venue review queue for admin_data_quality.php's Venue Review tab.
+    // group_key is the sorted, comma-joined venue_ids of a cluster of venues that share an
+    // address, share coordinates, or share a simplifyVenueName()-normalized name (see the
+    // connected-components grouping in admin_data_quality.php) — deterministic given the same
+    // membership, so a group Josh dismisses as "not actually a duplicate" stays dismissed
+    // across page loads. venue_ids duplicates group_key's ids as its own column so a row
+    // remains self-describing even if group_key's format ever changes.
+    $db->exec("CREATE TABLE IF NOT EXISTS data_quality_venue_dupe_flags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        group_key TEXT NOT NULL,
+        venue_ids TEXT NOT NULL,
+        flagged_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        resolved INTEGER NOT NULL DEFAULT 0,
+        resolution TEXT,
+        resolved_at DATETIME
+    )");
+    $db->exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_dqvdf_group_key ON data_quality_venue_dupe_flags(group_key)");
+    $db->exec("CREATE INDEX IF NOT EXISTS idx_dqvdf_resolved ON data_quality_venue_dupe_flags(resolved)");
 }

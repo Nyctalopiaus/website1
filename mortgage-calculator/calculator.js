@@ -181,32 +181,197 @@ export function calculateDTI(monthlyHousingCost, grossMonthlyIncome) {
 }
 
 /**
+ * Calculates "back-end" DTI: housing cost PLUS other monthly debt
+ * obligations (car payments, student loans, credit card minimums, other
+ * loans) against gross income. This is what most lenders actually use to
+ * qualify a loan — the front-end (housing-only) DTI elsewhere in this file
+ * is looser and doesn't reflect a borrower's full debt load.
+ * @param {number} monthlyHousingCost
+ * @param {number} otherMonthlyDebts
+ * @param {number} grossMonthlyIncome
+ * @returns {number} Back-end DTI ratio as percentage
+ */
+export function calculateBackEndDTI(monthlyHousingCost, otherMonthlyDebts, grossMonthlyIncome) {
+  return calculateDTI(monthlyHousingCost + Math.max(0, otherMonthlyDebts || 0), grossMonthlyIncome);
+}
+
+/**
+ * Calculates residual monthly cash flow (uncommitted net income after housing and debts)
+ * @param {number} netMonthlyIncome - Estimated or calibrated net take-home pay per month
+ * @param {number} monthlyHousingCost - Total monthly housing payment
+ * @param {number} otherMonthlyDebts - Other monthly debt payments (car, student loans, etc.)
+ * @returns {Object} Result object with totalObligations, residualAmount, and residualPercent
+ */
+export function calculateResidualIncome(netMonthlyIncome, monthlyHousingCost, otherMonthlyDebts = 0) {
+  const totalObligations = monthlyHousingCost + Math.max(0, otherMonthlyDebts || 0);
+  const residualAmount = netMonthlyIncome - totalObligations;
+  const residualPercent = netMonthlyIncome > 0 ? (residualAmount / netMonthlyIncome) * 100 : 0;
+  
+  return {
+    totalObligations,
+    residualAmount,
+    residualPercent
+  };
+}
+
+/**
  * Determines DTI affordability status
  * @param {number} dti - DTI ratio as percentage
+ * @param {boolean} [isNetIncome=false] - True if ratio is evaluated against Net (take-home) income
  * @returns {Object} Status object with label and description
  */
-export function getDTIStatus(dti) {
-  if (dti < CONFIG.DTI_HEALTHY_MAX) {
+export function getDTIStatus(dti, isNetIncome = false) {
+  const healthyMax = isNetIncome ? (CONFIG.DTI_NET_HEALTHY_MAX || 33) : CONFIG.DTI_HEALTHY_LABEL ? CONFIG.DTI_HEALTHY_MAX : 28;
+  const moderateMax = isNetIncome ? (CONFIG.DTI_NET_MODERATE_MAX || 40) : CONFIG.DTI_MODERATE_MAX;
+
+  if (dti < healthyMax) {
     return {
       label: CONFIG.DTI_HEALTHY_LABEL,
       className: 'bg-healthy',
-      description: `At ${dti.toFixed(1)}%, this housing payment falls safely below the standard ${CONFIG.DTI_HEALTHY_MAX}% front-end DTI limit. This is considered highly affordable for your income profile.`
+      description: isNetIncome
+        ? `At ${dti.toFixed(1)}%, your mandatory housing payment takes less than ${healthyMax}% of your estimated take-home pay. This is considered a healthy personal budget range, leaving ample cash flow for living expenses.`
+        : `At ${dti.toFixed(1)}%, this mandatory housing payment falls safely below the standard ${healthyMax}% front-end DTI limit. This is what mortgage lenders evaluate to qualify your loan for the house.`
     };
   }
   
-  if (dti <= CONFIG.DTI_MODERATE_MAX) {
+  if (dti <= moderateMax) {
     return {
       label: CONFIG.DTI_MODERATE_LABEL,
       className: 'bg-moderate',
-      description: `At ${dti.toFixed(1)}%, your payment is within the ${CONFIG.DTI_HEALTHY_MAX}%–${CONFIG.DTI_MODERATE_MAX}% range. This is moderate, but may stretch your budget if you have substantial other monthly debts (student loans, car payments).`
+      description: isNetIncome
+        ? `At ${dti.toFixed(1)}%, housing consumes ${healthyMax}%–${moderateMax}% of your take-home paycheck. This is manageable, but requires mindful budgeting for other lifestyle expenses.`
+        : `At ${dti.toFixed(1)}%, your mandatory housing payment is within the ${healthyMax}%–${moderateMax}% range. Lenders may accept this for loan qualification, but it could stretch your budget if you have other debts.`
     };
   }
   
   return {
     label: CONFIG.DTI_HIGH_LABEL,
     className: 'bg-high',
-    description: `At ${dti.toFixed(1)}%, this payment exceeds the ${CONFIG.DTI_MODERATE_MAX}% threshold. Traditional lenders may find this risky. Consider making a larger down payment or searching for a lower-priced home.`
+    description: isNetIncome
+      ? `At ${dti.toFixed(1)}%, housing consumes over ${moderateMax}% of your net take-home pay. This represents a heavy commitment against your monthly paycheck.`
+      : `At ${dti.toFixed(1)}%, this mandatory payment exceeds the standard ${moderateMax}% threshold. Mortgage lenders will consider this high-risk for loan approval.`
   };
+}
+
+/**
+ * Determines back-end DTI affordability status.
+ * @param {number} dti - Back-end DTI ratio as percentage
+ * @param {boolean} [isNetIncome=false] - True if ratio is evaluated against Net (take-home) income
+ * @returns {Object} Status object with label, className, and description
+ */
+export function getBackEndDTIStatus(dti, isNetIncome = false) {
+  const healthyMax = isNetIncome ? (CONFIG.DTI_NET_BACKEND_HEALTHY_MAX || 45) : CONFIG.DTI_BACKEND_HEALTHY_MAX;
+  const moderateMax = isNetIncome ? (CONFIG.DTI_NET_BACKEND_MODERATE_MAX || 55) : CONFIG.DTI_BACKEND_MODERATE_MAX;
+
+  if (dti < healthyMax) {
+    return {
+      label: CONFIG.DTI_HEALTHY_LABEL,
+      className: 'bg-healthy',
+      description: isNetIncome
+        ? `At ${dti.toFixed(1)}%, your total monthly debt commitment (housing + other debts) consumes less than ${healthyMax}% of your take-home pay.`
+        : `At ${dti.toFixed(1)}%, your total monthly debt load (housing + other debts) falls safely below the ${healthyMax}% back-end DTI most lenders use.`
+    };
+  }
+
+  if (dti <= moderateMax) {
+    return {
+      label: CONFIG.DTI_MODERATE_LABEL,
+      className: 'bg-moderate',
+      description: isNetIncome
+        ? `At ${dti.toFixed(1)}%, total debt commitments consume ${healthyMax}%–${moderateMax}% of your take-home pay. Watch your remaining discretionary budget carefully.`
+        : `At ${dti.toFixed(1)}%, your total monthly debt load is within the ${healthyMax}%–${moderateMax}% range many lenders will still qualify, though tighter approval standards or compensating factors may come into play.`
+    };
+  }
+
+  return {
+    label: CONFIG.DTI_HIGH_LABEL,
+    className: 'bg-high',
+    description: isNetIncome
+      ? `At ${dti.toFixed(1)}%, total debt obligations consume over ${moderateMax}% of your net paycheck, leaving limited cash flow for non-debt monthly expenses.`
+      : `At ${dti.toFixed(1)}%, your total monthly debt load exceeds the ${moderateMax}% threshold most lenders use for back-end DTI — likely to affect loan approval without strong compensating factors.`
+  };
+}
+
+/**
+ * Rough "national average" estimate of net (take-home) annual income from
+ * gross annual income — powers the optional Gross vs. Net (Best Guess)
+ * income-basis toggle on the Affordability card. This is NOT tax advice and
+ * doesn't know the user's actual filing status, state, dependents,
+ * deductions, retirement contributions, or paycheck withholdings — it
+ * applies one generic set of assumptions (single filer, standard deduction,
+ * current-year federal brackets, FICA, and a blended average state income
+ * tax rate) purely so the DTI panels can show a ballpark of what a housing
+ * payment looks like against take-home pay, not an exact paycheck figure.
+ * @param {number} grossAnnualIncome
+ * @returns {Object} { federalTax, ficaTax, stateTax, totalDeductions, netAnnualIncome, effectiveDeductionRate }
+ */
+export function estimateNetAnnualIncome(grossAnnualIncome) {
+  const gross = Math.max(0, grossAnnualIncome || 0);
+  if (gross <= 0) {
+    return { federalTax: 0, ficaTax: 0, stateTax: 0, totalDeductions: 0, netAnnualIncome: 0, effectiveDeductionRate: 0 };
+  }
+
+  // Federal income tax: progressive brackets applied to income after the
+  // standard deduction (CONFIG.NET_ESTIMATE_* — see config.js for the
+  // current-year figures and sourcing).
+  const taxableIncome = Math.max(0, gross - CONFIG.NET_ESTIMATE_STANDARD_DEDUCTION);
+  let federalTax = 0;
+  let lastCap = 0;
+  for (const bracket of CONFIG.NET_ESTIMATE_FEDERAL_BRACKETS) {
+    if (taxableIncome <= lastCap) break;
+    const amountInBracket = Math.min(taxableIncome, bracket.upTo) - lastCap;
+    if (amountInBracket > 0) federalTax += amountInBracket * bracket.rate;
+    lastCap = bracket.upTo;
+  }
+
+  // FICA: Social Security (capped wage base) + Medicare (uncapped) +
+  // Additional Medicare surtax above the single-filer threshold.
+  const socialSecurityTax = Math.min(gross, CONFIG.NET_ESTIMATE_SS_WAGE_CAP) * CONFIG.NET_ESTIMATE_SS_RATE;
+  const medicareTax = gross * CONFIG.NET_ESTIMATE_MEDICARE_RATE;
+  const additionalMedicareTax = Math.max(0, gross - CONFIG.NET_ESTIMATE_ADDL_MEDICARE_THRESHOLD) * CONFIG.NET_ESTIMATE_ADDL_MEDICARE_RATE;
+  const ficaTax = socialSecurityTax + medicareTax + additionalMedicareTax;
+
+  // State + local income tax: flat blended national-average rate. Actual
+  // burden ranges from 0% (no-income-tax states) to 8%+ (highest-tax states).
+  const stateTax = gross * CONFIG.NET_ESTIMATE_AVG_STATE_TAX_RATE;
+
+  const totalDeductions = federalTax + ficaTax + stateTax;
+  const netAnnualIncome = Math.max(0, gross - totalDeductions);
+
+  return {
+    federalTax,
+    ficaTax,
+    stateTax,
+    totalDeductions,
+    netAnnualIncome,
+    effectiveDeductionRate: (totalDeductions / gross) * 100
+  };
+}
+
+/**
+ * Converts a single paycheck's dollar amount to its monthly equivalent for
+ * a given pay frequency — used by the Net (Best Guess) fine-tune control,
+ * which lets a user calibrate against what they actually see land in their
+ * account per paycheck instead of an abstract adjustment.
+ * @param {number} perPaycheckAmount
+ * @param {number} payPeriodsPerYear - e.g. 26 (biweekly), 24 (semi-monthly), 12 (monthly)
+ * @returns {number}
+ */
+export function convertPaycheckToMonthly(perPaycheckAmount, payPeriodsPerYear) {
+  if (!payPeriodsPerYear) return 0;
+  return (perPaycheckAmount || 0) * payPeriodsPerYear / CONFIG.MONTHS_PER_YEAR;
+}
+
+/**
+ * Converts a monthly dollar amount back to its per-paycheck equivalent for
+ * a given pay frequency — the inverse of convertPaycheckToMonthly().
+ * @param {number} monthlyAmount
+ * @param {number} payPeriodsPerYear
+ * @returns {number}
+ */
+export function convertMonthlyToPaycheck(monthlyAmount, payPeriodsPerYear) {
+  if (!payPeriodsPerYear) return 0;
+  return (monthlyAmount || 0) * CONFIG.MONTHS_PER_YEAR / payPeriodsPerYear;
 }
 
 /**
@@ -260,6 +425,143 @@ function clamp01Percent(value) {
 }
 
 /**
+ * Interest-only carrying costs for a bridge loan taken out against the
+ * current home's equity while it's still on the market.
+ * @param {Object} inputs - { bridgeLoanAmount, bridgeExtraCash, bridgeLoanRate (annual %),
+ *   bridgeLoanFeesPercent (origination points, %), monthsUntilSale }
+ * @returns {Object} monthlyInterestOnlyPayment, originationFee,
+ *   totalBridgeInterest (over the holding period), totalBridgeCost (interest + fee), totalBorrowed
+ */
+export function calculateBridgeLoanCosts(inputs) {
+  const {
+    bridgeLoanAmount = 0,
+    bridgeExtraCash = 0,
+    bridgeLoanRate = 0,
+    bridgeLoanFeesPercent = 0,
+    monthsUntilSale = 0
+  } = inputs;
+
+  const totalBorrowed = Math.max(0, bridgeLoanAmount) + Math.max(0, bridgeExtraCash);
+  const monthlyInterestOnlyPayment = totalBorrowed * (bridgeLoanRate / 100 / 12);
+  const originationFee = totalBorrowed * (bridgeLoanFeesPercent / 100);
+  const totalBridgeInterest = monthlyInterestOnlyPayment * Math.max(0, monthsUntilSale);
+  const totalBridgeCost = totalBridgeInterest + originationFee;
+
+  return {
+    monthlyInterestOnlyPayment,
+    originationFee,
+    totalBridgeInterest,
+    totalBridgeCost,
+    totalBorrowed
+  };
+}
+
+/**
+ * Remaining balance on a standard fully-amortizing loan after a given
+ * number of payments, via the closed-form remaining-balance formula
+ * (equivalent to running simulatePayoff's base schedule to that month, but
+ * O(1) instead of a month-by-month loop).
+ * @param {number} principal - Original loan amount
+ * @param {number} annualRate - Annual interest rate (%)
+ * @param {number} totalMonths - Full loan term in months
+ * @param {number} elapsedMonths - Payments made so far
+ * @returns {number} Remaining balance
+ */
+export function calcRemainingBalance(principal, annualRate, totalMonths, elapsedMonths) {
+  const elapsed = Math.min(Math.max(0, elapsedMonths), totalMonths);
+  if (elapsed <= 0) return principal;
+  if (elapsed >= totalMonths) return 0;
+
+  if (annualRate <= 0) {
+    return Math.max(0, principal * (1 - elapsed / totalMonths));
+  }
+
+  const r = annualRate / 12 / 100;
+  const growthTotal = Math.pow(1 + r, totalMonths);
+  const growthElapsed = Math.pow(1 + r, elapsed);
+  return Math.max(0, principal * (growthTotal - growthElapsed) / (growthTotal - 1));
+}
+
+/**
+ * Models recasting the new mortgage once the old house sells: a lump sum
+ * (sale proceeds left over after paying off the bridge loan, MINUS the
+ * recast fee — the fee comes out of what actually gets applied to
+ * principal, not paid separately) is applied to the loan's balance at that
+ * point, and the lender re-amortizes the remaining balance over the
+ * REMAINING term at the SAME rate — lowering the required monthly P&I
+ * instead of shortening the term. Assumes only the loan's base required
+ * payment has been made up to the recast point (not factoring in any
+ * separate extra/lump-sum payments configured elsewhere in the calculator —
+ * real balance would be lower if those are also in play).
+ * @param {Object} inputs - { loanAmount, annualRate, termYears, monthsElapsed,
+ *   recastLumpSum (before the fee is taken out), recastFee }
+ * @returns {Object} Full before/after breakdown, plus a comparison against
+ *   applying the same lump sum as a one-time extra payment WITHOUT recasting.
+ */
+export function calculateRecast(inputs) {
+  const {
+    loanAmount = 0,
+    annualRate = 0,
+    termYears = 30,
+    monthsElapsed = 0,
+    recastLumpSum = 0,
+    recastFee = 0
+  } = inputs;
+
+  const totalMonths = termYears * CONFIG.MONTHS_PER_YEAR;
+  const elapsed = Math.min(Math.max(0, monthsElapsed), totalMonths);
+  const monthlyRate = annualRate / 12 / 100;
+
+  const currentMonthlyPI = calcPIPayment(loanAmount, annualRate, termYears);
+  const balanceAtRecast = calcRemainingBalance(loanAmount, annualRate, totalMonths, elapsed);
+
+  // Fee is subtracted here (not by the caller) so every caller of
+  // calculateRecast() automatically gets a lump sum that's actually net of
+  // the fee, rather than each call site having to remember to do it.
+  const appliedLumpSum = Math.min(Math.max(0, recastLumpSum - recastFee), balanceAtRecast);
+  const newBalance = Math.max(0, balanceAtRecast - appliedLumpSum);
+  const remainingMonths = Math.max(1, totalMonths - elapsed);
+
+  const newMonthlyPI = newBalance > 0
+    ? calcPIPayment(newBalance, annualRate, remainingMonths / CONFIG.MONTHS_PER_YEAR)
+    : 0;
+  const monthlySavings = Math.max(0, currentMonthlyPI - newMonthlyPI);
+  const interestAfterRecast = Math.max(0, (newMonthlyPI * remainingMonths) - newBalance);
+
+  // Comparison: same lump sum applied as a one-time extra principal payment,
+  // but WITHOUT recasting — keep paying the current (higher) required
+  // amount. This pays off faster and typically costs less total interest;
+  // recasting trades that for a lower payment starting now.
+  let monthsToPayoffNoRecast = remainingMonths;
+  let interestNoRecast = interestAfterRecast;
+  if (newBalance > 0 && currentMonthlyPI > newBalance * monthlyRate) {
+    monthsToPayoffNoRecast = monthlyRate > 0
+      ? Math.log(1 / (1 - (monthlyRate * newBalance) / currentMonthlyPI)) / Math.log(1 + monthlyRate)
+      : newBalance / currentMonthlyPI;
+    interestNoRecast = Math.max(0, (currentMonthlyPI * monthsToPayoffNoRecast) - newBalance);
+  } else if (newBalance <= 0) {
+    monthsToPayoffNoRecast = 0;
+    interestNoRecast = 0;
+  }
+
+  return {
+    currentMonthlyPI,
+    balanceAtRecast,
+    appliedLumpSum,
+    newBalance,
+    remainingMonths,
+    newMonthlyPI,
+    monthlySavings,
+    interestAfterRecast,
+    monthsToPayoffNoRecast,
+    interestNoRecast,
+    extraLifetimeInterestFromRecasting: Math.max(0, interestAfterRecast - interestNoRecast),
+    monthsLaterPayoffFromRecasting: Math.max(0, remainingMonths - monthsToPayoffNoRecast),
+    recastFee
+  };
+}
+
+/**
  * Extracts and validates input values from DOM
  * @param {Object} domRefs - Object containing DOM element references
  * @returns {Object} Extracted input values
@@ -282,6 +584,7 @@ export function extractInputValues(domRefs) {
     hoaFees: parseFloatSafe(domRefs.hoaFeesInput.value, 0),
     pmiRate: parseFloatSafe(domRefs.pmiRateInput.value, 0),
     grossAnnualIncome: parseFloatSafe(domRefs.grossAnnualIncomeInput.value, 1),
+    otherMonthlyDebts: domRefs.otherMonthlyDebtsInput ? parseFloatSafe(domRefs.otherMonthlyDebtsInput.value, 0) : 0,
     additionalPayment: parseFloatSafe(domRefs.additionalPaymentInput.value, 0),
     lumpSumAmount: parseFloatSafe(domRefs.lumpSumAmountInput.value, 0),
     lumpSumFrequency: parseInt(domRefs.lumpSumFrequencyInput.value, 10) || 12,
@@ -338,6 +641,14 @@ export function performCalculations(inputs) {
   }
   const totalMonthly30 = regularMonthlyPI30 + monthlyTax + monthlyInsurance + monthlyPmi + hoaFees;
 
+  // Bank Qualifying baseline total monthly cost (contractual baseline for loan qualification)
+  const bankMonthlyTotal30 = baselinePi30 + monthlyTax + monthlyInsurance + monthlyPmi + hoaFees;
+  const extraMonthlyOutlay30 = (additionalPayment || 0) +
+    ((biweeklyExtra || 0) * 26 / 12) +
+    (paymentFrequency === 'accelerated' ? (baselinePi30 / 12) : 0) +
+    (lumpSumAmount > 0 && lumpSumFrequency > 0 ? (lumpSumAmount / lumpSumFrequency) : 0);
+  const effectiveMonthlyTotal30 = bankMonthlyTotal30 + extraMonthlyOutlay30;
+
   const amort30Monthly = simulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, additionalPayment, 0, 12, 'monthly', 0);
   const amort30BiweeklyOnly = simulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, 0, 0, 12, paymentFrequency, biweeklyExtra);
   
@@ -360,6 +671,14 @@ export function performCalculations(inputs) {
     regularMonthlyPI15 = (amort15.biweeklyPi * 26) / 12;
   }
   const totalMonthly15 = regularMonthlyPI15 + monthlyTax + monthlyInsurance + monthlyPmi + hoaFees;
+
+  // Bank Qualifying baseline total monthly cost (contractual baseline for 15yr)
+  const bankMonthlyTotal15 = baselinePi15 + monthlyTax + monthlyInsurance + monthlyPmi + hoaFees;
+  const extraMonthlyOutlay15 = (additionalPayment || 0) +
+    ((biweeklyExtra || 0) * 26 / 12) +
+    (paymentFrequency === 'accelerated' ? (baselinePi15 / 12) : 0) +
+    (lumpSumAmount > 0 && lumpSumFrequency > 0 ? (lumpSumAmount / lumpSumFrequency) : 0);
+  const effectiveMonthlyTotal15 = bankMonthlyTotal15 + extraMonthlyOutlay15;
 
   const amort15Monthly = simulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, additionalPayment, 0, 12, 'monthly', 0);
   const amort15BiweeklyOnly = simulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, 0, 0, 12, paymentFrequency, biweeklyExtra);
@@ -385,6 +704,9 @@ export function performCalculations(inputs) {
     baselineInterest30,
     amort30,
     totalMonthly30,
+    bankMonthlyTotal30,
+    effectiveMonthlyTotal30,
+    extraMonthlyOutlay30,
     monthlySaved30,
     biweeklySaved30,
     totalSaved30,
@@ -395,6 +717,9 @@ export function performCalculations(inputs) {
     baselineInterest15,
     amort15,
     totalMonthly15,
+    bankMonthlyTotal15,
+    effectiveMonthlyTotal15,
+    extraMonthlyOutlay15,
     monthlySaved15,
     biweeklySaved15,
     totalSaved15,

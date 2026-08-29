@@ -2,6 +2,7 @@
 club level
 vip package
 suite level
+arena suites
 parking pass
 fast pass
 official platinum

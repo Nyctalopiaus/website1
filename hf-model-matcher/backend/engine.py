@@ -106,7 +106,18 @@ class RecommendationEngine:
             norm_trend = math.log1p(m["trending_score"]) / max_trend_log if max_trend_log > 0 else 0
 
             base_score = (0.4 * norm_dl) + (0.4 * norm_likes) + (0.2 * norm_trend)
-            final_score = round(base_score * m["task_boost"] * 100, 1)
+            raw_score = base_score * m["task_boost"] * 100
+
+            # A repo can rack up downloads from tooling/mirrors/auto-caching with zero
+            # human endorsement behind it - that's not a plausible "Best Overall" pick
+            # even if downloads alone score well. Suppress it before scoring, on top of
+            # the hard vetted_pool gate below (belt-and-suspenders: this also affects
+            # the model's rank in the full candidate list, not just hero eligibility).
+            # Mirrors the identical guard in js/recommendation-engine.js.
+            if m.get("likes", 0) == 0 and m.get("downloads", 0) < 10000:
+                raw_score *= 0.25
+
+            final_score = round(raw_score, 1)
 
             repo_id = m["id"]
             short_name = m["name"].lower()
@@ -131,18 +142,28 @@ class RecommendationEngine:
 
         scored_models.sort(key=lambda x: x["recommendation_score"], reverse=True)
 
-        sweet_spot = [m for m in scored_models if 60.0 <= m["vram_usage_pct"] <= 88.0]
-        hero_best_overall = sweet_spot[0] if sweet_spot else (scored_models[0] if scored_models else None)
+        # Hero cards are drawn from a "vetted" subset requiring some real community
+        # engagement (>=1000 downloads AND >=5 likes) before a model can headline a
+        # hero slot. Falls back to the full list if nothing clears the bar (a very
+        # fresh or niche search shouldn't come back empty). Mirrors heroPool in
+        # js/recommendation-engine.js - added there first after live use surfaced
+        # implausible 0-like hero picks; ported here so the backend (the primary
+        # path whenever it's reachable) gets the same protection.
+        vetted_pool = [m for m in scored_models if m.get("downloads", 0) >= 1000 and m.get("likes", 0) >= 5]
+        hero_pool = vetted_pool if vetted_pool else scored_models
 
-        speed_candidates = [m for m in scored_models if m["vram_usage_pct"] <= 45.0]
+        sweet_spot = [m for m in hero_pool if 60.0 <= m["vram_usage_pct"] <= 88.0]
+        hero_best_overall = sweet_spot[0] if sweet_spot else (hero_pool[0] if hero_pool else None)
+
+        speed_candidates = [m for m in hero_pool if m["vram_usage_pct"] <= 45.0]
         if speed_candidates:
             speed_candidates.sort(key=lambda x: (x["params_b"], -x["recommendation_score"]))
             hero_speed_demon = speed_candidates[0]
         else:
-            sorted_by_params = sorted(scored_models, key=lambda x: x["params_b"])
+            sorted_by_params = sorted(hero_pool, key=lambda x: x["params_b"])
             hero_speed_demon = sorted_by_params[0] if sorted_by_params else hero_best_overall
 
-        max_candidates = sorted(scored_models, key=lambda x: (x["params_b"], x["recommendation_score"]), reverse=True)
+        max_candidates = sorted(hero_pool, key=lambda x: (x["params_b"], x["recommendation_score"]), reverse=True)
         hero_max_capability = max_candidates[0] if max_candidates else hero_best_overall
 
         used_ids = set()

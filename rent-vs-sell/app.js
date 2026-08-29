@@ -50,6 +50,12 @@
     reserveRateSlider: document.getElementById('reserveRateSlider'),
     appreciationRate: document.getElementById('appreciationRate'),
     appreciationRateSlider: document.getElementById('appreciationRateSlider'),
+    mortgageRate: document.getElementById('mortgageRate'),
+    mortgageRateSlider: document.getElementById('mortgageRateSlider'),
+    loanTermYears: document.getElementById('loanTermYears'),
+    loanTermYearsSlider: document.getElementById('loanTermYearsSlider'),
+    taxInsuranceGrowth: document.getElementById('taxInsuranceGrowth'),
+    taxInsuranceGrowthSlider: document.getElementById('taxInsuranceGrowthSlider'),
 
     // Sell Inputs
     homeValue: document.getElementById('homeValue'),
@@ -60,6 +66,8 @@
     sellingCostsRateSlider: document.getElementById('sellingCostsRateSlider'),
     investmentReturn: document.getElementById('investmentReturn'),
     investmentReturnSlider: document.getElementById('investmentReturnSlider'),
+    originalPurchasePrice: document.getElementById('originalPurchasePrice'),
+    originalPurchasePriceSlider: document.getElementById('originalPurchasePriceSlider'),
     taxFilingStatus: document.getElementById('taxFilingStatus'),
     sellNetProceedsVal: document.getElementById('sell-net-proceeds-val'),
 
@@ -130,6 +138,8 @@
 
   // Read current form values
   function getInputs() {
+    const homeValue = parseFloat(elements.homeValue.value) || 0;
+    const rawPurchasePrice = parseFloat(elements.originalPurchasePrice.value);
     return {
       rentAmount: parseFloat(elements.rentAmount.value) || 0,
       mortgagePITI: parseFloat(elements.mortgagePITI.value) || 0,
@@ -138,10 +148,17 @@
       holdingPeriod: parseInt(elements.holdingPeriod.value, 10) || 10,
       reserveRate: (parseFloat(elements.reserveRate.value) || 0) / 100,
       appreciationRate: (parseFloat(elements.appreciationRate.value) || 0) / 100,
-      homeValue: parseFloat(elements.homeValue.value) || 0,
+      mortgageRate: (parseFloat(elements.mortgageRate.value) || 0) / 100,
+      loanTermYears: parseInt(elements.loanTermYears.value, 10) || 27,
+      taxInsuranceGrowth: (parseFloat(elements.taxInsuranceGrowth.value) || 0) / 100,
+      homeValue: homeValue,
       mortgageBalance: parseFloat(elements.mortgageBalance.value) || 0,
       sellingCostsRate: (parseFloat(elements.sellingCostsRate.value) || 0) / 100,
       investmentReturn: (parseFloat(elements.investmentReturn.value) || 0) / 100,
+      // Falls back to current home value (old behavior: zero measurable gain
+      // at the decision point) whenever the field is blank/invalid, rather
+      // than silently treating an empty cost basis as $0 purchase price.
+      originalPurchasePrice: (!isNaN(rawPurchasePrice) && rawPurchasePrice >= 0) ? rawPurchasePrice : homeValue,
       taxFilingStatus: elements.taxFilingStatus.value
     };
   }
@@ -158,7 +175,23 @@
     let cumulativeCashFlow = 0;
     let currentHomeValue = inputs.homeValue;
     let currentMortgageBalance = inputs.mortgageBalance;
-    const annualMortgagePaydownRate = 0.025; // ~2.5% principal paydown per year estimate
+
+    // Real amortization instead of a flat "~2.5%/yr" paydown guess: derive a
+    // fixed monthly P&I payment from the entered rate & remaining term, then
+    // step the balance down month-by-month. The tax/insurance portion of the
+    // entered PITI (whatever's left over after that P&I payment) is tracked
+    // separately so it alone can escalate year over year, while P&I stays
+    // fixed like a real fixed-rate mortgage — and drops to $0 once the loan
+    // is actually paid off instead of amortizing past year 0 forever.
+    const monthlyMortgageRate = inputs.mortgageRate / 12;
+    const totalLoanMonths = Math.max(0, Math.round(inputs.loanTermYears * 12));
+    let monthlyPandI = 0;
+    if (totalLoanMonths > 0) {
+      monthlyPandI = monthlyMortgageRate > 0
+        ? inputs.mortgageBalance * (monthlyMortgageRate * Math.pow(1 + monthlyMortgageRate, totalLoanMonths)) / (Math.pow(1 + monthlyMortgageRate, totalLoanMonths) - 1)
+        : inputs.mortgageBalance / totalLoanMonths;
+    }
+    const baseTaxInsurancePortion = Math.max(0, inputs.mortgagePITI - monthlyPandI);
 
     let crossoverYear = null;
 
@@ -168,23 +201,42 @@
       const monthlyRentY = inputs.rentAmount * annualRentGrowthFactor;
       const annualGrossRentY = monthlyRentY * 12;
 
+      // Mortgage P&I + amortization for this year's 12 months (stops once the loan is paid off)
+      let yearPandIPaid = 0;
+      for (let m = 0; m < 12; m++) {
+        if (currentMortgageBalance <= 0) break;
+        const interestThisMonth = currentMortgageBalance * monthlyMortgageRate;
+        const paymentThisMonth = Math.min(monthlyPandI, currentMortgageBalance + interestThisMonth);
+        const principalThisMonth = paymentThisMonth - interestThisMonth;
+        currentMortgageBalance = Math.max(0, currentMortgageBalance - principalThisMonth);
+        yearPandIPaid += paymentThisMonth;
+      }
+      const monthlyPandIY = yearPandIPaid / 12;
+
+      // Tax/insurance portion escalates annually; P&I portion above already reflects real amortization/payoff.
+      const monthlyTaxInsuranceY = baseTaxInsurancePortion * Math.pow(1 + inputs.taxInsuranceGrowth, y - 1);
+      const monthlyHousingPaymentY = monthlyPandIY + monthlyTaxInsuranceY;
+
       // Expenses in Year y
       const monthlyReserveY = monthlyRentY * inputs.reserveRate;
-      const monthlyNetCashflowY = monthlyRentY - monthlyReserveY - inputs.mortgagePITI - inputs.helocPayment;
+      const monthlyNetCashflowY = monthlyRentY - monthlyReserveY - monthlyHousingPaymentY - inputs.helocPayment;
       const annualNetCashflowY = monthlyNetCashflowY * 12;
 
       cumulativeCashFlow += annualNetCashflowY;
 
-      // Home Value & Principal Paydown
+      // Home Value appreciation (principal paydown already applied above, month by month)
       currentHomeValue = currentHomeValue * (1 + inputs.appreciationRate);
-      currentMortgageBalance = Math.max(0, currentMortgageBalance * (1 - annualMortgagePaydownRate));
 
       const rentalGrossEquity = currentHomeValue - currentMortgageBalance;
       const futureSellingCosts = currentHomeValue * inputs.sellingCostsRate;
 
       // Section 121 Tax Calculation
       // If sold in year <= 3, primary residence exclusion applies ($250k single / $500k married tax free)
-      const totalGainOnProperty = Math.max(0, currentHomeValue - inputs.homeValue);
+      // Gain is measured from the original purchase price (cost basis), not from
+      // the home's value on the day the rent-vs-sell decision was made — using
+      // today's value understates gain for anyone who already owned the home
+      // for a while before this decision point.
+      const totalGainOnProperty = Math.max(0, currentHomeValue - inputs.originalPurchasePrice);
       const taxExclusionLimit = inputs.taxFilingStatus === 'married' ? 500000 : 250000;
       let estimatedTaxOwed = 0;
 
@@ -192,7 +244,7 @@
         // Excluded period passed: capital gains tax + depreciation recapture
         const taxableGain = Math.max(0, totalGainOnProperty - taxExclusionLimit);
         const capitalGainsTax = taxableGain * 0.15; // 15% LTCG estimate
-        const estimatedDepreciationRecapture = (inputs.homeValue * 0.7) / 27.5 * y * 0.25; // standard residential depreciation
+        const estimatedDepreciationRecapture = (inputs.originalPurchasePrice * 0.7) / 27.5 * y * 0.25; // standard residential depreciation, based on cost basis
         estimatedTaxOwed = capitalGainsTax + estimatedDepreciationRecapture;
       }
 
@@ -633,6 +685,22 @@
         elements.appreciationRate.value = (data.appreciationRate * 100).toFixed(1);
         elements.appreciationRateSlider.value = (data.appreciationRate * 100).toFixed(1);
       }
+      if (data.mortgageRate !== undefined) {
+        elements.mortgageRate.value = (data.mortgageRate * 100).toFixed(2);
+        elements.mortgageRateSlider.value = (data.mortgageRate * 100).toFixed(2);
+      }
+      if (data.loanTermYears !== undefined) {
+        elements.loanTermYears.value = data.loanTermYears;
+        elements.loanTermYearsSlider.value = data.loanTermYears;
+      }
+      if (data.taxInsuranceGrowth !== undefined) {
+        elements.taxInsuranceGrowth.value = (data.taxInsuranceGrowth * 100).toFixed(1);
+        elements.taxInsuranceGrowthSlider.value = (data.taxInsuranceGrowth * 100).toFixed(1);
+      }
+      if (data.originalPurchasePrice !== undefined) {
+        elements.originalPurchasePrice.value = data.originalPurchasePrice;
+        elements.originalPurchasePriceSlider.value = data.originalPurchasePrice;
+      }
       if (data.homeValue !== undefined) {
         elements.homeValue.value = data.homeValue;
         elements.homeValueSlider.value = data.homeValue;
@@ -667,10 +735,14 @@
     bindInputAndSlider(elements.holdingPeriod, elements.holdingPeriodSlider, recalc);
     bindInputAndSlider(elements.reserveRate, elements.reserveRateSlider, recalc);
     bindInputAndSlider(elements.appreciationRate, elements.appreciationRateSlider, recalc);
+    bindInputAndSlider(elements.mortgageRate, elements.mortgageRateSlider, recalc);
+    bindInputAndSlider(elements.loanTermYears, elements.loanTermYearsSlider, recalc);
+    bindInputAndSlider(elements.taxInsuranceGrowth, elements.taxInsuranceGrowthSlider, recalc);
     bindInputAndSlider(elements.homeValue, elements.homeValueSlider, recalc);
     bindInputAndSlider(elements.mortgageBalance, elements.mortgageBalanceSlider, recalc);
     bindInputAndSlider(elements.sellingCostsRate, elements.sellingCostsRateSlider, recalc);
     bindInputAndSlider(elements.investmentReturn, elements.investmentReturnSlider, recalc);
+    bindInputAndSlider(elements.originalPurchasePrice, elements.originalPurchasePriceSlider, recalc);
 
     elements.taxFilingStatus.addEventListener('change', recalc);
 
@@ -705,11 +777,11 @@
 
     // Property Import Listener
     if (elements.btnImportProperty) {
-      elements.btnImportProperty.addEventListener('click', () => handlePropertyImport(false));
+      elements.btnImportProperty.addEventListener('click', () => handlePropertyImport());
     }
     if (elements.importUrlInput) {
       elements.importUrlInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') handlePropertyImport(false);
+        if (e.key === 'Enter') handlePropertyImport();
       });
     }
 
@@ -717,7 +789,7 @@
     if (btnBookmarklet) {
       btnBookmarklet.addEventListener('click', () => {
         showImportStatus(`
-          📌 <strong>Bookmarklet Import:</strong> Drag the <strong>🔖 Import to Nycto.ninja</strong> bookmarklet button from your Housing Cost Calculator into your browser toolbar. While viewing any listing on Zillow or Redfin, click it to instantly cache the property!
+          📌 <strong>Bookmarklet Import:</strong> Drag the <strong>🔖 Import to Nycto.ninja</strong> bookmarklet button from your Housing Cost Calculator into your browser toolbar. While viewing any listing on Redfin, Zillow, Realtor.com, or Homes.com, click it to instantly cache the property!
         `, 'info');
       });
     }
@@ -732,35 +804,35 @@
     recalc();
   }
 
-  // Handle Property Import from Redfin/Zillow via backend property-lookup.php
-  async function handlePropertyImport(force = false) {
+  // Handle Property Import — reads from the shared 7-day property cache at
+  // backend/property-lookup.php. NOTE: that endpoint only ever reads the
+  // cache; it has no live-scrape code path (by design — see the comments in
+  // property-lookup.php about the shared, budget-limited scrape service).
+  // The only way a property actually gets INTO the cache is the browser
+  // bookmarklet capturing the listing page you're already viewing and
+  // POSTing it to import-property.php. So on a cache miss we point people at
+  // the bookmarklet instead of offering a "live fetch" retry that would just
+  // hit the same cache-only endpoint again and return the same miss.
+  async function handlePropertyImport() {
     const rawUrl = elements.importUrlInput ? elements.importUrlInput.value.trim() : '';
     if (!rawUrl) {
-      showImportStatus('Please paste a valid Redfin, Zillow, or Realtor.com URL.', 'warn');
+      showImportStatus('Please paste a valid Redfin, Zillow, Realtor.com, or Homes.com URL.', 'warn');
       return;
     }
 
-    const modeText = force ? '⚡ Performing live property scrape (takes ~5-10s)...' : '⚡ Checking property cache...';
-    showImportStatus(modeText, 'info');
+    showImportStatus('⚡ Checking property cache...', 'info');
 
     try {
-      let endpoint = `../backend/property-lookup.php?url=${encodeURIComponent(rawUrl)}`;
-      if (force) endpoint += '&force=1';
-
+      const endpoint = `../backend/property-lookup.php?url=${encodeURIComponent(rawUrl)}`;
       const res = await fetch(endpoint);
       const data = await res.json();
 
       if (data.error) {
-        if (!force && (data.error.includes('cache') || data.cached === false)) {
+        if (data.cached === false) {
           showImportStatus(`
-            ⚠️ <strong>Property not in 7-day cache yet.</strong> 
-            <button type="button" id="btn-force-fetch" style="margin-left: 0.5rem; background: var(--accent-cyan); color: #080a0f; border: none; padding: 0.3rem 0.75rem; border-radius: 0.25rem; font-weight: 700; font-size: 0.78rem; cursor: pointer;">⚡ Live Fetch Property</button>
+            ⚠️ <strong>Not in the shared cache yet.</strong> Auto-Fetch can only read a property that's already been captured — it can't scrape a live page from here.
+            Use the 🔖 <strong>Import to Nycto.ninja</strong> bookmarklet (from the <a href="../mortgage-calculator/index.html" style="color: var(--accent-cyan);">Housing Cost Calculator</a>) while viewing this listing to add it to the cache, then come back and click Load Property again.
           `, 'warn');
-
-          const btnForce = document.getElementById('btn-force-fetch');
-          if (btnForce) {
-            btnForce.onclick = () => handlePropertyImport(true);
-          }
           return;
         }
 

@@ -21,9 +21,6 @@
       <a href="../mortgage-calculator/index.html" class="btn-subnav">🏠 Housing Cost Calculator</a>
       <h1>Nycto's Rent vs. Sell Calculator</h1>
     </div>
-    <div class="header-actions">
-      <span class="badge badge-gold">Solar Gold &amp; Violet Engine</span>
-    </div>
   </header>
 
   <main class="container">
@@ -46,20 +43,20 @@
         </div>
       </div>
       <p id="verdict-desc" class="verdict-desc">
-        Holding the house as a rental yields an estimated <strong>+$42,150</strong> more in total net worth over 10 years compared to selling today and reinvesting the net cash proceeds.
+        Holding the house as a rental yields an estimated <strong>+$14,868</strong> more in total net worth over 10 years compared to selling today and reinvesting the net cash proceeds.
       </p>
       <div class="verdict-stats-row">
         <div class="stat-box">
           <span class="stat-label">Rent Strategy Net Worth</span>
-          <span id="stat-rent-wealth" class="stat-value text-violet">$184,500</span>
+          <span id="stat-rent-wealth" class="stat-value text-violet">$268,375</span>
         </div>
         <div class="stat-box">
           <span class="stat-label">Sell Strategy Net Worth</span>
-          <span id="stat-sell-wealth" class="stat-value text-gold">$142,350</span>
+          <span id="stat-sell-wealth" class="stat-value text-gold">$253,507</span>
         </div>
         <div class="stat-box">
           <span class="stat-label">Crossover / Break-Even</span>
-          <span id="stat-crossover" class="stat-value">Year 3</span>
+          <span id="stat-crossover" class="stat-value">Year 1</span>
         </div>
       </div>
     </div>
@@ -67,12 +64,12 @@
     <!-- Core Metrics Dashboard (Matching User Screenshot) -->
     <section class="metrics-grid">
       <div class="metric-card">
-        <span id="metric-monthly-cashflow" class="metric-value">$70</span>
+        <span id="metric-monthly-cashflow" class="metric-value">-$750</span>
         <span class="metric-label">Year 1 Net Monthly Cashflow</span>
       </div>
       <div class="metric-card-divider"></div>
       <div class="metric-card">
-        <span id="metric-horizon-cashflow" class="metric-value">$4,668</span>
+        <span id="metric-horizon-cashflow" class="metric-value">-$57,209</span>
         <span class="metric-label">Total Net Cashflow Over Horizon</span>
       </div>
     </section>
@@ -141,7 +138,7 @@
             <span class="recovery-item-title">4. Recommended Balanced Plan</span>
             <button type="button" id="btn-fix-balanced" class="btn-fix-action btn-fix-gold">⚡ Apply Balanced Plan</button>
           </div>
-          <p id="recovery-balanced-text" class="recovery-text">Raise rent to <strong>$3,200</strong>, set reserves to <strong>15%</strong>, and reduce HELOC to <strong>$300</strong> to yield <strong>+$220/mo</strong> net positive cash flow.</p>
+          <p id="recovery-balanced-text" class="recovery-text">Raise rent to <strong>$3,250</strong>, set reserves to <strong>15%</strong>, and reduce HELOC to <strong>$250</strong> to yield <strong>+$313/mo</strong> net positive cash flow.</p>
         </div>
       </div>
     </div>
@@ -159,7 +156,7 @@
         </div>
       </div>
       <div id="tax-impact-tag" class="tax-impact-tag">
-        Impact: Moving past Year 3 adds an estimated <strong>$18,400</strong> in taxes upon sale.
+        Impact: Moving past Year 3 adds an estimated <strong>$28,636</strong> in taxes upon sale.
       </div>
     </div>
 
@@ -176,7 +173,7 @@
           <strong style="color: var(--accent-cyan); font-family: var(--font-display); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em;">
             🔍 Auto-Fetch Rent &amp; Property Data
           </strong>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">Redfin • Zillow • Realtor.com</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">Redfin • Zillow • Realtor.com • Homes.com</span>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
           <input type="text" id="importUrlInput" placeholder="Paste Redfin, Zillow, or Realtor.com URL..." style="flex: 1 1 280px; background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); border-radius: 0.4rem; padding: 0.6rem 0.85rem; color: #fff; font-size: 0.85rem; outline: none;" />
@@ -199,7 +196,7 @@
                 <input type="number" id="rentAmount" min="500" max="25000" step="50" value="2800" />
               </div>
             </div>
-            <input type="range" id="rentAmountSlider" min="500" max="10000" step="50" value="2800" class="slider slider-violet" />
+            <input type="range" id="rentAmountSlider" min="500" max="25000" step="50" value="2800" class="slider slider-violet" />
             <span class="input-hint" style="color: var(--accent-violet-bright); font-weight: 500;">💵 Potential Income (What a tenant would pay you monthly if you keep &amp; rent it)</span>
           </div>
 
@@ -211,7 +208,7 @@
                 <input type="number" id="mortgagePITI" min="200" max="25000" step="50" value="2200" />
               </div>
             </div>
-            <input type="range" id="mortgagePITISlider" min="500" max="10000" step="50" value="2200" class="slider slider-violet" />
+            <input type="range" id="mortgagePITISlider" min="200" max="25000" step="50" value="2200" class="slider slider-violet" />
             <span class="input-hint" style="color: #f87171; font-weight: 500;">💸 Existing Expenses (Your current monthly payment for this house: principal, interest, taxes, insurance)</span>
           </div>
 
@@ -223,7 +220,7 @@
                 <input type="number" id="helocPayment" min="0" max="10000" step="25" value="650" />
               </div>
             </div>
-            <input type="range" id="helocPaymentSlider" min="0" max="3000" step="25" value="650" class="slider slider-violet" />
+            <input type="range" id="helocPaymentSlider" min="0" max="10000" step="25" value="650" class="slider slider-violet" />
           </div>
 
           <div class="input-group">
@@ -234,7 +231,7 @@
                 <span class="suffix">%</span>
               </div>
             </div>
-            <input type="range" id="rentGrowthSlider" min="0" max="10" step="0.1" value="3.0" class="slider slider-violet" />
+            <input type="range" id="rentGrowthSlider" min="0" max="15" step="0.1" value="3.0" class="slider slider-violet" />
           </div>
 
           <div class="input-group">
@@ -263,7 +260,7 @@
                     <span class="suffix">%</span>
                   </div>
                 </div>
-                <input type="range" id="reserveRateSlider" min="0" max="40" step="1" value="25" class="slider slider-violet" />
+                <input type="range" id="reserveRateSlider" min="0" max="50" step="1" value="25" class="slider slider-violet" />
                 <span class="input-hint">*Reference screenshot defaults to 25% for vacancy, maintenance, &amp; management.</span>
               </div>
 
@@ -275,7 +272,42 @@
                     <span class="suffix">%</span>
                   </div>
                 </div>
-                <input type="range" id="appreciationRateSlider" min="0" max="10" step="0.1" value="3.5" class="slider slider-violet" />
+                <input type="range" id="appreciationRateSlider" min="0" max="15" step="0.1" value="3.5" class="slider slider-violet" />
+              </div>
+
+              <div class="input-group">
+                <div class="input-label-row">
+                  <label for="mortgageRate">Mortgage Interest Rate</label>
+                  <div class="input-with-suffix">
+                    <input type="number" id="mortgageRate" min="0" max="15" step="0.05" value="6.5" />
+                    <span class="suffix">%</span>
+                  </div>
+                </div>
+                <input type="range" id="mortgageRateSlider" min="0" max="15" step="0.05" value="6.5" class="slider slider-violet" />
+                <span class="input-hint">*Used with the loan term below to compute a real amortization schedule instead of a flat paydown-rate guess.</span>
+              </div>
+
+              <div class="input-group">
+                <div class="input-label-row">
+                  <label for="loanTermYears">Remaining Loan Term</label>
+                  <div class="input-with-suffix">
+                    <input type="number" id="loanTermYears" min="1" max="40" step="1" value="27" />
+                    <span class="suffix">yrs</span>
+                  </div>
+                </div>
+                <input type="range" id="loanTermYearsSlider" min="1" max="40" step="1" value="27" class="slider slider-violet" />
+              </div>
+
+              <div class="input-group">
+                <div class="input-label-row">
+                  <label for="taxInsuranceGrowth">Tax &amp; Insurance Annual Growth</label>
+                  <div class="input-with-suffix">
+                    <input type="number" id="taxInsuranceGrowth" min="0" max="15" step="0.1" value="3.0" />
+                    <span class="suffix">%</span>
+                  </div>
+                </div>
+                <input type="range" id="taxInsuranceGrowthSlider" min="0" max="15" step="0.1" value="3.0" class="slider slider-violet" />
+                <span class="input-hint">*Grows only the tax/insurance portion of your PITI each year — the principal &amp; interest portion stays fixed like a real mortgage.</span>
               </div>
             </div>
           </div>
@@ -293,7 +325,7 @@
                 <input type="number" id="homeValue" min="50000" max="5000000" step="5000" value="450000" />
               </div>
             </div>
-            <input type="range" id="homeValueSlider" min="100000" max="1500000" step="5000" value="450000" class="slider slider-gold" />
+            <input type="range" id="homeValueSlider" min="50000" max="5000000" step="5000" value="450000" class="slider slider-gold" />
           </div>
 
           <div class="input-group">
@@ -304,7 +336,7 @@
                 <input type="number" id="mortgageBalance" min="0" max="5000000" step="5000" value="300000" />
               </div>
             </div>
-            <input type="range" id="mortgageBalanceSlider" min="0" max="1200000" step="5000" value="300000" class="slider slider-gold" />
+            <input type="range" id="mortgageBalanceSlider" min="0" max="5000000" step="5000" value="300000" class="slider slider-gold" />
           </div>
 
           <div class="input-group">
@@ -315,7 +347,7 @@
                 <span class="suffix">%</span>
               </div>
             </div>
-            <input type="range" id="sellingCostsRateSlider" min="1" max="10" step="0.5" value="6.0" class="slider slider-gold" />
+            <input type="range" id="sellingCostsRateSlider" min="1" max="12" step="0.5" value="6.0" class="slider slider-gold" />
           </div>
 
           <div class="input-group">
@@ -326,7 +358,19 @@
                 <span class="suffix">%</span>
               </div>
             </div>
-            <input type="range" id="investmentReturnSlider" min="0" max="15" step="0.5" value="7.5" class="slider slider-gold" />
+            <input type="range" id="investmentReturnSlider" min="0" max="20" step="0.5" value="7.5" class="slider slider-gold" />
+          </div>
+
+          <div class="input-group">
+            <div class="input-label-row">
+              <label for="originalPurchasePrice">Original purchase price (cost basis)</label>
+              <div class="input-with-prefix">
+                <span class="prefix">$</span>
+                <input type="number" id="originalPurchasePrice" min="0" max="5000000" step="5000" value="450000" />
+              </div>
+            </div>
+            <input type="range" id="originalPurchasePriceSlider" min="0" max="5000000" step="5000" value="450000" class="slider slider-gold" />
+            <span class="input-hint">*Used to estimate your taxable gain (current value − what you actually paid). Leave equal to today's value if unknown — that understates gain/tax owed.</span>
           </div>
 
           <div class="input-group">
@@ -351,7 +395,9 @@
       </div>
 
       <div class="footnote-text">
-        *Models cumulative net cashflow and total equity build from the departing rental after accounting for reserve percentages (vacancy/maintenance) and primary debt service, compared against liquid net sale proceeds growing at the selected reinvestment rate.
+        *Models cumulative net cashflow and total equity build from the departing rental after accounting for reserve percentages (vacancy/maintenance) and primary debt service, compared against liquid net sale proceeds growing at the selected reinvestment rate. Mortgage paydown uses a real amortization schedule from your entered rate &amp; term; tax/insurance escalates annually while principal &amp; interest stays fixed.
+        <br /><br />
+        ⚠️ Tax figures (Section 121 exclusion, capital gains, depreciation recapture) are simplified planning estimates, not tax advice — actual eligibility and liability depend on your full situation. Confirm with a tax professional before making a decision.
       </div>
     </section>
 

@@ -5,6 +5,37 @@
  * Shared across homeward, mortgage-calculator, and nyctos-gig-grid backend services.
  */
 
+/**
+ * Explicit CORS origin allowlist for session/cookie-authenticated admin
+ * endpoints (sync-db.php). Previously these endpoints reflected *any*
+ * request's Origin header back with Access-Control-Allow-Credentials:
+ * true — since session.cookie_samesite is 'None' over HTTPS (needed so an
+ * admin on a local/dev machine can drive the production sync tool
+ * cross-origin), that combination let literally any website make a
+ * credentialed fetch() against these endpoints from a logged-in admin's
+ * browser and read the response. This allowlist recognizes only the
+ * production domain and local/private-network dev origins (mirroring
+ * isPrivateNetwork() in homeward/js/property-links.js, which is what
+ * decides when the frontend itself talks to these APIs cross-origin) —
+ * everything else falls back to a plain, non-credentialed CORS response.
+ */
+function isAllowedCorsOrigin($origin) {
+    if (empty($origin)) return false;
+    $host = strtolower(parse_url($origin, PHP_URL_HOST) ?: '');
+    if ($host === '') return false;
+
+    $prodHosts = ['nycto.ninja', 'www.nycto.ninja'];
+    if (in_array($host, $prodHosts, true)) return true;
+
+    if ($host === 'localhost' || $host === '127.0.0.1' || $host === '::1') return true;
+    if (substr($host, -6) === '.local' || substr($host, -4) === '.lan') return true;
+    if (preg_match('/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/', $host)) return true;
+    if (preg_match('/^192\.168\.\d{1,3}\.\d{1,3}$/', $host)) return true;
+    if (preg_match('/^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/', $host)) return true;
+
+    return false;
+}
+
 if (session_status() === PHP_SESSION_NONE) {
     @ini_set('session.cookie_httponly', 1);
     $isHttps = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';

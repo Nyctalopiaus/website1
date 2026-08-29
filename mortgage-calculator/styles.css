@@ -37,6 +37,10 @@
   padding: 0;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background-color: var(--bg-dark);
   background-image: 
@@ -210,6 +214,165 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* Collapsible peer cards (e.g. "Extra Payments & Schedule") — closed by
+   default since they're optional/advanced, not everyday fields. The
+   header is a real <button> for keyboard/screen-reader access; content
+   stays in the DOM (just [hidden]) so nothing about the underlying
+   inputs or their values changes when collapsed. */
+.panel-card.collapsible {
+  padding: 1.75rem;
+}
+
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.collapsible-header h2 {
+  margin-bottom: 0;
+}
+
+.collapsible-header .chevron {
+  color: var(--text-bright);
+  font-size: 1.2rem;
+  font-weight: 700;
+  transition: transform 0.2s ease, color 0.2s ease;
+  flex-shrink: 0;
+  margin-left: 0.75rem;
+}
+
+.collapsible-header:hover .chevron {
+  color: var(--accent-cyan);
+}
+
+.collapsible-header[aria-expanded="true"] .chevron {
+  transform: rotate(180deg);
+}
+
+.collapsible-body {
+  margin-top: 1.25rem;
+}
+
+/* For a card whose header needs a second, non-toggling control alongside
+   the collapse button (e.g. Rates & Taxes' "Sync Live Rates") — the toggle
+   button takes the available space, the extra control sits beside it,
+   neither nested inside the other. */
+.collapsible-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.collapsible-header-row .collapsible-header {
+  flex: 1;
+  min-width: 0;
+}
+
+.collapsible-body[hidden] {
+  display: none;
+}
+
+/* DTI Sub-Accordion Groups */
+.dti-accordion-group {
+  background: rgba(7, 9, 8, 0.4);
+  border: 1px solid var(--border-color);
+  border-radius: 0.6rem;
+  margin-bottom: 0.85rem;
+  overflow: hidden;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.dti-accordion-group:last-child {
+  margin-bottom: 0;
+}
+
+.dti-accordion-group:hover {
+  border-color: var(--border-hover);
+}
+
+.dti-accordion-header {
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid transparent;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.dti-accordion-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dti-accordion-header[aria-expanded="true"] {
+  border-bottom-color: var(--border-color);
+}
+
+.dti-accordion-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.dti-accordion-title {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-bright);
+  letter-spacing: -0.01em;
+}
+
+.dti-summary-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  background: var(--accent-cyan-dim);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.3rem;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.dti-summary-badge.emerald {
+  color: var(--accent-emerald);
+  background: var(--accent-emerald-dim);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.dti-summary-badge.warning {
+  color: var(--color-moderate);
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.dti-summary-badge.muted {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-color);
+}
+
+.dti-accordion-header[aria-expanded="true"] .dti-summary-badge {
+  display: none;
+}
+
+.dti-accordion-body {
+  padding: 1.1rem 1rem;
+  margin-top: 0;
+}
+
+.dti-accordion-body[hidden] {
+  display: none;
+}
+
 /* Form inputs */
 .input-group {
   margin-bottom: 1.25rem;
@@ -231,6 +394,7 @@ body {
 /* Payment Schedule Frequency Toggle */
 .frequency-toggle-group {
   display: flex;
+  flex-wrap: wrap;
   background: rgba(7, 9, 8, 0.6);
   border: 1px solid var(--border-color);
   border-radius: 0.5rem;
@@ -240,7 +404,8 @@ body {
 }
 
 .freq-btn {
-  flex: 1;
+  flex: 1 1 0px;
+  min-width: 0;
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -251,8 +416,10 @@ body {
   border-radius: 0.35rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.25;
   text-align: center;
+  word-break: break-word;
 }
 
 .freq-btn:hover {
@@ -469,6 +636,83 @@ input[type="number"]:focus {
   margin-bottom: 1.5rem;
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.5rem;
+}
+
+/* Pre/Post Recast Card Readout & Toggles */
+.recast-readout-banner {
+  background: rgba(16, 185, 129, 0.06);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 0.4rem;
+  padding: 0.45rem 0.6rem;
+  margin-top: -0.85rem;
+  margin-bottom: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.recast-readout-values {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.recast-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--accent-emerald);
+  background: var(--accent-emerald-dim);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 0.08rem 0.35rem;
+  border-radius: 0.2rem;
+  letter-spacing: 0.03em;
+}
+
+.recast-transition-text {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-emerald);
+  font-family: var(--font-display);
+}
+
+.recast-card-toggle {
+  display: inline-flex;
+  background: rgba(7, 9, 8, 0.6);
+  border: 1px solid var(--border-color);
+  border-radius: 0.3rem;
+  padding: 0.15rem;
+  gap: 0.15rem;
+  width: 100%;
+}
+
+.recast-toggle-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.25rem 0.35rem;
+  border-radius: 0.2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.recast-toggle-btn:hover {
+  color: var(--text-bright);
+}
+
+.recast-toggle-btn.active {
+  background: var(--bg-card);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .card-details {
@@ -707,6 +951,30 @@ input[type="number"]:focus {
   letter-spacing: 0.02em;
 }
 
+.badge-dti-delta {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  width: fit-content;
+  letter-spacing: 0.02em;
+  transition: all 0.25s ease;
+}
+
+.badge-dti-delta.active {
+  background-color: rgba(6, 182, 212, 0.15);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.2);
+}
+
+.badge-dti-delta.neutral {
+  background-color: rgba(148, 163, 184, 0.1);
+  color: var(--text-dark);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
 .progress-bar-container {
   height: 6px;
   background: var(--border-color);
@@ -773,6 +1041,140 @@ input[type="number"]:focus {
   font-size: 0.85rem;
   color: var(--text-muted);
   line-height: 1.6;
+}
+
+/* The dollar figures behind a DTI percentage (monthly cost ÷ monthly
+   income) — sits between the progress bar and the plain-English
+   description so the ratio's inputs are visible at a glance. */
+.dti-dollar-breakdown {
+  font-size: 0.8rem;
+  color: var(--text-bright);
+  font-weight: 600;
+  margin-top: 0.6rem;
+  font-family: var(--font-mono, var(--font-sans));
+}
+
+.dti-dollar-breakdown .dti-dollar-sep {
+  color: var(--text-muted);
+  font-weight: 400;
+  margin: 0 0.3rem;
+}
+
+/* Est. take-home breakdown line shown under the Gross/Net income-basis
+   toggle when Net (Best Guess) is selected — spells out the estimated
+   deductions feeding the adjusted income figure every DTI panel below uses. */
+.income-basis-breakdown {
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  margin-top: 0.6rem;
+}
+
+/* Conservative <-> Liberal fine-tune slider, shown only when Net (Best
+   Guess) is the active income basis — lets the estimate be nudged to match
+   the user's real paycheck instead of the generic national-average guess. */
+.income-basis-adjust-wrap {
+  margin-top: 0.85rem;
+}
+
+.income-basis-adjust-scale {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+}
+
+.income-basis-adjust-scale span:first-child,
+.income-basis-adjust-scale span:last-child {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+#income-basis-adjust-value {
+  color: var(--text-bright);
+  font-weight: 700;
+}
+
+/* DTI switcher — lets the Affordability card show one metric (Bank
+   Qualifying / Back-End / Effective / Holding Period + Holding Period
+   Back-End when Bridge Loan mode is active) at a time instead of stacking
+   every metric's full value/badge/progress-bar block permanently. The two
+   Holding Period tabs are hidden via inline style until Bridge Loan mode
+   is on (toggled in app.js), and default back to the Bank Qualifying tab
+   if that mode is turned off while one of them is active. */
+.affordability-card {
+  scroll-margin-top: 1.5rem;
+}
+
+.dti-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.dti-tab-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.dti-tab-btn:hover {
+  color: var(--text-bright);
+  border-color: var(--border-hover);
+}
+
+.dti-tab-btn.active {
+  background: var(--accent-cyan-dim);
+  border-color: rgba(6, 182, 212, 0.4);
+  color: var(--accent-cyan);
+}
+
+/* Non-active pills are tinted by that metric's own DTI status (set via
+   setDtiTabStatus() in ui.js) so the row reads at a glance — the
+   currently-selected pill always stays cyan (see .dti-tab-btn.active
+   above), status color only shows up on the ones you're not looking at. */
+.dti-tab-btn.bg-healthy:not(.active) {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: var(--color-healthy);
+}
+
+.dti-tab-btn.bg-moderate:not(.active) {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: var(--color-moderate);
+}
+
+.dti-tab-btn.bg-high:not(.active) {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: var(--color-high);
+}
+
+.dti-panel {
+  display: none;
+}
+
+.dti-panel.active {
+  display: block;
+}
+
+.dti-jump-link {
+  color: var(--accent-cyan);
+  font-weight: 600;
 }
 
 /* Footer */
@@ -939,6 +1341,19 @@ input[type="number"]:focus {
   color: var(--text-dark);
 }
 
+/* Bridge Loan recast divider row — marks the month the schedule's required
+   payment changes because the old house sold and the new mortgage was
+   recast. Deliberately distinct from .payoff-highlight (emerald) so the two
+   kinds of "something changed here" rows read differently at a glance. */
+.amort-table tr.recast-event-row td {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--color-moderate);
+  font-weight: 700;
+  text-align: center;
+  border-top: 2px solid var(--color-moderate);
+  border-bottom: 2px solid var(--color-moderate);
+}
+
 /* Back Link button styles */
 .btn-back-link {
   background: var(--bg-card);
@@ -1004,6 +1419,11 @@ input[type="number"]:focus {
     border-bottom: 1px solid var(--border-color) !important;
     color: var(--text-bright) !important;
   }
+
+  .recast-event-row td {
+    color: var(--color-moderate) !important;
+    background: rgba(245, 158, 11, 0.15) !important;
+  }
 }
 
 /* Rates Attribution */
@@ -1044,6 +1464,12 @@ input[type="number"]:focus {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.25rem;
+}
+
+.chart-header .collapsible-header {
+  flex: 1;
+  min-width: 0;
+  width: auto;
 }
 
 .chart-legend {
@@ -1589,6 +2015,23 @@ input[type="number"]:focus {
    "Have a house to sell?" section
    ============================================================ */
 
+.sell-house-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sell-house-header-row .sell-house-header {
+  flex: 1;
+  min-width: 0;
+}
+
+.sell-house-header-row .collapsible-header {
+  width: auto;
+  flex-shrink: 0;
+  padding: 0.35rem;
+}
+
 .sell-house-header {
   display: flex;
   align-items: center;
@@ -1844,4 +2287,37 @@ input[type="number"]:focus {
   background: rgba(245, 158, 11, 0.18);
 }
 
+/* ============================================================
+   Bridge Loan mode (within "Have a house to sell?")
+   ============================================================ */
+
+/* Amber active-state for the Bridge Loan segmented-control button, distinct
+   from the emerald "Accelerated" variant and the default cyan sell theme —
+   signals "temporary/short-term financing" rather than the sale itself. */
+.freq-btn[data-sale-mode="bridgeLoan"].active {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--color-moderate);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+#sale-mode-bridge-panel .sell-proceeds-box {
+  margin: 1rem 0;
+}
+
+#sale-mode-bridge-panel .sell-house-card-heading {
+  color: var(--color-moderate);
+  opacity: 1;
+}
+
+/* Amortization page's Bridge Loan & Recast summary card — same amber theme
+   as the bridge panel above, applied to the standalone .panel-card wrapper
+   this page uses instead of #sale-mode-bridge-panel. */
+#amort-recast-box h2 {
+  border-left-color: var(--color-moderate);
+}
+
+#amort-recast-box .sell-house-card-heading {
+  color: var(--color-moderate);
+  opacity: 1;
+}
 

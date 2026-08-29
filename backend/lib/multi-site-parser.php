@@ -82,6 +82,7 @@ function parseGenericLdJsonHtml($html, $url = '') {
     
     $address = null;
     $price = null;
+    $rentalEstimate = null;
     $beds = null;
     $baths = null;
     $sqft = null;
@@ -193,9 +194,9 @@ function parseGenericLdJsonHtml($html, $url = '') {
         $sqft = extractNumericField('livingArea|livingAreaValue|livingSquareFeet|sqft|buildingAreaSqFt|totalSqFt', [$html]);
     }
     if ($lotSqFt === null) {
-        $lotVal = extractNumericField('lotSize|lotAreaValue|lotArea|lotAreaSqFt|lotSqFt|sqftLot|lotSizeSqFt', [$html]);
-        if ($lotVal !== null) {
-            $isAcres = ($lotVal < 100) || (bool)preg_match('/\\\\?"lot(?:AreaUnits|Units|SizeUnits)\\\\?"\s*:\s*\\\\?"(Acres?|ac)\\\\?"/i', $html);
+        $lotVal = extractNumericField('lotSize|lotAreaValue|lotArea|lotAreaSqFt|lotSqFt|sqftLot|lotSizeSqFt', [$html], true);
+        if ($lotVal !== null && $lotVal > 0) {
+            $isAcres = ($lotVal < 100) || (bool)preg_match('/\\\\?"lot(?:AreaUnit|AreaUnits|Unit|Units|SizeUnit|SizeUnits)\\\\?"\s*:\s*\\\\?"(Acres?|ac)\\\\?"/i', $html);
             $lotSqFt = $isAcres ? floatval($lotVal) * 43560 : floatval($lotVal);
         }
     }
@@ -207,12 +208,15 @@ function parseGenericLdJsonHtml($html, $url = '') {
         $yearBuilt = null;
     }
 
-    $foundSomething = $price !== null || $hoaFee !== null || $beds !== null || $baths !== null
+    $rentalEstimate = deriveRentalEstimate([$html], $sqft, $price);
+
+    $foundSomething = $price !== null || $rentalEstimate !== null || $hoaFee !== null || $beds !== null || $baths !== null
         || $sqft !== null || $lotSqFt !== null || $yearBuilt !== null || $photoUrl !== null;
 
     return [
         'address' => $address,
         'price' => $price,
+        'rentalEstimate' => $rentalEstimate,
         'propertyTaxRate' => $propertyTaxRate,
         'hoaFee' => $hoaFee,
         'beds' => $beds,
@@ -318,8 +322,32 @@ function parseZillowHtml($html, $url = '') {
     }
 
     // 7. LOT SQFT
+    if ($result['lotSqFt'] !== null && $result['lotSqFt'] <= 0) {
+        $result['lotSqFt'] = null;
+    }
+
     if ($result['lotSqFt'] === null) {
-        // A. JSON dimension string match (e.g. "lotDimensions": "45x100" or "45 x 100")
+        // A. JSON factLabel / factValue arrays (order-agnostic)
+        foreach ($jsonHaystacks as $hs) {
+            if (preg_match_all('/(?:\\\\?"(?:factLabel|label|name)\\\\?"\s*:\s*\\\\?"Lot(?:[ \-_]?(?:size|area)|\s*\([^)]*\))?\\\\?"\s*,\s*\\\\?"(?:factValue|value)\\\\?"\s*:\s*\\\\?"([^"\\\\]+)\\\\?"|\\\\?"(?:factValue|value)\\\\?"\s*:\s*\\\\?"([^"\\\\]+)\\\\?"\s*,\s*\\\\?"(?:factLabel|label|name)\\\\?"\s*:\s*\\\\?"Lot(?:[ \-_]?(?:size|area)|\s*\([^)]*\))?\\\\?")/i', $hs, $matches, PREG_SET_ORDER)) {
+                foreach ($matches as $match) {
+                    $valStr = trim(stripslashes(!empty($match[1]) ? $match[1] : $match[2]));
+                    if (preg_match('/([0-9,.]+)\s*(sq\.?\s*ft\.?|square\s*feet|sqft|acres?|ac)/i', $valStr, $vm)) {
+                        $num = floatval(str_replace(',', '', $vm[1]));
+                        $unit = strtolower($vm[2]);
+                        if ($num > 0) {
+                            $isAcres = (strpos($unit, 'ac') === 0 || $num < 100);
+                            $result['lotSqFt'] = $isAcres ? round($num * 43560, 2) : $num;
+                            break 2;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if ($result['lotSqFt'] === null) {
+        // B. JSON dimension string match (e.g. "lotDimensions": "45x100" or "45 x 100")
         foreach ($jsonHaystacks as $hs) {
             if (preg_match('/\\\\?"lot(?:Dimensions|Size|Area)\\\\?"\s*:\s*\\\\?"([0-9,.]+)\s*x\s*([0-9,.]+)\\\\?"/i', $hs, $dm)) {
                 $w = floatval(str_replace(',', '', $dm[1]));
@@ -333,13 +361,16 @@ function parseZillowHtml($html, $url = '') {
     }
 
     if ($result['lotSqFt'] === null) {
-        // B. Standard JSON numeric fields
-        $lotVal = extractNumericField('lotSize|lotAreaValue|lotArea|lotAreaSqFt|lotSqFt|sqftLot|lotSizeSqFt|lotSquareFeet|lotAcres|lotSizeAcres', $jsonHaystacks);
+        // C. Standard JSON numeric fields (filtering out zero/negative values)
+        $lotVal = extractNumericField('lotSize|lotAreaValue|lotArea|lotAreaSqFt|lotSqFt|sqftLot|lotSizeSqFt|lotSquareFeet|lotAcres|lotSizeAcres|lot_size|lotsize', $jsonHaystacks, true);
         if ($lotVal !== null && $lotVal > 0) {
             $isAcres = ($lotVal < 100);
             foreach ($jsonHaystacks as $hs) {
-                if (preg_match('/\\\\?"lot(?:AreaUnits|Units|SizeUnits)\\\\?"\s*:\s*\\\\?"(Acres?|ac)\\\\?"/i', $hs)) {
+                if (preg_match('/\\\\?"lot(?:AreaUnit|AreaUnits|Unit|Units|SizeUnit|SizeUnits)\\\\?"\s*:\s*\\\\?"(Acres?|ac)\\\\?"/i', $hs)) {
                     $isAcres = true;
+                    break;
+                } elseif (preg_match('/\\\\?"lot(?:AreaUnit|AreaUnits|Unit|Units|SizeUnit|SizeUnits)\\\\?"\s*:\s*\\\\?"(sq\.?\s*ft\.?|square\s*feet|sqft)\\\\?"/i', $hs)) {
+                    $isAcres = false;
                     break;
                 }
             }
@@ -348,21 +379,24 @@ function parseZillowHtml($html, $url = '') {
     }
 
     if ($result['lotSqFt'] === null) {
-        // C. Tag-tolerant DOM text (handles "sq. ft.", "sqft", "acres", "ac", optional parens, optional period)
-        if (preg_match('/(?:Lot\s*(?:Size|Area|Dimensions|Details)?(?:\s*\([^)]*\))?\s*(?:<[^>]+>|[\s:=-])*([0-9,.]+)\s*(?:<[^>]+>|\s)*(sq\.?\s*ft\.?|square\s*feet|sqft|acres?|ac)|([0-9,.]+)\s*(?:<[^>]+>|\s)*(sq\.?\s*ft\.?|square\s*feet|sqft|acres?|ac)\s*(?:<[^>]+>|\s)*lot)/i', $html, $m)) {
-            $valStr = !empty($m[1]) ? $m[1] : $m[3];
-            $unitStr = !empty($m[2]) ? $m[2] : $m[4];
-            $val = floatval(str_replace(',', '', $valStr));
-            $unit = strtolower($unitStr);
-            if ($val > 0) {
-                $isAcres = (strpos($unit, 'ac') === 0 || $val < 100);
-                $result['lotSqFt'] = $isAcres ? round($val * 43560, 2) : $val;
+        // D. String values in JSON (e.g. "lotSize": "0.22 Acres" or "7,840 sqft")
+        foreach ($jsonHaystacks as $hs) {
+            if (preg_match_all('/\\\\?"(?:lotSize|lotArea|lotDetails)\\\\?"\s*:\s*\\\\?"([0-9,.]+)\s*(sq\.?\s*ft\.?|square\s*feet|sqft|acres?|ac)\\\\?"/i', $hs, $m, PREG_SET_ORDER)) {
+                foreach ($m as $match) {
+                    $num = floatval(str_replace(',', '', $match[1]));
+                    $unit = strtolower($match[2]);
+                    if ($num > 0) {
+                        $isAcres = (strpos($unit, 'ac') === 0 || $num < 100);
+                        $result['lotSqFt'] = $isAcres ? round($num * 43560, 2) : $num;
+                        break 2;
+                    }
+                }
             }
         }
     }
 
     if ($result['lotSqFt'] === null) {
-        // D. HTML dimensions (e.g. "Lot size: 45 x 100" or "45' x 100'")
+        // E. HTML dimensions (e.g. "Lot size: 45 x 100" or "45' x 100'")
         if (preg_match('/(?:Lot\s*(?:Size|Area|Dimensions)?\s*(?:<[^>]+>|[\s:=-])*\b([0-9,.]+)\s*(?:ft|\')?\s*x\s*([0-9,.]+)\s*(?:ft|\')?)/i', $html, $m)) {
             $w = floatval(str_replace(',', '', $m[1]));
             $d = floatval(str_replace(',', '', $m[2]));
@@ -373,7 +407,7 @@ function parseZillowHtml($html, $url = '') {
     }
 
     if ($result['lotSqFt'] === null) {
-        // E. HTML elements with "lot" in class/id/data-attribute containing number and unit
+        // F. HTML elements with "lot" in class/id/data-attribute containing number and unit
         if (preg_match('/<(?:li|div|span|td|p)[^>]*(?:lot|parcel)[^>]*>(?:<[^>]+>|\s)*([0-9,.]+)\s*(sq\.?\s*ft\.?|square\s*feet|sqft|acres?|ac)/i', $html, $m)) {
             $val = floatval(str_replace(',', '', $m[1]));
             $unit = strtolower($m[2]);
@@ -385,8 +419,18 @@ function parseZillowHtml($html, $url = '') {
     }
 
     if ($result['lotSqFt'] === null) {
-        // F. Loose lot match anywhere in text when "Lot" precedes a number & unit within 60 chars
-        if (preg_match('/\bLot\b[^<]{0,60}?([0-9,.]+)\s*(sq\.?\s*ft\.?|square\s*feet|sqft|acres?|ac)\b/i', $html, $m)) {
+        // G. Tag-tolerant DOM text (stripping <script>, <style>, and <svg> blocks before tag replacement)
+        $htmlNoNoise = preg_replace('/<(?:script|style|svg)\b[^>]*>(.*?)<\/(?:script|style|svg)>/is', '', $html);
+        $cleanDomText = preg_replace('/\s+/', ' ', preg_replace('/<[^>]+>/', ' ', $htmlNoNoise));
+
+        if (preg_match('/Lot(?:[ \-_]?size)?\b[^<]{0,150}?([0-9,.]+)\s*(sq\.?\s*ft\.?|square\s*feet|sqft|acres?|ac)/i', $cleanDomText, $m)) {
+            $val = floatval(str_replace(',', '', $m[1]));
+            $unit = strtolower($m[2]);
+            if ($val > 0) {
+                $isAcres = (strpos($unit, 'ac') === 0 || $val < 100);
+                $result['lotSqFt'] = $isAcres ? round($val * 43560, 2) : $val;
+            }
+        } elseif (preg_match('/([0-9,.]+)\s*(sq\.?\s*ft\.?|square\s*feet|sqft|acres?|ac)\b[^<]{0,100}?\bLot\b/i', $cleanDomText, $m)) {
             $val = floatval(str_replace(',', '', $m[1]));
             $unit = strtolower($m[2]);
             if ($val > 0) {
@@ -422,10 +466,18 @@ function parseZillowHtml($html, $url = '') {
         }
     }
 
-    $result['foundSomething'] = $result['price'] !== null || $result['hoaFee'] !== null || $result['beds'] !== null 
+    // 10. RENTAL ESTIMATE (Zillow's "Zestimate® Rent", when the listing shows one).
+    // Re-derive against the richer Zillow JSON haystacks (gdpClientCache /
+    // __NEXT_DATA__ / __APOLLO_STATE__) rather than trusting whatever the
+    // generic LD+JSON pass above found from bare $html alone — those blocks
+    // are far more likely to carry an actual site-provided rent estimate
+    // instead of falling back to the sqft/price-based algorithmic guess.
+    $result['rentalEstimate'] = deriveRentalEstimate($jsonHaystacks, $result['sqft'], $result['price']);
+
+    $result['foundSomething'] = $result['price'] !== null || $result['rentalEstimate'] !== null || $result['hoaFee'] !== null || $result['beds'] !== null
         || $result['baths'] !== null || $result['sqft'] !== null || $result['photoUrl'] !== null
         || $result['propertyTaxRate'] !== null || $result['lotSqFt'] !== null || $result['yearBuilt'] !== null;
-        
+
     return $result;
 }
 
@@ -471,6 +523,40 @@ function parsePropertyHtmlByUrl($html, $url, $fallbackAddress = null) {
             $parsed['photoUrl'] = null;
         }
     }
+
+    // Sanity-bound every numeric field the same way yearBuilt already was —
+    // a forged/garbage HTML submission (or a parser mis-match on unrelated
+    // page data) can otherwise inject an implausible number that flows
+    // straight into another site's mortgage math with no floor/ceiling
+    // check. Bounds are deliberately generous (real-world outliers should
+    // still pass) — this is a backstop against nonsense, not a strict
+    // real-estate-market filter.
+    $numericBounds = [
+        'price'            => [1, 100000000],      // $1 - $100M
+        'rentalEstimate'   => [1, 500000],          // $1 - $500k/mo
+        'hoaFee'           => [0, 50000],           // $0 - $50k/mo
+        'propertyTaxRate'  => [0, 20],              // 0% - 20%
+        'beds'             => [0, 50],
+        'baths'            => [0, 50],
+        'sqft'             => [1, 200000],
+        'lotSqFt'          => [1, 500000000],       // ~11,500 acres
+    ];
+    foreach ($numericBounds as $field => $bounds) {
+        if (isset($parsed[$field]) && $parsed[$field] !== null) {
+            $val = $parsed[$field];
+            if (!is_numeric($val) || $val < $bounds[0] || $val > $bounds[1]) {
+                $parsed[$field] = null;
+            }
+        }
+    }
+
+    // Recompute foundSomething now that out-of-bounds values may have been
+    // dropped — a submission whose only "found" field was implausible
+    // should not be cached as a successful import.
+    $parsed['foundSomething'] = $parsed['price'] !== null || $parsed['hoaFee'] !== null
+        || $parsed['beds'] !== null || $parsed['baths'] !== null || $parsed['sqft'] !== null
+        || $parsed['lotSqFt'] !== null || $parsed['yearBuilt'] !== null || $parsed['photoUrl'] !== null
+        || (isset($parsed['rentalEstimate']) && $parsed['rentalEstimate'] !== null);
 
     $parsed['provider'] = $provider;
     return $parsed;

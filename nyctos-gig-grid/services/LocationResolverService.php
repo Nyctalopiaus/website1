@@ -12,14 +12,14 @@ class LocationResolverService {
 
     public function normalizeMarketKey($market) {
         $m = strtolower(trim((string)$market));
-        if ($m === 'texas' || $m === 'tx') return 'texas';
-        if ($m === 'uk' || $m === 'gb' || $m === 'great britain' || $m === 'united kingdom' || $m === 'england') return 'england';
-        if ($m === 'uk-scotland') return 'scotland';
-        if ($m === 'scotland') return 'scotland';
+        if (in_array($m, ['front-range', 'frontrange', 'colorado', 'co', 'denver-boulder', 'springs-pueblo', 'ft-collins-north', 'west-slope'], true)) return 'colorado';
+        if (in_array($m, ['california', 'socal', 'norcal', 'ca', 'southern-california', 'la'], true)) return 'california';
+        if (in_array($m, ['texas', 'tx'], true)) return 'texas';
+        if (in_array($m, ['uk', 'gb', 'great britain', 'united kingdom', 'england'], true)) return 'england';
+        if (in_array($m, ['scotland', 'uk-scotland'], true)) return 'scotland';
         if ($m === 'wales') return 'wales';
-        if ($m === 'ireland' || $m === 'republic of ireland' || $m === 'northern ireland' || $m === 'ie') return 'ireland';
-        if ($m === 'california' || $m === 'socal' || $m === 'ca' || $m === 'southern-california') return 'california';
-        return 'colorado';
+        if (in_array($m, ['ireland', 'republic of ireland', 'northern ireland', 'ie'], true)) return 'ireland';
+        return $m !== '' ? $m : 'colorado';
     }
 
     public function getMarketSearchCentroids() {

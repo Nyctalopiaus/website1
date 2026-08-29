@@ -3,7 +3,10 @@
 class LogRotatorService {
     /**
      * Rotates all active cron_*_sync.log files daily, caps size at 2MB, and purges archived logs older than $maxDays.
-     * Checks logs/cron-sync-log/, logs/, cache/, and root directories for cron_*_sync.log pattern.
+     * Checks logs/cron_sync_log/, logs/, cache/, and root directories for cron_*_sync.log pattern.
+     * (logs/cron_sync_log/ -- underscore -- must match the cPanel cron jobs' actual `>>`
+     * redirect target; those jobs are not part of this codebase and won't change to match
+     * a renamed folder here.)
      *
      * @param string $logDir Target logs directory path
      * @param int $maxDays Maximum retention in days (default 14)
@@ -18,7 +21,7 @@ class LogRotatorService {
         $baseDir = dirname(__DIR__);
         $targetDirs = array_unique([
             realpath($logDir) ?: $logDir,
-            $baseDir . '/logs/cron-sync-log',
+            $baseDir . '/logs/cron_sync_log',
             $baseDir . '/logs',
             $baseDir . '/cache',
             $baseDir
