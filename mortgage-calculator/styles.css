@@ -1,30 +1,30 @@
 :root {
-  --bg-dark: #070908;
-  --bg-panel: #0d120f;
-  --bg-card: #131b17;
-  --border-color: rgba(255, 255, 255, 0.06);
-  --border-hover: rgba(255, 255, 255, 0.12);
+  --bg-dark: #0b132b;
+  --bg-panel: #111d38;
+  --bg-card: #1c2a4a;
+  --border-color: rgba(229, 193, 88, 0.12);
+  --border-hover: rgba(229, 193, 88, 0.3);
   
-  --text-bright: #f3f4f6;
-  --text-muted: #8d9590;
-  --text-dark: #515c56;
+  --text-bright: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dark: #64748b;
   
-  --accent-emerald: #10b981;
-  --accent-emerald-dim: rgba(16, 185, 129, 0.1);
-  --accent-emerald-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --accent-emerald: #e5c158;
+  --accent-emerald-dim: rgba(229, 193, 88, 0.12);
+  --accent-emerald-gradient: linear-gradient(135deg, #f5d77f 0%, #c89d35 100%);
   
-  --accent-cyan: #06b6d4;
-  --accent-cyan-dim: rgba(6, 182, 212, 0.1);
+  --accent-cyan: #38bdf8;
+  --accent-cyan-dim: rgba(56, 189, 248, 0.12);
   
   /* Chart segment colors */
-  --color-pi: #10b981;
-  --color-tax: #3b82f6;
-  --color-ins: #8b5cf6;
-  --color-pmi: #f59e0b;
+  --color-pi: #e5c158;
+  --color-tax: #38bdf8;
+  --color-ins: #a855f7;
+  --color-pmi: #f97316;
   --color-hoa: #ec4899;
 
-  --color-healthy: #10b981;
-  --color-moderate: #f59e0b;
+  --color-healthy: #e5c158;
+  --color-moderate: #f97316;
   --color-high: #ef4444;
   
   --font-sans: 'Outfit', sans-serif;
@@ -44,8 +44,8 @@ html {
 body {
   background-color: var(--bg-dark);
   background-image: 
-    linear-gradient(rgba(6, 8, 11, 0.85), rgba(6, 8, 11, 0.85)),
-    url('assets/cyber_calc_bg.webp');
+    linear-gradient(rgba(11, 19, 43, 0.86), rgba(11, 19, 43, 0.86)),
+    url('assets/navy_gold_calc_bg.webp');
   background-attachment: fixed;
   background-size: cover;
   background-position: center;
@@ -64,7 +64,7 @@ body {
   transform: translateX(-50%);
   width: 1000px;
   height: 600px;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.05) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(229, 193, 88, 0.15) 0%, transparent 70%);
   z-index: -1;
   pointer-events: none;
 }
@@ -117,7 +117,7 @@ body {
 .btn-rates-toggle {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  color: var(--accent-emerald);
+  color: #ffffff;
   border-radius: 0.5rem;
   padding: 0.45rem 1rem;
   font-size: 0.85rem;
@@ -242,16 +242,28 @@ body {
 }
 
 .collapsible-header .chevron {
-  color: var(--text-bright);
-  font-size: 1.2rem;
+  color: var(--accent-cyan);
+  font-size: 0.85rem;
   font-weight: 700;
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition: transform 0.25s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
   flex-shrink: 0;
   margin-left: 0.75rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-cyan-dim);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
 }
 
 .collapsible-header:hover .chevron {
-  color: var(--accent-cyan);
+  background: rgba(56, 189, 248, 0.25);
+  border-color: rgba(56, 189, 248, 0.6);
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.3);
 }
 
 .collapsible-header[aria-expanded="true"] .chevron {
@@ -345,7 +357,7 @@ body {
 .dti-summary-badge.emerald {
   color: var(--accent-emerald);
   background: var(--accent-emerald-dim);
-  border-color: rgba(16, 185, 129, 0.25);
+  border-color: rgba(229, 193, 88, 0.25);
 }
 
 .dti-summary-badge.warning {
@@ -379,6 +391,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  height: 100%;
+}
+
+.input-group > .input-with-prefix,
+.input-group > .input-with-suffix,
+.input-group > input,
+.input-group > select,
+.input-group > .frequency-toggle-group {
+  margin-top: auto;
 }
 
 .input-group:last-child {
@@ -389,6 +410,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
+  align-items: stretch;
 }
 
 /* Payment Schedule Frequency Toggle */
@@ -437,7 +459,7 @@ body {
 .freq-btn[data-freq="accelerated"].active {
   background: var(--accent-emerald-dim);
   color: var(--accent-emerald);
-  border-color: rgba(16, 185, 129, 0.35);
+  border-color: rgba(229, 193, 88, 0.35);
 }
 
 label {
@@ -480,9 +502,11 @@ label {
   padding-right: 2.25rem !important;
 }
 
-input[type="number"] {
+input[type="number"],
+select {
   width: 100%;
-  padding: 0.65rem 0.9rem;
+  height: 2.55rem;
+  padding: 0.5rem 0.9rem;
   background-color: rgba(7, 9, 8, 0.5);
   border: 1px solid var(--border-color);
   border-radius: 0.4rem;
@@ -490,8 +514,13 @@ input[type="number"] {
   font-family: var(--font-sans);
   font-size: 0.95rem;
   outline: none;
+  box-sizing: border-box;
   transition: all 0.2s ease;
   -moz-appearance: textfield;
+}
+
+select {
+  cursor: pointer;
 }
 
 input[type="number"]::-webkit-outer-spin-button,
@@ -500,9 +529,10 @@ input[type="number"]::-webkit-inner-spin-button {
   margin: 0;
 }
 
-input[type="number"]:focus {
+input[type="number"]:focus,
+select:focus {
   border-color: var(--accent-emerald);
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 0 2px rgba(229, 193, 88, 0.15);
 }
 
 .dual-input {
@@ -532,7 +562,7 @@ input[type="number"]:focus {
   background: var(--accent-emerald);
   cursor: pointer;
   transition: transform 0.1s ease, background-color 0.2s ease;
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 8px rgba(229, 193, 88, 0.5);
 }
 
 .slider::-webkit-slider-thumb:hover {
@@ -570,13 +600,13 @@ input[type="number"]:focus {
 }
 
 .term-card:hover {
-  border-color: rgba(16, 185, 129, 0.25);
+  border-color: rgba(229, 193, 88, 0.25);
   transform: translateY(-2px);
 }
 
 .term-card.selected {
   border-color: var(--accent-emerald);
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15), 0 4px 15px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 0 20px rgba(229, 193, 88, 0.15), 0 4px 15px rgba(0, 0, 0, 0.25);
   background: var(--bg-card);
 }
 
@@ -596,9 +626,9 @@ input[type="number"]:focus {
 }
 
 .save-badge {
-  background: rgba(16, 185, 129, 0.08);
-  border-color: rgba(16, 185, 129, 0.2);
-  color: var(--accent-emerald);
+  background: rgba(229, 193, 88, 0.12);
+  border-color: rgba(229, 193, 88, 0.3);
+  color: #ffffff;
 }
 
 .term-card h3 {
@@ -623,7 +653,7 @@ input[type="number"]:focus {
 }
 
 .term-card.selected .payment-value {
-  color: var(--accent-emerald);
+  color: #ffffff;
 }
 
 .payment-label {
@@ -640,8 +670,8 @@ input[type="number"]:focus {
 
 /* Pre/Post Recast Card Readout & Toggles */
 .recast-readout-banner {
-  background: rgba(16, 185, 129, 0.06);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: rgba(229, 193, 88, 0.06);
+  border: 1px solid rgba(229, 193, 88, 0.25);
   border-radius: 0.4rem;
   padding: 0.45rem 0.6rem;
   margin-top: -0.85rem;
@@ -664,9 +694,9 @@ input[type="number"]:focus {
   font-size: 0.62rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--accent-emerald);
-  background: var(--accent-emerald-dim);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #ffffff;
+  background: rgba(229, 193, 88, 0.16);
+  border: 1px solid rgba(229, 193, 88, 0.35);
   padding: 0.08rem 0.35rem;
   border-radius: 0.2rem;
   letter-spacing: 0.03em;
@@ -675,7 +705,7 @@ input[type="number"]:focus {
 .recast-transition-text {
   font-size: 0.8rem;
   font-weight: 700;
-  color: var(--accent-emerald);
+  color: #ffffff;
   font-family: var(--font-display);
 }
 
@@ -711,7 +741,7 @@ input[type="number"]:focus {
 .recast-toggle-btn.active {
   background: var(--bg-card);
   color: var(--accent-emerald);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(229, 193, 88, 0.3);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
@@ -746,12 +776,12 @@ input[type="number"]:focus {
   border-top: 1px dashed var(--border-color);
   padding-top: 0.4rem;
   margin-top: 0.2rem;
-  color: var(--accent-emerald);
+  color: #ffffff;
   font-weight: 600;
 }
 
 .time-saved-val {
-  color: var(--accent-emerald);
+  color: #ffffff;
 }
 
 /* Donut Chart panel */
@@ -793,13 +823,14 @@ input[type="number"]:focus {
   }
 }
 
-/* Burndown chart legend (inside chart-header, not the donut legend) */
+/* Burndown chart legend (inside burndown-body, above charts) */
 .burndown-legend {
   display: flex;
-  gap: 1rem;
-  font-size: 0.78rem;
+  gap: 1.25rem;
+  font-size: 0.8rem;
   flex-wrap: wrap;
   align-items: center;
+  margin-bottom: 1.25rem;
 }
 
 .chart-card {
@@ -993,7 +1024,7 @@ input[type="number"]:focus {
 .badge-dti.bg-healthy {
   background-color: var(--color-healthy);
   color: #070908;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 0 10px rgba(229, 193, 88, 0.2);
 }
 
 .progress-bar.bg-moderate,
@@ -1147,8 +1178,8 @@ input[type="number"]:focus {
    currently-selected pill always stays cyan (see .dti-tab-btn.active
    above), status color only shows up on the ones you're not looking at. */
 .dti-tab-btn.bg-healthy:not(.active) {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(229, 193, 88, 0.1);
+  border-color: rgba(229, 193, 88, 0.3);
   color: var(--color-healthy);
 }
 
@@ -1213,7 +1244,7 @@ input[type="number"]:focus {
 .btn-view-amort:hover {
   background: var(--accent-emerald);
   color: #070908;
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 15px rgba(229, 193, 88, 0.3);
 }
 
 /* Amortization Schedule Page Layout */
@@ -1271,7 +1302,7 @@ input[type="number"]:focus {
 }
 
 .summary-card .val.accent {
-  color: var(--accent-emerald);
+  color: #ffffff;
 }
 
 .amort-table-wrapper {
@@ -1328,7 +1359,7 @@ input[type="number"]:focus {
 }
 
 .amort-table tr.payoff-highlight {
-  background: rgba(16, 185, 129, 0.08);
+  background: rgba(229, 193, 88, 0.08);
   font-weight: 600;
 }
 
@@ -1459,18 +1490,6 @@ input[type="number"]:focus {
   font-family: var(--font-display);
 }
 
-.chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.25rem;
-}
-
-.chart-header .collapsible-header {
-  flex: 1;
-  min-width: 0;
-  width: auto;
-}
 
 .chart-legend {
   display: flex;
@@ -1681,11 +1700,6 @@ input[type="number"]:focus {
     font-size: 1.65rem;
   }
 
-  .chart-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
-  }
 
   .burndown-legend {
     gap: 0.5rem 0.8rem;
@@ -1837,17 +1851,17 @@ input[type="number"]:focus {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--accent-emerald, #10b981);
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(229, 193, 88, 0.08);
+  border: 1px solid rgba(229, 193, 88, 0.3);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
   outline: none;
 }
 .btn-quickstart-mortgage:hover {
-  background: rgba(16, 185, 129, 0.18);
+  background: rgba(229, 193, 88, 0.18);
   border-color: var(--accent-emerald, #10b981);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 12px rgba(229, 193, 88, 0.3);
 }
 
 .btn-feature-mortgage {
@@ -1859,17 +1873,17 @@ input[type="number"]:focus {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--accent-emerald, #10b981);
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: rgba(229, 193, 88, 0.08);
+  border: 1px solid rgba(229, 193, 88, 0.3);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
   outline: none;
 }
 .btn-feature-mortgage:hover {
-  background: rgba(16, 185, 129, 0.18);
+  background: rgba(229, 193, 88, 0.18);
   border-color: var(--accent-emerald, #10b981);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 12px rgba(229, 193, 88, 0.3);
 }
 
 .quickstart-steps-list {
@@ -1914,14 +1928,14 @@ input[type="number"]:focus {
 }
 
 .feature-modal-content {
-  background: #0b0f0d;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  background: var(--bg-panel);
+  border: 1px solid rgba(229, 193, 88, 0.3);
   border-radius: 12px;
   max-width: 620px;
   width: min(92vw, 620px);
   padding: 2rem;
   position: relative;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 25px rgba(16, 185, 129, 0.15);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 25px rgba(229, 193, 88, 0.15);
   color: #e6edf3;
   font-family: var(--font-sans);
 }
@@ -1930,7 +1944,7 @@ input[type="number"]:focus {
   position: absolute;
   top: 0; left: 0; right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #10b981, #06b6d4, #f59e0b);
+  background: linear-gradient(90deg, #e5c158, #38bdf8, #a855f7);
   border-radius: 12px 12px 0 0;
 }
 .modal-close-button {
@@ -1988,8 +2002,8 @@ input[type="number"]:focus {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  background: rgba(16, 185, 129, 0.06);
-  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: rgba(229, 193, 88, 0.06);
+  border: 1px solid rgba(229, 193, 88, 0.2);
   border-radius: 8px;
   padding: 0.85rem 1rem;
   font-size: 0.82rem;
@@ -1998,7 +2012,7 @@ input[type="number"]:focus {
 }
 .modal-privacy-notice strong {
   display: block;
-  color: #10b981;
+  color: #e5c158;
   margin-bottom: 0.2rem;
 }
 .modal-privacy-icon {
@@ -2153,11 +2167,11 @@ input[type="number"]:focus {
 .toggle-switch input:checked + .toggle-slider::before {
   transform: translateX(18px);
   background: var(--accent-emerald);
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  box-shadow: 0 0 8px rgba(229, 193, 88, 0.5);
 }
 
 .toggle-switch input:focus-visible + .toggle-slider {
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 0 2px rgba(229, 193, 88, 0.3);
 }
 
 /* Net proceeds breakdown box */
@@ -2167,8 +2181,8 @@ input[type="number"]:focus {
   gap: 0.5rem;
   margin: 1.25rem 0;
   padding: 0.9rem 1rem;
-  background: rgba(16, 185, 129, 0.03);
-  border: 1px solid rgba(16, 185, 129, 0.15);
+  background: rgba(229, 193, 88, 0.03);
+  border: 1px solid rgba(229, 193, 88, 0.15);
   border-radius: 0.5rem;
   transition: background 0.2s ease, border-color 0.2s ease;
 }
@@ -2214,7 +2228,7 @@ input[type="number"]:focus {
 
 .sell-proceeds-readout #sell-proceeds-dollar-value {
   font-size: 1.15rem;
-  color: var(--accent-emerald);
+  color: #ffffff;
   font-weight: 700;
 }
 
@@ -2320,4 +2334,201 @@ input[type="number"]:focus {
   color: var(--color-moderate);
   opacity: 1;
 }
+
+/* ============================================================
+   Loan Comparisons Matrix Modal Styles
+   ============================================================ */
+#loan-comparison-modal {
+  z-index: 100000 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(4, 7, 6, 0.88) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem !important;
+}
+
+#loan-comparison-modal.hidden {
+  display: none !important;
+}
+
+.loan-comparison-modal-content {
+  background: var(--bg-panel) !important;
+  border: 1px solid rgba(229, 193, 88, 0.35) !important;
+  border-radius: 12px !important;
+  max-width: 1040px;
+  width: min(95vw, 1040px);
+  padding: 1.75rem !important;
+  position: relative !important;
+  box-shadow: 0 25px 65px rgba(0, 0, 0, 0.95), 0 0 30px rgba(229, 193, 88, 0.15) !important;
+  color: #e6edf3 !important;
+  font-family: var(--font-sans);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.loan-comparison-modal-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #e5c158, #38bdf8, #a855f7);
+  border-radius: 12px 12px 0 0;
+}
+
+.comparison-table th {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+  background: #1c2a4a;
+}
+
+.comparison-table td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  color: #e5e7eb;
+}
+
+.comparison-table td:last-child {
+  border-right: none;
+}
+
+.comparison-table tbody tr {
+  transition: background-color 0.15s ease;
+  cursor: pointer;
+}
+
+.comparison-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.comparison-table tbody tr:hover {
+  background: rgba(6, 182, 212, 0.12) !important;
+}
+
+.comparison-table tbody tr.active-price-row {
+  background: rgba(229, 193, 88, 0.15) !important;
+  border-left: 3px solid var(--accent-emerald);
+}
+
+.comparison-table tbody tr.active-price-row td:first-child {
+  font-weight: 700;
+  color: var(--accent-emerald);
+}
+
+.comp-badge-cash {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
+/* DTI Affordability Badges */
+.comp-dti-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+}
+
+.comp-dti-badge.healthy {
+  background: rgba(229, 193, 88, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(229, 193, 88, 0.35);
+}
+
+.comp-dti-badge.moderate {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.comp-dti-badge.high {
+  background: rgba(244, 63, 94, 0.18);
+  color: #f87171;
+  border: 1px solid rgba(244, 63, 94, 0.35);
+}
+
+.max-budget-fit-row {
+  box-shadow: inset 0 0 0 1px rgba(229, 193, 88, 0.4);
+}
+
+.max-fit-tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  background: rgba(229, 193, 88, 0.25);
+  color: #34d399;
+  border: 1px solid var(--accent-emerald);
+  margin-left: 0.4rem;
+  white-space: nowrap;
+}
+
+.comp-recast-subtext {
+  font-size: 0.72rem;
+  color: var(--accent-emerald);
+  font-weight: 600;
+  margin-top: 0.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+/* Print styles for Loan Comparisons */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #loan-comparison-modal, #loan-comparison-modal * {
+    visibility: visible;
+  }
+  #loan-comparison-modal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .modal-card {
+    background: #ffffff !important;
+    color: #000000 !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .comparison-toolbar, .modal-close-button, #btn-copy-comparison, #btn-print-comparison {
+    display: none !important;
+  }
+  .comparison-table {
+    border: 1px solid #000000 !important;
+    color: #000000 !important;
+  }
+  .comparison-table th {
+    background: #e5e7eb !important;
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
+  }
+  .comparison-table td {
+    color: #000000 !important;
+    border: 1px solid #d1d5db !important;
+  }
+}
+
 

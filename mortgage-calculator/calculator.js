@@ -425,6 +425,20 @@ function clamp01Percent(value) {
 }
 
 /**
+ * Normalizes an existing (departure) home mortgage payment to an equivalent monthly amount.
+ * @param {number} payment - raw payment amount
+ * @param {'monthly'|'biweekly'} [schedule='monthly'] - payment schedule
+ * @returns {number} monthly equivalent payment
+ */
+export function getNormalizedDepartureMortgagePayment(payment, schedule = 'monthly') {
+  const numPayment = Math.max(0, parseFloat(payment) || 0);
+  if (schedule === 'biweekly') {
+    return (numPayment * 26) / 12;
+  }
+  return numPayment;
+}
+
+/**
  * Interest-only carrying costs for a bridge loan taken out against the
  * current home's equity while it's still on the market.
  * @param {Object} inputs - { bridgeLoanAmount, bridgeExtraCash, bridgeLoanRate (annual %),
@@ -734,3 +748,188 @@ export function performCalculations(inputs) {
       : null
   };
 }
+
+/**
+ * Generates a loan comparison matrix table data array across a range of house prices
+ * @param {Object} params
+ * @param {number} params.minPrice - Minimum house price
+ * @param {number} params.maxPrice - Maximum house price
+ * @param {number} params.step - Price step increment
+ * @param {string} params.downPaymentMode - 'fixed' (dollar) or 'percent'
+ * @param {number} params.downPaymentValue - Fixed dollar down payment OR down payment percentage
+ * @param {number} params.interest15 - 15-year interest rate %
+ * @param {number} params.interest30 - 30-year interest rate %
+ * @param {number} params.taxRate - Property tax rate %
+ * @param {number} params.homeInsurance - Annual home insurance $
+ * @param {number} params.hoaFees - Monthly HOA fee $
+ * @param {number} params.pmiRate - PMI annual rate %
+ * @returns {Array<Object>} Matrix of row objects
+ */
+export function generateLoanComparisonMatrix({
+  minPrice = 300000,
+  maxPrice = 700000,
+  step = 25000,
+  downPaymentMode = 'fixed',
+  downPaymentValue = 300000,
+  interest15 = 5.875,
+  interest30 = 6.625,
+  taxRate = 1.0,
+  homeInsurance = 800,
+  hoaFees = 0,
+  pmiRate = 0.5,
+  grossAnnualIncome = 120000,
+  recastAmount = 0,
+  recastMode = 'pre'
+}) {
+  const rows = [];
+  const safeStep = Math.max(1000, step);
+  const start = Math.max(0, minPrice);
+  const end = Math.max(start, maxPrice);
+  const monthlyGross = Math.max(0, grossAnnualIncome / 12);
+  const safeRecast = Math.max(0, recastAmount || 0);
+
+  const getStatus = (dti) => {
+    if (dti <= 0) return { type: 'healthy', label: '<28%', title: 'Front-end DTI under 28%', class: 'healthy' };
+    if (dti <= 28) return { type: 'healthy', label: `${dti.toFixed(1)}%`, title: `${dti.toFixed(1)}% DTI (Healthy / Under 28% Target)`, class: 'healthy' };
+    if (dti <= 36) return { type: 'moderate', label: `${dti.toFixed(1)}%`, title: `${dti.toFixed(1)}% DTI (Moderate / 28-36% Cap)`, class: 'moderate' };
+    return { type: 'high', label: `${dti.toFixed(1)}%`, title: `${dti.toFixed(1)}% DTI (High Risk / Over 36%)`, class: 'high' };
+  };
+
+  let maxBudgetFitIndex = -1;
+  let fallbackFitIndex = -1;
+
+  for (let price = start; price <= end; price += safeStep) {
+    let initialDownPayment = 0;
+    if (downPaymentMode === 'percent') {
+      initialDownPayment = Math.round(price * (downPaymentValue / 100));
+    } else {
+      initialDownPayment = Math.min(price, Math.round(downPaymentValue));
+    }
+
+    const preRecastLoanAmount = Math.max(0, price - initialDownPayment);
+    const preDownPercent = price > 0 ? (initialDownPayment / price) * 100 : 0;
+
+    const monthlyTax = (price * (taxRate / 100)) / 12;
+    const monthlyInsurance = homeInsurance / 12;
+    const baseTaxesAndIns = monthlyTax + monthlyInsurance + hoaFees;
+
+    // Pre-Recast Calculation
+    const preMonthlyPmi = (preDownPercent < CONFIG.PMI_THRESHOLD_PERCENT && preRecastLoanAmount > 0)
+      ? (preRecastLoanAmount * (pmiRate / 100)) / 12
+      : 0;
+
+    let prePiti15 = 0;
+    let isCash15Pre = false;
+    if (preRecastLoanAmount > 0) {
+      const pi15 = calcPIPayment(preRecastLoanAmount, interest15, CONFIG.LOAN_TERM_15);
+      prePiti15 = pi15 + monthlyTax + monthlyInsurance + preMonthlyPmi + hoaFees;
+    } else {
+      prePiti15 = baseTaxesAndIns;
+      isCash15Pre = true;
+    }
+
+    let prePiti30 = 0;
+    let isCash30Pre = false;
+    if (preRecastLoanAmount > 0) {
+      const pi30 = calcPIPayment(preRecastLoanAmount, interest30, CONFIG.LOAN_TERM_30);
+      prePiti30 = pi30 + monthlyTax + monthlyInsurance + preMonthlyPmi + hoaFees;
+    } else {
+      prePiti30 = baseTaxesAndIns;
+      isCash30Pre = true;
+    }
+
+    // Post-Recast Calculation
+    const postTotalDown = Math.min(price, initialDownPayment + safeRecast);
+    const postRecastLoanAmount = Math.max(0, price - postTotalDown);
+    const postDownPercent = price > 0 ? (postTotalDown / price) * 100 : 0;
+
+    const postMonthlyPmi = (postDownPercent < CONFIG.PMI_THRESHOLD_PERCENT && postRecastLoanAmount > 0)
+      ? (postRecastLoanAmount * (pmiRate / 100)) / 12
+      : 0;
+
+    let postPiti15 = 0;
+    let isCash15Post = false;
+    if (postRecastLoanAmount > 0) {
+      const pi15 = calcPIPayment(postRecastLoanAmount, interest15, CONFIG.LOAN_TERM_15);
+      postPiti15 = pi15 + monthlyTax + monthlyInsurance + postMonthlyPmi + hoaFees;
+    } else {
+      postPiti15 = baseTaxesAndIns;
+      isCash15Post = true;
+    }
+
+    let postPiti30 = 0;
+    let isCash30Post = false;
+    if (postRecastLoanAmount > 0) {
+      const pi30 = calcPIPayment(postRecastLoanAmount, interest30, CONFIG.LOAN_TERM_30);
+      postPiti30 = pi30 + monthlyTax + monthlyInsurance + postMonthlyPmi + hoaFees;
+    } else {
+      postPiti30 = baseTaxesAndIns;
+      isCash30Post = true;
+    }
+
+    // Active mode values
+    const isPost = recastMode === 'post';
+    const loanAmount = isPost ? postRecastLoanAmount : preRecastLoanAmount;
+    const piti15 = isPost ? postPiti15 : prePiti15;
+    const piti30 = isPost ? postPiti30 : prePiti30;
+    const isCash15 = isPost ? isCash15Post : isCash15Pre;
+    const isCash30 = isPost ? isCash30Post : isCash30Pre;
+
+    const dti15 = monthlyGross > 0 ? (piti15 / monthlyGross) * 100 : 0;
+    const dti30 = monthlyGross > 0 ? (piti30 / monthlyGross) * 100 : 0;
+
+    const incomeNeeded15 = (piti15 * 12) / 0.28;
+    const incomeNeeded30 = (piti30 * 12) / 0.28;
+
+    const monthlySavings15 = Math.max(0, prePiti15 - postPiti15);
+    const monthlySavings30 = Math.max(0, prePiti30 - postPiti30);
+
+    const rowIndex = rows.length;
+    if (monthlyGross > 0) {
+      if (dti30 <= 28) maxBudgetFitIndex = rowIndex;
+      if (dti30 <= 36 && fallbackFitIndex === -1) fallbackFitIndex = rowIndex;
+    }
+
+    rows.push({
+      housePrice: price,
+      downPayment: isPost ? postTotalDown : initialDownPayment,
+      initialDownPayment,
+      recastAmount: safeRecast,
+      downPercent: isPost ? postDownPercent : preDownPercent,
+      loanAmount,
+      preRecastLoanAmount,
+      postRecastLoanAmount,
+      isCash: loanAmount === 0,
+      monthlyTax,
+      monthlyInsurance,
+      monthlyPmi: isPost ? postMonthlyPmi : preMonthlyPmi,
+      hoaFees,
+      baseTaxesAndIns,
+      piti15,
+      piti30,
+      prePiti15,
+      prePiti30,
+      postPiti15,
+      postPiti30,
+      monthlySavings15,
+      monthlySavings30,
+      isCash15,
+      isCash30,
+      dti15,
+      dti30,
+      dtiStatus15: getStatus(dti15),
+      dtiStatus30: getStatus(dti30),
+      incomeNeeded15,
+      incomeNeeded30,
+      isMaxBudgetFit: false
+    });
+  }
+
+  const bestFitIdx = maxBudgetFitIndex !== -1 ? maxBudgetFitIndex : fallbackFitIndex;
+  if (bestFitIdx >= 0 && bestFitIdx < rows.length) {
+    rows[bestFitIdx].isMaxBudgetFit = true;
+  }
+
+  return rows;
+}
+

@@ -9,6 +9,7 @@ import {
   performCalculations,
   extractInputValues,
   calculateSaleProceeds,
+  getNormalizedDepartureMortgagePayment,
   calculateBridgeLoanCosts,
   calculateRecast,
   estimateNetAnnualIncome,
@@ -31,11 +32,11 @@ import {
   updateBridgeCltvWarning,
   updateFinancingTypeLabelsUI,
   updateBridgeHoldingDtiUI,
+  updateSellMortgageScheduleUI,
   updateBackEndDTI,
   updateBridgeHoldingBackEndDtiUI,
   updateRecastSummaryUI,
   setupDtiSwitcher,
-  updateDtiTabAvailability,
   setupCollapsibleCards,
   getCollapsedSectionsState,
   applyCollapsedSectionsState,
@@ -51,7 +52,8 @@ import {
   updateDtiAccordionSummaries,
   expandDtiCashFlowGroup,
   setRecastStrategyUI,
-  updateStrategyComparisonUI
+  updateStrategyComparisonUI,
+  setupLoanComparisonModal
 } from './ui.js';
 
 // ============================================================================
@@ -119,8 +121,10 @@ function calculateAll() {
   const hasHouseToSell = !!domRefs.hasHouseToSellInput?.checked;
   const isBridgeActive = hasHouseToSell && saleMode === CONFIG.SALE_MODE_BRIDGE_LOAN;
 
+  const sellInputs = getSellInputs();
+  updateSellMortgageScheduleUI(sellInputs.sellMortgageSchedule, domRefs);
+
   if (isBridgeActive) {
-    const sellInputs = getSellInputs();
     const proceeds = calculateSaleProceeds(sellInputs);
     const bridgeInputs = getBridgeInputs();
     const recastLumpSum = Math.max(0, proceeds.netProceeds - (bridgeInputs.bridgeLoanAmount || 0));
@@ -165,9 +169,10 @@ function calculateAll() {
   if (isBridgeActive) {
     const bridgeInputs = getBridgeInputs();
     const bridgeCosts = calculateBridgeLoanCosts(bridgeInputs);
-    const combinedMonthlyCost = bridgeCosts.monthlyInterestOnlyPayment + bankMonthlyTotal;
-
     const sellInputs = getSellInputs();
+    const departureMortgageMonthly = getNormalizedDepartureMortgagePayment(sellInputs.sellMortgagePayment, sellInputs.sellMortgageSchedule);
+    const combinedMonthlyCost = departureMortgageMonthly + bridgeCosts.monthlyInterestOnlyPayment + bankMonthlyTotal;
+
     const proceeds = calculateSaleProceeds(sellInputs);
     const recastLumpSum = Math.max(0, proceeds.netProceeds - bridgeInputs.bridgeLoanAmount);
     const rate = activeTerm === 30 ? parseFloat(domRefs.interest30Input.value) || 0 : parseFloat(domRefs.interest15Input.value) || 0;
@@ -387,6 +392,8 @@ function getSellInputs() {
   return {
     sellHomeValue: parseFloat(domRefs.sellHomeValueInput.value) || 0,
     sellMortgagePayoff: parseFloat(domRefs.sellMortgagePayoffInput.value) || 0,
+    sellMortgagePayment: parseFloat(domRefs.sellMortgagePaymentInput?.value) || 0,
+    sellMortgageSchedule: domRefs.sellMortgageScheduleInput?.value || 'monthly',
     sellCommissionPercent: parseFloat(domRefs.sellCommissionPercentInput.value) || 0,
     sellClosingCostsPercent: parseFloat(domRefs.sellClosingCostsPercentInput.value) || 0,
     sellRepairCosts: parseFloat(domRefs.sellRepairCostsInput.value) || 0,
@@ -433,10 +440,6 @@ function setSaleMode(mode) {
   if (domRefs.saleModeBridgePanel) domRefs.saleModeBridgePanel.style.display = isBridge ? 'block' : 'none';
   if (domRefs.btnSaleModeSellFirst) domRefs.btnSaleModeSellFirst.classList.toggle('active', !isBridge);
   if (domRefs.btnSaleModeBridge) domRefs.btnSaleModeBridge.classList.toggle('active', isBridge);
-
-  // The Holding-Period DTI tabs on the Affordability card only make sense
-  // when both "Have a house to sell?" is on AND Bridge Loan mode is active.
-  updateDtiTabAvailability(isBridge && !!domRefs.hasHouseToSellInput?.checked);
 
   // Auto-suggest a bridge loan amount the first time this mode is entered
   // with nothing set yet — the gap the down payment currently needs. Always
@@ -523,17 +526,19 @@ function updateBridgeAndRecast(results) {
   const bridgeCosts = calculateBridgeLoanCosts(bridgeInputs);
   const totalBridgePayoff = bridgeCosts.totalBorrowed;
 
+  const sellInputs = getSellInputs();
+  const departureMortgageMonthly = getNormalizedDepartureMortgagePayment(sellInputs.sellMortgagePayment, sellInputs.sellMortgageSchedule);
+
   const newMortgagePayment = activeTerm === 30 ? results.bankMonthlyTotal30 : results.bankMonthlyTotal15;
-  updateBridgeHoldingCostUI(bridgeCosts, newMortgagePayment, domRefs);
+  updateBridgeHoldingCostUI(bridgeCosts, newMortgagePayment, domRefs, departureMortgageMonthly);
   const isHelocFinancing = bridgeFinancingType === CONFIG.FINANCING_TYPE_HELOC;
   const maxCltvPercent = isHelocFinancing ? CONFIG.HELOC_TYPICAL_MAX_CLTV_PERCENT : CONFIG.BRIDGE_LOAN_TYPICAL_MAX_CLTV_PERCENT;
   updateBridgeCltvWarning(totalBridgePayoff, getMaxTypicalBridgeAmount(), domRefs, maxCltvPercent, isHelocFinancing);
 
-  const combinedMonthlyCost = bridgeCosts.monthlyInterestOnlyPayment + newMortgagePayment;
+  const combinedMonthlyCost = departureMortgageMonthly + bridgeCosts.monthlyInterestOnlyPayment + newMortgagePayment;
   updateBridgeHoldingDtiUI(combinedMonthlyCost, results.effectiveMonthlyIncome, domRefs, results.isNetIncomeBasis);
   updateBridgeHoldingBackEndDtiUI(combinedMonthlyCost, getOtherMonthlyDebts(), results.effectiveMonthlyIncome, domRefs, results.isNetIncomeBasis);
 
-  const sellInputs = getSellInputs();
   const proceeds = calculateSaleProceeds(sellInputs);
   const recastLumpSum = Math.max(0, proceeds.netProceeds - totalBridgePayoff);
 
@@ -948,7 +953,6 @@ function attachSellHouseListeners() {
   domRefs.hasHouseToSellInput.addEventListener('change', () => {
     const isChecked = domRefs.hasHouseToSellInput.checked;
     domRefs.sellHouseFieldsPanel.style.display = isChecked ? 'block' : 'none';
-    updateDtiTabAvailability(isChecked && saleMode === CONFIG.SALE_MODE_BRIDGE_LOAN);
     updateSellProceeds();
     syncDownPaymentFields('house');
     debouncedCalculate();
@@ -957,6 +961,7 @@ function attachSellHouseListeners() {
   // Every field that feeds the net-proceeds math
   const sellNumericInputs = [
     domRefs.sellMortgagePayoffInput,
+    domRefs.sellMortgagePaymentInput,
     domRefs.sellCommissionPercentInput,
     domRefs.sellClosingCostsPercentInput,
     domRefs.sellRepairCostsInput,
@@ -964,12 +969,21 @@ function attachSellHouseListeners() {
     domRefs.sellMovingCostsInput
   ];
   sellNumericInputs.forEach(input => {
+    if (!input) return;
     input.addEventListener('input', () => {
       updateSellProceeds();
       syncDownPaymentFields('house');
       debouncedCalculate();
     });
   });
+
+  if (domRefs.sellMortgageScheduleInput) {
+    domRefs.sellMortgageScheduleInput.addEventListener('change', () => {
+      updateSellMortgageScheduleUI(domRefs.sellMortgageScheduleInput.value, domRefs);
+      updateSellProceeds();
+      debouncedCalculate();
+    });
+  }
 
   // Home value has its own listener so manual edits can clear the Redfin
   // source badge and mark the value as freshly confirmed (resets the
@@ -1114,13 +1128,24 @@ function attachActionListeners() {
 
   // Load Live Rates — also expands the Rates & Taxes card if it's
   // currently collapsed, so a synced rate isn't hidden from view.
-  domRefs.loadRatesBtn.addEventListener('click', () => {
-    const ratesToggle = document.getElementById('rates-toggle');
-    if (ratesToggle && ratesToggle.getAttribute('aria-expanded') !== 'true') {
-      ratesToggle.click();
-    }
-    loadLiveMortgageRates();
-  });
+  if (domRefs.loadRatesBtn) {
+    domRefs.loadRatesBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const ratesToggle = document.getElementById('rates-toggle');
+      if (ratesToggle && ratesToggle.getAttribute('aria-expanded') !== 'true') {
+        ratesToggle.click();
+      }
+      loadLiveMortgageRates();
+    });
+
+    domRefs.loadRatesBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        domRefs.loadRatesBtn.click();
+      }
+    });
+  }
 
   // Fetch Property Data
   domRefs.btnSearchMls.addEventListener('click', handleSearchMls);
@@ -1566,6 +1591,15 @@ async function initializeApp() {
     attachInputListeners();
     attachActionListeners();
     attachSellHouseListeners();
+
+    // Initialize Loan Comparisons Matrix Modal
+    setupLoanComparisonModal(domRefs, (selectedPrice) => {
+      if (domRefs.homePriceInput) domRefs.homePriceInput.value = selectedPrice;
+      if (domRefs.homePriceSlider) domRefs.homePriceSlider.value = selectedPrice;
+      syncDownPaymentFields('house');
+      calculateAll();
+      debouncedSave();
+    });
 
     // Attach Recent Import Load button listener
     if (domRefs.btnApplyRecentImport) {

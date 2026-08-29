@@ -5,7 +5,7 @@
 
 import { CONFIG, OUTPUT_IDS } from './config.js';
 import { formatCurrency, formatSignedCurrency, formatTimeSaved, linearInterpolateYear, setElementText, getElement, daysSince } from './utils.js';
-import { getDTIStatus, getBackEndDTIStatus } from './calculator.js';
+import { getDTIStatus, getBackEndDTIStatus, generateLoanComparisonMatrix } from './calculator.js';
 
 /**
  * Creates references to all DOM elements needed for calculations
@@ -69,6 +69,10 @@ export function createDOMReferences() {
     sellHomeRedfinUrlInput: getEl('sellHomeRedfinUrl'),
     sellHomeValueInput: getEl('sellHomeValue'),
     sellMortgagePayoffInput: getEl('sellMortgagePayoff'),
+    sellMortgagePaymentInput: getEl('sellMortgagePayment'),
+    sellMortgagePaymentLabelEl: getEl('sellMortgagePaymentLabel'),
+    sellMortgagePaymentTooltipEl: getEl('sellMortgagePaymentTooltip'),
+    sellMortgageScheduleInput: getEl('sellMortgageSchedule'),
     sellCommissionPercentInput: getEl('sellCommissionPercent'),
     sellClosingCostsPercentInput: getEl('sellClosingCostsPercent'),
     sellRepairCostsInput: getEl('sellRepairCosts'),
@@ -127,6 +131,42 @@ export function createDOMReferences() {
     btnForceRefreshSellRedfin: getEl('btn-force-refresh-sell-redfin'),
     btnApplyProceeds: getEl('btn-apply-proceeds'),
     btnRefreshStaleValue: getEl('btn-refresh-stale-value'),
+
+    // Loan Comparisons Modal
+    btnOpenLoanComparison: getEl('btn-open-loan-comparison'),
+    btnOpenComparisonInline: getEl('btn-open-comparison-inline'),
+    loanComparisonModal: getEl('loan-comparison-modal'),
+    btnCloseLoanComparison: getEl('btn-close-loan-comparison'),
+    compDpModeSwitch: getEl('comp-dp-mode-switch'),
+    btnCompDpFixed: getEl('btn-comp-dp-fixed'),
+    btnCompDpPercent: getEl('btn-comp-dp-percent'),
+    compDpValueInput: getEl('compDpValue'),
+    compDpInputWrap: getEl('comp-dp-input-wrap'),
+    compDpPrefix: getEl('comp-dp-prefix'),
+    compDpSuffix: getEl('comp-dp-suffix'),
+    compStepSizeSelect: getEl('compStepSize'),
+    compStartPriceInput: getEl('compStartPrice'),
+    compEndPriceInput: getEl('compEndPrice'),
+    comparisonTableBody: getEl('comparison-table-body'),
+    btnCopyComparison: getEl('btn-copy-comparison'),
+    btnPrintComparison: getEl('btn-print-comparison'),
+    thCompLoanHeader: getEl('th-comp-loan-header'),
+    thComp15yrHeader: getEl('th-comp-15yr-header'),
+    thComp30yrHeader: getEl('th-comp-30yr-header'),
+    thCompIncomeHeader: getEl('th-comp-income-header'),
+    compAffordabilityBanner: getEl('comp-affordability-banner'),
+    compBannerIncome: getEl('comp-banner-income'),
+    compBannerTargetCap: getEl('comp-banner-target-cap'),
+    compBannerMaxFitPrice: getEl('comp-banner-max-fit-price'),
+    btnCompToggleIncome: getEl('btn-comp-toggle-income'),
+    btnCompFilterBudget: getEl('btn-comp-filter-budget'),
+    compRecastModeSwitch: getEl('comp-recast-mode-switch'),
+    btnCompRecastPre: getEl('btn-comp-recast-pre'),
+    btnCompRecastPost: getEl('btn-comp-recast-post'),
+    compRecastAmountInput: getEl('compRecastAmount'),
+    compRecastInputWrap: getEl('comp-recast-input-wrap'),
+    comparisonPropertyInfo: getEl('comparison-property-info'),
+    comparisonTimestampInfo: getEl('comparison-timestamp-info'),
     
     // Cards
     card30: getEl('card-30yr'),
@@ -286,6 +326,8 @@ export function createDOMReferences() {
     houseSaleDownPaymentBoxEl: getEl('house-sale-downpayment-box'),
     houseSaleDownPaymentPrefixEl: getEl('house-sale-downpayment-prefix'),
     bridgeCltvWarningEl: getEl('bridge-cltv-warning'),
+    bridgeRowDepartureMortgageEl: getEl('bridge-row-departure-mortgage'),
+    bridgeDepartureMortgagePaymentEl: getEl('bridge-departure-mortgage-payment'),
     bridgeMonthlyInterestEl: getEl('bridge-monthly-interest'),
     bridgeNewMortgagePaymentEl: getEl('bridge-new-mortgage-payment'),
     bridgeCombinedMonthlyEl: getEl('bridge-combined-monthly'),
@@ -1334,6 +1376,7 @@ export function setButtonLoading(button, text, isLoading) {
   if (!button) return;
   button.textContent = text;
   button.disabled = isLoading;
+  button.style.pointerEvents = isLoading ? 'none' : 'auto';
   button.style.opacity = isLoading ? '0.7' : '1';
 }
 
@@ -1489,26 +1532,31 @@ export function updateDownPaymentBreakdownUI(cash, otherAmount, totalAmount, per
  * @param {number} newMortgagePayment - Full PITI on the new mortgage (bank-qualifying baseline for the active term)
  * @param {Object} domRefs
  */
-export function updateBridgeHoldingCostUI(bridgeCosts, newMortgagePayment, domRefs) {
+export function updateBridgeHoldingCostUI(bridgeCosts, newMortgagePayment, domRefs, departureMortgageMonthly = 0) {
   const setText = (el, text) => { if (el) el.textContent = text; };
-  const combined = bridgeCosts.monthlyInterestOnlyPayment + newMortgagePayment;
+  const depMonthly = Math.max(0, departureMortgageMonthly || 0);
+  const combined = depMonthly + bridgeCosts.monthlyInterestOnlyPayment + newMortgagePayment;
 
-  setText(domRefs.bridgeMonthlyInterestEl, formatCurrency(bridgeCosts.monthlyInterestOnlyPayment));
-  setText(domRefs.bridgeNewMortgagePaymentEl, formatCurrency(newMortgagePayment));
-  setText(domRefs.bridgeCombinedMonthlyEl, formatCurrency(combined));
-  setText(domRefs.bridgeTotalInterestEl, formatCurrency(bridgeCosts.totalBridgeInterest));
-  setText(domRefs.bridgeTotalCostEl, formatCurrency(bridgeCosts.totalBridgeCost));
+  if (domRefs?.bridgeRowDepartureMortgageEl) {
+    domRefs.bridgeRowDepartureMortgageEl.style.display = depMonthly > 0 ? 'flex' : 'none';
+  }
+  setText(domRefs?.bridgeDepartureMortgagePaymentEl, formatCurrency(depMonthly));
+  setText(domRefs?.bridgeMonthlyInterestEl, formatCurrency(bridgeCosts.monthlyInterestOnlyPayment));
+  setText(domRefs?.bridgeNewMortgagePaymentEl, formatCurrency(newMortgagePayment));
+  setText(domRefs?.bridgeCombinedMonthlyEl, formatCurrency(combined));
+  setText(domRefs?.bridgeTotalInterestEl, formatCurrency(bridgeCosts.totalBridgeInterest));
+  setText(domRefs?.bridgeTotalCostEl, formatCurrency(bridgeCosts.totalBridgeCost));
 }
 
 /**
  * Renders the holding-period DTI — the debt-to-income ratio for the
- * COMBINED monthly cost (bridge interest-only payment + new mortgage)
+ * COMBINED monthly cost (existing departure home mortgage + bridge interest-only payment + new mortgage)
  * against income. This is deliberately separate from the main Affordability
  * card's DTI, which only reflects the new mortgage on its own (i.e. your
  * situation AFTER the house sells and the bridge loan is gone) — the
  * holding period is the financially riskiest window, since it's double
  * housing cost before any sale proceeds have landed.
- * @param {number} combinedMonthlyCost - Bridge interest-only payment + new mortgage PITI
+ * @param {number} combinedMonthlyCost - Departure mortgage + Bridge interest-only payment + new mortgage PITI
  * @param {number} grossMonthlyIncome - Monthly income used as the DTI denominator (gross OR net estimate)
  * @param {Object} domRefs
  * @param {boolean} [isNetIncome] - True when grossMonthlyIncome is the Net (Best Guess) estimate
@@ -1541,12 +1589,36 @@ export function updateBridgeHoldingDtiUI(combinedMonthlyCost, grossMonthlyIncome
 
   if (descEl) {
     descEl.textContent =
-      `Combines your bridge loan's interest-only payment with your full new mortgage payment — this is what you're actually carrying against income until the old house sells. ${status.description}${netIncomeCaveat(isNetIncome)}`;
+      `Combines your existing home mortgage, bridge loan interest payment, and full new mortgage payment — this is what you're actually carrying against income until the old house sells. ${status.description}${netIncomeCaveat(isNetIncome)}`;
   }
   if (dollarEl) {
     dollarEl.textContent = formatDtiDollarBreakdown(combinedMonthlyCost, grossMonthlyIncome, isNetIncome);
   }
   setDtiTabStatus('holding', status.className);
+}
+
+/**
+ * Dynamic label and tooltip updater for the existing home mortgage payment input,
+ * swapping between Monthly and Bi-Weekly depending on the schedule choice.
+ * @param {'monthly'|'biweekly'} schedule
+ * @param {Object} [domRefs]
+ */
+export function updateSellMortgageScheduleUI(schedule, domRefs) {
+  const isBiweekly = schedule === 'biweekly';
+  const labelEl = domRefs?.sellMortgagePaymentLabelEl || document.getElementById('sellMortgagePaymentLabel');
+  const tooltipEl = domRefs?.sellMortgagePaymentTooltipEl || document.getElementById('sellMortgagePaymentTooltip');
+
+  if (labelEl) {
+    labelEl.textContent = isBiweekly
+      ? 'Current Bi-Weekly Mortgage Payment (PITI)'
+      : 'Current Monthly Mortgage Payment (PITI)';
+  }
+  if (tooltipEl) {
+    tooltipEl.setAttribute('data-tooltip', isBiweekly
+      ? "Your existing home's payment per bi-weekly pay period (26 payments per year). Automatically converted to a monthly equivalent for carrying costs and DTI. Set to $0 if owned free and clear."
+      : "Your existing home's monthly mortgage payment (principal, interest, taxes, and insurance). Included in carrying costs and DTI when carrying both homes before your old home sells. Set to $0 if owned free and clear."
+    );
+  }
 }
 
 /**
@@ -1708,28 +1780,6 @@ export function setupDtiSwitcher() {
       });
     });
   });
-}
-
-/**
- * Shows or hides the two Bridge-Loan-only DTI tabs (Holding Period,
- * Holding Period Back-End) depending on whether that mode is currently
- * active. If one of those tabs is the one showing when it's turned off,
- * falls back to the always-available Bank Qualifying tab rather than
- * leaving an empty/hidden panel selected.
- * @param {boolean} isHoldingAvailable
- */
-export function updateDtiTabAvailability(isHoldingAvailable) {
-  const holdingBtn = document.getElementById('dti-tab-btn-holding');
-  const holdingBackendBtn = document.getElementById('dti-tab-btn-holding-backend');
-  if (holdingBtn) holdingBtn.style.display = 'none';
-  if (holdingBackendBtn) holdingBackendBtn.style.display = 'none';
-
-  const activeBtn = document.querySelector('.dti-tab-btn.active');
-  const onHoldingTab = activeBtn && (activeBtn.dataset.dtiTab === 'holding' || activeBtn.dataset.dtiTab === 'holding-backend');
-  if (onHoldingTab) {
-    const bankBtn = document.querySelector('.dti-tab-btn[data-dti-tab="bank"]');
-    if (bankBtn) bankBtn.click();
-  }
 }
 
 /**
@@ -2017,3 +2067,402 @@ export function updateStrategyComparisonUI(recast, proceeds, bridgeLoanAmount, r
     }
   }
 }
+
+/**
+ * Renders the Loan Comparisons Matrix table inside the modal
+ * @param {Object} domRefs
+ * @param {Function} [onSelectPrice] Callback when user clicks a row to set Home Price
+ */
+export function renderLoanComparisonModal(domRefs, onSelectPrice) {
+  if (!domRefs.comparisonTableBody) return;
+
+  const currentPrice = parseFloat(domRefs.homePriceInput?.value) || 400000;
+  const currentDownAmount = (parseFloat(domRefs.downPaymentAmountInput?.value) || 0);
+  const currentDownPercent = parseFloat(domRefs.downPaymentPercentInput?.value) || 0;
+  const interest15 = parseFloat(domRefs.interest15Input?.value) || 5.875;
+  const interest30 = parseFloat(domRefs.interest30Input?.value) || 6.625;
+  const taxRate = parseFloat(domRefs.taxRateInput?.value) || 1.0;
+  const homeInsurance = parseFloat(domRefs.homeInsuranceInput?.value) || 0;
+  const hoaFees = parseFloat(domRefs.hoaFeesInput?.value) || 0;
+  const pmiRate = parseFloat(domRefs.pmiRateInput?.value) || 0.5;
+  const grossAnnualIncome = parseFloat(domRefs.grossAnnualIncomeInput?.value) || 120000;
+
+  const isPercentMode = domRefs.btnCompDpPercent?.classList.contains('active');
+  const downPaymentMode = isPercentMode ? 'percent' : 'fixed';
+
+  let downPaymentValue = parseFloat(domRefs.compDpValueInput?.value);
+  if (isNaN(downPaymentValue) || downPaymentValue < 0) {
+    downPaymentValue = isPercentMode
+      ? (currentDownPercent > 0 ? currentDownPercent : 20)
+      : (currentDownAmount > 0 ? currentDownAmount : 50000);
+    if (domRefs.compDpValueInput) domRefs.compDpValueInput.value = downPaymentValue;
+  }
+
+  const recastMode = domRefs.btnCompRecastPost?.classList.contains('active') ? 'post' : 'pre';
+  let recastAmount = parseFloat(domRefs.compRecastAmountInput?.value);
+  if (isNaN(recastAmount) || recastAmount < 0) {
+    recastAmount = 250000;
+    if (domRefs.compRecastAmountInput) domRefs.compRecastAmountInput.value = recastAmount;
+  }
+
+  const step = parseInt(domRefs.compStepSizeSelect?.value, 10) || 25000;
+
+  // Min (Start) and Max (End) price user inputs
+  let minPrice = parseFloat(domRefs.compStartPriceInput?.value);
+  if (isNaN(minPrice) || minPrice < 0) {
+    minPrice = Math.max(100000, Math.floor((currentPrice - (step * 4)) / step) * step);
+    if (domRefs.compStartPriceInput) domRefs.compStartPriceInput.value = minPrice;
+  }
+
+  let maxPrice = parseFloat(domRefs.compEndPriceInput?.value);
+  if (isNaN(maxPrice) || maxPrice <= minPrice) {
+    maxPrice = minPrice + (step * 16);
+    if (domRefs.compEndPriceInput) domRefs.compEndPriceInput.value = maxPrice;
+  }
+
+  const matrix = generateLoanComparisonMatrix({
+    minPrice,
+    maxPrice,
+    step,
+    downPaymentMode,
+    downPaymentValue,
+    interest15,
+    interest30,
+    taxRate,
+    homeInsurance,
+    hoaFees,
+    pmiRate,
+    grossAnnualIncome,
+    recastAmount,
+    recastMode
+  });
+
+  // Affordability Banner Updates
+  if (domRefs.compBannerIncome) {
+    domRefs.compBannerIncome.textContent = `$${Math.round(grossAnnualIncome).toLocaleString()}/yr`;
+  }
+  const monthlyGross = grossAnnualIncome / 12;
+  const targetCap28 = monthlyGross * 0.28;
+  if (domRefs.compBannerTargetCap) {
+    domRefs.compBannerTargetCap.textContent = `$${Math.round(targetCap28).toLocaleString()}/mo`;
+  }
+
+  const maxFitRow = matrix.find(r => r.isMaxBudgetFit);
+  if (domRefs.compBannerMaxFitPrice) {
+    if (maxFitRow) {
+      const modeLabel = recastMode === 'post' ? ' (Post-Recast)' : ' (Initial)';
+      domRefs.compBannerMaxFitPrice.textContent = `$${maxFitRow.housePrice.toLocaleString()} Home${modeLabel}`;
+    } else {
+      domRefs.compBannerMaxFitPrice.textContent = 'None in Range';
+    }
+  }
+
+  const showIncomeNeeded = domRefs.btnCompToggleIncome?.classList.contains('active');
+  const filterBudget = domRefs.btnCompFilterBudget?.classList.contains('active');
+
+  if (domRefs.thCompIncomeHeader) {
+    domRefs.thCompIncomeHeader.style.display = showIncomeNeeded ? 'table-cell' : 'none';
+  }
+
+  const avgSavings15 = matrix.find(r => r.monthlySavings15 > 5)?.monthlySavings15 || 0;
+  const avgSavings30 = matrix.find(r => r.monthlySavings30 > 5)?.monthlySavings30 || 0;
+
+  // Update Headers
+  if (domRefs.thCompLoanHeader) {
+    if (downPaymentMode === 'fixed') {
+      const totalDown = recastMode === 'post' ? (downPaymentValue + recastAmount) : downPaymentValue;
+      const dpText = totalDown >= 1000
+        ? (totalDown % 1000000 === 0 ? `$${(totalDown / 1000000).toFixed(0)}m` : (totalDown % 1000 === 0 ? `$${Math.round(totalDown / 1000)}k` : `$${totalDown.toLocaleString()}`))
+        : `$${totalDown}`;
+      const suffix = recastMode === 'post' ? ` ($${Math.round(downPaymentValue/1000)}k init + $${Math.round(recastAmount/1000)}k recast)` : ' initial';
+      domRefs.thCompLoanHeader.textContent = `Est. Loan Amount with ${dpText} down${suffix}`;
+    } else {
+      domRefs.thCompLoanHeader.textContent = `Est. Loan Amount (${downPaymentValue}% down)`;
+    }
+  }
+
+  if (domRefs.thComp15yrHeader) {
+    const savingsHtml = (recastMode === 'post' && avgSavings15 > 5)
+      ? `<div style="color: #34d399; font-size: 0.75rem; font-weight: 600; margin-top: 0.2rem;">(-$${Math.round(avgSavings15).toLocaleString()}/mo after recast)</div>`
+      : '';
+    domRefs.thComp15yrHeader.innerHTML = `<div>Est. Monthly PITI (15-Year @ ${interest15.toFixed(3)}%)</div>${savingsHtml}`;
+  }
+  if (domRefs.thComp30yrHeader) {
+    const savingsHtml = (recastMode === 'post' && avgSavings30 > 5)
+      ? `<div style="color: #34d399; font-size: 0.75rem; font-weight: 600; margin-top: 0.2rem;">(-$${Math.round(avgSavings30).toLocaleString()}/mo after recast)</div>`
+      : '';
+    domRefs.thComp30yrHeader.innerHTML = `<div>Est. Total Monthly PITI (30-Year @ ${interest30.toFixed(3)}%)</div>${savingsHtml}`;
+  }
+
+  if (domRefs.comparisonPropertyInfo) {
+    const address = domRefs.mlsNumberInput?.value ? 'Selected Property Listing' : null;
+    const desc = address || 'Live numbers from active calculator inputs';
+    domRefs.comparisonPropertyInfo.textContent = desc;
+  }
+
+  if (domRefs.comparisonTimestampInfo) {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    domRefs.comparisonTimestampInfo.textContent = `${dateStr}   ${timeStr}`;
+  }
+
+  // Render Table Rows
+  const filteredMatrix = filterBudget ? matrix.filter(r => r.dti30 <= 28) : matrix;
+
+  const rowsHtml = filteredMatrix.map(row => {
+    const isActive = Math.abs(row.housePrice - currentPrice) < 1;
+    const isMaxFit = row.isMaxBudgetFit;
+    let rowClass = isActive ? 'active-price-row' : '';
+    if (isMaxFit) rowClass += ' max-budget-fit-row';
+
+    const formattedPrice = `$${row.housePrice.toLocaleString()}`;
+    const priceCellContent = isMaxFit
+      ? `${formattedPrice} <span class="max-fit-tag">🎯 Max Fit</span>`
+      : formattedPrice;
+
+    const formattedLoan = row.isCash
+      ? '$0 (Cash)'
+      : `$${row.loanAmount.toLocaleString()}`;
+
+    const badge15 = `<span class="comp-dti-badge ${row.dtiStatus15.class}" title="${row.dtiStatus15.title}">${row.dtiStatus15.label}</span>`;
+    const badge30 = `<span class="comp-dti-badge ${row.dtiStatus30.class}" title="${row.dtiStatus30.title}">${row.dtiStatus30.label}</span>`;
+
+    const amount15Str = `$${Math.round(row.piti15).toLocaleString()}`;
+    const amount30Str = `$${Math.round(row.piti30).toLocaleString()}`;
+
+    const formatted15 = row.isCash15
+      ? `<div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem;"><strong>${amount15Str}</strong> ${badge15}</div><div class="comp-badge-cash">(Taxes & Insurance)</div>`
+      : `<div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem;"><strong>${amount15Str}</strong> ${badge15}</div>`;
+
+    const formatted30 = row.isCash30
+      ? `<div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem;"><strong>${amount30Str}</strong> ${badge30}</div><div class="comp-badge-cash">(Taxes & Insurance)</div>`
+      : `<div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem;"><strong>${amount30Str}</strong> ${badge30}</div>`;
+
+    const incomeTd = showIncomeNeeded
+      ? `<td style="font-weight: 600; color: var(--accent-emerald);">$${Math.round(row.incomeNeeded30).toLocaleString()}/yr</td>`
+      : '';
+
+    return `
+      <tr class="${rowClass.trim()}" data-price="${row.housePrice}">
+        <td style="font-weight: 700;">${priceCellContent}</td>
+        <td>${formattedLoan}</td>
+        <td>${formatted15}</td>
+        <td>${formatted30}</td>
+        ${incomeTd}
+      </tr>
+    `;
+  }).join('');
+
+  domRefs.comparisonTableBody.innerHTML = rowsHtml || `<tr><td colspan="5" style="text-align:center; padding: 2rem; color: var(--text-muted);">No prices match the selected budget filter.</td></tr>`;
+
+  // Wire click listener on rows
+  domRefs.comparisonTableBody.querySelectorAll('tr').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const price = parseFloat(tr.getAttribute('data-price'));
+      if (price && onSelectPrice) {
+        onSelectPrice(price);
+      }
+    });
+  });
+}
+
+/**
+ * Initializes listeners and toggle controls for the Loan Comparison Modal
+ * @param {Object} domRefs
+ * @param {Function} onSelectPrice Callback when a row is clicked
+ */
+export function setupLoanComparisonModal(domRefs, onSelectPrice) {
+  const getModal = () => domRefs.loanComparisonModal || document.getElementById('loan-comparison-modal');
+  const modalEl = getModal();
+  if (!modalEl) return;
+
+  const handlePriceSelection = (selectedPrice) => {
+    if (onSelectPrice) {
+      onSelectPrice(selectedPrice);
+    }
+    closeModal();
+  };
+
+  const openModal = () => {
+    const targetModal = getModal();
+    if (targetModal) {
+      targetModal.style.display = 'flex';
+      targetModal.classList.remove('hidden');
+      targetModal.removeAttribute('hidden');
+      targetModal.setAttribute('aria-hidden', 'false');
+    }
+
+    const currentPrice = parseFloat(domRefs.homePriceInput?.value) || 400000;
+    const step = parseInt(domRefs.compStepSizeSelect?.value, 10) || 25000;
+
+    // Populate start and end price defaults if uninitialized
+    if (domRefs.compStartPriceInput && !domRefs.compStartPriceInput.value) {
+      domRefs.compStartPriceInput.value = Math.max(100000, Math.floor((currentPrice - (step * 4)) / step) * step);
+    }
+    if (domRefs.compEndPriceInput && !domRefs.compEndPriceInput.value) {
+      const startVal = parseFloat(domRefs.compStartPriceInput?.value) || 300000;
+      domRefs.compEndPriceInput.value = startVal + (step * 16);
+    }
+
+    // Default down payment input value to current calculator down payment if uninitialized
+    const isPercentMode = domRefs.btnCompDpPercent?.classList.contains('active');
+    if (domRefs.compDpValueInput && !domRefs.compDpValueInput.value) {
+      if (isPercentMode) {
+        domRefs.compDpValueInput.value = parseFloat(domRefs.downPaymentPercentInput?.value) || 20;
+      } else {
+        domRefs.compDpValueInput.value = parseFloat(domRefs.downPaymentAmountInput?.value) || 50000;
+      }
+    }
+
+    try {
+      renderLoanComparisonModal(domRefs, handlePriceSelection);
+    } catch (err) {
+      console.error('[ERROR] Failed to render loan comparison matrix:', err);
+    }
+  };
+
+  const closeModal = () => {
+    const targetModal = getModal();
+    if (targetModal) {
+      targetModal.style.display = 'none';
+      targetModal.classList.add('hidden');
+      targetModal.setAttribute('aria-hidden', 'true');
+    }
+  };
+
+  const btnNav = domRefs.btnOpenLoanComparison || document.getElementById('btn-open-loan-comparison');
+  if (btnNav) {
+    btnNav.addEventListener('click', openModal);
+  }
+
+  const btnInline = domRefs.btnOpenComparisonInline || document.getElementById('btn-open-comparison-inline');
+  if (btnInline) {
+    btnInline.addEventListener('click', openModal);
+  }
+
+  const btnClose = domRefs.btnCloseLoanComparison || document.getElementById('btn-close-loan-comparison');
+  if (btnClose) {
+    btnClose.addEventListener('click', closeModal);
+  }
+
+  // Close on backdrop click
+  modalEl.addEventListener('click', (e) => {
+    if (e.target === modalEl) closeModal();
+  });
+
+  // Close on Escape key
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modalEl.style.display === 'flex') {
+      closeModal();
+    }
+  });
+
+  // Toggle Fixed $ vs Fixed % Mode
+  if (domRefs.btnCompDpFixed && domRefs.btnCompDpPercent) {
+    domRefs.btnCompDpFixed.addEventListener('click', () => {
+      domRefs.btnCompDpFixed.classList.add('active');
+      domRefs.btnCompDpPercent.classList.remove('active');
+      if (domRefs.compDpPrefix) domRefs.compDpPrefix.style.display = 'inline';
+      if (domRefs.compDpSuffix) domRefs.compDpSuffix.style.display = 'none';
+      if (domRefs.compDpValueInput) {
+        domRefs.compDpValueInput.value = parseFloat(domRefs.downPaymentAmountInput?.value) || 50000;
+        domRefs.compDpValueInput.step = '5000';
+      }
+      renderLoanComparisonModal(domRefs, handlePriceSelection);
+    });
+
+    domRefs.btnCompDpPercent.addEventListener('click', () => {
+      domRefs.btnCompDpPercent.classList.add('active');
+      domRefs.btnCompDpFixed.classList.remove('active');
+      if (domRefs.compDpPrefix) domRefs.compDpPrefix.style.display = 'none';
+      if (domRefs.compDpSuffix) domRefs.compDpSuffix.style.display = 'inline';
+      if (domRefs.compDpValueInput) {
+        domRefs.compDpValueInput.value = parseFloat(domRefs.downPaymentPercentInput?.value) || 20;
+        domRefs.compDpValueInput.step = '1';
+      }
+      renderLoanComparisonModal(domRefs, handlePriceSelection);
+    });
+  }
+
+  // Toggle Recast Phase (Initial Pre-Recast vs After Sale Post-Recast)
+  if (domRefs.btnCompRecastPre && domRefs.btnCompRecastPost) {
+    domRefs.btnCompRecastPre.addEventListener('click', () => {
+      domRefs.btnCompRecastPre.classList.add('active');
+      domRefs.btnCompRecastPost.classList.remove('active');
+      renderLoanComparisonModal(domRefs, handlePriceSelection);
+    });
+
+    domRefs.btnCompRecastPost.addEventListener('click', () => {
+      domRefs.btnCompRecastPost.classList.add('active');
+      domRefs.btnCompRecastPre.classList.remove('active');
+      renderLoanComparisonModal(domRefs, handlePriceSelection);
+    });
+  }
+
+  if (domRefs.compRecastAmountInput) {
+    domRefs.compRecastAmountInput.addEventListener('input', () => renderLoanComparisonModal(domRefs, handlePriceSelection));
+  }
+
+  if (domRefs.compDpValueInput) {
+    domRefs.compDpValueInput.addEventListener('input', () => renderLoanComparisonModal(domRefs, handlePriceSelection));
+  }
+
+  if (domRefs.compStartPriceInput) {
+    domRefs.compStartPriceInput.addEventListener('input', () => renderLoanComparisonModal(domRefs, handlePriceSelection));
+  }
+
+  if (domRefs.compEndPriceInput) {
+    domRefs.compEndPriceInput.addEventListener('input', () => renderLoanComparisonModal(domRefs, handlePriceSelection));
+  }
+
+  if (domRefs.compStepSizeSelect) {
+    domRefs.compStepSizeSelect.addEventListener('change', () => renderLoanComparisonModal(domRefs, handlePriceSelection));
+  }
+
+  if (domRefs.btnCompToggleIncome) {
+    domRefs.btnCompToggleIncome.addEventListener('click', () => {
+      domRefs.btnCompToggleIncome.classList.toggle('active');
+      renderLoanComparisonModal(domRefs, handlePriceSelection);
+    });
+  }
+
+  if (domRefs.btnCompFilterBudget) {
+    domRefs.btnCompFilterBudget.addEventListener('click', () => {
+      domRefs.btnCompFilterBudget.classList.toggle('active');
+      renderLoanComparisonModal(domRefs, handlePriceSelection);
+    });
+  }
+
+  // Copy Table handler
+  if (domRefs.btnCopyComparison) {
+    domRefs.btnCopyComparison.addEventListener('click', () => {
+      const rows = domRefs.comparisonTableBody?.querySelectorAll('tr');
+      if (!rows || rows.length === 0) return;
+
+      const headerLine = `House Price\tEst. Loan Amount\t15-Year PITI\t30-Year PITI`;
+      const textRows = Array.from(rows).map(tr => {
+        const tds = tr.querySelectorAll('td');
+        if (tds.length < 4) return '';
+        return `${tds[0].textContent.trim()}\t${tds[1].textContent.trim()}\t${tds[2].textContent.trim()}\t${tds[3].textContent.trim()}`;
+      }).filter(Boolean);
+
+      const fullText = [headerLine, ...textRows].join('\n');
+      navigator.clipboard.writeText(fullText).then(() => {
+        const origText = domRefs.btnCopyComparison.innerHTML;
+        domRefs.btnCopyComparison.innerHTML = '✅ Copied!';
+        setTimeout(() => { domRefs.btnCopyComparison.innerHTML = origText; }, 2000);
+      }).catch(err => {
+        console.error('Copy failed', err);
+      });
+    });
+  }
+
+  // Print handler
+  if (domRefs.btnPrintComparison) {
+    domRefs.btnPrintComparison.addEventListener('click', () => {
+      window.print();
+    });
+  }
+}
+

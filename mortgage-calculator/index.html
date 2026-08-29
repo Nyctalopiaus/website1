@@ -22,6 +22,9 @@
       <a href="../rent-vs-sell/index.html" class="btn-quickstart-mortgage" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;" title="Rent vs Sell Decision Calculator">
         <span>🔑</span> <span>Rent vs Sell</span>
       </a>
+      <button type="button" id="btn-open-loan-comparison" class="btn-quickstart-mortgage" style="display: inline-flex; align-items: center; gap: 0.35rem;" title="View Loan Comparison Table Across Prices">
+        <span>📊</span> <span>Loan Comparisons</span>
+      </button>
       <button type="button" id="btn-open-quickstart" class="btn-quickstart-mortgage" title="Show Quick Start Guide">
         <span>ℹ️</span> <span>Quick Start</span>
       </button>
@@ -32,10 +35,10 @@
   </header>
 
   <main class="container">
-    <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 0.75rem; padding: 0.85rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.85rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
+    <div style="background: rgba(229, 193, 88, 0.06); border: 1px solid rgba(229, 193, 88, 0.25); border-radius: 0.75rem; padding: 0.85rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.85rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
       <span style="font-size: 1.1rem; line-height: 1.2;">🔒</span>
       <div>
-        <strong style="color: var(--accent-emerald); font-family: var(--font-display); letter-spacing: 0.02em;">100% Private & Local.</strong>
+        <strong style="color: #ffffff; font-family: var(--font-display); letter-spacing: 0.02em;">100% Private & Local.</strong>
         Your financial data never leaves your device. All calculations and saves happen securely within your own browser. We do not track, store, or transmit your numbers.
       </div>
     </div>
@@ -93,6 +96,9 @@
               <input id="homePrice" type="number" min="10000" max="20000000" step="5000" value="400000" />
             </div>
             <input id="homePriceSlider" type="range" min="100000" max="1500000" step="10000" value="400000" class="slider" />
+            <button type="button" id="btn-open-comparison-inline" style="background: none; border: none; color: var(--accent-cyan); font-size: 0.75rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.4rem; padding: 0;" title="Compare payments across price ranges">
+              <span>📊</span> <span>Compare Price & Loan Terms Matrix ➔</span>
+            </button>
           </div>
           </div>
         </div>
@@ -147,6 +153,23 @@
                     <span class="prefix">$</span>
                     <input id="sellMortgagePayoff" type="number" min="0" max="20000000" step="1000" value="180000" />
                   </div>
+                </div>
+              </div>
+
+              <div class="grid-2-col">
+                <div class="input-group">
+                  <div class="label-with-tooltip"><label for="sellMortgagePayment" id="sellMortgagePaymentLabel">Current Monthly Mortgage Payment (PITI)</label><span class="tooltip-icon" id="sellMortgagePaymentTooltip" data-tooltip="Your existing home's monthly mortgage payment (principal, interest, taxes, and insurance). Included in carrying costs and DTI when carrying both homes before your old home sells. Set to $0 if owned free and clear.">?</span></div>
+                  <div class="input-with-prefix">
+                    <span class="prefix">$</span>
+                    <input id="sellMortgagePayment" type="number" min="0" max="500000" step="50" value="0" />
+                  </div>
+                </div>
+                <div class="input-group">
+                  <div class="label-with-tooltip"><label for="sellMortgageSchedule">Current Payment Schedule</label><span class="tooltip-icon" data-tooltip="The payment frequency on your existing mortgage (Monthly 12x vs Bi-weekly 26x). Bi-weekly payments are automatically normalized to a true monthly equivalent for DTI calculations.">?</span></div>
+                  <select id="sellMortgageSchedule">
+                    <option value="monthly" selected>Monthly (12x/yr)</option>
+                    <option value="biweekly">Bi-weekly (26x/yr)</option>
+                  </select>
                 </div>
               </div>
 
@@ -280,6 +303,7 @@
 
                 <div id="bridge-holding-cost-box" class="sell-proceeds-box">
                   <div class="sell-house-card-heading" style="margin-bottom: 0.6rem;">While You're Carrying Both Homes</div>
+                  <div class="detail-row" id="bridge-row-departure-mortgage" style="display: none;"><span>Current Departure Home Mortgage</span><span id="bridge-departure-mortgage-payment">$-.--</span></div>
                   <div class="detail-row"><span>Bridge Loan Interest-Only Payment</span><span id="bridge-monthly-interest">$-.--</span></div>
                   <div class="detail-row"><span>+ New Mortgage Payment (PITI)</span><span id="bridge-new-mortgage-payment">$-.--</span></div>
                   <div class="detail-row sell-net-row"><span>Combined Monthly Cost</span><span id="bridge-combined-monthly">$-.--</span></div>
@@ -525,15 +549,15 @@
         </div>
 
         <div class="panel-card collapsible" id="rates-card">
-          <div class="collapsible-header-row">
-            <button type="button" class="collapsible-header" id="rates-toggle" data-section-key="ratesAndTaxes" aria-expanded="true" aria-controls="rates-body">
-              <h2 style="margin-bottom: 0;">Rates & Taxes</h2>
+          <button type="button" class="collapsible-header" id="rates-toggle" data-section-key="ratesAndTaxes" aria-expanded="true" aria-controls="rates-body">
+            <h2 style="margin-bottom: 0;">Rates & Taxes</h2>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span id="btn-load-rates" role="button" tabindex="0" aria-label="Fetch current mortgage rates from live data" style="font-size: 0.75rem; color: var(--accent-emerald); background: var(--accent-emerald-dim); padding: 0.35rem 0.75rem; border-radius: 1rem; border: 1px solid rgba(229, 193, 88, 0.3); font-weight: 600; cursor: pointer; transition: all 0.2s; flex-shrink: 0;">
+                ⚡ Load Live Rates
+              </span>
               <span class="chevron" aria-hidden="true">▾</span>
-            </button>
-            <button id="btn-load-rates" aria-label="Fetch current mortgage rates from live data" style="font-size: 0.75rem; color: var(--accent-emerald); background: var(--accent-emerald-dim); padding: 0.35rem 0.75rem; border-radius: 1rem; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 600; cursor: pointer; transition: all 0.2s; flex-shrink: 0;">
-              🔄 Sync Live Rates
-            </button>
-          </div>
+            </div>
+          </button>
           <div class="collapsible-body" id="rates-body">
           <span id="rates-attribution" class="rates-attribution-text" style="display: block; margin-bottom: 1rem; font-size: 0.7rem; color: var(--text-muted);"></span>
 
@@ -986,8 +1010,6 @@
                     <button type="button" class="dti-tab-btn" id="dti-tab-btn-bank" data-dti-tab="bank">Housing DTI (Front-End)</button>
                     <button type="button" class="dti-tab-btn active" id="dti-tab-btn-backend" data-dti-tab="backend">Total Debt DTI (Back-End)</button>
                     <button type="button" class="dti-tab-btn" id="dti-tab-btn-effective" data-dti-tab="effective">Effective DTI (w/ Extras)</button>
-                    <button type="button" class="dti-tab-btn" id="dti-tab-btn-holding" data-dti-tab="holding" style="display: none;">Holding Period</button>
-                    <button type="button" class="dti-tab-btn" id="dti-tab-btn-holding-backend" data-dti-tab="holding-backend" style="display: none;">Holding + Debts</button>
                   </div>
 
                   <!-- Front-End / Housing DTI -->
@@ -1063,53 +1085,6 @@
                     </p>
                   </div>
 
-                  <!-- Holding-Period DTI (Bridge Loan mode only) -->
-                  <div class="dti-panel" data-dti-panel="holding">
-                    <p class="dti-desc" style="margin-bottom: 0.75rem; color: var(--text-muted);">While you're carrying both homes — your bridge loan's interest-only payment plus your full new mortgage, against income. The riskiest window, since it's before any sale proceeds land.</p>
-                    <div class="dti-metric">
-                      <div class="dti-value" id="bridge-holding-dti-ratio">--%</div>
-                      <div class="dti-info">
-                        <div class="label-with-tooltip" style="margin: 0; gap: 0.3rem;">
-                          <span class="dti-title">Holding-Period DTI</span>
-                          <span class="tooltip-icon" data-tooltip="Debt-to-income ratio for the combined monthly cost (bridge interest-only payment + new mortgage), against your income — the riskiest window, since it's before any sale proceeds land.">?</span>
-                        </div>
-                        <span id="bridge-holding-dti-badge" class="badge-dti">Calculating...</span>
-                      </div>
-                    </div>
-                    <div class="progress-bar-container">
-                      <div id="bridge-holding-dti-progress-bar" class="progress-bar" style="width: 0%;"></div>
-                      <div class="progress-markers">
-                        <span class="marker" style="left: 28%">28%</span>
-                        <span class="marker" style="left: 36%">36%</span>
-                      </div>
-                    </div>
-                    <div id="bridge-holding-dti-dollar-breakdown" class="dti-dollar-breakdown"></div>
-                    <p id="bridge-holding-dti-description" class="dti-desc" style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted); margin-top: 0.75rem;"></p>
-                  </div>
-
-                  <!-- Holding-Period Back-End DTI (Bridge Loan mode only) -->
-                  <div class="dti-panel" data-dti-panel="holding-backend">
-                    <p class="dti-desc" style="margin-bottom: 0.75rem; color: var(--text-muted);">The holding-period cost above, plus your other monthly debts — the fuller lender-style ratio for that same window.</p>
-                    <div class="dti-metric">
-                      <div class="dti-value" id="bridge-holding-backend-dti-ratio" style="color: var(--color-pmi);">--%</div>
-                      <div class="dti-info">
-                        <div class="label-with-tooltip" style="margin: 0; gap: 0.3rem;">
-                          <span class="dti-title">Holding-Period Back-End DTI</span>
-                          <span class="tooltip-icon" data-tooltip="Combined monthly cost above PLUS your other monthly debts (car, student loans, credit cards, etc.), against income — the fuller lender-style ratio for the holding period.">?</span>
-                        </div>
-                        <span id="bridge-holding-backend-dti-badge" class="badge-dti">Calculating...</span>
-                      </div>
-                    </div>
-                    <div class="progress-bar-container">
-                      <div id="bridge-holding-backend-dti-progress-bar" class="progress-bar" style="width: 0%;"></div>
-                      <div class="progress-markers">
-                        <span class="marker" style="left: 36%">36%</span>
-                        <span class="marker" style="left: 45%">45%</span>
-                      </div>
-                    </div>
-                    <div id="bridge-holding-backend-dti-dollar-breakdown" class="dti-dollar-breakdown"></div>
-                    <p id="bridge-holding-backend-dti-description" class="dti-desc" style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted); margin-top: 0.75rem;"></p>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1119,18 +1094,16 @@
 
         <!-- Amortization Burndown Charts -->
         <div class="panel-card collapsible burndown-chart-card" id="burndown-chart-card">
-          <div class="chart-header">
-            <button type="button" class="collapsible-header" id="burndown-toggle" data-section-key="burndownChart" aria-expanded="false" aria-controls="burndown-body">
-              <h2 style="margin-bottom: 0;">Loan Amortization Burndown</h2>
-              <span class="chevron" aria-hidden="true">▾</span>
-            </button>
+          <button type="button" class="collapsible-header" id="burndown-toggle" data-section-key="burndownChart" aria-expanded="false" aria-controls="burndown-body">
+            <h2 style="margin-bottom: 0;">Loan Amortization Burndown</h2>
+            <span class="chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="collapsible-body" id="burndown-body" hidden>
             <div class="burndown-legend">
               <span class="legend-item"><span class="legend-dot color-balance"></span>Balance</span>
               <span class="legend-item"><span class="legend-dot color-interest"></span>Cum. Interest</span>
               <span class="legend-item"><span class="legend-dot color-payment"></span>Cum. Principal</span>
             </div>
-          </div>
-          <div class="collapsible-body" id="burndown-body" hidden>
             <div class="burndown-chart-grid">
               <div class="burndown-chart-panel">
                 <h3>30-Year Fixed</h3>
@@ -1253,6 +1226,143 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=43"></script>
+  <!-- Loan Comparisons Modal -->
+  <div id="loan-comparison-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card loan-comparison-modal-content" role="dialog" aria-modal="true" aria-labelledby="loan-comparison-title" style="max-width: 1040px; width: 95%;">
+      <button id="btn-close-loan-comparison" class="modal-close-button" aria-label="Close Loan Comparisons table">&times;</button>
+      
+      <div class="comparison-modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.85rem; margin-bottom: 1rem;">
+        <h2 id="loan-comparison-title" style="font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; color: var(--text-bright); margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span>Loan Comparisons</span>
+        </h2>
+        <div id="loan-comparison-subtitle" style="font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <span id="comparison-property-info">Dynamic loan matrix based on current calculator inputs</span>
+          <span id="comparison-timestamp-info" style="font-family: monospace; font-size: 0.75rem;"></span>
+        </div>
+      </div>
+
+      <!-- Affordability Summary Banner -->
+      <div id="comp-affordability-banner" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 0.5rem; padding: 0.7rem 1rem; margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; font-size: 0.8rem;">
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <span style="color: var(--text-muted); font-size: 0.7rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Gross Income</span>
+            <strong id="comp-banner-income" style="color: var(--text-bright); font-size: 0.95rem;">$120,000/yr</strong>
+          </div>
+          <div style="border-left: 1px solid var(--border-color); padding-left: 1rem;">
+            <span style="color: var(--text-muted); font-size: 0.7rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Target 28% Housing Cap</span>
+            <strong id="comp-banner-target-cap" style="color: var(--accent-emerald); font-size: 0.95rem;">$2,800/mo</strong>
+          </div>
+        </div>
+        <div id="comp-banner-max-fit-wrap" style="display: flex; align-items: center; gap: 0.5rem; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); padding: 0.35rem 0.75rem; border-radius: 0.4rem;">
+          <span style="font-size: 1rem;">🎯</span>
+          <div>
+            <span style="color: var(--accent-emerald); font-size: 0.65rem; font-weight: 700; display: block; text-transform: uppercase; letter-spacing: 0.04em;">Max Budget Fit</span>
+            <strong id="comp-banner-max-fit-price" style="color: #ffffff; font-size: 0.88rem;">$425,000 Home</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls & Customization Toolbar -->
+      <div class="comparison-toolbar" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; font-size: 0.8rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+          <label style="font-weight: 600; color: var(--text-bright);">Down Payment Mode:</label>
+          <div class="frequency-toggle-group" id="comp-dp-mode-switch" style="margin: 0;">
+            <button type="button" class="freq-btn active" id="btn-comp-dp-fixed" data-dp-mode="fixed">Fixed Dollar ($)</button>
+            <button type="button" class="freq-btn" id="btn-comp-dp-percent" data-dp-mode="percent">Fixed Percent (%)</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <label for="compDpValue" style="font-weight: 600; color: var(--text-bright);" id="comp-dp-label">Initial Down Payment:</label>
+            <div class="input-with-prefix" style="max-width: 145px;" id="comp-dp-input-wrap">
+              <span class="prefix" id="comp-dp-prefix">$</span>
+              <input id="compDpValue" type="number" min="0" step="5000" value="50000" style="padding: 0.3rem 0.5rem 0.3rem 1.6rem; font-size: 0.8rem;" title="Initial down payment at closing" />
+              <span class="suffix" id="comp-dp-suffix" style="display:none;">%</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <label style="font-weight: 600; color: var(--text-bright);">Recast Phase:</label>
+            <div class="frequency-toggle-group" id="comp-recast-mode-switch" style="margin: 0;">
+              <button type="button" class="freq-btn active" id="btn-comp-recast-pre" data-recast-mode="pre">Initial (Pre-Recast)</button>
+              <button type="button" class="freq-btn" id="btn-comp-recast-post" data-recast-mode="post">After Sale (Post-Recast)</button>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.4rem;" id="comp-recast-input-wrap">
+            <label for="compRecastAmount" style="font-weight: 600; color: var(--text-bright);">Recast Lump Sum:</label>
+            <div class="input-with-prefix" style="max-width: 140px;">
+              <span class="prefix">$</span>
+              <input id="compRecastAmount" type="number" min="0" step="5000" value="250000" style="padding: 0.3rem 0.5rem 0.3rem 1.6rem; font-size: 0.8rem;" title="Lump sum applied from home sale proceeds to recast mortgage" />
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <label style="font-weight: 600; color: var(--text-bright);">Price Range:</label>
+            <div class="input-with-prefix" style="max-width: 125px;">
+              <span class="prefix">$</span>
+              <input id="compStartPrice" type="number" min="0" max="20000000" step="10000" value="300000" placeholder="Start" style="padding: 0.3rem 0.5rem 0.3rem 1.6rem; font-size: 0.8rem;" title="Start Home Price" />
+            </div>
+            <span style="color: var(--text-muted); font-size: 0.8rem;">to</span>
+            <div class="input-with-prefix" style="max-width: 125px;">
+              <span class="prefix">$</span>
+              <input id="compEndPrice" type="number" min="0" max="20000000" step="10000" value="700000" placeholder="End" style="padding: 0.3rem 0.5rem 0.3rem 1.6rem; font-size: 0.8rem;" title="End Home Price" />
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <label style="font-weight: 600; color: var(--text-bright);">Step:</label>
+            <select id="compStepSize" style="background: rgba(7, 9, 8, 0.7); border: 1px solid var(--border-color); border-radius: 0.3rem; color: var(--text-bright); padding: 0.35rem 0.6rem; font-size: 0.8rem; cursor: pointer;">
+              <option value="10000">$10,000</option>
+              <option value="25000" selected>$25,000</option>
+              <option value="50000">$50,000</option>
+            </select>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.4rem;">
+            <button type="button" id="btn-comp-toggle-income" class="freq-btn" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Toggle column showing annual income required to qualify">💼 Income Needed</button>
+            <button type="button" id="btn-comp-filter-budget" class="freq-btn" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Filter rows to only show home prices within your 28% DTI target">⚡ Filter &lt;28% DTI</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparison Matrix Table -->
+      <div class="loan-comparison-table-wrapper" style="overflow-x: auto; max-height: 480px; overflow-y: auto; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 0.4rem; background: #080a0f;">
+        <table class="comparison-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; font-family: var(--font-sans);">
+          <thead style="position: sticky; top: 0; background: #111714; border-bottom: 2px solid rgba(255, 255, 255, 0.2); z-index: 2;">
+            <tr>
+              <th style="padding: 0.65rem 0.85rem; color: #ffffff; font-weight: 700; border-right: 1px solid rgba(255, 255, 255, 0.15); border-bottom: 1px solid rgba(255, 255, 255, 0.15);">House Price</th>
+              <th id="th-comp-loan-header" style="padding: 0.65rem 0.85rem; color: #ffffff; font-weight: 700; border-right: 1px solid rgba(255, 255, 255, 0.15); border-bottom: 1px solid rgba(255, 255, 255, 0.15);">Est. Loan Amount with 300k down</th>
+              <th id="th-comp-15yr-header" style="padding: 0.65rem 0.85rem; color: #ffffff; font-weight: 700; border-right: 1px solid rgba(255, 255, 255, 0.15); border-bottom: 1px solid rgba(255, 255, 255, 0.15);">Est. Monthly PITI (15-Year @ 5.875%)</th>
+              <th id="th-comp-30yr-header" style="padding: 0.65rem 0.85rem; color: #ffffff; font-weight: 700; border-right: 1px solid rgba(255, 255, 255, 0.15); border-bottom: 1px solid rgba(255, 255, 255, 0.15);">Est. Total Monthly PITI (30-Year @ 6.625%)</th>
+              <th id="th-comp-income-header" style="padding: 0.65rem 0.85rem; color: #ffffff; font-weight: 700; border-bottom: 1px solid rgba(255, 255, 255, 0.15); display: none;">Est. Income Needed</th>
+            </tr>
+          </thead>
+          <tbody id="comparison-table-body">
+            <!-- Dynamically rendered rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Action Footer -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="font-size: 0.75rem; color: var(--text-muted);">
+          💡 <em>Click any row to load that Home Price into your calculator.</em>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" id="btn-copy-comparison" style="background: rgba(255, 255, 255, 0.08); color: var(--text-bright); border: 1px solid var(--border-color); border-radius: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.35rem;">
+            📋 Copy Table
+          </button>
+          <button type="button" id="btn-print-comparison" style="background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.45rem 0.95rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.35rem;">
+            🖨️ Print Sheet
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js?v=44"></script>
 </body>
 </html>

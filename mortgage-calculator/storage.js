@@ -106,6 +106,8 @@ export function applyLoadedDataToDOM(data, domRefs) {
   // doesn't apply), right after this function runs.
   safeSet(domRefs.sellHomeValueInput, data.sellHomeValue);
   safeSet(domRefs.sellMortgagePayoffInput, data.sellMortgagePayoff);
+  safeSet(domRefs.sellMortgagePaymentInput, data.sellMortgagePayment);
+  safeSet(domRefs.sellMortgageScheduleInput, data.sellMortgageSchedule || 'monthly');
   safeSet(domRefs.sellCommissionPercentInput, data.sellCommissionPercent);
   safeSet(domRefs.sellClosingCostsPercentInput, data.sellClosingCostsPercent);
   safeSet(domRefs.sellRepairCostsInput, data.sellRepairCosts);
