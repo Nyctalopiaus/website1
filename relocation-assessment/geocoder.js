@@ -2,22 +2,65 @@
 (function(window) {
   'use strict';
 
+  function hostnameOf(url) {
+    try {
+      return new URL(url).hostname;
+    } catch (_err) {
+      return url;
+    }
+  }
+
   async function fetchJson(url, options = {}, timeoutMs = 25000) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const { signal: externalSignal, ...restOptions } = options;
+    // AbortSignal.timeout()/AbortSignal.any() (native, no manual relay
+    // controller/listener needed) combine our own timeout with an optional
+    // caller-supplied signal -- e.g. the address-field typeahead cancelling a
+    // lookup that's been superseded by a newer keystroke. An earlier
+    // hand-rolled version of this (a manual AbortController + 'abort'
+    // listener relaying into a second internal controller) leaked genuine
+    // unhandled promise rejections under real network timing in prod -- see
+    // the 2026-08-30 relocation-assessment project notes. Letting the
+    // browser own the signal composition avoids that whole class of bug.
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
+    const combinedSignal = externalSignal ? AbortSignal.any([externalSignal, timeoutSignal]) : timeoutSignal;
+
     try {
       const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
+        ...restOptions,
+        signal: combinedSignal,
         headers: {
-          ...(options.headers || {}),
+          ...(restOptions.headers || {}),
           Accept: 'application/json'
         }
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        const err = new Error(`HTTP ${response.status} from ${hostnameOf(url)}`);
+        err.status = response.status;
+        throw err;
+      }
       return await response.json();
-    } finally {
-      clearTimeout(timer);
+    } catch (err) {
+      // Name *which* host and how this failed (timeout vs. cancelled vs. bad
+      // status vs. a network-level error like CORS/DNS/offline) instead of a
+      // bare "AbortError" -- that's the detail that ends up in the debug log
+      // and actually explains a failed lookup. Check the SOURCE signals'
+      // own `.aborted` state rather than parsing `err.name`/`err.message` --
+      // more robust regardless of exactly how the browser names/labels the
+      // rejection for a given abort reason.
+      if (err && err.name === 'AbortError') {
+        if (externalSignal && externalSignal.aborted) {
+          const cancelErr = new Error(`Lookup for ${hostnameOf(url)} cancelled -- superseded by a newer request`);
+          cancelErr.name = 'CancelledError';
+          throw cancelErr;
+        }
+        const timeoutErr = new Error(`Timed out after ${timeoutMs}ms contacting ${hostnameOf(url)}`);
+        timeoutErr.name = 'TimeoutError';
+        throw timeoutErr;
+      }
+      if (err instanceof TypeError) {
+        throw new Error(`Network error contacting ${hostnameOf(url)}: ${err.message}`);
+      }
+      throw err;
     }
   }
 
@@ -38,16 +81,41 @@
     return parts[0] || raw;
   }
 
+  // Returns:
+  //   a non-empty string -- our best guess at the city name.
+  //   ''  -- no street structure was recognized at all (e.g. a bare place
+  //          name like "Denver"); the caller may reasonably treat the whole
+  //          query as a place-name search.
+  //   null -- we recognized a street-type word (St/Dr/Ave/...) but nothing
+  //          follows it yet, i.e. the city genuinely hasn't been typed yet.
+  //          Callers must NOT fall back to guessing here -- see below.
   function extractCityNameFromQuery(query) {
     if (!query) return '';
     const parts = String(query).split(',').map((s) => s.trim()).filter(Boolean);
     if (parts.length >= 2) {
       return parts[1].replace(/\d+/g, '').trim();
     }
+    // No comma to separate street from city -- typically because the user
+    // is still mid-typing. Guessing which words are "the city" here is
+    // ambiguous, and a street *name* can itself collide with a real place
+    // name (e.g. "5578 S Telluride St" -- Telluride is a real CO town,
+    // ~250mi from an actual Centennial, CO address). Directional words
+    // (S/N/E/W/...) are NOT reliable end-of-street markers -- they usually
+    // come right before the street *name*, not after it -- so only a real
+    // street-type suffix (St/Dr/Ave/...) is trusted to mark where the
+    // street segment ends. Only words after the LAST such suffix are
+    // treated as the city; if none exists yet, report that explicitly with
+    // `null` rather than guessing from the leftover words (which is what
+    // previously matched "telluride" as if it were the city).
     const words = String(query).replace(/\d+/g, '').split(/\s+/).filter(Boolean);
-    const streetTokens = new Set(['st', 'street', 'ave', 'avenue', 'rd', 'road', 'dr', 'drive', 'blvd', 'boulevard', 'way', 'ct', 'court', 'ln', 'lane', 's', 'n', 'e', 'w', 'south', 'north', 'east', 'west']);
-    const cityWords = words.filter((w) => !streetTokens.has(w.toLowerCase()));
-    return cityWords.length ? cityWords.join(' ') : words.join(' ');
+    const streetTypeTokens = new Set(['st', 'street', 'ave', 'avenue', 'rd', 'road', 'dr', 'drive', 'blvd', 'boulevard', 'way', 'ct', 'court', 'ln', 'lane', 'pl', 'place', 'cir', 'circle', 'ter', 'terrace', 'pkwy', 'parkway', 'hwy', 'highway']);
+    let lastTypeIdx = -1;
+    words.forEach((w, idx) => {
+      if (streetTypeTokens.has(w.toLowerCase())) lastTypeIdx = idx;
+    });
+    if (lastTypeIdx === -1) return '';
+    const cityWords = words.slice(lastTypeIdx + 1);
+    return cityWords.length ? cityWords.join(' ') : null;
   }
 
   function formatAddressFromHit(hit) {
@@ -93,67 +161,6 @@
     });
   }
 
-  async function queryNominatimSingle(queryStr, limit, timeoutMs) {
-    const url = new URL('https://nominatim.openstreetmap.org/search');
-    url.searchParams.set('q', queryStr);
-    url.searchParams.set('format', 'jsonv2');
-    url.searchParams.set('limit', String(limit));
-    url.searchParams.set('addressdetails', '1');
-
-    const data = await fetchJson(url.toString(), {
-      headers: { 'Accept-Language': 'en' }
-    }, timeoutMs);
-
-    if (!Array.isArray(data) || !data.length) return [];
-
-    const candidates = data
-      .map((hit) => {
-        const lat = parseFloat(hit.lat);
-        const lon = parseFloat(hit.lon);
-        if (isNaN(lat) || isNaN(lon)) return null;
-
-        const bboxRaw = Array.isArray(hit.boundingbox) ? hit.boundingbox : [];
-        const south = bboxRaw[0] !== undefined ? parseFloat(bboxRaw[0]) : lat - 0.02;
-        const north = bboxRaw[1] !== undefined ? parseFloat(bboxRaw[1]) : lat + 0.02;
-        const west = bboxRaw[2] !== undefined ? parseFloat(bboxRaw[2]) : lon - 0.02;
-        const east = bboxRaw[3] !== undefined ? parseFloat(bboxRaw[3]) : lon + 0.02;
-
-        return {
-          displayName: formatAddressFromHit(hit),
-          center: { lat, lon },
-          bbox: { south, north, west, east }
-        };
-      })
-      .filter(Boolean);
-
-    return deduplicateCandidates(candidates);
-  }
-
-  async function fetchNominatimCandidates(query, options = {}) {
-    const limit = Math.max(1, Math.min(8, parseInt(options.limit || 6, 10)));
-    const timeoutMs = Math.max(1500, Math.min(4000, parseInt(options.timeoutMs || 2500, 10)));
-
-    // Stage 1: Full exact query (2.5s max)
-    let hits = await queryNominatimSingle(query, limit, timeoutMs);
-    if (hits.length > 0) return deduplicateCandidates(hits);
-
-    // Stage 2: Strip house number and search street + city (2.5s max)
-    const strippedHouse = query.replace(/^\d+[a-zA-Z]?\s+/, '').trim();
-    if (strippedHouse && strippedHouse !== query) {
-      hits = await queryNominatimSingle(strippedHouse, limit, timeoutMs);
-      if (hits.length > 0) return deduplicateCandidates(hits);
-    }
-
-    // Stage 3: Search city/state only (2.5s max)
-    const cityName = extractCityNameFromQuery(query);
-    if (cityName && cityName !== query) {
-      hits = await queryNominatimSingle(cityName, limit, timeoutMs);
-      if (hits.length > 0) return deduplicateCandidates(hits);
-    }
-
-    throw new Error('No Nominatim results found');
-  }
-
   function isStreetMatch(query, streetName) {
     if (!query || !streetName) return true;
     const qLower = String(query).toLowerCase();
@@ -166,12 +173,13 @@
     return streetTokens.some((token) => qLower.includes(token));
   }
 
-  async function fetchPhotonCandidates(query, limit = 6) {
+  async function fetchPhotonCandidates(query, limit = 6, signal) {
     const url = new URL('https://photon.komoot.io/api/');
     url.searchParams.set('q', query);
     url.searchParams.set('limit', String(limit));
 
-    const data = await fetchJson(url.toString(), {}, 2500);
+    const data = await fetchJson(url.toString(), { signal }, 5000);
+
     const features = Array.isArray(data?.features) ? data.features : [];
     if (!features.length) throw new Error('No Photon candidates found');
 
@@ -213,13 +221,22 @@
     return results;
   }
 
-  async function fetchOpenMeteoCandidates(query, limit = 6) {
-    const searchName = extractCityNameFromQuery(query) || query.replace(/^\d+[a-zA-Z]?\s+/, '').trim() || query;
+  async function fetchOpenMeteoCandidates(query, limit = 6, signal) {
+    const cityGuess = extractCityNameFromQuery(query);
+    if (cityGuess === null) {
+      // A street-type suffix (St/Dr/Ave/...) was found but nothing follows
+      // it yet -- the city hasn't been typed. Report an honest "nothing to
+      // search yet" rather than falling back to a guess built from the
+      // street name itself, which risks matching an unrelated real place
+      // (see extractCityNameFromQuery).
+      throw new Error('No Open-Meteo candidates found');
+    }
+    const searchName = cityGuess || query.replace(/^\d+[a-zA-Z]?\s+/, '').trim() || query;
     const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
     url.searchParams.set('name', searchName);
     url.searchParams.set('count', String(limit));
 
-    const data = await fetchJson(url.toString(), {}, 3500);
+    const data = await fetchJson(url.toString(), { signal }, 3500);
     const results = Array.isArray(data?.results) ? data.results : [];
     if (!results.length) throw new Error('No Open-Meteo candidates found');
 
@@ -237,25 +254,57 @@
 
   async function fetchGeocodeCandidates(query, options = {}) {
     const limit = Math.max(1, Math.min(8, parseInt(options.limit || 6, 10)));
+    const signal = options.signal;
+    const logger = window.RelocationLogger;
+    const startedAt = Date.now();
 
-    // Provider 1: Photon Komoot (Ultra-fast instant typeahead)
+    // The address-field typeahead passes its own AbortSignal so a lookup
+    // for a stale, already-superseded prefix can be cut short instead of
+    // running the full Photon+Open-Meteo waterfall (up to ~8.5s) to
+    // completion for no reason. A real search submission never passes a
+    // signal, so this has no effect there.
+    function throwIfCancelled() {
+      if (signal && signal.aborted) {
+        const err = new Error('Lookup cancelled -- superseded by a newer request');
+        err.name = 'CancelledError';
+        throw err;
+      }
+    }
+
+    throwIfCancelled();
+
+    // Provider 1: Photon Komoot (Exact street address geocoding)
     try {
-      const results = await fetchPhotonCandidates(query, limit);
-      if (Array.isArray(results) && results.length > 0) return deduplicateCandidates(results);
-    } catch (_err0) {}
+      const results = await fetchPhotonCandidates(query, limit, signal);
+      if (Array.isArray(results) && results.length > 0) {
+        logger?.info('geocoder:photon', `Resolved "${query}" -> ${results.length} result(s) in ${Date.now() - startedAt}ms`);
+        return deduplicateCandidates(results);
+      }
+    } catch (err0) {
+      if (err0 && err0.name === 'CancelledError') throw err0;
+      logger?.warn('geocoder:photon', `Failed for "${query}"`, logger?.describeError(err0));
+    }
 
-    // Provider 2: Nominatim OpenStreetMap (3-stage fallback)
+    throwIfCancelled();
+
+    // Provider 2: Open-Meteo Geocoding
+    // (Nominatim was previously provider 2 here but was removed 2026-08-29:
+    // logging revealed every Nominatim request from this domain was being
+    // blocked -- "No 'Access-Control-Allow-Origin' header is present" -- so
+    // it was a guaranteed-failure dead end on every search that reached it,
+    // not an occasional fallback. See relocation-assessment project memory.)
     try {
-      const results = await fetchNominatimCandidates(query, options);
-      if (Array.isArray(results) && results.length > 0) return deduplicateCandidates(results);
-    } catch (_err1) {}
+      const results = await fetchOpenMeteoCandidates(query, limit, signal);
+      if (Array.isArray(results) && results.length > 0) {
+        logger?.info('geocoder:open-meteo', `Resolved "${query}" -> ${results.length} result(s) in ${Date.now() - startedAt}ms`);
+        return deduplicateCandidates(results);
+      }
+    } catch (err1) {
+      if (err1 && err1.name === 'CancelledError') throw err1;
+      logger?.warn('geocoder:open-meteo', `Failed for "${query}"`, logger?.describeError(err1));
+    }
 
-    // Provider 3: Open-Meteo Geocoding
-    try {
-      const results = await fetchOpenMeteoCandidates(query, limit);
-      if (Array.isArray(results) && results.length > 0) return deduplicateCandidates(results);
-    } catch (_err2) {}
-
+    logger?.error('geocoder', `Both providers failed to resolve "${query}" (${Date.now() - startedAt}ms)`);
     throw new Error(`Address '${query}' could not be resolved by live geocoders.`);
   }
 

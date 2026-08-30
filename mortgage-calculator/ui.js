@@ -1633,7 +1633,11 @@ function renderBackEndDtiBlock(monthlyHousingCost, otherMonthlyDebts, grossMonth
   const dti = ((monthlyHousingCost + Math.max(0, otherMonthlyDebts || 0)) / grossMonthlyIncome) * 100;
   const status = getBackEndDTIStatus(dti, isNetIncome);
 
-  if (els.ratioEl) els.ratioEl.textContent = `${dti.toFixed(1)}%`;
+  if (els.ratioEl) {
+    els.ratioEl.textContent = `${dti.toFixed(1)}%`;
+    els.ratioEl.classList.remove('bg-healthy', 'bg-moderate', 'bg-high');
+    els.ratioEl.classList.add(status.className);
+  }
 
   if (els.progressBarEl) {
     els.progressBarEl.style.width = `${Math.min(dti, 100)}%`;
@@ -1779,6 +1783,50 @@ export function setupDtiSwitcher() {
         p.classList.toggle('active', p.dataset.dtiPanel === tab);
       });
     });
+  });
+}
+
+/**
+ * Keeps every `.tooltip-icon`'s hover/focus tooltip fully on-screen. The
+ * tooltip text is a CSS `::after` pseudo-element centered on the icon
+ * (`translateX(-50%)` in styles.css), which overflows the viewport when the
+ * icon sits near the edge of a card — e.g. the "Housing DTI (Front-End)"
+ * pill, whose "?" icon sits close to the right edge of the DTI panel.
+ *
+ * On hover/focus we measure the icon's position and the pseudo-element's
+ * rendered width (`getComputedStyle(icon, '::after')` still reports layout
+ * size even while it's invisible), then set a `--tooltip-shift-x` CSS
+ * variable that the `translateX()` in styles.css adds on top of its normal
+ * centered position — just enough to pull the box back inside the
+ * viewport on whichever side it would otherwise clip.
+ */
+export function attachTooltipPositioning() {
+  const EDGE_MARGIN = 8; // px to keep clear of the viewport edge
+
+  const reposition = (event) => {
+    const icon = event.currentTarget;
+    const tooltipWidth = parseFloat(window.getComputedStyle(icon, '::after').width);
+    if (!tooltipWidth) return;
+
+    const iconRect = icon.getBoundingClientRect();
+    const iconCenter = iconRect.left + iconRect.width / 2;
+    let idealLeft = iconCenter - tooltipWidth / 2;
+    const idealRight = idealLeft + tooltipWidth;
+
+    let shift = 0;
+    if (idealRight > window.innerWidth - EDGE_MARGIN) {
+      shift -= idealRight - (window.innerWidth - EDGE_MARGIN);
+    }
+    if (idealLeft + shift < EDGE_MARGIN) {
+      shift += EDGE_MARGIN - (idealLeft + shift);
+    }
+
+    icon.style.setProperty('--tooltip-shift-x', `${shift}px`);
+  };
+
+  document.querySelectorAll('.tooltip-icon').forEach(icon => {
+    icon.addEventListener('mouseenter', reposition);
+    icon.addEventListener('focus', reposition);
   });
 }
 
@@ -2183,13 +2231,13 @@ export function renderLoanComparisonModal(domRefs, onSelectPrice) {
 
   if (domRefs.thComp15yrHeader) {
     const savingsHtml = (recastMode === 'post' && avgSavings15 > 5)
-      ? `<div style="color: #34d399; font-size: 0.75rem; font-weight: 600; margin-top: 0.2rem;">(-$${Math.round(avgSavings15).toLocaleString()}/mo after recast)</div>`
+      ? `<div class="comp-savings-note">(-$${Math.round(avgSavings15).toLocaleString()}/mo after recast)</div>`
       : '';
     domRefs.thComp15yrHeader.innerHTML = `<div>Est. Monthly PITI (15-Year @ ${interest15.toFixed(3)}%)</div>${savingsHtml}`;
   }
   if (domRefs.thComp30yrHeader) {
     const savingsHtml = (recastMode === 'post' && avgSavings30 > 5)
-      ? `<div style="color: #34d399; font-size: 0.75rem; font-weight: 600; margin-top: 0.2rem;">(-$${Math.round(avgSavings30).toLocaleString()}/mo after recast)</div>`
+      ? `<div class="comp-savings-note">(-$${Math.round(avgSavings30).toLocaleString()}/mo after recast)</div>`
       : '';
     domRefs.thComp30yrHeader.innerHTML = `<div>Est. Total Monthly PITI (30-Year @ ${interest30.toFixed(3)}%)</div>${savingsHtml}`;
   }
@@ -2218,7 +2266,7 @@ export function renderLoanComparisonModal(domRefs, onSelectPrice) {
 
     const formattedPrice = `$${row.housePrice.toLocaleString()}`;
     const priceCellContent = isMaxFit
-      ? `${formattedPrice} <span class="max-fit-tag">🎯 Max Fit</span>`
+      ? `${formattedPrice} <span class="max-fit-tag"><svg class="icon" aria-hidden="true"><use href="#icon-target"/></svg> Max Fit</span>`
       : formattedPrice;
 
     const formattedLoan = row.isCash
@@ -2232,15 +2280,15 @@ export function renderLoanComparisonModal(domRefs, onSelectPrice) {
     const amount30Str = `$${Math.round(row.piti30).toLocaleString()}`;
 
     const formatted15 = row.isCash15
-      ? `<div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem;"><strong>${amount15Str}</strong> ${badge15}</div><div class="comp-badge-cash">(Taxes & Insurance)</div>`
-      : `<div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem;"><strong>${amount15Str}</strong> ${badge15}</div>`;
+      ? `<div class="comp-row-flex"><strong>${amount15Str}</strong> ${badge15}</div><div class="comp-badge-cash">(Taxes & Insurance)</div>`
+      : `<div class="comp-row-flex"><strong>${amount15Str}</strong> ${badge15}</div>`;
 
     const formatted30 = row.isCash30
-      ? `<div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem;"><strong>${amount30Str}</strong> ${badge30}</div><div class="comp-badge-cash">(Taxes & Insurance)</div>`
-      : `<div style="display:flex; align-items:center; justify-content:space-between; gap:0.4rem;"><strong>${amount30Str}</strong> ${badge30}</div>`;
+      ? `<div class="comp-row-flex"><strong>${amount30Str}</strong> ${badge30}</div><div class="comp-badge-cash">(Taxes & Insurance)</div>`
+      : `<div class="comp-row-flex"><strong>${amount30Str}</strong> ${badge30}</div>`;
 
     const incomeTd = showIncomeNeeded
-      ? `<td style="font-weight: 600; color: var(--accent-emerald);">$${Math.round(row.incomeNeeded30).toLocaleString()}/yr</td>`
+      ? `<td class="comp-income-td">$${Math.round(row.incomeNeeded30).toLocaleString()}/yr</td>`
       : '';
 
     return `
@@ -2450,7 +2498,7 @@ export function setupLoanComparisonModal(domRefs, onSelectPrice) {
       const fullText = [headerLine, ...textRows].join('\n');
       navigator.clipboard.writeText(fullText).then(() => {
         const origText = domRefs.btnCopyComparison.innerHTML;
-        domRefs.btnCopyComparison.innerHTML = '✅ Copied!';
+        domRefs.btnCopyComparison.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg> Copied!';
         setTimeout(() => { domRefs.btnCopyComparison.innerHTML = origText; }, 2000);
       }).catch(err => {
         console.error('Copy failed', err);

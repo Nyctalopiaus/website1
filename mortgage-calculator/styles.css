@@ -23,7 +23,7 @@
   --color-pmi: #f97316;
   --color-hoa: #ec4899;
 
-  --color-healthy: #e5c158;
+  --color-healthy: #4ade80;
   --color-moderate: #f97316;
   --color-high: #ef4444;
   
@@ -387,19 +387,10 @@ body {
 
 /* Form inputs */
 .input-group {
-  margin-bottom: 1.25rem;
+  margin-bottom: 2rem;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  height: 100%;
-}
-
-.input-group > .input-with-prefix,
-.input-group > .input-with-suffix,
-.input-group > input,
-.input-group > select,
-.input-group > .frequency-toggle-group {
-  margin-top: auto;
+  gap: 0.35rem;
 }
 
 .input-group:last-child {
@@ -1015,6 +1006,7 @@ select:focus {
 }
 
 .progress-bar {
+  width: 0;
   height: 100%;
   border-radius: 3px;
   transition: width 0.35s ease, background-color 0.35s ease;
@@ -1024,7 +1016,7 @@ select:focus {
 .badge-dti.bg-healthy {
   background-color: var(--color-healthy);
   color: #070908;
-  box-shadow: 0 0 10px rgba(229, 193, 88, 0.2);
+  box-shadow: 0 0 10px rgba(74, 222, 128, 0.2);
 }
 
 .progress-bar.bg-moderate,
@@ -1040,6 +1032,14 @@ select:focus {
   color: #070908;
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
 }
+
+/* Keeps the big DTI headline number in sync with its badge's health color
+   (previously the back-end value was hardcoded to --color-pmi, an orange
+   meant for the donut chart's PMI segment — unrelated to DTI status, and
+   wrong whenever the ratio was actually healthy). */
+.dti-value.bg-healthy { color: var(--color-healthy); }
+.dti-value.bg-moderate { color: var(--color-moderate); }
+.dti-value.bg-high { color: var(--color-high); }
 
 .progress-markers {
   position: absolute;
@@ -1178,8 +1178,8 @@ select:focus {
    currently-selected pill always stays cyan (see .dti-tab-btn.active
    above), status color only shows up on the ones you're not looking at. */
 .dti-tab-btn.bg-healthy:not(.active) {
-  background: rgba(229, 193, 88, 0.1);
-  border-color: rgba(229, 193, 88, 0.3);
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.3);
   color: var(--color-healthy);
 }
 
@@ -1813,7 +1813,10 @@ select:focus {
   position: absolute;
   bottom: 150%;
   left: 50%;
-  transform: translateX(-50%) translateY(5px);
+  /* Centered on the icon by default; --tooltip-shift-x is set by
+     attachTooltipPositioning() in ui.js when that would push the box past
+     the edge of the viewport (e.g. icons near the right side of a card). */
+  transform: translateX(calc(-50% + var(--tooltip-shift-x, 0px))) translateY(5px);
   width: max-content;
   max-width: 220px;
   background: var(--bg-card);
@@ -1831,14 +1834,14 @@ select:focus {
   line-height: 1.4;
   opacity: 0;
   visibility: hidden;
-  transition: all 0.2s ease;
+  transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
   z-index: 100;
   pointer-events: none;
 }
 .tooltip-icon:hover::after {
   opacity: 1;
   visibility: visible;
-  transform: translateX(-50%) translateY(0);
+  transform: translateX(calc(-50% + var(--tooltip-shift-x, 0px))) translateY(0);
 }
 
 /* Feature & Quick Start Mortgage Button & Modal Styling */
@@ -2336,6 +2339,365 @@ select:focus {
 }
 
 /* ============================================================
+   Shared utilities — introduced for the Loan Comparisons modal,
+   safe to reuse anywhere else in the app.
+   ============================================================ */
+.icon {
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.22em;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 4px rgba(229, 193, 88, 0.55));
+}
+
+/* ============================================================
+   Main-page cleanup — replacing inline style="..." attributes that were
+   scattered through the header/banner/cards/results panel and the 3
+   utility modals with semantic classes, same intent as the Loan
+   Comparisons modal's .comp-* classes above (see that block's own
+   comment). Grouped by purpose, not by which element first used them.
+   ============================================================ */
+
+/* JS-driven visibility: every element carrying this starts hidden: JS
+   reveals it later via a direct el.style.display assignment, which always
+   overrides this class regardless of source order, so this is safe. */
+.hidden-init {
+  display: none !important;
+}
+
+/* Small spacing/typography overrides that recurred identically enough to
+   be worth a single reusable name instead of repeating the declaration. */
+.no-mb { margin-bottom: 0; }
+.no-margin { margin: 0; }
+.tight-gap { gap: 0.3rem; }
+.stat-value { font-weight: 500; }
+.text-hint { font-size: 0.7rem; color: var(--text-muted); }
+.text-cyan-strong { color: var(--accent-cyan); font-weight: 600; }
+
+.eyebrow-label {
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.label-row-full {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+/* "✓ Redfin" / "✓ Live" source-verified badges — same shape, two accent
+   colors depending on which data source populated the field. */
+.badge-verified-cyan,
+.badge-verified-emerald {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.25rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  border: 1px solid;
+}
+.badge-verified-cyan {
+  color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.08);
+  border-color: rgba(6, 182, 212, 0.25);
+}
+.badge-verified-emerald {
+  color: var(--accent-emerald);
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+/* Savings/detail rows in the term-comparison cards — emerald when there's
+   a real saved amount to show, dimmed when there's nothing to report. */
+.stat-row-emerald {
+  display: flex;
+  justify-content: space-between;
+  color: var(--accent-emerald);
+}
+.stat-row-dim {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-dark);
+}
+
+/* Trust banner ("100% Private & Local.") under the header. */
+.trust-banner {
+  background: rgba(229, 193, 88, 0.06);
+  border: 1px solid rgba(229, 193, 88, 0.25);
+  border-radius: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.trust-banner-icon {
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+.trust-banner-headline {
+  color: #ffffff;
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+/* Listing-URL paste row, reused for both the Property card's "New Home's
+   Listing URL" and the Sell-House card's "Current Home's Listing URL". */
+.listing-url-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.listing-url-input {
+  width: 100%;
+  background: rgba(7, 9, 8, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 0.4rem;
+  color: var(--text-bright);
+  padding: 0.65rem 0.9rem;
+  font-family: var(--font-sans);
+  outline: none;
+}
+.supported-sites-line {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.listing-url-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.btn-load-cached {
+  width: 100%;
+  background: var(--accent-cyan);
+  color: #080a0f;
+  border: none;
+  border-radius: 0.4rem;
+  padding: 0.65rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: filter 0.2s ease;
+}
+.btn-load-cached:hover {
+  filter: brightness(1.08);
+}
+.btn-load-cached.btn-fill {
+  width: auto;
+  flex: 1;
+}
+.btn-bookmarklet {
+  background: rgba(6, 182, 212, 0.1);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  color: var(--accent-cyan);
+  border-radius: 0.4rem;
+  padding: 0.65rem 0.85rem;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.residual-cash-flow-banner {
+  margin-bottom: 0;
+  padding: 0.85rem 1rem;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 0.5rem;
+}
+
+/* "Real Numbers Comparison" recast-vs-extra-payment card. */
+.strat-comparison-box {
+  margin-bottom: 1.25rem;
+  padding: 0.85rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+}
+.strat-comparison-header {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-cyan);
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.strat-lump-sum-badge {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: none;
+}
+.strat-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.strat-card {
+  padding: 0.65rem;
+  border-radius: 0.4rem;
+  transition: all 0.2s;
+}
+.strat-card-recast {
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.strat-card-extra {
+  background: rgba(6, 182, 212, 0.05);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+}
+.strat-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+.strat-card-title {
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.strat-card-title-recast { color: var(--accent-emerald); }
+.strat-card-title-extra { color: var(--accent-cyan); }
+.strat-active-tag {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.2rem;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+.strat-active-tag-emerald {
+  color: var(--accent-emerald);
+  background: var(--accent-emerald-dim);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+.strat-active-tag-cyan {
+  color: var(--accent-cyan);
+  background: var(--accent-cyan-dim);
+  border-color: rgba(6, 182, 212, 0.3);
+}
+.strat-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.strat-stat-value {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.strat-stat-value-emerald { color: var(--accent-emerald); }
+.strat-stat-value-bright { color: var(--text-bright); }
+.strat-stat-value-sm {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--text-bright);
+}
+.strat-stat-value-sm-cyan { color: var(--accent-cyan); }
+.strat-stat-sub {
+  font-size: 0.68rem;
+  font-weight: 600;
+  display: block;
+}
+.strat-stat-sub-emerald { color: var(--accent-emerald); }
+.strat-stat-sub-cyan { color: var(--accent-cyan); }
+.strat-stat-sub-muted { color: var(--text-muted); font-weight: 400; }
+.strat-stat-sub-muted-bold { color: var(--text-muted); }
+.strat-summary-text {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  padding-top: 0.45rem;
+  border-top: 1px dashed var(--border-color);
+}
+.strat-best-of-both-note {
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 0.4rem;
+  font-size: 0.7rem;
+  color: var(--text-bright);
+  line-height: 1.35;
+}
+
+/* Small spacing utilities for repeated single-declaration inline styles
+   scattered across the cards below. Named by value since each was reused
+   at that exact value 2-4 times. */
+.mt-05 { margin-top: 0.5rem; }
+.mt-06 { margin-top: 0.6rem; }
+.mt-075 { margin-top: 0.75rem; }
+.mb-035 { margin-bottom: 0.35rem; }
+.mb-04 { margin-bottom: 0.4rem; }
+.mb-06 { margin-bottom: 0.6rem; }
+.m0-gap03 { margin: 0; gap: 0.3rem; }
+
+.flex-center-wrap-gap75 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.row-between-mb025 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+.hint-text-mt075 {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+}
+
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-dark) transparent;
+}
+
+.thin-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--text-dark);
+  border-radius: 4px;
+}
+
+.thin-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--accent-emerald);
+}
+
+/* ============================================================
    Loan Comparisons Matrix Modal Styles
    ============================================================ */
 #loan-comparison-modal {
@@ -2355,6 +2717,12 @@ select:focus {
   align-items: center !important;
   justify-content: center !important;
   padding: 1rem !important;
+  /* One canonical "healthy/affordable" green for this modal — badges, the
+     affordability banner, and the Max Fit tag all reference this instead
+     of each hardcoding their own slightly-different shade. */
+  --comp-success: #34d399;
+  --comp-success-bg: rgba(74, 222, 128, 0.18);
+  --comp-success-border: rgba(74, 222, 128, 0.35);
 }
 
 #loan-comparison-modal.hidden {
@@ -2386,6 +2754,228 @@ select:focus {
   height: 3px;
   background: linear-gradient(90deg, #e5c158, #38bdf8, #a855f7);
   border-radius: 12px 12px 0 0;
+}
+
+.comp-header {
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.comp-title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin-bottom: 0.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.comp-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.comp-timestamp {
+  font-family: monospace;
+  font-size: 0.75rem;
+}
+
+.comp-banner {
+  background: var(--comp-success-bg);
+  border: 1px solid var(--comp-success-border);
+  border-radius: 0.5rem;
+  padding: 0.7rem 1rem;
+  margin-bottom: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.comp-banner-stats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.comp-banner-stat-divider {
+  border-left: 1px solid var(--border-color);
+  padding-left: 1rem;
+}
+
+.comp-banner-stat-label {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.comp-banner-stat-value {
+  color: var(--text-bright);
+  font-size: 0.95rem;
+}
+
+.comp-max-fit-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--comp-success-bg);
+  border: 1px solid var(--comp-success-border);
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.4rem;
+}
+
+.comp-max-fit-pill .icon {
+  color: var(--accent-emerald);
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.comp-max-fit-label {
+  color: var(--accent-emerald);
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.comp-max-fit-price {
+  color: #ffffff;
+  font-size: 0.88rem;
+}
+
+.comp-toolbar {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+
+.comp-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.comp-field {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.comp-field-label {
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.comp-price-sep {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.comp-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.loan-comparison-table-wrapper {
+  overflow-x: auto;
+  max-height: 480px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.4rem;
+  background: #080a0f;
+}
+
+.comp-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.comp-footer-tip {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.comp-footer-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-comp-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-bright);
+  border: 1px solid var(--border-color);
+  border-radius: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.btn-comp-primary {
+  background: var(--accent-cyan);
+  color: #080a0f;
+  border: none;
+  border-radius: 0.4rem;
+  padding: 0.45rem 0.95rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.comp-row-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.comp-savings-note {
+  color: var(--comp-success);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 0.2rem;
+}
+
+.comp-income-td {
+  font-weight: 600;
+  color: var(--accent-emerald);
 }
 
 .comparison-table th {
@@ -2446,9 +3036,9 @@ select:focus {
 }
 
 .comp-dti-badge.healthy {
-  background: rgba(229, 193, 88, 0.18);
-  color: #34d399;
-  border: 1px solid rgba(229, 193, 88, 0.35);
+  background: var(--comp-success-bg);
+  color: var(--comp-success);
+  border: 1px solid var(--comp-success-border);
 }
 
 .comp-dti-badge.moderate {
@@ -2474,7 +3064,7 @@ select:focus {
   padding: 0.1rem 0.35rem;
   border-radius: 0.25rem;
   background: rgba(229, 193, 88, 0.25);
-  color: #34d399;
+  color: var(--comp-success);
   border: 1px solid var(--accent-emerald);
   margin-left: 0.4rem;
   white-space: nowrap;

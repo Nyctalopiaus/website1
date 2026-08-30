@@ -2,12 +2,13 @@
 document.addEventListener('DOMContentLoaded', () => {
   'use strict';
 
-  const APP_VERSION = '12.2-fix-leaflet-overflow';
+  const APP_VERSION = '13.3-typeahead-cancel-and-city-fix';
   const STORAGE_KEY = 'relocation_assessment_prefs_v117';
 
   const geocoder = window.RelocationGeocoder;
   const spatial = window.RelocationSpatial;
   const scoring = window.RelocationScoring;
+  const logger = window.RelocationLogger;
 
   const CATEGORY_META = scoring.CATEGORY_META;
   const CATEGORY_ORDER = scoring.CATEGORY_ORDER;
@@ -313,7 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
       lines.push(...buildAssessmentReportSection('COMPARE LOCATION', state.assessments.compare, activeKeys));
     }
 
-    lines.push('Data sources: OpenStreetMap (Nominatim, Photon, Overpass), Open-Meteo Geocoding.');
+    lines.push('Data sources: OpenStreetMap (Photon, Overpass), Open-Meteo Geocoding.');
     return lines.join('\n');
   }
 
@@ -865,6 +866,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function sourceCanSatisfy(source, selectedKeys, radiusMinutes) {
     if (!source) return false;
 
+    // A cached source that came back with zero data points for every
+    // category (an empty live search, or one salvaged from a mid-failure
+    // state) shouldn't be treated as authoritative forever -- re-run it live
+    // instead of permanently showing an all-zero result for this location.
+    if (!spatial.hasAnyDataPoints(source.parsed)) return false;
+
     const queriedCategories = source.queriedCategories || [];
     const missingCategory = selectedKeys.some((key) => !queriedCategories.includes(key));
     if (missingCategory) return false;
@@ -937,19 +944,27 @@ document.addEventListener('DOMContentLoaded', () => {
       const overpassQuery = spatial.buildOverpassQuery(candidate.center, queryRadiusMeters, selectedKeys, state.cuisineTags);
 
       let parsed = null;
-      let sourceLabel = 'Live view';
+      const sourceLabel = 'Live view';
 
+      // spatial.runOverpassQuery tries all 5 independent Overpass mirrors
+      // first, and only if every mirror fails does it fall back internally
+      // to a live Photon-based category search (see spatial.js). There's no
+      // second fallback layer to call here -- a prior duplicate fallback
+      // call into a since-removed spatial.fetchCategoryPOIs was redundant
+      // (and had an argument-order bug) and was removed 2026-08-30.
       try {
-        const overpassData = await spatial.runOverpassQuery(overpassQuery);
+        const overpassData = await spatial.runOverpassQuery(overpassQuery, {
+          center: candidate.center,
+          radiusMeters: queryRadiusMeters,
+          selectedKeys
+        });
         parsed = spatial.parseOverpassData(overpassData);
-      } catch (_overpassError) {
-        telemetry('Primary map server busy. Trying alternate live server...', 'warn', false);
-        parsed = await spatial.fetchLiveFallbackData(candidate.center, queryRadiusMeters, selectedKeys, state.cuisineTags);
-        sourceLabel = 'Live view (alternate server)';
+      } catch (overpassError) {
+        logger?.error('app:search', `All live map servers failed for ${slot} ("${shortLabel}")`, logger?.describeError(overpassError));
       }
 
       if (!parsed || !spatial.hasAnyDataPoints(parsed)) {
-        throw new Error('Live map servers returned 0 results or are rate-limited. Click Search to retry.');
+        throw new Error('Live map servers are unavailable or rate-limited right now. Click Search to retry.');
       }
 
       state.sources[slot] = {
@@ -979,6 +994,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderDashboard();
       savePrefs();
     } catch (error) {
+      logger?.error('app:search', `${slot} assessment failed for "${shortLabel}"`, logger?.describeError(error));
       if (slot === 'compare') {
         state.sources.compare = null;
         state.assessments.compare = null;
@@ -1019,7 +1035,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentRadiusMinutes = parseInt(controls.transitRadius?.value || '10', 10);
     const cachedSource = state.sources[slot];
 
-    if (cachedSource && cachedSource.query && cachedSource.parsed && spatial.hasAnyDataPoints(cachedSource.parsed)) {
+    if (cachedSource && cachedSource.query && cachedSource.parsed) {
       const qLower = query.toLowerCase().trim();
       const cQueryLower = String(cachedSource.query || '').toLowerCase().trim();
       const cDisplayLower = String(cachedSource.candidate?.displayName || '').toLowerCase().trim();
@@ -1071,6 +1087,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const selected = candidates[0];
       await runAssessmentForCandidate(slot, query, selected);
     } catch (error) {
+      logger?.error('app:geocode', `Could not resolve "${query}" (${slot})`, logger?.describeError(error));
       if (slot === 'primary') {
         setPrimaryStatus(`Primary: ${shortQuery} — Search failed`, 'error');
       } else {
@@ -1316,12 +1333,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Standalone Autocomplete module initialization
+    // `signal` lets autocomplete.js cancel a stale in-flight lookup (e.g. for
+    // "5578 s telluride" typed a moment ago) once a newer one supersedes it,
+    // instead of letting both run to completion against the free geocoders.
     if (window.RelocationAutocomplete) {
       window.RelocationAutocomplete.attachAutocomplete(reads.locationInput, reads.autocompleteList, {
-        fetchFn: (val) => geocoder.fetchGeocodeCandidates(val, { limit: 5 })
+        fetchFn: (val, signal) => geocoder.fetchGeocodeCandidates(val, { limit: 5, signal })
       });
       window.RelocationAutocomplete.attachAutocomplete(reads.compareInput, null, {
-        fetchFn: (val) => geocoder.fetchGeocodeCandidates(val, { limit: 5 })
+        fetchFn: (val, signal) => geocoder.fetchGeocodeCandidates(val, { limit: 5, signal })
       });
     }
 

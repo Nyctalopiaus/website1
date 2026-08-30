@@ -53,7 +53,8 @@ import {
   expandDtiCashFlowGroup,
   setRecastStrategyUI,
   updateStrategyComparisonUI,
-  setupLoanComparisonModal
+  setupLoanComparisonModal,
+  attachTooltipPositioning
 } from './ui.js';
 
 // ============================================================================
@@ -1591,6 +1592,7 @@ async function initializeApp() {
     attachInputListeners();
     attachActionListeners();
     attachSellHouseListeners();
+    attachTooltipPositioning();
 
     // Initialize Loan Comparisons Matrix Modal
     setupLoanComparisonModal(domRefs, (selectedPrice) => {

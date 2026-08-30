@@ -12,8 +12,108 @@
   // Kept fairly generous (real Overpass responses for this app's small radius/POI
   // queries typically land in 1-4s) but well below the old 25s: with 5 mirrors tried
   // strictly in sequence, a full outage used to mean up to 125s of silence before the
-  // Nominatim fallback kicked in. 9s per mirror caps that worst case at ~45s instead.
+  // search finally failed. 9s per mirror caps that worst case at ~45s instead.
   const OVERPASS_ENDPOINT_TIMEOUT_MS = 9000;
+
+  // Photon fallback: each category is approximated by racing several brand/keyword
+  // searches in parallel (Photon has no "find all shop=supermarket near X" query the
+  // way Overpass does -- it's a place-name search engine, not a tagged POI database).
+  // 2026-08-30: this used to give each parallel search only 1200ms before silently
+  // dropping it, which is why the exact same address returned a different grocery
+  // count on every run (7, 8, 12, ...) -- whichever subset of ~10 parallel searches
+  // happened to land inside that tight window "won", and it varied by nothing more
+  // than normal network jitter. Raised to a timeout that reliably lets a real Photon
+  // response complete (matching the timeout used elsewhere in this app for a single
+  // Photon call) so the same real businesses come back every time.
+  //
+  // 2026-08-30 (later same day): live testing found a SECOND, subtler source of the
+  // same symptom, specific to a visitor's very first search of a fresh page load.
+  // A category fallback fires ~8-10 parallel requests to photon.komoot.io at once;
+  // the very first time this app talks to that host, those requests also pay
+  // connection-setup cost (DNS + TLS) on top of Photon's own response time, which
+  // can be enough on its own to push the categories with the broadest/most generic
+  // terms (trails, cuisine) past the timeout on that first run only -- every run
+  // after that, once the connection is warm, comes back complete and identical.
+  // Since a real visitor's first search on the site IS that cold run, this needed
+  // two changes: (1) a small timeout bump for margin, and (2) warmUpPhotonConnection()
+  // below, which opens a connection to Photon as soon as the page loads (not tied to
+  // any search) so it's already warm by the time a real search fires.
+  //
+  // 2026-08-30 (Compare-mode testing, all 7 categories): live testing found that even
+  // with the shared concurrency limiter below (which fixed most of the hard "Failed to
+  // fetch"/CORS-style rejections caused by our own request bursts), Compare's fallback
+  // was still losing a large fraction of terms to genuine 6000ms timeouts -- Photon
+  // itself was simply slow to answer many requests in that window, not just rejecting
+  // a burst. Raised to match OVERPASS_ENDPOINT_TIMEOUT_MS (9000ms) so a real Photon
+  // response gets the same benefit of the doubt as a real Overpass mirror does, at the
+  // cost of a slower fallback path when Photon is genuinely under load. Josh has
+  // confirmed he will not use a paid geocoding API for this (low-traffic hobby tool),
+  // so trading speed for completeness here is the right tradeoff, not a stopgap.
+  const PHOTON_FALLBACK_TERM_TIMEOUT_MS = 9000;
+
+  // Fire-and-forget: open a connection to Photon as soon as this script loads, well
+  // before the visitor has typed or submitted an address. This doesn't block or delay
+  // anything -- it just means the TLS handshake for photon.komoot.io is already paid
+  // for by the time a real search (geocoding, or the category fallback) needs it,
+  // instead of that cost landing on the visitor's first real request. Uses a tiny,
+  // cheap query and silently ignores any failure -- if it fails, the real requests
+  // later just pay the normal connection cost themselves, same as before this existed.
+  function warmUpPhotonConnection() {
+    try {
+      fetch('https://photon.komoot.io/api/?q=warmup&limit=1', { signal: AbortSignal.timeout(3000) }).catch(() => {});
+    } catch (_err) {
+      // Environments without fetch/AbortSignal support just skip the warm-up --
+      // never let this affect the real search path.
+    }
+  }
+  warmUpPhotonConnection();
+
+  // Global concurrency limiter for Photon fallback requests. 2026-08-30 live testing
+  // (Compare mode, all 7 categories selected) showed that when Overpass fails for
+  // both the Primary and Compare locations, the category fallback fires roughly
+  // 40-70 parallel requests to photon.komoot.io per location -- and the SECOND
+  // location's burst lands immediately after the first finishes (they run
+  // sequentially, not simultaneously, but back-to-back within a ~10-15s window).
+  // At that volume some requests came back with an explicit CORS-shaped rejection
+  // ("blocked by CORS policy: No 'Access-Control-Allow-Origin' header") rather than
+  // real data or even a timeout -- the same signature seen with Nominatim burst
+  // rate-limiting, i.e. Photon itself refusing requests once too many arrive too
+  // fast from one origin, not a client-side network failure.
+  //
+  // This queue caps how many Photon requests are actually in flight at once, and
+  // is deliberately module-level (shared) state -- it throttles Primary's burst,
+  // Compare's burst, and every category within a single location's burst all
+  // through the same shared budget, rather than resetting per search. A small
+  // stagger between dequeued requests further spreads start times out in case the
+  // limit that matters is requests-per-second rather than pure concurrency.
+  const PHOTON_MAX_CONCURRENT_REQUESTS = 5;
+  const PHOTON_QUEUE_STAGGER_MS = 60;
+  let activePhotonRequests = 0;
+  const photonRequestQueue = [];
+
+  function drainPhotonQueue() {
+    if (activePhotonRequests >= PHOTON_MAX_CONCURRENT_REQUESTS || !photonRequestQueue.length) return;
+    const next = photonRequestQueue.shift();
+    activePhotonRequests += 1;
+    setTimeout(next, PHOTON_QUEUE_STAGGER_MS);
+  }
+
+  function runPhotonRequestSlot(taskFn) {
+    return new Promise((resolve, reject) => {
+      const attempt = () => {
+        taskFn().then(
+          (result) => { activePhotonRequests -= 1; drainPhotonQueue(); resolve(result); },
+          (err) => { activePhotonRequests -= 1; drainPhotonQueue(); reject(err); }
+        );
+      };
+      if (activePhotonRequests < PHOTON_MAX_CONCURRENT_REQUESTS) {
+        activePhotonRequests += 1;
+        attempt();
+      } else {
+        photonRequestQueue.push(attempt);
+      }
+    });
+  }
 
   function haversineMeters(aLat, aLon, bLat, bLon) {
     const toRad = Math.PI / 180;
@@ -54,7 +154,9 @@
         const eName = (existing.name || '').trim().toLowerCase();
         const eUnnamed = !eName || eName === 'unnamed place' || eName === 'unnamed';
 
-        // Rule 1: Same business name -> merge duplicate database entries
+        // Rule 1: Same business name -> merge duplicate database entries (this is
+        // what collapses the same King Soopers found via two different Photon
+        // search terms, e.g. "grocery" and "supermarket", into one result)
         if (!pUnnamed && !eUnnamed && pName === eName) return true;
 
         // Rule 2: Unnamed features within 40m -> merge database noise
@@ -137,8 +239,17 @@ ${outMode}
 
   let overpassEndpointIndex = 0;
 
+  function hostnameOf(url) {
+    try {
+      return new URL(url).hostname;
+    } catch (_err) {
+      return url;
+    }
+  }
+
   async function requestOverpassEndpoint(endpoint, queryText) {
     const body = new URLSearchParams({ data: queryText }).toString();
+    const host = hostnameOf(endpoint);
 
     try {
       const res = await fetch(endpoint, {
@@ -150,20 +261,106 @@ ${outMode}
         body,
         signal: AbortSignal.timeout(OVERPASS_ENDPOINT_TIMEOUT_MS)
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status} from ${host}`);
       const raw = await res.text();
       return JSON.parse(raw);
     } catch (err) {
       if (err.name === 'TimeoutError' || err.name === 'AbortError') {
-        throw new Error(`Timed out after ${OVERPASS_ENDPOINT_TIMEOUT_MS}ms`);
+        throw new Error(`Timed out after ${OVERPASS_ENDPOINT_TIMEOUT_MS}ms contacting ${host}`);
+      }
+      if (err instanceof TypeError) {
+        throw new Error(`Network error contacting ${host}: ${err.message}`);
       }
       throw err;
     }
   }
 
-  async function runOverpassQuery(queryText) {
+  // Brand/keyword seed terms per category -- an approximation of Overpass's tag
+  // search, since Photon only matches on place names. Each term is queried in
+  // parallel and given a real chance to finish (see PHOTON_FALLBACK_TERM_TIMEOUT_MS
+  // above); results are deduplicated by name via deduplicateNearbyPlaces so the
+  // same business found by multiple terms only counts once.
+  const PHOTON_FALLBACK_TERMS = {
+    grocery: ['king soopers', 'safeway', 'sprouts', 'target', 'walmart', 'trader joe', 'whole foods', 'supermarket', 'grocery', 'market'],
+    fitness: ['24 hour fitness', 'planet fitness', 'anytime fitness', 'crossfit', 'chuze fitness', 'orange theory', 'fitness', 'gym'],
+    trails: ['trail', 'trailhead', 'path', 'greenway', 'cycleway', 'open space'],
+    cuisine: ['restaurant', 'pizza', 'cafe', 'taco', 'grill', 'bar', 'coffee', 'starbucks', 'dunkin', 'fast food'],
+    gas: ['7-eleven', 'shell', 'conoco', 'circle k', 'maverik', 'gas station', 'fuel', 'exxon'],
+    parks: ['park', 'playground', 'dog park', 'recreation', 'open space', 'field'],
+    pharmacy: ['walgreens', 'cvs', 'pharmacy', 'target pharmacy', 'rite aid']
+  };
+
+  async function fetchPhotonCategoryPOIs(key, lat, lon) {
+    const fLat = Number(lat || 0);
+    const fLon = Number(lon || 0);
+    const fKey = String(key || '');
+    const logger = window.RelocationLogger;
+    const terms = PHOTON_FALLBACK_TERMS[fKey] || [fKey];
+
+    const elements = [];
+
+    await Promise.all(
+      terms.map(async (term) => {
+        const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(term)}&lat=${fLat}&lon=${fLon}&limit=30`;
+        try {
+          const data = await runPhotonRequestSlot(async () => {
+            const res = await fetch(photonUrl, { signal: AbortSignal.timeout(PHOTON_FALLBACK_TERM_TIMEOUT_MS) });
+            if (!res || !res.ok) return null;
+            return res.json();
+          });
+          if (!data) return;
+          const features = Array.isArray(data?.features) ? data.features : [];
+          features.forEach((f) => {
+            const coords = f.geometry?.coordinates || [];
+            if (coords.length < 2) return;
+            const pLon = coords[0];
+            const pLat = coords[1];
+            const props = f.properties || {};
+            const name = (props.name || props.street || term).trim();
+
+            const tags = { name };
+            if (fKey === 'grocery') tags.shop = 'supermarket';
+            else if (fKey === 'fitness') { tags.leisure = 'fitness_centre'; tags.amenity = 'gym'; }
+            else if (fKey === 'cuisine') tags.amenity = 'restaurant';
+            else if (fKey === 'gas') tags.amenity = 'fuel';
+            else if (fKey === 'parks') tags.leisure = 'park';
+            else if (fKey === 'pharmacy') tags.amenity = 'pharmacy';
+            else if (fKey === 'trails') { tags.highway = 'cycleway'; tags.cycleway = 'designated'; }
+
+            elements.push({
+              type: fKey === 'trails' ? 'way' : 'node',
+              lat: pLat,
+              lon: pLon,
+              tags
+            });
+          });
+        } catch (err) {
+          logger?.warn('spatial:photon-fallback', `Category lookup "${term}" (${fKey}) failed`, logger?.describeError(err));
+        }
+      })
+    );
+
+    return elements;
+  }
+
+  async function fetchPhotonFallbackData(center, selectedKeys) {
+    const selected = Array.isArray(selectedKeys) ? selectedKeys : [];
+    const results = await Promise.all(
+      selected.map((key) => fetchPhotonCategoryPOIs(key, center.lat, center.lon))
+    );
+    const combinedElements = [];
+    results.forEach((list) => combinedElements.push(...list));
+    // No synthetic/placeholder data here on purpose: if nothing real comes back,
+    // the caller treats that as "no results" and says so honestly rather than
+    // inventing POIs that don't exist (a prior version of this fallback did
+    // fabricate placeholder points here -- removed 2026-08-30, see project memory).
+    return { elements: combinedElements };
+  }
+
+  async function runOverpassQuery(queryText, options = {}) {
     let lastError = null;
     const numEndpoints = OVERPASS_ENDPOINTS.length;
+    const logger = window.RelocationLogger;
 
     for (let i = 0; i < numEndpoints; i++) {
       const endpoint = OVERPASS_ENDPOINTS[(overpassEndpointIndex + i) % numEndpoints];
@@ -171,12 +368,28 @@ ${outMode}
         const data = await requestOverpassEndpoint(endpoint, queryText);
         if (data && Array.isArray(data.elements) && data.elements.length > 0) {
           overpassEndpointIndex = (overpassEndpointIndex + i + 1) % numEndpoints;
+          logger?.info('spatial:overpass', `${hostnameOf(endpoint)} returned ${data.elements.length} element(s)`);
           return data;
         }
+        logger?.warn('spatial:overpass', `${hostnameOf(endpoint)} returned 0 elements`);
       } catch (err) {
         lastError = err;
+        logger?.warn('spatial:overpass', `${hostnameOf(endpoint)} failed`, logger?.describeError(err));
       }
     }
+
+    logger?.error('spatial:overpass', `All ${numEndpoints} Overpass mirrors failed or returned no elements`);
+
+    if (options.center && Array.isArray(options.selectedKeys) && options.selectedKeys.length) {
+      logger?.warn('spatial:photon-fallback', 'All Overpass mirrors failed, falling back to live Photon category search');
+      const fallbackData = await fetchPhotonFallbackData(options.center, options.selectedKeys);
+      if (fallbackData.elements.length > 0) {
+        logger?.info('spatial:photon-fallback', `Photon fallback returned ${fallbackData.elements.length} element(s)`);
+        return fallbackData;
+      }
+      logger?.warn('spatial:photon-fallback', 'Photon fallback also returned nothing');
+    }
+
     throw lastError || new Error('All live Overpass endpoints failed to respond.');
   }
 
@@ -260,6 +473,20 @@ ${outMode}
           geometry: Array.isArray(el.geometry) ? el.geometry : [],
           name: 'Cycleway segment'
         });
+        continue;
+      }
+
+      // Photon-fallback trail entries are node points tagged highway=cycleway by
+      // fetchPhotonCategoryPOIs above (Photon has no line geometry), so they need
+      // their own branch here since they aren't el.type === 'way'.
+      if (fKeyLooksLikeTrail(tags) && center) {
+        parsed.cycleways.push({
+          lat: center.lat,
+          lon: center.lon,
+          miles: 0.25,
+          geometry: [],
+          name
+        });
       }
     }
 
@@ -274,99 +501,8 @@ ${outMode}
     };
   }
 
-  async function queryNominatimCategory(center, radiusMeters, query, limit = 25) {
-    const lat = Number(center.lat);
-    const lon = Number(center.lon);
-    const latDelta = Math.max(0.01, Math.min(0.05, radiusMeters / 111000));
-    const lonDelta = Math.max(0.01, Math.min(0.08, radiusMeters / (111000 * Math.max(Math.cos(lat * Math.PI / 180), 0.25))));
-
-    const left = lon - lonDelta;
-    const right = lon + lonDelta;
-    const top = lat + latDelta;
-    const bottom = lat - latDelta;
-
-    const url = new URL('https://nominatim.openstreetmap.org/search');
-    url.searchParams.set('q', query);
-    url.searchParams.set('format', 'jsonv2');
-    url.searchParams.set('limit', String(limit));
-    url.searchParams.set('bounded', '1');
-    url.searchParams.set('viewbox', `${left},${top},${right},${bottom}`);
-
-    const hits = await window.RelocationGeocoder.fetchJson(url.toString(), {
-      headers: { 'Accept-Language': 'en' }
-    }, 4000);
-
-    if (!Array.isArray(hits)) return [];
-
-    return hits
-      .map((hit) => {
-        const pLat = parseFloat(hit.lat);
-        const pLon = parseFloat(hit.lon);
-        if (!Number.isFinite(pLat) || !Number.isFinite(pLon)) return null;
-        const cleanName = hit.name || (hit.display_name ? hit.display_name.split(',')[0].trim() : query);
-        return { lat: pLat, lon: pLon, name: cleanName };
-      })
-      .filter(Boolean);
-  }
-
-  async function fetchLiveFallbackData(center, radiusMeters, selectedKeys, cuisineTags = []) {
-    const selected = new Set(Array.isArray(selectedKeys) ? selectedKeys : []);
-    const parsed = {
-      grocery: [], fitness: [], cuisine: [], gas: [], parks: [], pharmacy: [], cycleways: []
-    };
-
-    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-    const runSequentialTerms = async (terms, limit = 20) => {
-      const allHits = [];
-      for (const term of terms) {
-        try {
-          const hits = await queryNominatimCategory(center, radiusMeters, term, limit);
-          if (Array.isArray(hits)) allHits.push(...hits);
-          await delay(200);
-        } catch (_err) {}
-      }
-      const map = new Map();
-      allHits.forEach((p) => {
-        if (!p) return;
-        const key = `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`;
-        if (!map.has(key)) map.set(key, p);
-      });
-      return Array.from(map.values());
-    };
-
-    const config = window.RelocationKeywords?.CATEGORY_CONFIG || {};
-
-    if (selected.has('grocery')) {
-      const terms = (config.grocery?.fallbackKeywords || ['supermarket', 'grocery store']).slice(0, 2);
-      parsed.grocery = await runSequentialTerms(terms, 20);
-    }
-    if (selected.has('fitness')) {
-      const terms = (config.fitness?.fallbackKeywords || ['fitness center', 'gym', 'sports center']).slice(0, 3);
-      parsed.fitness = await runSequentialTerms(terms, 20);
-    }
-    if (selected.has('cuisine')) {
-      const userCuisines = cuisineTags.slice(0, 2);
-      const baseTerms = (config.cuisine?.fallbackKeywords || ['restaurant']).slice(0, 1);
-      parsed.cuisine = await runSequentialTerms([...baseTerms, ...userCuisines], 20);
-    }
-    if (selected.has('gas')) {
-      const terms = (config.gas?.fallbackKeywords || ['gas station', 'fuel']).slice(0, 2);
-      parsed.gas = await runSequentialTerms(terms, 20);
-    }
-    if (selected.has('parks')) {
-      const terms = (config.parks?.fallbackKeywords || ['park', 'recreation park']).slice(0, 2);
-      parsed.parks = await runSequentialTerms(terms, 20);
-    }
-    if (selected.has('pharmacy')) {
-      const terms = (config.pharmacy?.fallbackKeywords || ['pharmacy', 'walgreens']).slice(0, 2);
-      parsed.pharmacy = await runSequentialTerms(terms, 20);
-    }
-    if (selected.has('trails')) {
-      parsed.cycleways = parsed.parks.map((p) => ({ ...p, miles: 0.25, geometry: [] }));
-    }
-
-    return parsed;
+  function fKeyLooksLikeTrail(tags) {
+    return (tags.highway || '').toLowerCase() === 'cycleway' && tags.cycleway === 'designated';
   }
 
   window.RelocationSpatial = {
@@ -377,7 +513,6 @@ ${outMode}
     hasAnyDataPoints,
     buildOverpassQuery,
     runOverpassQuery,
-    parseOverpassData,
-    fetchLiveFallbackData
+    parseOverpassData
   };
 })(window);

@@ -8,9 +8,89 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=19" />
+  <link rel="stylesheet" href="styles.css?v=22" />
 </head>
 <body>
+  <!-- Icon sprite (inline, CSP-safe — no external icon font). Referenced via <svg class="icon"><use href="#icon-*"/></svg> -->
+  <svg style="position:absolute; width:0; height:0; overflow:hidden;" aria-hidden="true">
+    <defs>
+      <linearGradient id="icon-gold-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#f5d77f"/>
+        <stop offset="100%" stop-color="#c89d35"/>
+      </linearGradient>
+      <symbol id="icon-target" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 3.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zm0 4.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-briefcase" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M9.5 4A1.5 1.5 0 0 0 8 5.5V7H9.3V5.5A.2.2 0 0 1 9.5 5.3h5a.2.2 0 0 1 .2.2V7H16V5.5A1.5 1.5 0 0 0 14.5 4h-5zM8.5 8.3v-.5h1.3v.5H9.3v.5H8.5v-.5zm5.7-.5h1.3v1H14v-.5h.2v-.5z" fill="url(#icon-gold-gradient)"/>
+        <path d="M2 9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-bolt" viewBox="0 0 24 24">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-bulb" viewBox="0 0 24 24">
+        <path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2.3h6c0-1.1.4-1.8 1-2.3A7 7 0 0 0 12 2z" fill="url(#icon-gold-gradient)"/>
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M9 17.5h6V22H9v-4.5zm1.5 1.3v.5h3v-.5h-3zm0 1.7v.5h3v-.5h-3z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-copy" viewBox="0 0 24 24">
+        <rect x="8" y="8" width="14" height="14" rx="2.5" fill="url(#icon-gold-gradient)"/>
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M4 2a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h1v-2H4V4h9v1h2V4a2 2 0 0 0-2-2H4z" fill="url(#icon-gold-gradient)" opacity="0.6"/>
+      </symbol>
+      <symbol id="icon-printer" viewBox="0 0 24 24">
+        <path d="M6 2h12v6H6z" fill="url(#icon-gold-gradient)"/>
+        <rect x="2" y="8" width="20" height="9" rx="2" fill="url(#icon-gold-gradient)"/>
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M6 13h12v9H6v-9zm1.5 1.5v6h9v-6h-9z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24">
+        <polyline points="20 6 9 17 4 12" fill="none" stroke="url(#icon-gold-gradient)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="icon-lock" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 1.5a5.5 5.5 0 0 0-5.5 5.5v3H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1.5V7A5.5 5.5 0 0 0 12 1.5zm3.5 8.5V7a3.5 3.5 0 0 0-7 0v3h7zM12 13.2a1.8 1.8 0 0 1 .9 3.36V18.5a.9.9 0 0 1-1.8 0v-1.94A1.8 1.8 0 0 1 12 13.2z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-home" viewBox="0 0 24 24">
+        <path d="M12 2.5 2 10.5V21a1 1 0 0 0 1 1h6v-7h6v7h6a1 1 0 0 0 1-1V10.5z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-cash" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6zm10 2.3a3.7 3.7 0 1 0 0 7.4 3.7 3.7 0 0 0 0-7.4zM5.5 10a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm14.5 1.5a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M10.5 3a7.5 7.5 0 1 0 4.66 13.4l4.97 4.97a1 1 0 0 0 1.41-1.41l-4.97-4.97A7.5 7.5 0 0 0 10.5 3zm-5 7.5a5 5 0 1 1 10 0 5 5 0 0 1-10 0z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-bookmark" viewBox="0 0 24 24">
+        <path d="M6 2h12a1 1 0 0 1 1 1v19l-7-5-7 5V3a1 1 0 0 1 1-1z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-bar-chart" viewBox="0 0 24 24">
+        <rect x="3" y="12" width="4.5" height="9" rx="1" fill="url(#icon-gold-gradient)"/>
+        <rect x="9.75" y="7" width="4.5" height="14" rx="1" fill="url(#icon-gold-gradient)"/>
+        <rect x="16.5" y="3" width="4.5" height="18" rx="1" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-trend-down" viewBox="0 0 24 24">
+        <polyline points="3 7 10 14 14 10 21 17" fill="none" stroke="url(#icon-gold-gradient)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="21 10 21 17 14 17" fill="none" stroke="url(#icon-gold-gradient)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="icon-key" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M14.5 2a6.5 6.5 0 0 0-6.26 8.26L2 16.5V20a1 1 0 0 0 1 1h3.5a1 1 0 0 0 1-1v-1.5H9a1 1 0 0 0 1-1V16h1.5a1 1 0 0 0 .74-.33l1-1.1A6.5 6.5 0 1 0 14.5 2zm2 4a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-info" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.2 8.2h2.4v7h-2.4v-7zM12 5.7a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-sparkle" viewBox="0 0 24 24">
+        <path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z" fill="url(#icon-gold-gradient)"/>
+        <path d="M19 15l.7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-warning" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M10.9 3.36c.48-.83 1.72-.83 2.2 0l9.1 15.75c.48.84-.12 1.89-1.1 1.89H2.9c-.98 0-1.58-1.05-1.1-1.89l9.1-15.75zM10.9 9h2.2v6h-2.2V9zm1.1 8.7a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-arrow-down" viewBox="0 0 24 24">
+        <rect x="10.7" y="2" width="2.6" height="13" rx="1.3" fill="url(#icon-gold-gradient)"/>
+        <path d="M4 12l8 9 8-9z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+      <symbol id="icon-clipboard" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M8 2a1.5 1.5 0 0 0-1.5 1.5V4H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-.5v-.5A1.5 1.5 0 0 0 16 2H8zm-.5 8h9v1.8h-9V10zm0 4h9v1.8h-9V14zm0 4h6v1.8h-6V18z" fill="url(#icon-gold-gradient)"/>
+      </symbol>
+    </defs>
+  </svg>
+
   <div class="glow-bg"></div>
 
   <header class="header">
@@ -18,27 +98,27 @@
       <a href="../index.html" class="btn-back">← Back to Lab</a>
       <h1>Nycto's Housing Cost Calculator</h1>
     </div>
-    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+    <div class="flex-center-wrap-gap75">
       <a href="../rent-vs-sell/index.html" class="btn-quickstart-mortgage" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;" title="Rent vs Sell Decision Calculator">
-        <span>🔑</span> <span>Rent vs Sell</span>
+        <span><svg class="icon" aria-hidden="true"><use href="#icon-key"/></svg></span> <span>Rent vs Sell</span>
       </a>
       <button type="button" id="btn-open-loan-comparison" class="btn-quickstart-mortgage" style="display: inline-flex; align-items: center; gap: 0.35rem;" title="View Loan Comparison Table Across Prices">
-        <span>📊</span> <span>Loan Comparisons</span>
+        <span><svg class="icon" aria-hidden="true"><use href="#icon-bar-chart"/></svg></span> <span>Loan Comparisons</span>
       </button>
       <button type="button" id="btn-open-quickstart" class="btn-quickstart-mortgage" title="Show Quick Start Guide">
-        <span>ℹ️</span> <span>Quick Start</span>
+        <span><svg class="icon" aria-hidden="true"><use href="#icon-info"/></svg></span> <span>Quick Start</span>
       </button>
       <button type="button" id="btn-open-features" class="btn-feature-mortgage" title="View Calculator Features">
-        <span>🏠</span> <span>Features</span>
+        <span><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg></span> <span>Features</span>
       </button>
     </div>
   </header>
 
   <main class="container">
-    <div style="background: rgba(229, 193, 88, 0.06); border: 1px solid rgba(229, 193, 88, 0.25); border-radius: 0.75rem; padding: 0.85rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.85rem; font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;">
-      <span style="font-size: 1.1rem; line-height: 1.2;">🔒</span>
+    <div class="trust-banner">
+      <span class="trust-banner-icon"><svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg></span>
       <div>
-        <strong style="color: #ffffff; font-family: var(--font-display); letter-spacing: 0.02em;">100% Private & Local.</strong>
+        <strong class="trust-banner-headline">100% Private & Local.</strong>
         Your financial data never leaves your device. All calculations and saves happen securely within your own browser. We do not track, store, or transmit your numbers.
       </div>
     </div>
@@ -47,7 +127,7 @@
       <section class="inputs-panel">
         <div class="panel-card collapsible" id="property-card">
           <button type="button" class="collapsible-header" id="property-toggle" data-section-key="property" aria-expanded="true" aria-controls="property-body">
-            <h2 style="margin-bottom: 0;">Property</h2>
+            <h2>Property</h2>
             <span class="chevron" aria-hidden="true">▾</span>
           </button>
           <div class="collapsible-body" id="property-body">
@@ -56,10 +136,10 @@
             <div id="recent-import-banner" style="display: none; margin-bottom: 0.75rem; padding: 0.75rem 0.9rem; background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 0.4rem; font-size: 0.8rem; line-height: 1.45;">
               <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                 <div style="flex: 1 1 auto; min-width: 160px;">
-                  <div style="color: var(--accent-cyan); font-weight: 600; font-family: var(--font-display); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em;">✨ Just Imported via Bookmarklet</div>
+                  <div style="color: var(--accent-cyan); font-weight: 600; font-family: var(--font-display); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em;"><svg class="icon" aria-hidden="true"><use href="#icon-sparkle"/></svg> Just Imported via Bookmarklet</div>
                   <div id="recent-import-address" style="color: var(--text-bright); font-weight: 600; font-size: 0.8rem; margin-top: 0.15rem;"></div>
                 </div>
-                <button type="button" id="btn-apply-recent-import" style="background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.25rem; padding: 0.4rem 0.75rem; font-weight: 700; font-size: 0.75rem; cursor: pointer; white-space: nowrap;">⚡ Load Property</button>
+                <button type="button" id="btn-apply-recent-import" style="background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.25rem; padding: 0.4rem 0.75rem; font-weight: 700; font-size: 0.75rem; cursor: pointer; white-space: nowrap;"><svg class="icon" aria-hidden="true"><use href="#icon-bolt"/></svg> Load Property</button>
               </div>
             </div>
 
@@ -67,29 +147,29 @@
               <label for="mlsNumber">New Home's Listing URL</label>
               <span class="tooltip-icon" data-tooltip="Securely pulls price, HOA, and tax data for the home you're buying from Redfin, Zillow, Realtor.com, or Homes.com.">?</span>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
-              <input id="mlsNumber" type="text" placeholder="Paste Redfin, Zillow, Realtor.com, or Homes.com URL..." aria-label="Property listing page URL for auto-fill" style="width: 100%; background: rgba(7, 9, 8, 0.5); border: 1px solid var(--border-color); border-radius: 0.4rem; color: var(--text-bright); padding: 0.65rem 0.9rem; font-family: var(--font-sans); outline: none;" />
-              <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
-                <span style="color: var(--accent-cyan); font-weight: 600;">Supported sites:</span> Redfin • Zillow • Realtor.com • Homes.com
+            <div class="listing-url-row">
+              <input id="mlsNumber" type="text" placeholder="Paste Redfin, Zillow, Realtor.com, or Homes.com URL..." aria-label="Property listing page URL for auto-fill" class="listing-url-input" />
+              <div class="supported-sites-line">
+                <span class="text-cyan-strong">Supported sites:</span> Redfin • Zillow • Realtor.com • Homes.com
               </div>
-              <div style="display: flex; gap: 0.5rem;">
-                <button id="btn-search-mls" aria-label="Load property data from cache" style="flex: 1; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.65rem 1rem; font-weight: 600; cursor: pointer; text-align: center; transition: filter 0.2s ease;">🔍 Load Cached Property</button>
-                <button type="button" id="btn-open-bookmarklet" aria-label="Import to Nycto.ninja Bookmarklet" style="background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.3); color: var(--accent-cyan); border-radius: 0.4rem; padding: 0.65rem 0.85rem; font-weight: 600; font-size: 0.8rem; cursor: pointer; display: flex; align-items: center; gap: 0.35rem; white-space: nowrap;" title="Instant browser import bookmarklet">🔖 Bookmarklet</button>
+              <div class="listing-url-actions">
+                <button id="btn-search-mls" aria-label="Load property data from cache" class="btn-load-cached btn-fill"><svg class="icon" aria-hidden="true"><use href="#icon-search"/></svg> Load Cached Property</button>
+                <button type="button" id="btn-open-bookmarklet" aria-label="Import to Nycto.ninja Bookmarklet" class="btn-bookmarklet" title="Instant browser import bookmarklet"><svg class="icon" aria-hidden="true"><use href="#icon-bookmark"/></svg> Bookmarklet</button>
               </div>
             </div>
             
             <!-- NEW HOUSING PREVIEW CARD -->
             <div id="mls-preview-box" style="display: none; margin-top: 0.75rem; padding: 0.75rem 0.9rem; background: rgba(6, 182, 212, 0.03); border: 1px solid rgba(6, 182, 212, 0.15); border-radius: 0.4rem; font-size: 0.8rem; line-height: 1.45;">
-              <div style="color: var(--accent-cyan); font-weight: 600; font-family: var(--font-display); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">✓ Property Found</div>
+              <div style="color: var(--accent-cyan); font-weight: 600; font-family: var(--font-display); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;"><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg> Property Found</div>
               <div id="mls-preview-address" style="color: var(--text-bright); font-weight: 500;"></div>
               <div id="mls-preview-details" style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.15rem;"></div>
             </div>
           </div>
 
           <div class="input-group">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div class="label-row-full">
               <label for="homePrice">Home Price</label>
-              <span id="badge-redfin-price" style="display: none; font-size: 0.65rem; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.25); padding: 0.15rem 0.45rem; border-radius: 0.25rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em;">✓ Redfin</span>
+              <span id="badge-redfin-price" class="badge-verified-cyan hidden-init"><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg> Redfin</span>
             </div>
             <div class="input-with-prefix">
               <span class="prefix">$</span>
@@ -97,7 +177,7 @@
             </div>
             <input id="homePriceSlider" type="range" min="100000" max="1500000" step="10000" value="400000" class="slider" />
             <button type="button" id="btn-open-comparison-inline" style="background: none; border: none; color: var(--accent-cyan); font-size: 0.75rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.4rem; padding: 0;" title="Compare payments across price ranges">
-              <span>📊</span> <span>Compare Price & Loan Terms Matrix ➔</span>
+              <span><svg class="icon" aria-hidden="true"><use href="#icon-bar-chart"/></svg></span> <span>Compare Price & Loan Terms Matrix ➔</span>
             </button>
           </div>
           </div>
@@ -110,8 +190,8 @@
                 <input type="checkbox" id="hasHouseToSell" aria-label="Have a house to sell?" />
                 <span class="toggle-slider" aria-hidden="true"></span>
               </label>
-              <div class="label-with-tooltip" style="margin: 0;">
-                <label for="hasHouseToSell" class="sell-house-label">🏡 Have a house to sell?</label>
+              <div class="label-with-tooltip no-margin">
+                <label for="hasHouseToSell" class="sell-house-label"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg> Have a house to sell?</label>
                 <span class="tooltip-icon" data-tooltip="Estimate what you'll walk away with after selling your current home, then decide how much of that goes toward your new down payment.">?</span>
               </div>
             </div>
@@ -121,18 +201,18 @@
           </div>
 
           <div class="collapsible-body" id="sell-house-body" hidden>
-            <div id="sell-house-panel" class="sell-house-card" style="display: none;">
+            <div id="sell-house-panel" class="sell-house-card hidden-init">
                 <div class="input-group">
                 <div class="label-with-tooltip">
                   <label for="sellHomeRedfinUrl">Current Home's Listing URL</label>
                   <span class="tooltip-icon" data-tooltip="Paste your home's property URL from Redfin, Zillow, Realtor.com, or Homes.com to load its estimated value from your Nycto.ninja cache.">?</span>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.25rem;">
-                  <input id="sellHomeRedfinUrl" type="text" placeholder="Paste Redfin, Zillow, Realtor.com, or Homes.com URL..." aria-label="Property page URL for your current home" style="width: 100%; background: rgba(7, 9, 8, 0.5); border: 1px solid var(--border-color); border-radius: 0.4rem; color: var(--text-bright); padding: 0.65rem 0.9rem; font-family: var(--font-sans); outline: none;" />
-                  <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
-                    <span style="color: var(--accent-cyan); font-weight: 600;">Supported sites:</span> Redfin • Zillow • Realtor.com • Homes.com
+                <div class="listing-url-row">
+                  <input id="sellHomeRedfinUrl" type="text" placeholder="Paste Redfin, Zillow, Realtor.com, or Homes.com URL..." aria-label="Property page URL for your current home" class="listing-url-input" />
+                  <div class="supported-sites-line">
+                    <span class="text-cyan-strong">Supported sites:</span> Redfin • Zillow • Realtor.com • Homes.com
                   </div>
-                  <button id="btn-search-sell-redfin" type="button" aria-label="Look up value estimate from cache" style="width: 100%; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.65rem 1rem; font-weight: 600; cursor: pointer; text-align: center; transition: filter 0.2s ease;">🔍 Load Cached Value</button>
+                  <button id="btn-search-sell-redfin" type="button" aria-label="Look up value estimate from cache" class="btn-load-cached"><svg class="icon" aria-hidden="true"><use href="#icon-search"/></svg> Load Cached Value</button>
                 </div>
               </div>
 
@@ -140,7 +220,7 @@
                 <div class="input-group">
                   <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 0.35rem; flex-wrap: wrap;">
                     <label for="sellHomeValue">Estimated Home Value</label>
-                    <span id="badge-sell-redfin" style="display: none; font-size: 0.65rem; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.25); padding: 0.15rem 0.45rem; border-radius: 0.25rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em;">✓ Redfin</span>
+                    <span id="badge-sell-redfin" class="badge-verified-cyan hidden-init"><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg> Redfin</span>
                   </div>
                   <div class="input-with-prefix">
                     <span class="prefix">$</span>
@@ -224,31 +304,31 @@
                 <div class="detail-row"><span>− Concessions</span><span id="sell-line-concessions">$-.--</span></div>
                 <div class="detail-row"><span>− Moving Costs</span><span id="sell-line-moving">$-.--</span></div>
                 <div class="detail-row sell-net-row"><span>Net Sale Proceeds</span><span id="sell-net-proceeds">$-.--</span></div>
-                <p id="sell-underwater-warning" class="sell-warning-text" style="display: none;">⚠ You may owe money at closing instead of receiving proceeds.</p>
+                <p id="sell-underwater-warning" class="sell-warning-text hidden-init"><svg class="icon" aria-hidden="true"><use href="#icon-warning"/></svg> You may owe money at closing instead of receiving proceeds.</p>
               </div>
 
               <div class="input-group">
                 <div class="label-with-tooltip"><label>How Are You Funding the Down Payment?</label><span class="tooltip-icon" data-tooltip="Sell First assumes a simultaneous close — proceeds go straight into the new down payment. Bridge Loan assumes you buy now with a short-term loan against this home's equity, then pay it off (and recast the new mortgage) once it actually sells.">?</span></div>
                 <div class="frequency-toggle-group" id="sale-mode-switch">
-                  <button type="button" class="freq-btn active" id="btn-sale-mode-sell-first" data-sale-mode="sellFirst">💰 Sell First</button>
+                  <button type="button" class="freq-btn active" id="btn-sale-mode-sell-first" data-sale-mode="sellFirst"><svg class="icon" aria-hidden="true"><use href="#icon-cash"/></svg> Sell First</button>
                   <button type="button" class="freq-btn" id="btn-sale-mode-bridge" data-sale-mode="bridgeLoan">🌉 Bridge Loan</button>
                 </div>
               </div>
 
               <div id="sale-mode-sell-first-panel">
-                <div class="input-group" style="margin-bottom: 0;">
+                <div class="input-group no-mb">
                   <div class="label-with-tooltip"><label>% of Proceeds → New Down Payment</label><span class="tooltip-icon" data-tooltip="How much of your net sale proceeds you want to put toward the down payment on the new house, versus keeping as cash on hand.">?</span></div>
                   <input id="sellProceedsPercentSlider" type="range" min="0" max="100" step="5" value="100" class="slider" />
                   <div class="sell-proceeds-readout">
                     <span id="sell-proceeds-percent-value">100%</span>
                     <span id="sell-proceeds-dollar-value">$0.00</span>
                   </div>
-                  <button id="btn-apply-proceeds" type="button" class="btn-apply-proceeds">⬇ Apply to Down Payment</button>
+                  <button id="btn-apply-proceeds" type="button" class="btn-apply-proceeds"><svg class="icon" aria-hidden="true"><use href="#icon-arrow-down"/></svg> Apply to Down Payment</button>
                 </div>
               </div>
 
-              <div id="sale-mode-bridge-panel" style="display: none;">
-                <div class="sell-house-card-heading" style="margin-top: 0.5rem;">🌉 Bridge Loan Details</div>
+              <div id="sale-mode-bridge-panel" class="hidden-init">
+                <div class="sell-house-card-heading mt-05">🌉 Bridge Loan Details</div>
 
                 <div class="input-group">
                   <div class="label-with-tooltip"><label>Financing Type</label><span class="tooltip-icon" data-tooltip="Bridge Loan: a lump-sum, short-term loan against this home's equity — usually a higher rate plus upfront origination points, typically capped around 80% combined loan-to-value. HELOC: a revolving line of credit against this home's equity — typically a lower but variable rate tied to prime, often no closing costs, and no hard payoff deadline if the sale takes longer than planned, usable up to about 85% combined loan-to-value. Switching this resets the rate/fee boxes below to that type's typical starting numbers (still editable).">?</span></div>
@@ -299,11 +379,11 @@
                   </div>
                 </div>
 
-                <p id="bridge-cltv-warning" class="sell-warning-text" style="display: none;"></p>
+                <p id="bridge-cltv-warning" class="sell-warning-text hidden-init"></p>
 
                 <div id="bridge-holding-cost-box" class="sell-proceeds-box">
-                  <div class="sell-house-card-heading" style="margin-bottom: 0.6rem;">While You're Carrying Both Homes</div>
-                  <div class="detail-row" id="bridge-row-departure-mortgage" style="display: none;"><span>Current Departure Home Mortgage</span><span id="bridge-departure-mortgage-payment">$-.--</span></div>
+                  <div class="sell-house-card-heading mb-06">While You're Carrying Both Homes</div>
+                  <div class="detail-row hidden-init" id="bridge-row-departure-mortgage"><span>Current Departure Home Mortgage</span><span id="bridge-departure-mortgage-payment">$-.--</span></div>
                   <div class="detail-row"><span>Bridge Loan Interest-Only Payment</span><span id="bridge-monthly-interest">$-.--</span></div>
                   <div class="detail-row"><span>+ New Mortgage Payment (PITI)</span><span id="bridge-new-mortgage-payment">$-.--</span></div>
                   <div class="detail-row sell-net-row"><span>Combined Monthly Cost</span><span id="bridge-combined-monthly">$-.--</span></div>
@@ -312,81 +392,81 @@
                     See the <a href="#affordability-card" class="dti-jump-link">Affordability card</a> for your Holding-Period DTI (front-end and back-end) — it tracks this combined cost automatically.
                   </p>
 
-                  <div class="detail-row" style="margin-top: 0.75rem;"><span>Total Bridge Interest (over holding period)</span><span id="bridge-total-interest">$-.--</span></div>
+                  <div class="detail-row mt-075"><span>Total Bridge Interest (over holding period)</span><span id="bridge-total-interest">$-.--</span></div>
                   <div class="detail-row"><span>Total Bridge Cost (interest + fee)</span><span id="bridge-total-cost">$-.--</span></div>
                 </div>
 
                 <div class="input-group">
                   <div class="label-with-tooltip"><label>Sale Proceeds Strategy</label><span class="tooltip-icon" data-tooltip="Recast: your lender re-amortizes the remaining balance to lower your monthly payment for the rest of the term. Extra Payment: keep paying your original monthly amount to pay off the loan years earlier and save maximum interest.">?</span></div>
                   <div class="frequency-toggle-group" id="recast-strategy-switch">
-                    <button type="button" class="freq-btn active" id="btn-recast-strat-recast" data-recast-strat="recast">📉 Recast (Lower Payment)</button>
+                    <button type="button" class="freq-btn active" id="btn-recast-strat-recast" data-recast-strat="recast"><svg class="icon" aria-hidden="true"><use href="#icon-trend-down"/></svg> Recast (Lower Payment)</button>
                     <button type="button" class="freq-btn" id="btn-recast-strat-extra" data-recast-strat="extraPayment">🚀 Extra Payment (Pay Off Sooner)</button>
                   </div>
                 </div>
 
                 <!-- Real Numbers Comparison Card -->
-                <div id="recast-strategy-comparison-box" style="margin-bottom: 1.25rem; padding: 0.85rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 0.5rem; font-size: 0.78rem;">
-                  <div style="font-family: var(--font-display); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent-cyan); margin-bottom: 0.6rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.25rem;">
+                <div id="recast-strategy-comparison-box" class="strat-comparison-box">
+                  <div class="strat-comparison-header">
                     <span>⚖️ Real Numbers Comparison</span>
-                    <span id="strat-comp-lump-sum-badge" style="font-size: 0.68rem; color: var(--text-muted); text-transform: none;">Applied proceeds: $-.--</span>
+                    <span id="strat-comp-lump-sum-badge" class="strat-lump-sum-badge">Applied proceeds: $-.--</span>
                   </div>
 
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.6rem;">
+                  <div class="strat-columns">
                     <!-- Recast Column -->
-                    <div id="strat-card-recast" style="padding: 0.65rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 0.4rem; transition: all 0.2s;">
-                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                        <span style="font-weight: 700; font-size: 0.72rem; color: var(--accent-emerald); text-transform: uppercase;">📉 Recast</span>
-                        <span id="strat-recast-active-tag" style="font-size: 0.62rem; font-weight: 700; color: var(--accent-emerald); background: var(--accent-emerald-dim); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.05rem 0.35rem; border-radius: 0.2rem; text-transform: uppercase;">Active</span>
+                    <div id="strat-card-recast" class="strat-card strat-card-recast">
+                      <div class="strat-card-header">
+                        <span class="strat-card-title strat-card-title-recast"><svg class="icon" aria-hidden="true"><use href="#icon-trend-down"/></svg> Recast</span>
+                        <span id="strat-recast-active-tag" class="strat-active-tag strat-active-tag-emerald">Active</span>
                       </div>
-                      <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                      <div class="strat-card-body">
                         <div>
-                          <span style="color: var(--text-muted); font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Monthly P&amp;I</span>
-                          <span id="strat-recast-piti" style="font-weight: 700; font-size: 0.9rem; color: var(--accent-emerald);">$-.--</span>
-                          <span id="strat-recast-savings" style="font-size: 0.68rem; color: var(--accent-emerald); font-weight: 600; display: block;">-$0/mo</span>
+                          <span class="eyebrow-label">Monthly P&amp;I</span>
+                          <span id="strat-recast-piti" class="strat-stat-value strat-stat-value-emerald">$-.--</span>
+                          <span id="strat-recast-savings" class="strat-stat-sub strat-stat-sub-emerald">-$0/mo</span>
                         </div>
                         <div>
-                          <span style="color: var(--text-muted); font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Remaining Term</span>
-                          <span id="strat-recast-term" style="font-weight: 700; font-size: 0.82rem; color: var(--text-bright);">-- yrs</span>
-                          <span style="font-size: 0.68rem; color: var(--text-muted); display: block;">Full term</span>
+                          <span class="eyebrow-label">Remaining Term</span>
+                          <span id="strat-recast-term" class="strat-stat-value-sm">-- yrs</span>
+                          <span class="strat-stat-sub strat-stat-sub-muted">Full term</span>
                         </div>
                         <div>
-                          <span style="color: var(--text-muted); font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Total Interest</span>
-                          <span id="strat-recast-interest" style="font-weight: 700; font-size: 0.82rem; color: var(--text-bright);">$-.--</span>
+                          <span class="eyebrow-label">Total Interest</span>
+                          <span id="strat-recast-interest" class="strat-stat-value-sm">$-.--</span>
                         </div>
                       </div>
                     </div>
 
                     <!-- Extra Payment Column -->
-                    <div id="strat-card-extra" style="padding: 0.65rem; background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 0.4rem; transition: all 0.2s;">
-                      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                        <span style="font-weight: 700; font-size: 0.72rem; color: var(--accent-cyan); text-transform: uppercase;">🚀 Extra Pay</span>
-                        <span id="strat-extra-active-tag" style="display: none; font-size: 0.62rem; font-weight: 700; color: var(--accent-cyan); background: var(--accent-cyan-dim); border: 1px solid rgba(6, 182, 212, 0.3); padding: 0.05rem 0.35rem; border-radius: 0.2rem; text-transform: uppercase;">Active</span>
+                    <div id="strat-card-extra" class="strat-card strat-card-extra">
+                      <div class="strat-card-header">
+                        <span class="strat-card-title strat-card-title-extra">🚀 Extra Pay</span>
+                        <span id="strat-extra-active-tag" class="strat-active-tag strat-active-tag-cyan hidden-init">Active</span>
                       </div>
-                      <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                      <div class="strat-card-body">
                         <div>
-                          <span style="color: var(--text-muted); font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Monthly P&amp;I</span>
-                          <span id="strat-extra-piti" style="font-weight: 700; font-size: 0.9rem; color: var(--text-bright);">$-.--</span>
-                          <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600; display: block;">Unchanged</span>
+                          <span class="eyebrow-label">Monthly P&amp;I</span>
+                          <span id="strat-extra-piti" class="strat-stat-value strat-stat-value-bright">$-.--</span>
+                          <span class="strat-stat-sub strat-stat-sub-muted-bold">Unchanged</span>
                         </div>
                         <div>
-                          <span style="color: var(--text-muted); font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Remaining Term</span>
-                          <span id="strat-extra-term" style="font-weight: 700; font-size: 0.82rem; color: var(--accent-cyan);">-- yrs</span>
-                          <span id="strat-extra-time-saved" style="font-size: 0.68rem; color: var(--accent-cyan); font-weight: 600; display: block;">Saved 0 yrs</span>
+                          <span class="eyebrow-label">Remaining Term</span>
+                          <span id="strat-extra-term" class="strat-stat-value-sm strat-stat-value-sm-cyan">-- yrs</span>
+                          <span id="strat-extra-time-saved" class="strat-stat-sub strat-stat-sub-cyan">Saved 0 yrs</span>
                         </div>
                         <div>
-                          <span style="color: var(--text-muted); font-size: 0.65rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Total Interest</span>
-                          <span id="strat-extra-interest" style="font-weight: 700; font-size: 0.82rem; color: var(--accent-cyan);">$-.--</span>
-                          <span id="strat-extra-interest-saved" style="font-size: 0.68rem; color: var(--accent-cyan); font-weight: 600; display: block;">Saved $0</span>
+                          <span class="eyebrow-label">Total Interest</span>
+                          <span id="strat-extra-interest" class="strat-stat-value-sm strat-stat-value-sm-cyan">$-.--</span>
+                          <span id="strat-extra-interest-saved" class="strat-stat-sub strat-stat-sub-cyan">Saved $0</span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div id="strat-comp-summary-text" style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.35; padding-top: 0.45rem; border-top: 1px dashed var(--border-color);">
+                  <div id="strat-comp-summary-text" class="strat-summary-text">
                     <!-- Dynamic tradeoff synthesis -->
                   </div>
 
-                  <div id="strat-comp-best-of-both-note" style="margin-top: 0.5rem; padding: 0.55rem 0.65rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 0.4rem; font-size: 0.7rem; color: var(--text-bright); line-height: 1.35; display: none;">
+                  <div id="strat-comp-best-of-both-note" class="strat-best-of-both-note hidden-init">
                     <!-- Dynamic Best of Both Worlds note -->
                   </div>
                 </div>
@@ -400,24 +480,24 @@
                 </div>
 
                 <div id="recast-summary-box" class="sell-proceeds-box">
-                  <div class="sell-house-card-heading" style="margin-bottom: 0.6rem;">When Your House Sells</div>
+                  <div class="sell-house-card-heading mb-06">When Your House Sells</div>
                   <div class="detail-row"><span>Net Sale Proceeds</span><span id="recast-line-net-proceeds">$-.--</span></div>
                   <div class="detail-row"><span>− Bridge Loan Payoff</span><span id="recast-line-bridge-payoff">$-.--</span></div>
                   <div class="detail-row"><span>= Available After Bridge Payoff</span><span id="recast-available">$-.--</span></div>
                   <div class="detail-row" id="recast-fee-row"><span>− Recast Fee</span><span id="recast-line-fee">$-.--</span></div>
                   <div class="detail-row sell-net-row"><span id="recast-lump-sum-label">Recast Lump Sum Applied to Principal</span><span id="recast-lump-sum">$-.--</span></div>
-                  <p id="recast-min-lump-warning" class="sell-warning-text" style="display: none;"></p>
+                  <p id="recast-min-lump-warning" class="sell-warning-text hidden-init"></p>
                 </div>
 
                 <div id="recast-result-box" class="sell-proceeds-box">
-                  <div class="sell-house-card-heading" id="recast-result-heading" style="margin-bottom: 0.6rem;">Monthly Payment After Recast</div>
+                  <div class="sell-house-card-heading mb-06" id="recast-result-heading">Monthly Payment After Recast</div>
                   <div id="recast-rows-recast-mode">
                     <div class="detail-row"><span>Current Monthly P&I</span><span id="recast-current-payment">$-.--</span></div>
                     <div class="detail-row sell-net-row"><span>New Monthly P&I After Recast</span><span id="recast-new-payment">$-.--</span></div>
                     <div class="detail-row"><span>Monthly Savings</span><span id="recast-monthly-savings">$-.--</span></div>
                     <div class="detail-row sell-net-row" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-color); color: var(--accent-emerald);"><span>New Total Payment (PITI)</span><span id="recast-new-piti">$-.--</span></div>
                   </div>
-                  <div id="recast-rows-extra-mode" style="display: none;">
+                  <div id="recast-rows-extra-mode" class="hidden-init">
                     <div class="detail-row"><span>Monthly P&I Payment (Unchanged)</span><span id="recast-extra-current-payment">$-.--</span></div>
                     <div class="detail-row sell-net-row" style="color: var(--accent-emerald);"><span>Time Saved to Payoff</span><span id="recast-extra-time-saved">--</span></div>
                     <div class="detail-row sell-net-row" style="color: var(--accent-emerald);"><span>Lifetime Interest Saved</span><span id="recast-extra-interest-saved">$-.--</span></div>
@@ -431,7 +511,7 @@
 
         <div class="panel-card collapsible" id="downpayment-card">
           <button type="button" class="collapsible-header" id="downpayment-toggle" data-section-key="downPayment" aria-expanded="true" aria-controls="downpayment-body">
-            <h2 style="margin-bottom: 0;">Down Payment</h2>
+            <h2>Down Payment</h2>
             <span class="chevron" aria-hidden="true">▾</span>
           </button>
           <div class="collapsible-body" id="downpayment-body">
@@ -439,9 +519,9 @@
             <div class="label-with-tooltip"><label>Total &amp; Sources</label><span class="tooltip-icon" data-tooltip="Money paid upfront. Includes cash contribution plus any proceeds applied from selling your current home.">?</span></div>
 
             <div class="down-payment-sources-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 0.75rem;">
-              <div class="input-group" style="margin-bottom: 0;">
+              <div class="input-group no-mb">
                 <div class="label-with-tooltip">
-                  <label for="cashDownPayment" style="font-size: 0.7rem; color: var(--text-muted);">💵 Cash Contribution</label>
+                  <label for="cashDownPayment" class="text-hint"><svg class="icon" aria-hidden="true"><use href="#icon-cash"/></svg> Cash Contribution</label>
                   <span class="tooltip-icon" data-tooltip="Cash savings from bank accounts, investments, gifts, or other non-home-sale funds.">?</span>
                 </div>
                 <div class="input-with-prefix">
@@ -452,7 +532,7 @@
 
               <div id="house-sale-downpayment-wrapper" class="input-group" style="margin-bottom: 0; display: none;">
                 <div class="label-with-tooltip">
-                  <label id="house-sale-downpayment-label" for="houseSaleDownPayment" style="font-size: 0.7rem; color: var(--text-muted);">🏡 From House Sale</label>
+                  <label id="house-sale-downpayment-label" for="houseSaleDownPayment" class="text-hint"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg> From House Sale</label>
                   <span id="house-sale-downpayment-tooltip" class="tooltip-icon" data-tooltip="Net sale proceeds from your current home applied to this down payment (calculated in the 'Have a house to sell?' panel above).">?</span>
                 </div>
                 <div id="house-sale-downpayment-box" class="input-with-prefix" style="background: rgba(6, 182, 212, 0.05); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 0.4rem;">
@@ -463,7 +543,7 @@
             </div>
 
             <div class="label-with-tooltip" style="margin-bottom: 0.25rem;">
-              <label for="downPaymentAmount" style="font-size: 0.7rem; color: var(--text-muted);">Total Down Payment</label>
+              <label for="downPaymentAmount" class="text-hint">Total Down Payment</label>
             </div>
             <div class="dual-input">
               <div class="input-with-prefix">
@@ -478,9 +558,9 @@
             <input id="downPaymentSlider" type="range" min="0" max="100" step="1" value="20" class="slider" />
 
             <div id="down-payment-breakdown" class="down-payment-breakdown" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; padding: 0.5rem 0.75rem; background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.75rem;">
-              <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                <span id="dp-breakdown-house" style="color: var(--accent-cyan); font-weight: 500; display: none;">🏡 House: $0</span>
-                <span id="dp-breakdown-cash" style="color: var(--accent-emerald); font-weight: 500;">💵 Cash: $80,000</span>
+              <div class="flex-center-wrap-gap75">
+                <span id="dp-breakdown-house" style="color: var(--accent-cyan); font-weight: 500; display: none;"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg> House: $0</span>
+                <span id="dp-breakdown-cash" style="color: var(--accent-emerald); font-weight: 500;"><svg class="icon" aria-hidden="true"><use href="#icon-cash"/></svg> Cash: $80,000</span>
               </div>
               <span id="dp-breakdown-total" style="color: var(--text-bright); font-weight: 600;">Total: $80,000 (20%)</span>
             </div>
@@ -490,7 +570,7 @@
 
         <div class="panel-card collapsible" id="extra-payments-card">
           <button type="button" class="collapsible-header" id="extra-payments-toggle" data-section-key="extraPayments" aria-expanded="false" aria-controls="extra-payments-body">
-            <h2 style="margin-bottom: 0;">Extra Payments &amp; Schedule</h2>
+            <h2>Extra Payments &amp; Schedule</h2>
             <span class="chevron" aria-hidden="true">▾</span>
           </button>
           <div class="collapsible-body" id="extra-payments-body" hidden>
@@ -527,14 +607,14 @@
             <div class="frequency-toggle-group" id="frequency-toggle-group">
               <button type="button" class="freq-btn active" id="btn-freq-monthly" data-freq="monthly">Monthly (12x)</button>
               <button type="button" class="freq-btn" id="btn-freq-biweekly" data-freq="biweekly">Biweekly (26x)</button>
-              <button type="button" class="freq-btn" id="btn-freq-accelerated" data-freq="accelerated">⚡ Accelerated</button>
+              <button type="button" class="freq-btn" id="btn-freq-accelerated" data-freq="accelerated"><svg class="icon" aria-hidden="true"><use href="#icon-bolt"/></svg> Accelerated</button>
             </div>
             <div id="freq-explanation-box" style="margin-top: 0.65rem; padding: 0.65rem 0.85rem; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 0.4rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.45;">
               <!-- Populated dynamically via JS -->
             </div>
           </div>
 
-          <div id="biweekly-extra-container" class="input-group" style="display: none;">
+          <div id="biweekly-extra-container" class="input-group hidden-init">
             <div class="label-with-tooltip">
               <label for="biweeklyExtra">Extra Biweekly Principal</label>
               <span class="tooltip-icon" data-tooltip="Additional cash added to every biweekly payment, applied 100% directly to your loan principal.">?</span>
@@ -550,10 +630,10 @@
 
         <div class="panel-card collapsible" id="rates-card">
           <button type="button" class="collapsible-header" id="rates-toggle" data-section-key="ratesAndTaxes" aria-expanded="true" aria-controls="rates-body">
-            <h2 style="margin-bottom: 0;">Rates & Taxes</h2>
+            <h2>Rates & Taxes</h2>
             <div style="display: flex; align-items: center; gap: 0.75rem;">
               <span id="btn-load-rates" role="button" tabindex="0" aria-label="Fetch current mortgage rates from live data" style="font-size: 0.75rem; color: var(--accent-emerald); background: var(--accent-emerald-dim); padding: 0.35rem 0.75rem; border-radius: 1rem; border: 1px solid rgba(229, 193, 88, 0.3); font-weight: 600; cursor: pointer; transition: all 0.2s; flex-shrink: 0;">
-                ⚡ Load Live Rates
+                <svg class="icon" aria-hidden="true"><use href="#icon-bolt"/></svg> Load Live Rates
               </span>
               <span class="chevron" aria-hidden="true">▾</span>
             </div>
@@ -563,9 +643,9 @@
 
           <div class="grid-2-col">
             <div class="input-group">
-              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <div class="label-row-full">
                 <label for="interest30">30-Year Rate</label>
-                <span id="badge-live-30" style="display: none; font-size: 0.65rem; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); padding: 0.15rem 0.45rem; border-radius: 0.25rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em;">✓ Live</span>
+                <span id="badge-live-30" class="badge-verified-emerald hidden-init"><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg> Live</span>
               </div>
               <div class="input-with-suffix">
                 <input id="interest30" type="number" min="0.1" max="25" step="0.01" value="6.5" />
@@ -573,9 +653,9 @@
               </div>
             </div>
             <div class="input-group">
-              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <div class="label-row-full">
                 <label for="interest15">15-Year Rate</label>
-                <span id="badge-live-15" style="display: none; font-size: 0.65rem; color: var(--accent-emerald); background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); padding: 0.15rem 0.45rem; border-radius: 0.25rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em;">✓ Live</span>
+                <span id="badge-live-15" class="badge-verified-emerald hidden-init"><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg> Live</span>
               </div>
               <div class="input-with-suffix">
                 <input id="interest15" type="number" min="0.1" max="25" step="0.01" value="5.8" />
@@ -585,9 +665,9 @@
           </div>
 
           <div class="input-group" style="margin-top: 1rem;">
-            <div class="label-with-tooltip" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <div class="label-with-tooltip label-row-full">
               <label for="taxRate">Property Tax Rate (Annual)</label>
-              <span id="badge-redfin-tax" style="display: none; font-size: 0.65rem; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.25); padding: 0.15rem 0.45rem; border-radius: 0.25rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em;">✓ Redfin</span>
+              <span id="badge-redfin-tax" class="badge-verified-cyan hidden-init"><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg> Redfin</span>
             </div>
             <div class="input-with-suffix">
               <input id="taxRate" type="number" min="0" max="10" step="0.05" value="1.2" />
@@ -599,7 +679,7 @@
 
         <div class="panel-card collapsible" id="insurance-card">
           <button type="button" class="collapsible-header" id="insurance-toggle" data-section-key="insuranceAndFees" aria-expanded="true" aria-controls="insurance-body">
-            <h2 style="margin-bottom: 0;">Insurance &amp; Fees</h2>
+            <h2>Insurance &amp; Fees</h2>
             <span class="chevron" aria-hidden="true">▾</span>
           </button>
           <div class="collapsible-body" id="insurance-body">
@@ -614,12 +694,12 @@
             </div>
 
             <div class="input-group">
-              <div class="label-with-tooltip" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+              <div class="label-with-tooltip label-row-full">
                 <div style="display: flex; align-items: center; gap: 0.4rem;">
                   <label for="hoaFees">Monthly HOA</label>
                   <span class="tooltip-icon" data-tooltip="Homeowners Association fees cover community maintenance. This money does NOT go toward paying off your house.">?</span>
                 </div>
-                <span id="badge-redfin-hoa" style="display: none; font-size: 0.65rem; color: var(--accent-cyan); background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.25); padding: 0.15rem 0.45rem; border-radius: 0.25rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em;">✓ Redfin</span>
+                <span id="badge-redfin-hoa" class="badge-verified-cyan hidden-init"><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg> Redfin</span>
               </div>
               <div class="input-with-prefix">
                 <span class="prefix">$</span>
@@ -651,7 +731,7 @@
             <h3>30-Year Fixed</h3>
             <div class="payment-value" id="total-payment-30">$-.--</div>
             <span class="payment-label" id="payment-label-30">Estimated Monthly</span>
-            <div id="recast-readout-30" class="recast-readout-banner" style="display: none;">
+            <div id="recast-readout-30" class="recast-readout-banner hidden-init">
               <div class="recast-readout-values">
                 <span class="recast-tag">Recast Active</span>
                 <span id="recast-transition-30" class="recast-transition-text">$-.-- → $-.--</span>
@@ -663,7 +743,7 @@
             </div>
             <div id="biweekly-readout-30" style="display: none; font-size: 0.8rem; color: var(--accent-emerald); font-weight: 600; margin-top: 0.35rem; align-items: center; justify-content: center; gap: 0.4rem;">
               <span id="biweekly-payment-30">$0 / 2 wks</span>
-              <span id="biweekly-badge-30" style="background: var(--accent-emerald-dim); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-size: 0.65rem; text-transform: uppercase; font-weight: 700;">⚡ Accelerated</span>
+              <span id="biweekly-badge-30" style="background: var(--accent-emerald-dim); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-size: 0.65rem; text-transform: uppercase; font-weight: 700;"><svg class="icon" aria-hidden="true"><use href="#icon-bolt"/></svg> Accelerated</span>
             </div>
             <div class="card-details">
               <div class="detail-row">
@@ -674,48 +754,48 @@
                 <span>Total Interest Paid</span>
                 <div>
                   <span id="lifetime-interest-30" class="interest-total">$-.--</span>
-                  <span id="interest-savings-30" class="savings-subtext" style="display: none;">Saved $0</span>
+                  <span id="interest-savings-30" class="savings-subtext hidden-init">Saved $0</span>
                 </div>
               </div>
-              <div class="detail-row time-saved-row" id="time-saved-row-30" style="display: none;">
+              <div class="detail-row time-saved-row hidden-init" id="time-saved-row-30">
                 <span>Time Saved</span>
                 <span id="time-saved-30" class="time-saved-val">0 years</span>
               </div>
               <div id="advanced-savings-30" style="display: none; flex-direction: column; gap: 0.35rem; padding-top: 0.6rem; margin-top: 0.4rem; border-top: 1px dashed var(--border-color); font-size: 0.725rem;">
-                <div id="saved-recast-row-30" style="display: none; justify-content: space-between; color: var(--accent-emerald);">
-                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                <div id="saved-recast-row-30" class="stat-row-emerald hidden-init">
+                  <div class="label-with-tooltip tight-gap">
                     <span id="saved-recast-label-30">↳ Saved via House Sale Recast</span>
                     <span class="tooltip-icon" id="saved-recast-tooltip-30" data-tooltip="Monthly payment drop and interest saved after applying house sale proceeds to recast your mortgage balance.">?</span>
                   </div>
-                  <span id="saved-recast-val-30" style="font-weight: 500;">$0</span>
+                  <span id="saved-recast-val-30" class="stat-value">$0</span>
                 </div>
-                <div id="saved-biweekly-row-30" style="display: none; justify-content: space-between; color: var(--accent-emerald);">
-                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                <div id="saved-biweekly-row-30" class="stat-row-emerald hidden-init">
+                  <div class="label-with-tooltip tight-gap">
                     <span>↳ Saved via Biweekly Schedule</span>
                     <span class="tooltip-icon" data-tooltip="The total interest you avoided paying specifically by using a biweekly or accelerated biweekly schedule.">?</span>
                   </div>
-                  <span id="saved-biweekly-val-30" style="font-weight: 500;">$0</span>
+                  <span id="saved-biweekly-val-30" class="stat-value">$0</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; color: var(--accent-emerald);">
-                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                <div class="stat-row-emerald">
+                  <div class="label-with-tooltip tight-gap">
                     <span>↳ Saved via Monthly Extra</span>
                     <span class="tooltip-icon" data-tooltip="The total interest you avoided paying by consistently adding your extra monthly payment over the life of the loan.">?</span>
                   </div>
-                  <span id="saved-monthly-val-30" style="font-weight: 500;">$0</span>
+                  <span id="saved-monthly-val-30" class="stat-value">$0</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; color: var(--accent-emerald);">
-                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                <div class="stat-row-emerald">
+                  <div class="label-with-tooltip tight-gap">
                     <span>↳ Extra Saved via Lump Sums</span>
                     <span class="tooltip-icon" data-tooltip="The additional interest you saved specifically from your periodic lump sums, calculated on top of your monthly strategy.">?</span>
                   </div>
-                  <span id="saved-lump-val-30" style="font-weight: 500;">$0</span>
+                  <span id="saved-lump-val-30" class="stat-value">$0</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; color: var(--text-dark);">
-                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                <div class="stat-row-dim">
+                  <div class="label-with-tooltip tight-gap">
                     <span>↳ Total Extra Cash Injected</span>
                     <span class="tooltip-icon" data-tooltip="The actual, out-of-pocket extra cash you paid. This is your money building your home equity, not money lost to the bank's interest.">?</span>
                   </div>
-                  <span id="total-injected-30" style="font-weight: 500;">$0</span>
+                  <span id="total-injected-30" class="stat-value">$0</span>
                 </div>
               </div>
             </div>
@@ -727,7 +807,7 @@
             <h3>15-Year Fixed</h3>
             <div class="payment-value" id="total-payment-15">$-.--</div>
             <span class="payment-label" id="payment-label-15">Estimated Monthly</span>
-            <div id="recast-readout-15" class="recast-readout-banner" style="display: none;">
+            <div id="recast-readout-15" class="recast-readout-banner hidden-init">
               <div class="recast-readout-values">
                 <span class="recast-tag">Recast Active</span>
                 <span id="recast-transition-15" class="recast-transition-text">$-.-- → $-.--</span>
@@ -739,7 +819,7 @@
             </div>
             <div id="biweekly-readout-15" style="display: none; font-size: 0.8rem; color: var(--accent-emerald); font-weight: 600; margin-top: 0.35rem; align-items: center; justify-content: center; gap: 0.4rem;">
               <span id="biweekly-payment-15">$0 / 2 wks</span>
-              <span id="biweekly-badge-15" style="background: var(--accent-emerald-dim); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-size: 0.65rem; text-transform: uppercase; font-weight: 700;">⚡ Accelerated</span>
+              <span id="biweekly-badge-15" style="background: var(--accent-emerald-dim); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.1rem 0.4rem; border-radius: 0.25rem; font-size: 0.65rem; text-transform: uppercase; font-weight: 700;"><svg class="icon" aria-hidden="true"><use href="#icon-bolt"/></svg> Accelerated</span>
             </div>
             <div class="card-details">
               <div class="detail-row">
@@ -750,48 +830,48 @@
                 <span>Total Interest Paid</span>
                 <div>
                   <span id="lifetime-interest-15" class="interest-total">$-.--</span>
-                  <span id="interest-savings-15" class="savings-subtext" style="display: none;">Saved $0</span>
+                  <span id="interest-savings-15" class="savings-subtext hidden-init">Saved $0</span>
                 </div>
               </div>
-              <div class="detail-row time-saved-row" id="time-saved-row-15" style="display: none;">
+              <div class="detail-row time-saved-row hidden-init" id="time-saved-row-15">
                 <span>Time Saved</span>
                 <span id="time-saved-15" class="time-saved-val">0 years</span>
               </div>
               <div id="advanced-savings-15" style="display: none; flex-direction: column; gap: 0.35rem; padding-top: 0.6rem; margin-top: 0.4rem; border-top: 1px dashed var(--border-color); font-size: 0.725rem;">
-                <div id="saved-recast-row-15" style="display: none; justify-content: space-between; color: var(--accent-emerald);">
-                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                <div id="saved-recast-row-15" class="stat-row-emerald hidden-init">
+                  <div class="label-with-tooltip tight-gap">
                     <span id="saved-recast-label-15">↳ Saved via House Sale Recast</span>
                     <span class="tooltip-icon" id="saved-recast-tooltip-15" data-tooltip="Monthly payment drop and interest saved after applying house sale proceeds to recast your mortgage balance.">?</span>
                   </div>
-                  <span id="saved-recast-val-15" style="font-weight: 500;">$0</span>
+                  <span id="saved-recast-val-15" class="stat-value">$0</span>
                 </div>
-                <div id="saved-biweekly-row-15" style="display: none; justify-content: space-between; color: var(--accent-emerald);">
-                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                <div id="saved-biweekly-row-15" class="stat-row-emerald hidden-init">
+                  <div class="label-with-tooltip tight-gap">
                     <span>↳ Saved via Biweekly Schedule</span>
                     <span class="tooltip-icon" data-tooltip="The total interest you avoided paying specifically by using a biweekly or accelerated biweekly schedule.">?</span>
                   </div>
-                  <span id="saved-biweekly-val-15" style="font-weight: 500;">$0</span>
+                  <span id="saved-biweekly-val-15" class="stat-value">$0</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; color: var(--accent-emerald);">
-                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                <div class="stat-row-emerald">
+                  <div class="label-with-tooltip tight-gap">
                     <span>↳ Saved via Monthly Extra</span>
                     <span class="tooltip-icon" data-tooltip="The total interest you avoided paying by consistently adding your extra monthly payment over the life of the loan.">?</span>
                   </div>
-                  <span id="saved-monthly-val-15" style="font-weight: 500;">$0</span>
+                  <span id="saved-monthly-val-15" class="stat-value">$0</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; color: var(--accent-emerald);">
-                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                <div class="stat-row-emerald">
+                  <div class="label-with-tooltip tight-gap">
                     <span>↳ Extra Saved via Lump Sums</span>
                     <span class="tooltip-icon" data-tooltip="The additional interest you saved specifically from your periodic lump sums, calculated on top of your monthly strategy.">?</span>
                   </div>
-                  <span id="saved-lump-val-15" style="font-weight: 500;">$0</span>
+                  <span id="saved-lump-val-15" class="stat-value">$0</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; color: var(--text-dark);">
-                  <div class="label-with-tooltip" style="gap: 0.3rem;">
+                <div class="stat-row-dim">
+                  <div class="label-with-tooltip tight-gap">
                     <span>↳ Total Extra Cash Injected</span>
                     <span class="tooltip-icon" data-tooltip="The actual, out-of-pocket extra cash you paid. This is your money building your home equity, not money lost to the bank's interest.">?</span>
                   </div>
-                  <span id="total-injected-15" style="font-weight: 500;">$0</span>
+                  <span id="total-injected-15" class="stat-value">$0</span>
                 </div>
               </div>
             </div>
@@ -853,7 +933,7 @@
           <!-- Affordability Analysis -->
           <div class="panel-card collapsible affordability-card" id="affordability-card">
             <button type="button" class="collapsible-header" id="affordability-toggle" data-section-key="affordability" aria-expanded="true" aria-controls="affordability-body">
-              <h2 style="margin-bottom: 0;">Affordability Analysis (DTI)</h2>
+              <h2>Affordability Analysis (DTI)</h2>
               <span class="chevron" aria-hidden="true">▾</span>
             </button>
 
@@ -886,35 +966,35 @@
                     <span class="help-text">Everything besides the mortgage on this house — feeds Back-End DTI below</span>
                   </div>
 
-                  <div class="input-group" style="margin-bottom: 0;">
-                    <div class="label-with-tooltip" style="margin: 0;">
-                      <label style="margin: 0;">Income Basis For DTI</label>
+                  <div class="input-group no-mb">
+                    <div class="label-with-tooltip no-margin">
+                      <label class="no-margin">Income Basis For DTI</label>
                       <span class="tooltip-icon" data-tooltip="Gross measures every DTI panel below against your income before taxes — the figure lenders actually use to qualify you. Net (Best Guess) instead estimates take-home pay using national-average assumptions (federal tax brackets, FICA, and a blended average state income tax rate) so you can see what this payment will actually look like against your paycheck. This is a rough planning estimate, not tax advice — your real take-home depends on your state, filing status, withholdings, and retirement contributions.">?</span>
                     </div>
-                    <div class="frequency-toggle-group" style="margin-top: 0.6rem;">
+                    <div class="frequency-toggle-group mt-06">
                       <button type="button" class="freq-btn active" id="btn-income-basis-gross" data-income-basis="gross">Gross</button>
                       <button type="button" class="freq-btn" id="btn-income-basis-net" data-income-basis="net">Net (Best Guess)</button>
                     </div>
 
-                    <div id="income-basis-adjust-wrap" class="income-basis-adjust-wrap" style="display: none;">
-                      <div class="label-with-tooltip" style="margin: 0;">
-                        <label style="margin: 0;">Fine-Tune To Match Your Paycheck</label>
+                    <div id="income-basis-adjust-wrap" class="income-basis-adjust-wrap hidden-init">
+                      <div class="label-with-tooltip no-margin">
+                        <label class="no-margin">Fine-Tune To Match Your Paycheck</label>
                         <span class="tooltip-icon" data-tooltip="Our Best Guess is a national-average estimate and won't match everyone's real paycheck. Pick how you're paid, then set the per-paycheck amount to what you actually see land in your account — we'll convert that into the exact monthly figure the DTI panels below use. Still centered on the national-average estimate until you change it.">?</span>
                       </div>
 
-                      <div class="frequency-toggle-group" style="margin-top: 0.6rem;">
+                      <div class="frequency-toggle-group mt-06">
                         <button type="button" class="freq-btn" id="btn-pay-freq-biweekly" data-pay-freq="biweekly">Biweekly</button>
                         <button type="button" class="freq-btn" id="btn-pay-freq-semimonthly" data-pay-freq="semiMonthly">Semi-Monthly</button>
                         <button type="button" class="freq-btn active" id="btn-pay-freq-monthly" data-pay-freq="monthly">Monthly</button>
                       </div>
 
-                      <div class="input-with-prefix" style="margin-top: 0.6rem;">
+                      <div class="input-with-prefix mt-06">
                         <span class="prefix">$</span>
                         <input id="incomeBasisPaycheckAmount" type="number" min="0" step="10" value="0" />
                       </div>
                       <span class="help-text" id="income-basis-paycheck-help">Take-home per monthly paycheck (12/year)</span>
 
-                      <input id="incomeBasisAdjustSlider" type="range" min="0" max="0" step="10" value="0" class="slider" style="margin-top: 0.5rem;" />
+                      <input id="incomeBasisAdjustSlider" type="range" min="0" max="0" step="10" value="0" class="slider mt-05" />
                       <div class="income-basis-adjust-scale">
                         <span>← Conservative</span>
                         <span id="income-basis-adjust-value">Best Guess</span>
@@ -924,7 +1004,7 @@
                       <button type="button" id="btn-reset-income-basis-adjust" class="btn-force-refresh" style="display: none; margin-top: 0.4rem;">↻ Reset to Best Guess</button>
                     </div>
 
-                    <div id="income-basis-breakdown" class="income-basis-breakdown" style="display: none;"></div>
+                    <div id="income-basis-breakdown" class="income-basis-breakdown hidden-init"></div>
                   </div>
                 </div>
               </div>
@@ -940,11 +1020,11 @@
                 </button>
                 <div class="collapsible-body dti-accordion-body" id="dti-body-cashflow" hidden>
                   <!-- Residual Monthly Cash Flow Banner (Net Mode Only) -->
-                  <div id="residual-cash-flow-banner" class="residual-cash-flow-banner" style="display: none; margin-bottom: 0; padding: 0.85rem 1rem; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 0.5rem;">
+                  <div id="residual-cash-flow-banner" class="residual-cash-flow-banner hidden-init">
                     <!-- Standard Single-Home View -->
                     <div id="residual-cash-flow-standard-box" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
                       <div>
-                        <span style="font-size: 0.725rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-emerald); display: block;">💵 Remaining Monthly Cash Flow</span>
+                        <span style="font-size: 0.725rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-emerald); display: block;"><svg class="icon" aria-hidden="true"><use href="#icon-cash"/></svg> Remaining Monthly Cash Flow</span>
                         <span id="residual-cash-flow-subtitle" style="font-size: 0.75rem; color: var(--text-muted);">Available for groceries, utilities, savings &amp; lifestyle</span>
                       </div>
                       <div style="text-align: right;">
@@ -956,13 +1036,13 @@
                     <!-- Bridge Loan Multi-Stage View -->
                     <div id="residual-cash-flow-bridge-box" style="display: none; flex-direction: column; gap: 0.6rem;">
                       <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.3rem;">
-                        <span style="font-size: 0.725rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-emerald);">💵 Remaining Cash Flow by Bridge Stage</span>
-                        <span id="residual-bridge-income-note" style="font-size: 0.7rem; color: var(--text-muted);">out of take-home pay</span>
+                        <span style="font-size: 0.725rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; color: var(--accent-emerald);"><svg class="icon" aria-hidden="true"><use href="#icon-cash"/></svg> Remaining Cash Flow by Bridge Stage</span>
+                        <span id="residual-bridge-income-note" class="text-hint">out of take-home pay</span>
                       </div>
                       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem;">
                         <!-- Stage 1: Holding Period -->
                         <div style="padding: 0.65rem 0.75rem; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 0.4rem;">
-                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                          <div class="row-between-mb025">
                             <span style="font-size: 0.7rem; font-weight: 700; color: var(--color-moderate); text-transform: uppercase;">1. Carrying Both Homes</span>
                             <span id="residual-holding-cost-tag" style="font-size: 0.68rem; color: var(--text-muted);">$0/mo cost</span>
                           </div>
@@ -971,7 +1051,7 @@
                         </div>
                         <!-- Stage 2: After Recast -->
                         <div style="padding: 0.65rem 0.75rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 0.4rem;">
-                          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                          <div class="row-between-mb025">
                             <span style="font-size: 0.7rem; font-weight: 700; color: var(--accent-emerald); text-transform: uppercase;">2. After House Sells &amp; Recast</span>
                             <span id="residual-recast-cost-tag" style="font-size: 0.68rem; color: var(--accent-emerald); font-weight: 600;">+$0/mo saved</span>
                           </div>
@@ -996,7 +1076,7 @@
                 <div class="collapsible-body dti-accordion-body" id="dti-body-ratios">
                   <!-- Bridge Loan Phase Toggle (Bridge Loan Mode Only) -->
                   <div id="bridge-dti-phase-toggle" class="bridge-dti-phase-toggle" style="display: none; margin-bottom: 0.85rem;">
-                    <div class="label-with-tooltip" style="margin-bottom: 0.35rem;">
+                    <div class="label-with-tooltip mb-035">
                       <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin: 0;">Bridge Loan DTI Lens</label>
                       <span class="tooltip-icon" data-tooltip="Select whether the DTI ratios below evaluate standard bank qualification for your new home, or your temporary holding position while carrying both homes.">?</span>
                     </div>
@@ -1017,7 +1097,7 @@
                     <div class="dti-metric">
                       <div class="dti-value" id="dti-ratio">--%</div>
                       <div class="dti-info">
-                        <div class="label-with-tooltip" style="margin: 0; gap: 0.3rem;">
+                        <div class="label-with-tooltip m0-gap03">
                           <span class="dti-title" id="dti-title-bank">Housing DTI (Front-End)</span>
                           <span class="tooltip-icon" id="dti-tooltip-bank" data-tooltip="The baseline debt-to-income ratio mortgage lenders use to evaluate and approve your loan for the house, based on required monthly costs (P&amp;I + tax + insurance + PMI + HOA).">?</span>
                         </div>
@@ -1025,14 +1105,14 @@
                       </div>
                     </div>
                     <div class="progress-bar-container">
-                      <div id="dti-progress-bar" class="progress-bar" style="width: 0%;"></div>
+                      <div id="dti-progress-bar" class="progress-bar"></div>
                       <div class="progress-markers" id="dti-progress-markers-bank">
                         <span class="marker marker-m1" style="left: 28%">28%</span>
                         <span class="marker marker-m2" style="left: 36%">36%</span>
                       </div>
                     </div>
                     <div id="dti-dollar-breakdown" class="dti-dollar-breakdown"></div>
-                    <p id="dti-description" class="dti-desc" style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted); margin-top: 0.75rem;">
+                    <p id="dti-description" class="dti-desc hint-text-mt075">
                       Please fill out purchase details and income to verify affordability status.
                     </p>
                   </div>
@@ -1040,9 +1120,9 @@
                   <!-- Back-End DTI (housing + other monthly debts) -->
                   <div class="dti-panel active" data-dti-panel="backend">
                     <div class="dti-metric">
-                      <div class="dti-value" id="backend-dti-ratio" style="color: var(--color-pmi);">--%</div>
+                      <div class="dti-value" id="backend-dti-ratio">--%</div>
                       <div class="dti-info">
-                        <div class="label-with-tooltip" style="margin: 0; gap: 0.3rem;">
+                        <div class="label-with-tooltip m0-gap03">
                           <span class="dti-title" id="dti-title-backend">Total Debt DTI (Back-End)</span>
                           <span class="tooltip-icon" id="dti-tooltip-backend" data-tooltip="Housing payment PLUS your other monthly debts (car, student loans, credit cards, etc.), against income. This fuller ratio is what most lenders actually use to qualify you — thresholds are more lenient than housing-only DTI.">?</span>
                         </div>
@@ -1050,14 +1130,14 @@
                       </div>
                     </div>
                     <div class="progress-bar-container">
-                      <div id="backend-dti-progress-bar" class="progress-bar" style="width: 0%;"></div>
+                      <div id="backend-dti-progress-bar" class="progress-bar"></div>
                       <div class="progress-markers" id="dti-progress-markers-backend">
                         <span class="marker marker-m1" style="left: 36%">36%</span>
                         <span class="marker marker-m2" style="left: 45%">45%</span>
                       </div>
                     </div>
                     <div id="backend-dti-dollar-breakdown" class="dti-dollar-breakdown"></div>
-                    <p id="backend-dti-description" class="dti-desc" style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted); margin-top: 0.75rem;"></p>
+                    <p id="backend-dti-description" class="dti-desc hint-text-mt075"></p>
                   </div>
 
                   <!-- Effective DTI (With Extra Payments) -->
@@ -1065,7 +1145,7 @@
                     <div class="dti-metric">
                       <div class="dti-value" id="effective-dti-ratio" style="color: var(--accent-cyan);">--%</div>
                       <div class="dti-info">
-                        <div class="label-with-tooltip" style="margin: 0; gap: 0.3rem;">
+                        <div class="label-with-tooltip m0-gap03">
                           <span class="dti-title" id="dti-title-effective">Effective DTI (w/ Extras)</span>
                           <span class="tooltip-icon" id="dti-tooltip-effective" data-tooltip="Your true monthly income percentage committed to housing when adding optional extra principal, biweekly schedule extras, and lump sum payments.">?</span>
                         </div>
@@ -1073,14 +1153,14 @@
                       </div>
                     </div>
                     <div class="progress-bar-container">
-                      <div id="effective-dti-progress-bar" class="progress-bar effective-bar" style="width: 0%;"></div>
+                      <div id="effective-dti-progress-bar" class="progress-bar effective-bar"></div>
                       <div class="progress-markers" id="dti-progress-markers-effective">
                         <span class="marker marker-m1" style="left: 28%">28%</span>
                         <span class="marker marker-m2" style="left: 36%">36%</span>
                       </div>
                     </div>
                     <div id="effective-dti-dollar-breakdown" class="dti-dollar-breakdown"></div>
-                    <p id="effective-dti-description" class="dti-desc" style="font-size: 0.78rem; line-height: 1.4; color: var(--text-muted); margin-top: 0.75rem;">
+                    <p id="effective-dti-description" class="dti-desc hint-text-mt075">
                       Includes optional extra payments to show your total monthly budget commitment.
                     </p>
                   </div>
@@ -1095,7 +1175,7 @@
         <!-- Amortization Burndown Charts -->
         <div class="panel-card collapsible burndown-chart-card" id="burndown-chart-card">
           <button type="button" class="collapsible-header" id="burndown-toggle" data-section-key="burndownChart" aria-expanded="false" aria-controls="burndown-body">
-            <h2 style="margin-bottom: 0;">Loan Amortization Burndown</h2>
+            <h2>Loan Amortization Burndown</h2>
             <span class="chevron" aria-hidden="true">▾</span>
           </button>
           <div class="collapsible-body" id="burndown-body" hidden>
@@ -1133,10 +1213,10 @@
   </footer>
 
   <!-- Quick Start Modal -->
-  <div id="quickstart-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+  <div id="quickstart-modal" class="modal-overlay hidden" aria-hidden="true">
     <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="quickstart-modal-title">
       <button id="btn-close-quickstart" class="modal-close-button" aria-label="Close Quick Start guide">&times;</button>
-      <h2 id="quickstart-modal-title" class="feature-modal-title" style="color: var(--accent-emerald, #10b981);">🏠 MORTGAGE CALCULATOR QUICK START</h2>
+      <h2 id="quickstart-modal-title" class="feature-modal-title" style="color: var(--accent-emerald, #10b981);"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg> MORTGAGE CALCULATOR QUICK START</h2>
       <p class="feature-modal-intro">Follow these 4 steps to analyze monthly home costs, compare loan terms, and model extra payments.</p>
       <ol class="quickstart-steps-list">
         <li><strong>1) Enter Home Purchase Inputs</strong> Input purchase price, down payment %, interest rate, and term (or paste a Redfin URL).</li>
@@ -1145,7 +1225,7 @@
         <li><strong>4) Inspect Amortization Chart</strong> Review the month-by-month equity buildup curve, total interest costs, and 15-Yr vs 30-Yr comparison.</li>
       </ol>
       <div class="modal-privacy-notice">
-        <span class="modal-privacy-icon">🔒</span>
+        <span class="modal-privacy-icon"><svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg></span>
         <div>
           <strong>100% PRIVATE CLIENT-SIDE CALCULATION</strong>
           All financial data and loan numbers remain strictly inside your browser sandbox.
@@ -1155,37 +1235,37 @@
   </div>
 
   <!-- Bookmarklet Modal -->
-  <div id="bookmarklet-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+  <div id="bookmarklet-modal" class="modal-overlay hidden" aria-hidden="true">
     <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="bookmarklet-modal-title" style="max-width: 580px;">
       <button id="btn-close-bookmarklet" class="modal-close-button" aria-label="Close bookmarklet guide">&times;</button>
-      <h2 id="bookmarklet-modal-title" class="feature-modal-title">🔖 "Import to Nycto.ninja" Bookmarklet</h2>
+      <h2 id="bookmarklet-modal-title" class="feature-modal-title"><svg class="icon" aria-hidden="true"><use href="#icon-bookmark"/></svg> "Import to Nycto.ninja" Bookmarklet</h2>
       <p class="feature-modal-intro">Bypass server anti-bot blocks on Redfin, Zillow, and Realtor.com by initiating lookups directly from your browser!</p>
       
       <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--accent-cyan); border-radius: 0.5rem; padding: 1.25rem; text-align: center; margin: 1rem 0 1.25rem;">
         <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.65rem;">Drag this button to your browser bookmarks bar:</div>
         <a id="bookmarklet-link" href="#" onclick="return false;" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #ffffff; font-weight: 700; font-size: 0.95rem; padding: 0.75rem 1.5rem; border-radius: 0.4rem; text-decoration: none; box-shadow: 0 4px 14px rgba(14, 165, 233, 0.4); cursor: move;">
-          🔖 Import to Nycto.ninja
+          <svg class="icon" aria-hidden="true"><use href="#icon-bookmark"/></svg> Import to Nycto.ninja
         </a>
       </div>
 
       <h4 style="color: var(--text-bright); font-size: 0.88rem; margin-bottom: 0.5rem;">Quick Setup Steps:</h4>
       <ol style="padding-left: 1.25rem; margin-bottom: 1.25rem; font-size: 0.82rem; line-height: 1.6; color: var(--text-muted);">
-        <li style="margin-bottom: 0.4rem;">Drag the <strong>Import to Nycto.ninja</strong> button above to your browser's bookmarks bar.</li>
-        <li style="margin-bottom: 0.4rem;">Navigate to any home listing on <strong>Redfin, Zillow, Realtor.com, or Homes.com</strong>.</li>
-        <li style="margin-bottom: 0.4rem;">Click <strong>Import to Nycto.ninja</strong> in your toolbar. A notification will confirm it was saved to the shared 7-day cache.</li>
-        <li style="margin-bottom: 0.4rem;">Paste the listing URL into this calculator (or click Fetch) — it will load instantly!</li>
+        <li class="mb-04">Drag the <strong>Import to Nycto.ninja</strong> button above to your browser's bookmarks bar.</li>
+        <li class="mb-04">Navigate to any home listing on <strong>Redfin, Zillow, Realtor.com, or Homes.com</strong>.</li>
+        <li class="mb-04">Click <strong>Import to Nycto.ninja</strong> in your toolbar. A notification will confirm it was saved to the shared 7-day cache.</li>
+        <li class="mb-04">Paste the listing URL into this calculator (or click Fetch) — it will load instantly!</li>
       </ol>
 
       <details style="background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border-color); border-radius: 0.4rem; padding: 0.75rem; margin-bottom: 1rem;">
         <summary style="cursor: pointer; font-weight: 600; color: var(--accent-cyan); font-size: 0.8rem;">Manual Code Snippet (Click to copy)</summary>
-        <div style="margin-top: 0.75rem;">
+        <div class="mt-075">
           <textarea id="bookmarklet-code-text" readonly rows="5" style="width: 100%; background: #080a0f; color: #38bdf8; font-family: monospace; font-size: 0.72rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 0.25rem; outline: none; resize: none;"></textarea>
-          <button type="button" id="btn-copy-bookmarklet-code" style="margin-top: 0.5rem; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.25rem; padding: 0.4rem 0.8rem; font-weight: 600; font-size: 0.75rem; cursor: pointer;">📋 Copy Code</button>
+          <button type="button" id="btn-copy-bookmarklet-code" style="margin-top: 0.5rem; background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.25rem; padding: 0.4rem 0.8rem; font-weight: 600; font-size: 0.75rem; cursor: pointer;"><svg class="icon" aria-hidden="true"><use href="#icon-clipboard"/></svg> Copy Code</button>
         </div>
       </details>
 
       <div class="modal-privacy-notice">
-        <span class="modal-privacy-icon">🔒</span>
+        <span class="modal-privacy-icon"><svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg></span>
         <div>
           <strong>Shared 7-Day Cache</strong>
           Properties imported via the bookmarklet are saved to the server's 7-day cache, making them instantly available across both mortgage-calculator and homeward.
@@ -1195,11 +1275,11 @@
   </div>
 
   <!-- Bookmarklet Ingestion Required Modal -->
-  <div id="bookmarklet-needed-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+  <div id="bookmarklet-needed-modal" class="modal-overlay hidden" aria-hidden="true">
     <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="bookmarklet-needed-modal-title" style="max-width: 540px;">
       <button id="btn-close-bookmarklet-needed" class="modal-close-button" aria-label="Close dialog">&times;</button>
       <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.75rem;">
-        <span style="font-size: 1.6rem;">🔖</span>
+        <span style="font-size: 1.6rem;"><svg class="icon" aria-hidden="true"><use href="#icon-bookmark"/></svg></span>
         <h2 id="bookmarklet-needed-modal-title" class="feature-modal-title" style="margin: 0; color: var(--accent-cyan);">Bookmarklet Ingestion Required</h2>
       </div>
       <p class="feature-modal-intro" id="bookmarklet-needed-modal-message" style="margin-bottom: 1rem; color: var(--text-bright); line-height: 1.5;">
@@ -1209,15 +1289,15 @@
       <div style="background: rgba(6, 182, 212, 0.06); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1.25rem;">
         <div style="font-weight: 600; color: var(--accent-cyan); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.04em;">How to ingest this listing:</div>
         <ol style="padding-left: 1.2rem; margin: 0; font-size: 0.82rem; line-height: 1.65; color: var(--text-muted);">
-          <li style="margin-bottom: 0.35rem;">Open the listing on <strong>Zillow, Redfin, Realtor.com, or Homes.com</strong>.</li>
-          <li style="margin-bottom: 0.35rem;">Click the <strong>🔖 Import to Nycto.ninja</strong> bookmarklet in your browser's bookmarks bar.</li>
-          <li>Return here and click <strong>🔍 Load Cached Property</strong> again!</li>
+          <li class="mb-035">Open the listing on <strong>Zillow, Redfin, Realtor.com, or Homes.com</strong>.</li>
+          <li class="mb-035">Click the <strong><svg class="icon" aria-hidden="true"><use href="#icon-bookmark"/></svg> Import to Nycto.ninja</strong> bookmarklet in your browser's bookmarks bar.</li>
+          <li>Return here and click <strong><svg class="icon" aria-hidden="true"><use href="#icon-search"/></svg> Load Cached Property</strong> again!</li>
         </ol>
       </div>
 
       <div style="display: flex; gap: 0.75rem; justify-content: flex-end; align-items: center;">
         <button type="button" id="btn-open-bookmarklet-from-needed" style="background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.65rem 1.25rem; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: flex; align-items: center; gap: 0.35rem;">
-          <span>🔖</span> <span>Get Bookmarklet</span>
+          <span><svg class="icon" aria-hidden="true"><use href="#icon-bookmark"/></svg></span> <span>Get Bookmarklet</span>
         </button>
         <button type="button" id="btn-dismiss-bookmarklet-needed" style="background: rgba(255, 255, 255, 0.08); color: var(--text-bright); border: 1px solid var(--border-color); border-radius: 0.4rem; padding: 0.65rem 1rem; font-weight: 600; font-size: 0.85rem; cursor: pointer;">
           Close
@@ -1228,50 +1308,50 @@
 
   <!-- Loan Comparisons Modal -->
   <div id="loan-comparison-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
-    <div class="modal-card loan-comparison-modal-content" role="dialog" aria-modal="true" aria-labelledby="loan-comparison-title" style="max-width: 1040px; width: 95%;">
+    <div class="modal-card loan-comparison-modal-content" role="dialog" aria-modal="true" aria-labelledby="loan-comparison-title">
       <button id="btn-close-loan-comparison" class="modal-close-button" aria-label="Close Loan Comparisons table">&times;</button>
       
-      <div class="comparison-modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 0.85rem; margin-bottom: 1rem;">
-        <h2 id="loan-comparison-title" style="font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; color: var(--text-bright); margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.5rem;">
+      <div class="comp-header">
+        <h2 id="loan-comparison-title" class="comp-title">
           <span>Loan Comparisons</span>
         </h2>
-        <div id="loan-comparison-subtitle" style="font-size: 0.8rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <div id="loan-comparison-subtitle" class="comp-subtitle">
           <span id="comparison-property-info">Dynamic loan matrix based on current calculator inputs</span>
-          <span id="comparison-timestamp-info" style="font-family: monospace; font-size: 0.75rem;"></span>
+          <span id="comparison-timestamp-info" class="comp-timestamp"></span>
         </div>
       </div>
 
       <!-- Affordability Summary Banner -->
-      <div id="comp-affordability-banner" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 0.5rem; padding: 0.7rem 1rem; margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; font-size: 0.8rem;">
-        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+      <div id="comp-affordability-banner" class="comp-banner">
+        <div class="comp-banner-stats">
           <div>
-            <span style="color: var(--text-muted); font-size: 0.7rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Gross Income</span>
-            <strong id="comp-banner-income" style="color: var(--text-bright); font-size: 0.95rem;">$120,000/yr</strong>
+            <span class="comp-banner-stat-label">Gross Income</span>
+            <strong id="comp-banner-income" class="comp-banner-stat-value">$120,000/yr</strong>
           </div>
-          <div style="border-left: 1px solid var(--border-color); padding-left: 1rem;">
-            <span style="color: var(--text-muted); font-size: 0.7rem; display: block; text-transform: uppercase; letter-spacing: 0.03em;">Target 28% Housing Cap</span>
-            <strong id="comp-banner-target-cap" style="color: var(--accent-emerald); font-size: 0.95rem;">$2,800/mo</strong>
+          <div class="comp-banner-stat-divider">
+            <span class="comp-banner-stat-label">Target 28% Housing Cap</span>
+            <strong id="comp-banner-target-cap" class="comp-banner-stat-value" style="color: var(--accent-emerald);">$2,800/mo</strong>
           </div>
         </div>
-        <div id="comp-banner-max-fit-wrap" style="display: flex; align-items: center; gap: 0.5rem; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); padding: 0.35rem 0.75rem; border-radius: 0.4rem;">
-          <span style="font-size: 1rem;">🎯</span>
+        <div id="comp-banner-max-fit-wrap" class="comp-max-fit-pill">
+          <svg class="icon" aria-hidden="true"><use href="#icon-target"/></svg>
           <div>
-            <span style="color: var(--accent-emerald); font-size: 0.65rem; font-weight: 700; display: block; text-transform: uppercase; letter-spacing: 0.04em;">Max Budget Fit</span>
-            <strong id="comp-banner-max-fit-price" style="color: #ffffff; font-size: 0.88rem;">$425,000 Home</strong>
+            <span class="comp-max-fit-label">Max Budget Fit</span>
+            <strong id="comp-banner-max-fit-price" class="comp-max-fit-price">$425,000 Home</strong>
           </div>
         </div>
       </div>
 
       <!-- Controls & Customization Toolbar -->
-      <div class="comparison-toolbar" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 1.25rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; font-size: 0.8rem;">
-        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-          <label style="font-weight: 600; color: var(--text-bright);">Down Payment Mode:</label>
+      <div class="comparison-toolbar comp-toolbar">
+        <div class="comp-toolbar-group">
+          <label class="comp-field-label">Down Payment Mode:</label>
           <div class="frequency-toggle-group" id="comp-dp-mode-switch" style="margin: 0;">
             <button type="button" class="freq-btn active" id="btn-comp-dp-fixed" data-dp-mode="fixed">Fixed Dollar ($)</button>
             <button type="button" class="freq-btn" id="btn-comp-dp-percent" data-dp-mode="percent">Fixed Percent (%)</button>
           </div>
-          <div style="display: flex; align-items: center; gap: 0.4rem;">
-            <label for="compDpValue" style="font-weight: 600; color: var(--text-bright);" id="comp-dp-label">Initial Down Payment:</label>
+          <div class="comp-field">
+            <label for="compDpValue" class="comp-field-label" id="comp-dp-label">Initial Down Payment:</label>
             <div class="input-with-prefix" style="max-width: 145px;" id="comp-dp-input-wrap">
               <span class="prefix" id="comp-dp-prefix">$</span>
               <input id="compDpValue" type="number" min="0" step="5000" value="50000" style="padding: 0.3rem 0.5rem 0.3rem 1.6rem; font-size: 0.8rem;" title="Initial down payment at closing" />
@@ -1280,17 +1360,17 @@
           </div>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-          <div style="display: flex; align-items: center; gap: 0.4rem;">
-            <label style="font-weight: 600; color: var(--text-bright);">Recast Phase:</label>
+        <div class="comp-toolbar-group">
+          <div class="comp-field">
+            <label class="comp-field-label">Recast Phase:</label>
             <div class="frequency-toggle-group" id="comp-recast-mode-switch" style="margin: 0;">
               <button type="button" class="freq-btn active" id="btn-comp-recast-pre" data-recast-mode="pre">Initial (Pre-Recast)</button>
               <button type="button" class="freq-btn" id="btn-comp-recast-post" data-recast-mode="post">After Sale (Post-Recast)</button>
             </div>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 0.4rem;" id="comp-recast-input-wrap">
-            <label for="compRecastAmount" style="font-weight: 600; color: var(--text-bright);">Recast Lump Sum:</label>
+          <div class="comp-field" id="comp-recast-input-wrap">
+            <label for="compRecastAmount" class="comp-field-label">Recast Lump Sum:</label>
             <div class="input-with-prefix" style="max-width: 140px;">
               <span class="prefix">$</span>
               <input id="compRecastAmount" type="number" min="0" step="5000" value="250000" style="padding: 0.3rem 0.5rem 0.3rem 1.6rem; font-size: 0.8rem;" title="Lump sum applied from home sale proceeds to recast mortgage" />
@@ -1298,22 +1378,22 @@
           </div>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-          <div style="display: flex; align-items: center; gap: 0.4rem;">
-            <label style="font-weight: 600; color: var(--text-bright);">Price Range:</label>
+        <div class="comp-toolbar-group">
+          <div class="comp-field">
+            <label class="comp-field-label">Price Range:</label>
             <div class="input-with-prefix" style="max-width: 125px;">
               <span class="prefix">$</span>
               <input id="compStartPrice" type="number" min="0" max="20000000" step="10000" value="300000" placeholder="Start" style="padding: 0.3rem 0.5rem 0.3rem 1.6rem; font-size: 0.8rem;" title="Start Home Price" />
             </div>
-            <span style="color: var(--text-muted); font-size: 0.8rem;">to</span>
+            <span class="comp-price-sep">to</span>
             <div class="input-with-prefix" style="max-width: 125px;">
               <span class="prefix">$</span>
               <input id="compEndPrice" type="number" min="0" max="20000000" step="10000" value="700000" placeholder="End" style="padding: 0.3rem 0.5rem 0.3rem 1.6rem; font-size: 0.8rem;" title="End Home Price" />
             </div>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 0.4rem;">
-            <label style="font-weight: 600; color: var(--text-bright);">Step:</label>
+          <div class="comp-field">
+            <label class="comp-field-label">Step:</label>
             <select id="compStepSize" style="background: rgba(7, 9, 8, 0.7); border: 1px solid var(--border-color); border-radius: 0.3rem; color: var(--text-bright); padding: 0.35rem 0.6rem; font-size: 0.8rem; cursor: pointer;">
               <option value="10000">$10,000</option>
               <option value="25000" selected>$25,000</option>
@@ -1321,15 +1401,15 @@
             </select>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 0.4rem;">
-            <button type="button" id="btn-comp-toggle-income" class="freq-btn" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Toggle column showing annual income required to qualify">💼 Income Needed</button>
-            <button type="button" id="btn-comp-filter-budget" class="freq-btn" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Filter rows to only show home prices within your 28% DTI target">⚡ Filter &lt;28% DTI</button>
+          <div class="comp-field">
+            <button type="button" id="btn-comp-toggle-income" class="freq-btn comp-icon-btn" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Toggle column showing annual income required to qualify"><svg class="icon" aria-hidden="true"><use href="#icon-briefcase"/></svg> Income Needed</button>
+            <button type="button" id="btn-comp-filter-budget" class="freq-btn comp-icon-btn" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Filter rows to only show home prices within your 28% DTI target"><svg class="icon" aria-hidden="true"><use href="#icon-bolt"/></svg> Filter &lt;28% DTI</button>
           </div>
         </div>
       </div>
 
       <!-- Comparison Matrix Table -->
-      <div class="loan-comparison-table-wrapper" style="overflow-x: auto; max-height: 480px; overflow-y: auto; border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 0.4rem; background: #080a0f;">
+      <div class="loan-comparison-table-wrapper thin-scroll">
         <table class="comparison-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; font-family: var(--font-sans);">
           <thead style="position: sticky; top: 0; background: #111714; border-bottom: 2px solid rgba(255, 255, 255, 0.2); z-index: 2;">
             <tr>
@@ -1347,22 +1427,22 @@
       </div>
 
       <!-- Action Footer -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
-        <div style="font-size: 0.75rem; color: var(--text-muted);">
-          💡 <em>Click any row to load that Home Price into your calculator.</em>
+      <div class="comp-footer">
+        <div class="comp-footer-tip">
+          <svg class="icon" aria-hidden="true"><use href="#icon-bulb"/></svg> <em>Click any row to load that Home Price into your calculator.</em>
         </div>
-        <div style="display: flex; gap: 0.5rem;">
-          <button type="button" id="btn-copy-comparison" style="background: rgba(255, 255, 255, 0.08); color: var(--text-bright); border: 1px solid var(--border-color); border-radius: 0.4rem; padding: 0.45rem 0.85rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.35rem;">
-            📋 Copy Table
+        <div class="comp-footer-actions">
+          <button type="button" id="btn-copy-comparison" class="btn-comp-secondary">
+            <svg class="icon" aria-hidden="true"><use href="#icon-copy"/></svg> Copy Table
           </button>
-          <button type="button" id="btn-print-comparison" style="background: var(--accent-cyan); color: #080a0f; border: none; border-radius: 0.4rem; padding: 0.45rem 0.95rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.35rem;">
-            🖨️ Print Sheet
+          <button type="button" id="btn-print-comparison" class="btn-comp-primary">
+            <svg class="icon" aria-hidden="true"><use href="#icon-printer"/></svg> Print Sheet
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <script type="module" src="app.js?v=44"></script>
+  <script type="module" src="app.js?v=46"></script>
 </body>
 </html>

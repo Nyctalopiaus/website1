@@ -6,6 +6,7 @@
     if (!inputEl) return null;
 
     let debounceTimer = null;
+    let activeController = null;
     const fetchFn = options.fetchFn || (async () => []);
     const onSelect = options.onSelect || (() => {});
     const minLength = options.minLength || 2;
@@ -70,6 +71,29 @@
       inputEl.removeAttribute('aria-activedescendant');
     }
 
+    // Abort whatever lookup is currently in flight for this field. Without
+    // this, each debounced keystroke pause fired an independent, uncancelled
+    // Photon+Open-Meteo lookup (each can take up to ~8.5s to fail) -- so
+    // several stale, unresolvable prefixes of the address ended up in
+    // flight at once, hammering the free geocoders for no reason. `fetchFn`
+    // is expected to accept an AbortSignal as its second argument and pass
+    // it through to the actual network calls.
+    function cancelPendingLookup() {
+      if (activeController) {
+        activeController.abort();
+        activeController = null;
+      }
+    }
+
+    function runLookup(val) {
+      cancelPendingLookup();
+      const controller = new AbortController();
+      activeController = controller;
+      return fetchFn(val, controller.signal).finally(() => {
+        if (activeController === controller) activeController = null;
+      });
+    }
+
     function selectCandidate(candidate) {
       inputEl.value = candidate.displayName;
       onSelect(candidate);
@@ -106,18 +130,23 @@
       const val = (e.target.value || '').trim();
       if (debounceTimer) clearTimeout(debounceTimer);
       if (val.length < minLength) {
+        cancelPendingLookup();
         hide();
         return;
       }
       debounceTimer = setTimeout(async () => {
         try {
-          const results = await fetchFn(val);
+          const results = await runLookup(val);
           if (results && results.length) {
             show(results);
           } else {
             hide();
           }
-        } catch (_err) {
+        } catch (err) {
+          // A cancellation just means a newer lookup (for whatever the user
+          // has typed since) is already taking over -- it will call show()
+          // or hide() itself when it resolves, so there's nothing to do here.
+          if (err && err.name === 'CancelledError') return;
           hide();
         }
       }, delayMs);
@@ -126,9 +155,11 @@
     inputEl.addEventListener('focus', () => {
       const val = (inputEl.value || '').trim();
       if (val.length >= minLength) {
-        fetchFn(val).then((results) => {
+        runLookup(val).then((results) => {
           if (results && results.length) show(results);
-        }).catch(() => {});
+        }).catch((err) => {
+          if (err && err.name === 'CancelledError') return;
+        });
       }
     });
 
