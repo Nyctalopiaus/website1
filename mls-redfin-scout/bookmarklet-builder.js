@@ -2,8 +2,17 @@
  * MLS & Redfin Property Scout - Self-Contained Bookmarklet Engine Builder
  * Generates 100% inline bookmarklet executable directly on HTTPS Matrix MLS & Redfin pages.
  */
-function getBookmarkletCode(apiUrl) {
-    const engineCode = `/**
+function getEngineCode() {
+    // NOTE: this has to be String.raw (not a plain template literal) so that regex escapes
+    // like \d, \s, \b, \w below survive as literal backslash+letter instead of being "cooked"
+    // by the JS parser — \d/\s/\w aren't real escape sequences so cooking silently drops their
+    // backslash, and \b/\n/\r ARE real escape sequences so cooking turns them into an actual
+    // backspace/newline/CR character sitting inside a regex literal, which is a syntax error.
+    // The one thing String.raw can't do is produce a literal backtick or `${` from an escaped
+    // source sequence (raw mode keeps the backslash instead of stripping it), so the nested
+    // template literals inside the engine below still use \` and \${ escapes as written, and
+    // the two .replace() calls after the raw extraction below strip those backslashes back out.
+    const raw = String.raw`/**
  * MLS & Redfin Property Scout - Bookmarklet Engine
  * High-performance DOM parser for Matrix REColorado and Redfin property pages.
  */
@@ -11,9 +20,13 @@ function getBookmarkletCode(apiUrl) {
     'use strict';
 
     const CONFIG = {
-        API_URL: window.SCOUT_API_URL || (window.location.origin.includes('nycto.ninja') 
-            ? 'https://nycto.ninja/mls-redfin-scout/backend/api.php' 
+        API_URL: window.SCOUT_API_URL || (window.location.origin.includes('nycto.ninja')
+            ? 'https://nycto.ninja/mls-redfin-scout/backend/api.php'
             : 'http://127.0.0.1:8888/mls-redfin-scout/backend/api.php'),
+        // 'quick' = single-shot scrape of whatever's currently on screen (list rows + whichever
+        // listing happens to be expanded). 'deep' = walk every listing into full detail view,
+        // one at a time, capturing fresh notes always and a full photo gallery once per listing.
+        MODE: window.SCOUT_MODE || 'quick',
         AUTO_POPUP_REDFIN: true
     };
 
@@ -34,6 +47,30 @@ function getBookmarkletCode(apiUrl) {
         toast.innerText = msg;
         toast.style.opacity = '1';
         setTimeout(() => { toast.style.opacity = '0'; }, 4000);
+    }
+
+    // Fire-and-forget beacon to backend/api.php's action=client_log, since the bookmarklet has
+    // no storage of its own and runs on the MLS portal's origin — a console.warn here is only
+    // ever seen if DevTools happens to be open on this exact tab at this exact moment (which is
+    // exactly how the old cleanInt ReferenceError went unnoticed for as long as it did). Never
+    // throws and never blocks the scrape — a failed log beacon must not affect scraping itself.
+    function logToServer(level, message, mlsId, context) {
+        try {
+            fetch(CONFIG.API_URL + '?action=client_log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    source: 'scrape',
+                    level: level,
+                    message: String(message).slice(0, 2000),
+                    mls_id: mlsId || null,
+                    context: context || null
+                }),
+                keepalive: true
+            }).catch(() => {});
+        } catch (e) {
+            // logging must never break the scrape
+        }
     }
 
     const cleanNumber = (str) => {
@@ -132,12 +169,12 @@ function getBookmarkletCode(apiUrl) {
 
         // 7. Multiline search for (Me) comments, quoted strings, and inline JSON scripts
         const pageText = (block || document.body).innerText || '';
-        const meBlockMatches = pageText.match(/(?:Me|\\(Me\\))[\\s\\r\\n]*(?:\\d{2}\\/\\d{2}\\/\\d{4})?[\\s\\r\\n]*["“]?([^"”\\r\\n]{3,1000})["”]?/ig);
+        const meBlockMatches = pageText.match(/(?:Me|\(Me\))[\s\r\n]*(?:\d{2}\/\d{2}\/\d{4})?[\s\r\n]*["“]?([^"”\r\n]{3,1000})["”]?/ig);
         if (meBlockMatches) {
             meBlockMatches.forEach(m => candidateTexts.push(m));
         }
 
-        const quoteMatches = pageText.match(/["“]([^"”\\r\\n]{3,1000})["”]/g);
+        const quoteMatches = pageText.match(/["“]([^"”\r\n]{3,1000})["”]/g);
         if (quoteMatches) {
             quoteMatches.forEach(q => {
                 const cleanQ = q.replace(/^["“]|["”]$/g, '').trim();
@@ -149,10 +186,10 @@ function getBookmarkletCode(apiUrl) {
         scripts.forEach(s => {
             const st = s.textContent || '';
             if (st.includes('Note') || st.includes('note')) {
-                const matches = st.match(/"(?:ClientNote|Note|portalNote|userNote|comment|text)"\\s*:\\s*"([^"]+)"/ig);
+                const matches = st.match(/"(?:ClientNote|Note|portalNote|userNote|comment|text)"\s*:\s*"([^"]+)"/ig);
                 if (matches) {
                     matches.forEach(m => {
-                        const val = m.replace(/^"[^"]+"\\s*:\\s*"/, '').replace(/"$/, '').trim();
+                        const val = m.replace(/^"[^"]+"\s*:\s*"/, '').replace(/"$/, '').trim();
                         if (val) candidateTexts.push(val);
                     });
                 }
@@ -164,8 +201,8 @@ function getBookmarkletCode(apiUrl) {
             if (!txt) continue;
             let clean = txt.trim();
 
-            clean = clean.replace(/^(\\(Me\\)|Me)\\s*(\\d{2}\\/\\d{2}\\/\\d{4})?\\s*/i, '').trim();
-            clean = clean.replace(/^(Client\\s+)?Notes?:\\s*/i, '').trim();
+            clean = clean.replace(/^(\(Me\)|Me)\s*(\d{2}\/\d{2}\/\d{4})?\s*/i, '').trim();
+            clean = clean.replace(/^(Client\s+)?Notes?:\s*/i, '').trim();
             clean = clean.replace(/^["“](.*)["”]$/, '$1').trim();
 
             const lower = clean.toLowerCase();
@@ -194,9 +231,192 @@ function getBookmarkletCode(apiUrl) {
         return '';
     }
 
-    function scrapeMatrixPortal() {
-        notify('🔍 Scraping properties from Matrix page...');
+    /**
+     * Author-attributed version of extractMatrixNotes(), used by the deep scrape walker (notes
+     * are re-checked on every deep-scrape pass, per product decision — the agent may reply after
+     * Josh's first pass, and who-said-what should be preserved when that happens).
+     *
+     * CONFIRMED LIVE (Sept 2026, against a real "Me" note): each row's message lives in
+     * <p class="mtx-section"> (with literal wrapping quote marks, stripped below) inside the
+     * .col-xs-9 column, and its author label lives in a sibling <div class="mtx-author"> inside
+     * the .col-xs-3/.col-xs-pull-9 column — e.g. <div class="mtx-author mtx-mega">Me</div>.
+     * STILL UNCONFIRMED: what an agent's own reply looks like here — every real example seen so
+     * far is Josh's own single "Me" note, so a genuine multi-author thread has never been observed.
+     * This function stays defensive for that reason: if a row has no author column (or an empty
+     * one), it degrades to the flat join(' | ') behavior rather than silently losing content, and
+     * it flags anything unusual (more than one row, or an unrecognized/missing author) via the
+     * multiAuthor return field so the calling code can surface it in the run's summary toast —
+     * that flag is the mechanism for catching a real multi-author example the first time one
+     * actually appears, and for confirming or correcting this logic against it.
+     */
+    function extractMatrixNotesDetailed(block, mlsId) {
+        const scope = block || document;
+        const rows = Array.from(scope.querySelectorAll('.mtx-listingNotesWidget-noteRow'));
 
+        if (rows.length === 0) {
+            const text = extractMatrixNotes(block, mlsId);
+            return { text, rowCount: 0, multiAuthor: false, authors: [] };
+        }
+
+        const entries = [];
+        const authorsSeen = new Set();
+        let attributionLooksReliable = true;
+
+        rows.forEach(row => {
+            // Prefer the specific .mtx-section message paragraph over its parent .col-xs-9 column
+            // (confirmed live: the column also contains the note's date, e.g. "08/25/2026", which
+            // would otherwise get prepended to every note) — the .col-xs-9 fallback only matters
+            // if a future markup variant drops the .mtx-section wrapper.
+            const messageCol = row.querySelector('.mtx-section') || row.querySelector('.col-xs-9') || row;
+            let text = (messageCol.innerText || messageCol.textContent || '').trim();
+            // Confirmed live: note text is stored with literal wrapping quote marks, e.g. a note
+            // reading "Split rail fence" — strip them, matching extractMatrixNotes()'s own cleanup.
+            text = text.replace(/^["“](.*)["”]$/, '$1').trim();
+            if (!text) return;
+
+            let author = '';
+            // Confirmed live: the author label lives in .mtx-author inside the sibling .col-xs-3
+            // column (e.g. <div class="col-xs-3 col-xs-pull-9"><div class="mtx-author mtx-mega">Me</div></div>).
+            const authorCol = row.querySelector('.mtx-author') || row.querySelector('.col-xs-3');
+            if (authorCol) {
+                author = (authorCol.innerText || authorCol.textContent || '').trim();
+            }
+            if (!author) {
+                attributionLooksReliable = false;
+                author = 'Unknown';
+            }
+
+            authorsSeen.add(author);
+            entries.push({ author, text });
+        });
+
+        if (entries.length === 0) {
+            const text = extractMatrixNotes(block, mlsId);
+            return { text, rowCount: rows.length, multiAuthor: rows.length > 1, authors: [] };
+        }
+
+        const formatted = attributionLooksReliable
+            ? entries.map(e => \`\${e.author}: \${e.text}\`).join(' | ')
+            : entries.map(e => e.text).join(' | ');
+
+        const multiAuthor = !attributionLooksReliable || authorsSeen.size > 1 || rows.length > 1;
+
+        return {
+            text: formatted,
+            rowCount: rows.length,
+            multiAuthor,
+            authors: Array.from(authorsSeen)
+        };
+    }
+
+    /**
+     * Captures whatever gallery photos are currently rendered in the DOM for the single expanded
+     * listing. This function is a single DOM snapshot (whatever's currently loaded), which on its
+     * own only captures a handful of pre-loaded images near the current position, NOT the full
+     * gallery for listings with more than ~5 photos — confirmed live (Sept 2026): a 32-photo
+     * listing had only 5 images in the DOM before any carousel clicking. Kept as the low-level
+     * scan primitive that walkPhotoGallery() below calls after each click, and as a fallback for
+     * when no carousel/counter is present at all. Scans the whole document rather than just one
+     * block, since only one listing is ever expanded at a time in this mode, so there's no
+     * cross-listing contamination risk. Dedupes by the URL's Number= param (0-based photo index,
+     * confirmed shared across a listing's real gallery photos) so the same photo isn't counted
+     * twice if it appears as both a thumbnail and a main viewer image.
+     */
+    function extractGalleryImages(scope) {
+        const root = scope || document;
+        const imgs = Array.from(root.querySelectorAll('img[src*="GetMedia.ashx"], img[src*="matrixmedia"]'));
+        const seen = new Map();
+
+        imgs.forEach(img => {
+            const src = img.currentSrc || img.src || img.getAttribute('src') || '';
+            if (!src) return;
+            const numMatch = src.match(/[?&]Number=(\d+)/i);
+            const num = numMatch ? parseInt(numMatch[1], 10) : seen.size;
+            if (!seen.has(num)) seen.set(num, src);
+        });
+
+        return Array.from(seen.keys()).sort((a, b) => a - b).map(k => seen.get(k));
+    }
+
+    /**
+     * Walks the full photo carousel for whichever listing is currently expanded, clicking
+     * button.nav.right repeatedly and re-scanning after each click, so galleries larger than the
+     * carousel's pre-loaded window (confirmed to be only ~5 images) get fully captured rather than
+     * silently truncated. Progress is tracked via the counter element that reads e.g. "7 / 32"
+     * (confirmed live: a leaf element with class "count" inside a ".bar" container, text matching
+     * /^\d+\s*\/\s*\d+$/ — deliberately NOT matched against the whole page text, since strings like
+     * "3/4" (a baths value) elsewhere on the page also match a loose slash-number pattern).
+     * Confirmed live that images accumulate in the DOM as you click forward rather than being
+     * evicted (index 0 is still present after reaching index 7), so accumulating via
+     * extractGalleryImages() after each click is safe.
+     *
+     * CONFIRMED LIVE (Sept 2026): button.nav.right periodically goes disabled="disabled" for an
+     * extended stretch mid-gallery (observed on a real 32-photo listing, stuck for over 10+
+     * seconds around photo 13) — almost certainly the carousel lazy-loading its next batch of
+     * images rather than a real end-of-gallery or broken state, since it reliably re-enables on
+     * its own given enough time. An earlier version of this function gave up after one ~3s
+     * non-advancing poll, which would have silently truncated the gallery right at that stall
+     * (13 of 32 photos, in the observed case) — the exact kind of partial-capture bug this
+     * function exists to prevent. It now explicitly waits for the button to become enabled again
+     * (up to stallTimeoutMs) before each click, rather than treating "not advancing yet" as
+     * "done" — real end-of-gallery is detected separately, via counter.cur reaching counter.total.
+     * Verified live end-to-end against a real 32-photo listing: all 32 unique indices (0-31)
+     * captured, no gaps, no duplicates, pushing cleanly through the observed stall.
+     */
+    async function walkPhotoGallery(pollMs = 150, advanceTimeoutMs = 5000, stallTimeoutMs = 25000) {
+        const countEls = () => Array.from(document.querySelectorAll('.count')).find(
+            el => /^\s*\d+\s*\/\s*\d+\s*$/.test(el.textContent || '')
+        );
+        const getCounter = () => {
+            const el = countEls();
+            if (!el) return null;
+            const m = el.textContent.match(/(\d+)\s*\/\s*(\d+)/);
+            return m ? { cur: parseInt(m[1], 10), total: parseInt(m[2], 10) } : null;
+        };
+        const waitUntil = async (predicate, timeoutMs) => {
+            for (let waited = 0; waited < timeoutMs; waited += pollMs) {
+                if (predicate()) return true;
+                await new Promise(r => setTimeout(r, pollMs));
+            }
+            return predicate();
+        };
+
+        let counter = getCounter();
+        const navRight = document.querySelector('button.nav.right');
+        if (!counter || !navRight) {
+            // No carousel/counter found (e.g. a listing with zero or one photo) — fall back to a
+            // plain single-shot scan rather than looping on nothing.
+            return extractGalleryImages(document);
+        }
+
+        const maxClicks = counter.total + 2; // small safety margin, not unbounded
+        let clicks = 0;
+        while (counter.cur < counter.total && clicks < maxClicks) {
+            // Wait out a temporarily-disabled next button (lazy-load stall) rather than giving up —
+            // confirmed live this can persist 10+ seconds and then recover on its own.
+            const becameEnabled = await waitUntil(() => !navRight.disabled, stallTimeoutMs);
+            if (!becameEnabled) break; // genuinely stuck (not just a lazy-load pause) — stop here
+
+            navRight.click();
+            clicks++;
+            const prevCur = counter.cur;
+            const advanced = await waitUntil(() => {
+                const c = getCounter();
+                if (c && c.cur !== prevCur) { counter = c; return true; }
+                return false;
+            }, advanceTimeoutMs);
+            if (!advanced) {
+                // Counter didn't move — if the button is now disabled, loop back around and wait
+                // it out (handled at the top of the loop); if it's still enabled and just not
+                // advancing, that's a real stall, so stop rather than clicking forever.
+                if (!navRight.disabled) break;
+            }
+        }
+
+        return extractGalleryImages(document);
+    }
+
+    function findListingBlocks() {
         let rawBlocks = Array.from(document.querySelectorAll(
             '.multiLineDisplay, .d-wrapperTable, [id^="Display_"], .d-displayRow, .d-displayCore, .d-mega, [data-key], tr.d-displayRow, .portal-card, .c-listing-card, .d-single, .portal-detail'
         ));
@@ -212,181 +432,251 @@ function getBookmarkletCode(apiUrl) {
             });
         }
 
+        return blocks;
+    }
+
+    /**
+     * Parses one listing block into the payload shape expected by /backend/api.php's sync
+     * endpoint, or returns null if the block doesn't actually look like a listing. Factored out
+     * of the old inline scrapeMatrixPortal() forEach so the same field-extraction logic can be
+     * reused by the deep-scrape walker (one block at a time) as well as the quick scan (many
+     * blocks at once).
+     *
+     * Deliberately omits gallery_images: leaving it unset lets the backend's dedupe logic treat
+     * this as a "regular refresh" payload and preserve whatever fuller gallery a deep scrape may
+     * have already captured for this mls_id, instead of clobbering it down to a single guessed
+     * image. Only the deep-scrape walker (which actually looked at every rendered photo via
+     * extractGalleryImages()) sets gallery_images explicitly.
+     */
+    function parseListingBlock(block) {
+        const text = block.innerText || '';
+        if (!text.includes('Listing ID') && !text.includes('MLS#') && !text.includes('MLS ID') && !text.includes('Bed')) return null;
+
+        let mlsId = '';
+        const mlsMatch = text.match(/Listing ID:\s*(\d+)/i) || text.match(/MLS#:\s*(\d+)/i) || text.match(/MLS\s*ID:\s*(\d+)/i) || text.match(/MLS#\s*(\d+)/i) || text.match(/MLS:\s*(\d+)/i);
+        if (mlsMatch) mlsId = mlsMatch[1];
+        if (!mlsId) {
+            const keyAttr = block.querySelector('[data-key]');
+            if (keyAttr) mlsId = keyAttr.getAttribute('data-key');
+        }
+        if (!mlsId) return null;
+
+        let price = 0;
+        const priceMatch = text.match(/\$([0-9,]+)/);
+        if (priceMatch) price = cleanNumber(priceMatch[1]);
+
+        let address = '', city = '', state = 'CO', zip = '';
+        const addrElem = block.querySelector('.d-displayAddress, .portal-address, h1, h2, [id*="Address"], [class*="Address"]');
+        if (addrElem && addrElem.innerText.trim() && /[A-Za-z]/.test(addrElem.innerText)) {
+            const cand = addrElem.innerText.trim();
+            if (cand !== mlsId && cand.length > 3) address = cand;
+        }
+        if (!address) {
+            const links = Array.from(block.querySelectorAll('a'));
+            const addrLink = links.find(a => {
+                const t = a.innerText.trim();
+                return t && t !== mlsId && /^\d+\s+[A-Za-z]/.test(t);
+            });
+            if (addrLink) address = addrLink.innerText.trim();
+        }
+        if (!address) {
+            const addrCandidates = Array.from(block.querySelectorAll('a[href*="javascript:__doPostBack"], a[href*="DisplayCore"]'));
+            const addrLink = addrCandidates.find(a => {
+                const t = a.innerText.trim();
+                return t && t !== mlsId && /[A-Za-z]/.test(t);
+            });
+            if (addrLink && addrLink.innerText.trim()) {
+                address = addrLink.innerText.trim();
+            }
+        }
+        if (!address) {
+            // Confirmed live: the full single-listing detail view renders the address as plain
+            // text (a <span class="formula ..."> — not a link, unlike the list-row view), so none
+            // of the selectors above find it there. Fall back to the address's position in the
+            // text itself: it's always the line immediately before the "City, ST ZIP" line, in
+            // both the list-row and detail views.
+            const addrLineMatch = text.match(/(?:^|\n)\s*(\d+[^\n]{2,60}?)\s*\n\s*[A-Za-z][A-Za-z .]*,\s*(?:CO|Colorado)\s*\d{5}/i);
+            if (addrLineMatch) address = addrLineMatch[1].trim();
+        }
+
+        const cityZipMatch = text.match(/(?:^|[\r\n])\s*([A-Za-z][A-Za-z ]*),\s*(CO|Colorado)\s*(\d{5})/i) || text.match(/([A-Za-z][A-Za-z ]*),\s*(CO|Colorado)\s*(\d{5})/i);
+        if (cityZipMatch) {
+            city = cityZipMatch[1].trim();
+            state = cityZipMatch[2].trim();
+            zip = cityZipMatch[3].trim();
+        }
+
+        let status = 'Active';
+        if (text.includes('Pending')) status = 'Pending';
+        else if (text.includes('Closed')) status = 'Closed';
+        else if (text.includes('Leased')) status = 'Leased';
+        else if (text.includes('Withdrawn')) status = 'Withdrawn';
+
+        const bedsMatch = text.match(/(\d+)\s*Beds/i);
+        const beds = bedsMatch ? cleanInt(bedsMatch[1]) : 0;
+
+        const bathsMatch = text.match(/([\d\.]+)\s*Baths/i) || text.match(/Baths:\s*([\d\.]+)/i);
+        const baths = bathsMatch ? cleanNumber(bathsMatch[1]) : 0;
+
+        // Confirmed live (Sept 2026) that the full single-listing detail view uses different label
+        // text/layout than the compact list-row view for several fields below — e.g. detail view
+        // shows "Area (SqFt) Total" with the value on the FOLLOWING line, vs. the list view's
+        // inline "2,580SqFt Total". Each of these fields now tries the original list-view pattern
+        // first, then a detail-view fallback, so both views extract correctly.
+        const sqftTotalMatch = text.match(/([0-9,]+)\s*SqFt Total/i) || text.match(/Area\s*\(SqFt\)\s*Total\s*([0-9,]+)/i);
+        const sqftTotal = sqftTotalMatch ? cleanInt(sqftTotalMatch[1]) : 0;
+
+        const sqftFinMatch = text.match(/([0-9,]+)\s*(?:SqFt Fin(?!ished)|Living\s*Area\s*\(SqFt\s*Fin\))/i) || text.match(/Living\s*Area\s*\(SqFt\s*Fin\)\s*([0-9,]+)/i);
+        const sqftFin = sqftFinMatch ? cleanInt(sqftFinMatch[1]) : sqftTotal;
+
+        const yearMatch = text.match(/Built in\s*(\d{4})/i) || text.match(/Year Built:?\s*\n?\s*(\d{4})/i);
+        const yearBuilt = yearMatch ? cleanInt(yearMatch[1]) : 0;
+
+        // Detail view uses "Lot Size Acres"/"Lot Size SqFt" (still glued directly to the number,
+        // e.g. "0.20Lot Size Acres") rather than the list view's bare "0.19Acres" — confirmed live.
+        // "Built inYYYY0.19Acres" glues the 4-digit year directly to the acreage with no
+        // separator — the generic pattern below would greedily swallow both. Try the
+        // year-anchored pattern first so the acreage is captured cleanly.
+        const acreMatch = text.match(/Built in\d{4}([\d.]+)\s*Acres/i) || text.match(/([\d\.]+)\s*Acres/i) || text.match(/([\d\.]+)\s*Lot Size Acres/i);
+        const lotAcres = acreMatch ? cleanNumber(acreMatch[1]) : 0;
+
+        const lotSqftMatch = text.match(/([0-9,]+)\s*SqFt(?!\s*Total|\s*Fin)/i) || text.match(/([0-9,]+)\s*Lot Size SqFt/i);
+        const lotSqft = lotSqftMatch ? cleanInt(lotSqftMatch[1]) : Math.round(lotAcres * 43560);
+
+        // IMPORTANT: the capture group deliberately excludes newlines (using literal spaces, not
+        // \s, inside the character class) and is length-bounded. A block's innerText can be very
+        // large in the full detail view (it includes the entire specs table, not just a compact
+        // card), so an earlier version of this regex using a greedy \s-inclusive class matched
+        // backward across many unrelated lines and captured garbage like "CO 80018\nArapahoeCounty\n..."
+        // instead of just "Adams-Arapahoe 28J" — confirmed live as a real bug, not hypothetical.
+        const schoolMatch = text.match(/([A-Za-z0-9][A-Za-z0-9 \-]{0,40}?)\s*School District/i);
+        let schoolDistrict = schoolMatch ? schoolMatch[1].trim() : '';
+        // List view can glue a lot-sqft prefix onto the front of the match (e.g. the comma in
+        // "8,276SqFt..." blocks the regex from matching further back, so "276SqFtAdams-Arapahoe 28J"
+        // gets captured instead of "Adams-Arapahoe 28J") — strip any leading digit/comma run
+        // followed by SqFt or Acres regardless of where the match actually started.
+        schoolDistrict = schoolDistrict.replace(/^[\d,.]*\s*(?:SqFt|Acres)\s*/i, '').trim();
+
+        const parkingMatch = text.match(/(\d+)\s*Parking Total/i) || text.match(/Parking Total\s*\n?\s*(\d+)/i);
+        const parkingTotal = parkingMatch ? cleanInt(parkingMatch[1]) : 0;
+
+        const garageMatch = text.match(/(\d+)\s*Garage Spaces/i);
+        const garageSpaces = garageMatch ? cleanInt(garageMatch[1]) : 0;
+
+        // BUG FIX (found while investigating why "Top Picks" showed implausible HOA figures like
+        // $576-$1680/mo against a DB where 5+ favorited listings all had inflated hoa_fee values,
+        // 5-15x Josh's original Redfin export for the same addresses): "Annual HOA Fee" and "Total
+        // Annual HOA Fees" are explicitly annual dollar amounts on Matrix, but the raw matched
+        // number was being stored straight into hoa_fee (a monthly figure everywhere else in the
+        // app - card badges, filters, the export CSV) with no /12 conversion. Only the plain "HOA
+        // Fee:" label is treated as already-monthly, since there's no evidence that one is annual.
+        const hoaAnnualMatch = text.match(/Annual HOA Fee\s*\$([0-9,.]+)/i) || text.match(/Total Annual HOA Fees\s*\$([0-9,.]+)/i);
+        const hoaMonthlyMatch = text.match(/HOA Fee:\s*\$([0-9,.]+)/i);
+        const hoaFee = hoaAnnualMatch ? Math.round((cleanNumber(hoaAnnualMatch[1]) / 12) * 100) / 100
+            : (hoaMonthlyMatch ? cleanNumber(hoaMonthlyMatch[1]) : 0);
+
+        const taxMatch = text.match(/Annual Tax\s*\$([0-9,.]+)/i) || text.match(/Tax Annual Amount\s*\$([0-9,.]+)/i);
+        const annualTax = taxMatch ? cleanNumber(taxMatch[1]) : 0;
+
+        const taxYearMatch = text.match(/Annual Tax.*?\/(\d{4})/i) || text.match(/Tax Year\s*\n?\s*(\d{4})/i);
+        const taxYear = taxYearMatch ? cleanInt(taxYearMatch[1]) : new Date().getFullYear();
+
+        const listDateMatch = text.match(/List Date:\s*(\d{2}\/\d{2}\/\d{2,4})/i) || text.match(/Listing Contract Date:?\s*\n?\s*(\d{2}\/\d{2}\/\d{2,4})/i);
+        const listDate = listDateMatch ? listDateMatch[1] : new Date().toISOString().split('T')[0];
+
+        const pageText = (document.body.innerText || '').toLowerCase();
+        const isDislikePage = pageText.includes('disliked listings') || pageText.includes('dislikes (');
+        const isFavoritePage = pageText.includes('favorite listings') || pageText.includes('favorites (');
+        const isPossibilityPage = pageText.includes('possibility listings') || pageText.includes('possibilities (');
+
+        let matrixReviewStatus = isFavoritePage ? 'favorite' : (isDislikePage ? 'dislike' : (isPossibilityPage ? 'possibility' : 'none'));
+
+        const bucketIcon = block.querySelector('.j-portalBucketSelectorIcon');
+        if (bucketIcon) {
+            const bucketCls = bucketIcon.className.toString();
+            const bucketTitle = (bucketIcon.title || bucketIcon.getAttribute('title') || '').toLowerCase();
+            if (bucketCls.includes('bucketDislikes') || bucketTitle === 'dislike') {
+                matrixReviewStatus = 'dislike';
+            } else if (bucketCls.includes('bucketPossibilities') || bucketTitle === 'possibility') {
+                matrixReviewStatus = 'possibility';
+            } else if (bucketCls.includes('bucketFavorite') || bucketTitle === 'favorite') {
+                matrixReviewStatus = 'favorite';
+            } else if (bucketCls.includes('bucketNone') || bucketTitle === 'save as favorite') {
+                matrixReviewStatus = 'none';
+            }
+        }
+
+        const foundFavorite = matrixReviewStatus === 'favorite';
+
+        const portalNotes = extractMatrixNotes(block, mlsId);
+
+        const imgEl = block.querySelector('img[src*="Photo"], img[src*="photo"], .display-photo img, img');
+        const mainImg = imgEl ? imgEl.src : '';
+
+        return {
+            mls_id: mlsId,
+            favorite: (matrixReviewStatus === 'favorite' || foundFavorite || isFavoritePage) ? 1 : 0,
+            address: address,
+            city: city,
+            state: state,
+            zip: zip,
+            price: price,
+            status: status,
+            beds: beds,
+            baths: baths,
+            sqft_total: sqftTotal,
+            sqft_finished: sqftFin,
+            lot_acres: lotAcres,
+            lot_sqft: lotSqft,
+            year_built: yearBuilt,
+            school_district: schoolDistrict,
+            parking_total: parkingTotal,
+            garage_spaces: garageSpaces,
+            hoa_fee: hoaFee,
+            annual_tax: annualTax,
+            tax_year: taxYear,
+            list_date: listDate,
+            mls_url: window.location.href,
+            main_image_url: mainImg,
+            matrix_review_status: matrixReviewStatus,
+            portal_notes: portalNotes
+        };
+    }
+
+    function scrapeMatrixPortal(onDone) {
+        notify('🔍 Scraping properties from Matrix page...');
+        logToServer('info', 'Quick scrape started', null, { url: window.location.href });
+
+        const blocks = findListingBlocks();
+
         if (blocks.length === 0) {
-            notify('⚠️ No properties found on current view — make sure you\\'re viewing Matrix search results.', true);
+            notify('⚠️ No properties found on current view — make sure you\'re viewing Matrix search results.', true);
+            logToServer('warn', 'Quick scrape found no listing blocks on page', null, { url: window.location.href });
+            if (onDone) onDone([]);
             return;
         }
 
-        const listings = [];
-
-        blocks.forEach(block => {
-            const text = block.innerText || '';
-            if (!text.includes('Listing ID') && !text.includes('MLS#') && !text.includes('MLS ID') && !text.includes('Bed')) return;
-
-            let mlsId = '';
-            const mlsMatch = text.match(/Listing ID:\\s*(\\d+)/i) || text.match(/MLS#:\\s*(\\d+)/i) || text.match(/MLS\\s*ID:\\s*(\\d+)/i) || text.match(/MLS#\\s*(\\d+)/i) || text.match(/MLS:\\s*(\\d+)/i);
-            if (mlsMatch) mlsId = mlsMatch[1];
-            if (!mlsId) {
-                const keyAttr = block.querySelector('[data-key]');
-                if (keyAttr) mlsId = keyAttr.getAttribute('data-key');
-            }
-            if (!mlsId) return;
-
-            let price = 0;
-            const priceMatch = text.match(/\\$([0-9,]+)/);
-            if (priceMatch) price = cleanNumber(priceMatch[1]);
-
-            let address = '', city = '', state = 'CO', zip = '';
-            const addrElem = block.querySelector('.d-displayAddress, .portal-address, h1, h2, [id*="Address"], [class*="Address"]');
-            if (addrElem && addrElem.innerText.trim() && /[A-Za-z]/.test(addrElem.innerText)) {
-                const cand = addrElem.innerText.trim();
-                if (cand !== mlsId && cand.length > 3) address = cand;
-            }
-            if (!address) {
-                const links = Array.from(block.querySelectorAll('a'));
-                const addrLink = links.find(a => {
-                    const t = a.innerText.trim();
-                    return t && t !== mlsId && /^\\d+\\s+[A-Za-z]/.test(t);
-                });
-                if (addrLink) address = addrLink.innerText.trim();
-            }
-            if (!address) {
-                const addrCandidates = Array.from(block.querySelectorAll('a[href*="javascript:__doPostBack"], a[href*="DisplayCore"]'));
-                const addrLink = addrCandidates.find(a => {
-                    const t = a.innerText.trim();
-                    return t && t !== mlsId && /[A-Za-z]/.test(t);
-                });
-                if (addrLink && addrLink.innerText.trim()) {
-                    address = addrLink.innerText.trim();
-                }
-            }
-
-            const cityZipMatch = text.match(/(?:^|[\\r\\n])\\s*([A-Za-z][A-Za-z ]*),\\s*(CO|Colorado)\\s*(\\d{5})/i) || text.match(/([A-Za-z][A-Za-z ]*),\\s*(CO|Colorado)\\s*(\\d{5})/i);
-            if (cityZipMatch) {
-                city = cityZipMatch[1].trim();
-                state = cityZipMatch[2].trim();
-                zip = cityZipMatch[3].trim();
-            }
-
-            let status = 'Active';
-            if (text.includes('Pending')) status = 'Pending';
-            else if (text.includes('Closed')) status = 'Closed';
-            else if (text.includes('Leased')) status = 'Leased';
-            else if (text.includes('Withdrawn')) status = 'Withdrawn';
-
-            const bedsMatch = text.match(/(\\d+)\\s*Beds/i);
-            const beds = bedsMatch ? cleanInt(bedsMatch[1]) : 0;
-
-            const bathsMatch = text.match(/([\\d\\.]+)\\s*Baths/i) || text.match(/Baths:\\s*([\\d\\.]+)/i);
-            const baths = bathsMatch ? cleanNumber(bathsMatch[1]) : 0;
-
-            const sqftTotalMatch = text.match(/([0-9,]+)\\s*SqFt Total/i);
-            const sqftTotal = sqftTotalMatch ? cleanInt(sqftTotalMatch[1]) : 0;
-
-            const sqftFinMatch = text.match(/([0-9,]+)\\s*SqFt Fin/i);
-            const sqftFin = sqftFinMatch ? cleanInt(sqftFinMatch[1]) : sqftTotal;
-
-            const yearMatch = text.match(/Built in\\s*(\\d{4})/i) || text.match(/Year Built:\\s*(\\d{4})/i);
-            const yearBuilt = yearMatch ? cleanInt(yearMatch[1]) : 0;
-
-            const acreMatch = text.match(/([\\d\\.]+)\\s*Acres/i);
-            const lotAcres = acreMatch ? cleanNumber(acreMatch[1]) : 0;
-
-            const lotSqftMatch = text.match(/([0-9,]+)\\s*SqFt(?!\\s*Total|\\s*Fin)/i);
-            const lotSqft = lotSqftMatch ? cleanInt(lotSqftMatch[1]) : Math.round(lotAcres * 43560);
-
-            const schoolMatch = text.match(/([A-Za-z0-9\\s\\-]+)\\s*School District/i);
-            const schoolDistrict = schoolMatch ? schoolMatch[1].trim() : '';
-
-            const parkingMatch = text.match(/(\\d+)\\s*Parking Total/i);
-            const parkingTotal = parkingMatch ? cleanInt(parkingMatch[1]) : 0;
-
-            const garageMatch = text.match(/(\\d+)\\s*Garage Spaces/i);
-            const garageSpaces = garageMatch ? cleanInt(garageMatch[1]) : 0;
-
-            const hoaMatch = text.match(/Annual HOA Fee\\s*\\$([0-9,.]+)/i) || text.match(/HOA Fee:\\s*\\$([0-9,.]+)/i);
-            const hoaFee = hoaMatch ? cleanNumber(hoaMatch[1]) : 0;
-
-            const taxMatch = text.match(/Annual Tax\\s*\\$([0-9,.]+)/i);
-            const annualTax = taxMatch ? cleanNumber(taxMatch[1]) : 0;
-
-            const taxYearMatch = text.match(/Annual Tax.*?\\/(\\d{4})/i);
-            const taxYear = taxYearMatch ? cleanInt(taxYearMatch[1]) : new Date().getFullYear();
-
-            const listDateMatch = text.match(/List Date:\\s*(\\d{2}\\/\\d{2}\\/\\d{2,4})/i);
-            const listDate = listDateMatch ? listDateMatch[1] : new Date().toISOString().split('T')[0];
-
-            const pageText = (document.body.innerText || '').toLowerCase();
-            const isDislikePage = pageText.includes('disliked listings') || pageText.includes('dislikes (');
-            const isFavoritePage = pageText.includes('favorite listings') || pageText.includes('favorites (');
-            const isPossibilityPage = pageText.includes('possibility listings') || pageText.includes('possibilities (');
-
-            let matrixReviewStatus = isFavoritePage ? 'favorite' : (isDislikePage ? 'dislike' : (isPossibilityPage ? 'possibility' : 'none'));
-
-            const bucketIcon = block.querySelector('.j-portalBucketSelectorIcon');
-            if (bucketIcon) {
-                const bucketCls = bucketIcon.className.toString();
-                const bucketTitle = (bucketIcon.title || bucketIcon.getAttribute('title') || '').toLowerCase();
-                if (bucketCls.includes('bucketDislikes') || bucketTitle === 'dislike') {
-                    matrixReviewStatus = 'dislike';
-                } else if (bucketCls.includes('bucketPossibilities') || bucketTitle === 'possibility') {
-                    matrixReviewStatus = 'possibility';
-                } else if (bucketCls.includes('bucketFavorite') || bucketTitle === 'favorite') {
-                    matrixReviewStatus = 'favorite';
-                } else if (bucketCls.includes('bucketNone') || bucketTitle === 'save as favorite') {
-                    matrixReviewStatus = 'none';
-                }
-            }
-
-            const foundFavorite = matrixReviewStatus === 'favorite';
-
-            const portalNotes = extractMatrixNotes(block, mlsId);
-
-            const imgEl = block.querySelector('img[src*="Photo"], img[src*="photo"], .display-photo img, img');
-            const mainImg = imgEl ? imgEl.src : '';
-
-            listings.push({
-                mls_id: mlsId,
-                favorite: (matrixReviewStatus === 'favorite' || foundFavorite || isFavoritePage) ? 1 : 0,
-                address: address,
-                city: city,
-                state: state,
-                zip: zip,
-                price: price,
-                status: status,
-                beds: beds,
-                baths: baths,
-                sqft_total: sqftTotal,
-                sqft_finished: sqftFin,
-                lot_acres: lotAcres,
-                lot_sqft: lotSqft,
-                year_built: yearBuilt,
-                school_district: schoolDistrict,
-                parking_total: parkingTotal,
-                garage_spaces: garageSpaces,
-                hoa_fee: hoaFee,
-                annual_tax: annualTax,
-                tax_year: taxYear,
-                list_date: listDate,
-                mls_url: window.location.href,
-                main_image_url: mainImg,
-                gallery_images: mainImg ? [mainImg] : [],
-                matrix_review_status: matrixReviewStatus,
-                portal_notes: portalNotes
-            });
-        });
+        const listings = blocks.map(parseListingBlock).filter(Boolean);
 
         if (listings.length === 0) {
             notify('⚠️ Could not parse listing details from page DOM.', true);
+            logToServer('warn', 'Quick scrape found blocks but parsed zero listings', null, { url: window.location.href, blockCount: blocks.length });
+            if (onDone) onDone([]);
             return;
         }
 
         const favsCount = listings.filter(l => l.favorite || l.matrix_review_status === 'favorite').length;
-        syncToBackend(listings, () => {
-            notify(\`✅ Synced \${listings.length} listings (\${favsCount} favorites)\`);
+        syncToBackend(listings, (result) => {
+            if (result && result.success) {
+                notify(\`✅ Synced \${listings.length} listings (\${favsCount} favorites)\`);
+            }
+            if (onDone) onDone(listings);
         });
     }
 
+    // callback always fires (success AND failure) so callers — especially the deep-scrape walker,
+    // which awaits this per listing — never hang on a single failed sync. On failure the error
+    // toast is already shown here; callers just get {success:false, ...} back to log/skip.
     function syncToBackend(payload, callback) {
         const dataStr = JSON.stringify({ properties: payload });
 
@@ -397,29 +687,233 @@ function getBookmarkletCode(apiUrl) {
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success && callback) callback(data);
-            else if (!data.success) {
+            if (!data.success) {
                 notify('❌ Sync failed: ' + (data.error || 'Server error'), true);
+                logToServer('error', 'Sync failed (server responded success:false): ' + (data.error || 'unknown'), payload.length === 1 ? payload[0].mls_id : null, { count: payload.length });
             }
+            if (callback) callback(data);
         })
         .catch(err => {
             console.warn('Scout fetch error:', err);
             notify('❌ Network error syncing to Scout server: ' + err.message, true);
+            logToServer('error', 'Sync network error: ' + err.message, payload.length === 1 ? payload[0].mls_id : null, { count: payload.length });
+            if (callback) callback({ success: false, error: err.message });
+        });
+    }
+
+    // Asks the backend which mls_ids already have a completed full (photo) scrape, so the deep
+    // walker can skip straight past the expensive photo work for them and only re-check notes.
+    function fetchScrapeStatus(callback) {
+        fetch(CONFIG.API_URL + '?action=scrape_status')
+            .then(res => res.json())
+            .then(data => {
+                const completed = (data && data.success && Array.isArray(data.completed)) ? data.completed.map(String) : [];
+                callback(new Set(completed));
+            })
+            .catch(err => {
+                console.warn('Scout scrape_status fetch error:', err);
+                logToServer('warn', 'scrape_status fetch error: ' + err.message);
+                callback(new Set());
+            });
+    }
+
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Confirmed live (Sept 2026): the full single-listing detail view's position indicator
+    // matches /\d+ of \d+/ in the page text (e.g. "28 of 57") and updates after each next/prev
+    // click. Returns null if no such indicator is present (e.g. not currently in detail view).
+    function getCounterInfo() {
+        const m = (document.body.innerText || '').match(/\b(\d+)\s+of\s+(\d+)\b/);
+        return m ? { cur: parseInt(m[1], 10), total: parseInt(m[2], 10) } : null;
+    }
+
+    // Polls (every 250ms, confirmed a ~1s settle time is typical for the in-place AJAX postback)
+    // until the counter changes from prevCur, or times out. Returns the new counter info, or null
+    // if it never changed within timeoutMs.
+    async function waitForCounterChange(prevCur, timeoutMs) {
+        const start = Date.now();
+        while (Date.now() - start < timeoutMs) {
+            await delay(250);
+            const c = getCounterInfo();
+            if (c && c.cur !== prevCur) return c;
+        }
+        return null;
+    }
+
+    /**
+     * Deep-scrape walker (Part 2/3 of the plan in claude/full-detail-scrape-plan.md). Requires a
+     * single listing already open in full detail view (with the listing-level prev/next arrows
+     * present) — that's the entry point the plan describes ("via whatever's currently expanded").
+     *
+     * For every listing reached via the "next" arrow (a.glyphicon-chevron-right, confirmed live —
+     * NOTE: its href's Redisplay|,,N postback argument is a per-page position index, NOT a fixed
+     * constant, so the class name is the only stable way to find it):
+     *   - Always re-extracts and syncs notes (extractMatrixNotesDetailed) — cheap, and the only
+     *     way to pick up anything the agent may have added since the last run.
+     *   - Only if this mls_id has no full_scrape_completed_at yet (per /backend/api.php's
+     *     scrape_status endpoint): also captures whatever gallery photos are currently rendered
+     *     (extractGalleryImages — v1 does not automate the photo carousel's own next/prev, see
+     *     plan doc open question #3) and marks full_scrape:true so the backend sets
+     *     full_scrape_completed_at and this listing's photo work is never repeated.
+     *   - Syncs immediately after each listing (not batched), so partial progress survives an
+     *     interruption and one bad listing can't sink the whole run.
+     *
+     * Termination is defensive rather than relying on knowing the exact counter boundary behavior
+     * (unconfirmed — see plan doc open question #2, wrap-to-1 vs. inert): every visited position
+     * number is tracked, and the walk stops the moment a position repeats, in addition to the
+     * ordinary "no next arrow" and "counter never changed" stopping conditions.
+     */
+    async function deepScrapeMatrixPortal() {
+        notify('🔎 Starting deep scrape — this walks every listing and may take a while...');
+        logToServer('info', 'Deep scrape started', null, { url: window.location.href });
+
+        scrapeMatrixPortal(async () => {
+            const hasNav = !!document.querySelector('a.glyphicon-chevron-right') || !!getCounterInfo();
+            if (!hasNav) {
+                notify('⚠️ Deep scrape needs a single listing open in full detail view (with prev/next arrows) — open one listing, then run Deep Scrape again.', true);
+                logToServer('warn', 'Deep scrape aborted — no listing open in detail view', null, { url: window.location.href });
+                return;
+            }
+
+            let completedSet = new Set();
+            await new Promise(resolve => fetchScrapeStatus(set => { completedSet = set; resolve(); }));
+
+            const visitedPositions = new Set();
+            const multiAuthorFlags = [];
+            let processedCount = 0;
+            let fullScrapeCount = 0;
+            const MAX_ITER = 500; // safety cap independent of the "X of Y" counter, in case it's ever absent/unreliable
+            let iter = 0;
+            let keepGoing = true;
+
+            while (keepGoing && iter < MAX_ITER) {
+                iter++;
+
+                const blocks = findListingBlocks();
+                let listing = null;
+                let matchedBlock = null;
+                for (const b of blocks) {
+                    const parsed = parseListingBlock(b);
+                    if (parsed) { listing = parsed; matchedBlock = b; break; }
+                }
+
+                if (!listing) {
+                    notify('⚠️ Deep scrape stopped — could not find a listing detail block on this page.', true);
+                    logToServer('error', 'Deep scrape stopped — no listing detail block found', null, { iter, processedCount });
+                    break;
+                }
+
+                const counter = getCounterInfo();
+                if (counter) {
+                    if (visitedPositions.has(counter.cur)) break;
+                    visitedPositions.add(counter.cur);
+                }
+
+                const notesInfo = extractMatrixNotesDetailed(matchedBlock, listing.mls_id);
+                listing.portal_notes = notesInfo.text;
+                if (notesInfo.multiAuthor) multiAuthorFlags.push(listing.mls_id);
+
+                const alreadyFullyScraped = completedSet.has(String(listing.mls_id));
+                let photoNote = '';
+
+                if (!alreadyFullyScraped) {
+                    // walkPhotoGallery() clicks through the full carousel rather than just
+                    // snapshotting whatever's pre-loaded (confirmed live: a plain snapshot can
+                    // miss the large majority of a listing's photos — see its doc comment).
+                    const gallery = await walkPhotoGallery();
+                    if (gallery.length) {
+                        listing.gallery_images = gallery;
+                        listing.main_image_url = gallery[0];
+                    }
+                    listing.full_scrape = true;
+                    fullScrapeCount++;
+                    photoNote = \`, \${gallery.length} photos\`;
+                }
+
+                processedCount++;
+                const posLabel = counter ? \`\${counter.cur} of \${counter.total}\` : \`#\${processedCount}\`;
+                notify(\`📋 \${posLabel} — \${alreadyFullyScraped ? 'notes only' : 'full scrape' + photoNote}\`);
+
+                const syncResult = await new Promise(resolve => syncToBackend([listing], resolve));
+                if (!syncResult || !syncResult.success) {
+                    console.warn('Scout deep-scrape: sync failed for', listing.mls_id, syncResult);
+                    logToServer('error', 'Deep-scrape sync failed for listing', listing.mls_id, { syncResult: syncResult, posLabel: posLabel });
+                } else if (notesInfo.multiAuthor) {
+                    logToServer('warn', 'Multi-author (or unattributed) note row detected', listing.mls_id, { rowCount: notesInfo.rowCount, authors: notesInfo.authors });
+                }
+
+                const nextLink = document.querySelector('a.glyphicon-chevron-right');
+                if (!nextLink) break;
+
+                const prevCur = counter ? counter.cur : null;
+                nextLink.click();
+
+                if (prevCur !== null) {
+                    const changed = await waitForCounterChange(prevCur, 4000);
+                    if (!changed || visitedPositions.has(changed.cur)) {
+                        keepGoing = false;
+                    }
+                } else {
+                    await delay(1000);
+                }
+            }
+
+            let summary = \`✅ Deep scrape complete — \${processedCount} listing(s) visited, \${fullScrapeCount} fully scraped\`;
+            if (multiAuthorFlags.length) {
+                summary += \`. ⚠️ \${multiAuthorFlags.length} listing(s) had multi-author notes — check: \${multiAuthorFlags.join(', ')}\`;
+            }
+            notify(summary);
+            logToServer('info', 'Deep scrape complete', null, {
+                processedCount, fullScrapeCount, multiAuthorFlags, url: window.location.href
+            });
         });
     }
 
     const hostname = window.location.hostname;
     if (hostname.includes('recolorado.com') || hostname.includes('matrix')) {
-        scrapeMatrixPortal();
+        // Wrapped so a future bug of the same shape as the old undefined-cleanInt crash — which
+        // threw synchronously mid-scrape with zero durable record anywhere — gets reported to the
+        // server and surfaced as a toast instead of silently aborting with nothing to go on.
+        try {
+            if (CONFIG.MODE === 'deep') {
+                deepScrapeMatrixPortal().catch(err => {
+                    logToServer('error', 'Deep scrape crashed: ' + (err && err.message), null, { stack: err && err.stack, url: window.location.href });
+                    notify('❌ Deep scrape crashed: ' + (err && err.message), true);
+                });
+            } else {
+                scrapeMatrixPortal();
+            }
+        } catch (err) {
+            logToServer('error', 'Scrape crashed: ' + (err && err.message), null, { stack: err && err.stack, url: window.location.href });
+            notify('❌ Scrape crashed: ' + (err && err.message), true);
+        }
     } else {
         notify('ℹ️ Run this bookmarklet while viewing Matrix MLS or Redfin listing pages.');
     }
 })();
 `;
-    const wrapper = `(function(){ window.SCOUT_API_URL='` + apiUrl + `'; ` + engineCode + `})();`;
+    // Undo the backslash that String.raw preserved in front of the engine's own \` and \${
+    // escapes (used for its nested template literals), now that raw extraction is done and
+    // those no longer need to protect anything from this function's own template literal.
+    return raw.replace(/\\`/g, '`').replace(/\\\$\{/g, '${');
+}
+
+function getBookmarkletCode(apiUrl) {
+    const wrapper = `(function(){ window.SCOUT_API_URL='` + apiUrl + `'; window.SCOUT_MODE='quick'; ` + getEngineCode() + `})();`;
+    return 'javascript:' + encodeURIComponent(wrapper);
+}
+
+function getDeepScrapeBookmarkletCode(apiUrl) {
+    const wrapper = `(function(){ window.SCOUT_API_URL='` + apiUrl + `'; window.SCOUT_MODE='deep'; ` + getEngineCode() + `})();`;
     return 'javascript:' + encodeURIComponent(wrapper);
 }
 
 function getConsoleSnippetCode(apiUrl) {
     return getBookmarkletCode(apiUrl).replace(/^javascript:/, '');
+}
+
+function getDeepScrapeConsoleSnippetCode(apiUrl) {
+    return getDeepScrapeBookmarkletCode(apiUrl).replace(/^javascript:/, '');
 }
