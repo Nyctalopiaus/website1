@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     overallStatusBadge: document.getElementById('overall-status-badge'),
     overallStatusText: document.getElementById('overall-status-text'),
     lastCheckTime: document.getElementById('last-check-time'),
+    fallbackBanner: document.getElementById('fallback-banner'),
 
     metricUptime: document.getElementById('metric-uptime'),
     metricLatency: document.getElementById('metric-latency'),
@@ -24,10 +25,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     trendSvg: document.getElementById('trend-svg'),
     chartTooltip: document.getElementById('chart-tooltip'),
+    appFilterSelect: document.getElementById('app-filter-select'),
 
     appsGrid: document.getElementById('apps-grid'),
     matrixTbody: document.getElementById('matrix-tbody'),
     terminalLog: document.getElementById('terminal-log'),
+    incidentHistoryRows: document.getElementById('incident-history-rows'),
 
     authModal: document.getElementById('admin-auth-modal'),
     authForm: document.getElementById('admin-auth-form'),
@@ -40,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let statusState = null;
   let currentTimeframe = '24h';
+  let currentAppFilter = 'all';
 
   // Add Terminal Log Message
   function logTerminal(message, type = 'info') {
@@ -65,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('data/status-data.json?t=' + Date.now());
       if (res.ok) {
         statusState = await res.json();
+        if (dom.fallbackBanner) dom.fallbackBanner.style.display = 'none';
         renderDashboard(statusState);
         logTerminal(`Data updated. ${statusState.total_monitored} endpoints online. Status: ${statusState.system_status}`, 'success');
       } else {
@@ -72,8 +77,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (e) {
       logTerminal('Could not fetch status-data.json: ' + e.message, 'error');
-      // If file doesn't exist yet, render initial state
+      // If file doesn't exist or fetch fails, fall back to sample data and say so clearly
       if (!statusState) {
+        if (dom.fallbackBanner) dom.fallbackBanner.style.display = 'block';
         renderFallbackState();
       }
     }
@@ -133,13 +139,91 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. Render Global Matrix Table
     renderMatrixTable(visibleEndpoints);
 
+    // 4b. Keep the per-app chart filter options in sync with the current apps
+    populateAppFilterOptions(visibleEndpoints);
+
     // 5. Render Historical Trend SVG Chart
-    updateTrendChartForTimeframe(data, currentTimeframe);
+    updateTrendChartForTimeframe(data, currentTimeframe, currentAppFilter);
+
+    // 6. Render Real Incident History
+    renderIncidentHistory(data.recent_incidents);
+  }
+
+  // Format a unix-seconds timestamp as "YYYY-MM-DD HH:MM:SS UTC"
+  function formatIncidentTimestamp(unixSeconds) {
+    if (!unixSeconds) return '';
+    return new Date(unixSeconds * 1000).toISOString().slice(0, 19).replace('T', ' ') + ' UTC';
+  }
+
+  // Render Real Incident History (from the `incidents` table, not just this session's log)
+  function renderIncidentHistory(incidents) {
+    if (!dom.incidentHistoryRows) return;
+    dom.incidentHistoryRows.innerHTML = '';
+
+    if (!incidents || incidents.length === 0) {
+      const row = document.createElement('div');
+      row.className = 'terminal-row';
+      row.textContent = '[HISTORY] No incidents recorded yet.';
+      dom.incidentHistoryRows.appendChild(row);
+      return;
+    }
+
+    incidents.forEach(inc => {
+      const row = document.createElement('div');
+      const started = formatIncidentTimestamp(inc.created_at);
+
+      if (inc.resolved_at) {
+        row.className = 'terminal-row incident-resolved';
+        const resolved = formatIncidentTimestamp(inc.resolved_at);
+        row.textContent = `[RESOLVED] ${started} → ${resolved} — ${inc.title}`;
+      } else {
+        row.className = 'terminal-row incident-ongoing';
+        row.textContent = `[ONGOING] ${started} — ${inc.title}`;
+      }
+      dom.incidentHistoryRows.appendChild(row);
+    });
+  }
+
+  // Keep the "filter chart by app" dropdown in sync with the apps currently on the page
+  function populateAppFilterOptions(endpoints) {
+    if (!dom.appFilterSelect) return;
+
+    const seen = {};
+    const apps = [];
+    (endpoints || []).forEach(ep => {
+      if (!ep.app_key || seen[ep.app_key]) return;
+      seen[ep.app_key] = true;
+      apps.push({ key: ep.app_key, name: ep.app_name || ep.app_key });
+    });
+    apps.sort((a, b) => a.name.localeCompare(b.name));
+
+    const previousValue = dom.appFilterSelect.value || 'all';
+    dom.appFilterSelect.innerHTML = '<option value="all">All Apps (Average)</option>';
+    apps.forEach(app => {
+      const opt = document.createElement('option');
+      opt.value = app.key;
+      opt.textContent = app.name;
+      dom.appFilterSelect.appendChild(opt);
+    });
+
+    // Preserve the user's selection across refreshes if that app still exists
+    const stillValid = previousValue === 'all' || apps.some(a => a.key === previousValue);
+    dom.appFilterSelect.value = stillValid ? previousValue : 'all';
+    currentAppFilter = dom.appFilterSelect.value;
   }
 
   // Resolve Dataset for Active Timeframe (Strict Real Database Data Only)
-  function getTimeframeHistory(data, timeframe) {
+  function getTimeframeHistory(data, timeframe, appFilter = 'all') {
     if (!data) return [];
+
+    if (appFilter && appFilter !== 'all') {
+      const byAppKey = 'history_by_app_' + timeframe;
+      const byApp = data[byAppKey];
+      if (byApp && byApp[appFilter] && byApp[appFilter].length > 0) {
+        return byApp[appFilter];
+      }
+      // No per-app history available for this timeframe/app yet - fall through to the aggregate.
+    }
 
     if (timeframe === '7d' && data.history_trend_7d && data.history_trend_7d.length > 0) {
       return data.history_trend_7d;
@@ -180,9 +264,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Update Trend Chart for Selected Timeframe
-  function updateTrendChartForTimeframe(data, timeframe) {
+  function updateTrendChartForTimeframe(data, timeframe, appFilter = 'all') {
     if (!data) return;
-    const history = getTimeframeHistory(data, timeframe);
+    const history = getTimeframeHistory(data, timeframe, appFilter);
     renderTrendChart(history, timeframe);
   }
 
@@ -248,19 +332,9 @@ document.addEventListener('DOMContentLoaded', () => {
         name.className = 'endpoint-name';
         name.textContent = ep.endpoint_name;
 
-        const urlSub = document.createElement('span');
-        urlSub.className = 'endpoint-url-sub';
-
-        // Clean URL display
-        try {
-          const parsedUrl = new URL(ep.endpoint_url);
-          urlSub.textContent = parsedUrl.hostname;
-        } catch(e) {
-          urlSub.textContent = ep.endpoint_url;
-        }
-
+        // Hostname is intentionally not repeated here - see it in the
+        // Global API & Service Dependency Matrix table below.
         info.appendChild(name);
-        info.appendChild(urlSub);
 
         const metrics = document.createElement('div');
         metrics.className = 'endpoint-metrics';
@@ -414,8 +488,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (activePoints.length === 0) return;
 
     const latValues = activePoints.map(p => parseFloat(p.data.avg_lat) || 0);
-    const minLat = Math.max(0, Math.min(...latValues) - 20);
-    const maxLat = Math.max(...latValues) + 30;
+    let minLat = Math.max(0, Math.min(...latValues) - 20);
+    let maxLat = Math.max(...latValues) + 30;
+
+    // Enforce a minimum visible range so ordinary latency jitter doesn't fill the
+    // whole chart height and read as a dramatic spike (real regressions still widen it).
+    const MIN_VISIBLE_RANGE_MS = 150;
+    if (maxLat - minLat < MIN_VISIBLE_RANGE_MS) {
+      const mid = (maxLat + minLat) / 2;
+      minLat = Math.max(0, mid - MIN_VISIBLE_RANGE_MS / 2);
+      maxLat = minLat + MIN_VISIBLE_RANGE_MS;
+    }
 
     const getY = (val) => height - padding.bottom - ((val - minLat) / (maxLat - minLat || 1)) * (height - padding.top - padding.bottom);
 
@@ -580,10 +663,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
       currentTimeframe = btn.getAttribute('data-timeframe') || '24h';
       if (statusState) {
-        updateTrendChartForTimeframe(statusState, currentTimeframe);
+        updateTrendChartForTimeframe(statusState, currentTimeframe, currentAppFilter);
       }
     });
   });
+
+  // Per-app chart filter listener
+  if (dom.appFilterSelect) {
+    dom.appFilterSelect.addEventListener('change', () => {
+      currentAppFilter = dom.appFilterSelect.value || 'all';
+      if (statusState) {
+        updateTrendChartForTimeframe(statusState, currentTimeframe, currentAppFilter);
+      }
+    });
+  }
 
   // Admin Manual Trigger Authentication Modal Logic
   if (dom.btnTriggerManual && dom.authModal) {
@@ -657,4 +750,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial Load
   fetchStatusData();
+
+  // Auto-Refresh: keep the page genuinely live instead of requiring a manual click,
+  // since the toolbar advertises automated monitoring as always-on.
+  const AUTO_REFRESH_MS = 60000;
+  setInterval(fetchStatusData, AUTO_REFRESH_MS);
 });

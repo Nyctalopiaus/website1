@@ -155,13 +155,16 @@ export function runAmortizationSchedule(p) {
     if (recastEnabled && recastMonth !== null && month === recastMonth && balance > CONFIG.LOAN_BALANCE_THRESHOLD) {
       const balanceAtRecast = balance;
       const isExtra = recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT;
-      const effectiveFee = isExtra ? 0 : recastFeeAmt;
-      const availableForPrincipal = Math.max(0, recastAvailableAfterBridge - effectiveFee);
+      // Keep as Cash never touches the loan at all — no fee, no principal
+      // applied, balance and payment continue completely unchanged.
+      const isCash = recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_KEEP_CASH;
+      const effectiveFee = (isExtra || isCash) ? 0 : recastFeeAmt;
+      const availableForPrincipal = isCash ? 0 : Math.max(0, recastAvailableAfterBridge - effectiveFee);
       const appliedLumpSum = Math.min(availableForPrincipal, balanceAtRecast);
       const newBalance = Math.max(0, balanceAtRecast - appliedLumpSum);
       const remainingMonths = Math.max(1, originalMonths - month);
 
-      const newRegularPi = (!isExtra && newBalance > 0) ? calcPIPayment(newBalance, activeRate, remainingMonths / 12) : (isExtra ? currentRegularPi : 0);
+      const newRegularPi = (!isExtra && !isCash && newBalance > 0) ? calcPIPayment(newBalance, activeRate, remainingMonths / 12) : ((isExtra || isCash) ? currentRegularPi : 0);
       const newBiweeklyPi = deriveBiweeklyPi(newRegularPi, paymentFrequency);
 
       balance = newBalance;
@@ -176,11 +179,12 @@ export function runAmortizationSchedule(p) {
         availableAfterBridge: recastAvailableAfterBridge,
         recastFee: effectiveFee,
         appliedLumpSum,
+        cashKeptAmount: isCash ? Math.max(0, recastAvailableAfterBridge) : 0,
         balanceAtRecast,
         newBalance,
         oldPayment: regularPi,
         newPayment: newRegularPi,
-        monthlySavings: isExtra ? 0 : Math.max(0, regularPi - newRegularPi)
+        monthlySavings: (isExtra || isCash) ? 0 : Math.max(0, regularPi - newRegularPi)
       };
     }
   }
@@ -318,7 +322,9 @@ if (typeof document !== 'undefined') {
     </tr>`;
 
       if (recastResult && row.month === recastResult.month) {
-        if (recastResult.recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT) {
+        if (recastResult.recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_KEEP_CASH) {
+          htmlRows += `<tr class="recast-event-row"><td colspan="9">🌉 Bridge loan paid off — ${formatCurrency(recastResult.cashKeptAmount)} kept as cash, not applied to the loan (required P&I remains ${formatCurrency(recastResult.oldPayment)}/mo)</td></tr>`;
+        } else if (recastResult.recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT) {
           htmlRows += `<tr class="recast-event-row"><td colspan="9">🌉 Bridge loan paid off — ${formatCurrency(recastResult.appliedLumpSum)} applied as extra principal payment (required P&I remains ${formatCurrency(recastResult.oldPayment)}/mo)</td></tr>`;
         } else {
           htmlRows += `<tr class="recast-event-row"><td colspan="9">🌉 Bridge loan paid off — ${formatCurrency(recastResult.appliedLumpSum)} applied to principal, new required payment ${formatCurrency(recastResult.newPayment)}/mo</td></tr>`;
@@ -368,18 +374,24 @@ if (typeof document !== 'undefined') {
       if (recastBox) recastBox.style.display = 'block';
 
       const isExtra = recastResult.recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT;
+      const isCash = recastResult.recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_KEEP_CASH;
+      const isRecast = !isExtra && !isCash;
       const feeRow = document.getElementById('amort-recast-fee-row');
-      if (feeRow) feeRow.style.display = isExtra ? 'none' : 'flex';
+      if (feeRow) feeRow.style.display = isRecast ? 'flex' : 'none';
 
       const lumpSumLabel = document.getElementById('amort-recast-lump-sum-label');
-      if (lumpSumLabel) lumpSumLabel.textContent = isExtra ? 'Extra Principal Lump Sum Applied' : 'Recast Lump Sum Applied to Principal';
+      if (lumpSumLabel) {
+        lumpSumLabel.textContent = isCash
+          ? 'Cash Kept (Not Applied to Loan)'
+          : (isExtra ? 'Extra Principal Lump Sum Applied' : 'Recast Lump Sum Applied to Principal');
+      }
 
       document.getElementById('amort-recast-month-num').textContent = recastResult.month;
       document.getElementById('amort-recast-net-proceeds').textContent = formatSigned(recastResult.netProceeds);
       document.getElementById('amort-recast-bridge-payoff').textContent = formatSigned(-recastResult.bridgeLoanAmount);
       document.getElementById('amort-recast-available').textContent = formatSigned(recastResult.availableAfterBridge);
-      document.getElementById('amort-recast-fee').textContent = formatSigned(isExtra ? 0 : -recastResult.recastFee);
-      document.getElementById('amort-recast-lump-sum').textContent = formatCurrency(recastResult.appliedLumpSum);
+      document.getElementById('amort-recast-fee').textContent = formatSigned(isRecast ? -recastResult.recastFee : 0);
+      document.getElementById('amort-recast-lump-sum').textContent = formatCurrency(isCash ? recastResult.cashKeptAmount : recastResult.appliedLumpSum);
 
       const breakdownBox = document.getElementById('amort-recast-breakdown');
       const underwaterWarning = document.getElementById('amort-recast-underwater-warning');
@@ -396,7 +408,7 @@ if (typeof document !== 'undefined') {
 
       const minLumpWarning = document.getElementById('amort-recast-min-lump-warning');
       if (minLumpWarning) {
-        const tooSmall = !isExtra && recastResult.appliedLumpSum > 0 && recastResult.appliedLumpSum < CONFIG.RECAST_TYPICAL_MIN_LUMP_SUM;
+        const tooSmall = isRecast && recastResult.appliedLumpSum > 0 && recastResult.appliedLumpSum < CONFIG.RECAST_TYPICAL_MIN_LUMP_SUM;
         minLumpWarning.style.display = tooSmall ? 'block' : 'none';
         if (tooSmall) {
           minLumpWarning.textContent = `⚠ Most lenders want at least ${formatCurrency(CONFIG.RECAST_TYPICAL_MIN_LUMP_SUM).replace(/\.00$/, '')} applied to recast a loan — this amount may not qualify.`;
@@ -404,13 +416,21 @@ if (typeof document !== 'undefined') {
       }
 
       const paymentTitle = document.getElementById('amort-recast-payment-title');
-      if (paymentTitle) paymentTitle.textContent = isExtra ? 'Payoff Acceleration After House Sale' : 'Monthly Payment After Recast';
+      if (paymentTitle) {
+        paymentTitle.textContent = isCash
+          ? 'No Change to Your Loan — Cash Kept'
+          : (isExtra ? 'Payoff Acceleration After House Sale' : 'Monthly Payment After Recast');
+      }
 
       const afterPaymentLabel = document.getElementById('amort-recast-after-payment-label');
-      if (afterPaymentLabel) afterPaymentLabel.textContent = isExtra ? 'Required Monthly Payment (Unchanged)' : 'Payment After Recast';
+      if (afterPaymentLabel) {
+        afterPaymentLabel.textContent = isCash
+          ? 'Payment After Sale (Unchanged)'
+          : (isExtra ? 'Required Monthly Payment (Unchanged)' : 'Payment After Recast');
+      }
 
       const savingsRow = document.getElementById('amort-recast-savings-row');
-      if (savingsRow) savingsRow.style.display = isExtra ? 'none' : 'flex';
+      if (savingsRow) savingsRow.style.display = isRecast ? 'flex' : 'none';
 
       document.getElementById('amort-recast-before-payment').textContent = formatCurrency(recastResult.oldPayment);
       document.getElementById('amort-recast-after-payment').textContent = formatCurrency(recastResult.newPayment);
@@ -418,23 +438,32 @@ if (typeof document !== 'undefined') {
 
       const tradeoffNote = document.getElementById('amort-recast-tradeoff-note');
       if (tradeoffNote) {
-        const tradeoff = calculateRecast({
-          loanAmount,
-          annualRate: activeRate,
-          termYears: term,
-          monthsElapsed: recastResult.month,
-          recastLumpSum: recastResult.availableAfterBridge,
-          recastFee: recastResult.recastFee
-        });
-        if (tradeoff.appliedLumpSum > 0 && tradeoff.monthsLaterPayoffFromRecasting > 0.5) {
-          tradeoffNote.style.display = 'block';
-          if (!isExtra) {
-            tradeoffNote.textContent = `Heads up: applying this same amount as a one-time extra payment instead of recasting would pay the loan off about ${Math.round(tradeoff.monthsLaterPayoffFromRecasting)} month(s) sooner and save roughly ${formatCurrency(tradeoff.extraLifetimeInterestFromRecasting)} more in lifetime interest. Recasting trades that for a lower required payment starting right away.`;
+        if (isCash) {
+          if (recastResult.cashKeptAmount > 0) {
+            tradeoffNote.style.display = 'block';
+            tradeoffNote.textContent = `Heads up: applying this ${formatCurrency(recastResult.cashKeptAmount)} to the loan instead — either recasting to lower your required payment, or as an extra principal payment to pay it off sooner — would put it to work reducing debt. Keeping it as cash trades either benefit for money in hand.`;
           } else {
-            tradeoffNote.textContent = `Heads up: recasting this loan instead of applying an extra payment would lower your monthly P&I by ${formatCurrency(tradeoff.monthlySavings)}/mo. Extra payment trades that for paying off the loan about ${Math.round(tradeoff.monthsLaterPayoffFromRecasting)} month(s) sooner and saving ${formatCurrency(tradeoff.extraLifetimeInterestFromRecasting)} in interest.`;
+            tradeoffNote.style.display = 'none';
           }
         } else {
-          tradeoffNote.style.display = 'none';
+          const tradeoff = calculateRecast({
+            loanAmount,
+            annualRate: activeRate,
+            termYears: term,
+            monthsElapsed: recastResult.month,
+            recastLumpSum: recastResult.availableAfterBridge,
+            recastFee: recastResult.recastFee
+          });
+          if (tradeoff.appliedLumpSum > 0 && tradeoff.monthsLaterPayoffFromRecasting > 0.5) {
+            tradeoffNote.style.display = 'block';
+            if (!isExtra) {
+              tradeoffNote.textContent = `Heads up: applying this same amount as a one-time extra payment instead of recasting would pay the loan off about ${Math.round(tradeoff.monthsLaterPayoffFromRecasting)} month(s) sooner and save roughly ${formatCurrency(tradeoff.extraLifetimeInterestFromRecasting)} more in lifetime interest. Recasting trades that for a lower required payment starting right away.`;
+            } else {
+              tradeoffNote.textContent = `Heads up: recasting this loan instead of applying an extra payment would lower your monthly P&I by ${formatCurrency(tradeoff.monthlySavings)}/mo. Extra payment trades that for paying off the loan about ${Math.round(tradeoff.monthsLaterPayoffFromRecasting)} month(s) sooner and saving ${formatCurrency(tradeoff.extraLifetimeInterestFromRecasting)} in interest.`;
+            }
+          } else {
+            tradeoffNote.style.display = 'none';
+          }
         }
       }
     }

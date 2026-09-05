@@ -1,0 +1,13 @@
+{
+  "name": "homeward-tailwind-build",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Local Tailwind build for homeward — replaces the Play CDN <script src=\"https://cdn.tailwindcss.com\"> in index.html with a purged, self-hosted css/tailwind.build.css. See tailwind.config.js for the content globs and the brand.* color extension carried over from index.html's old inline config.",
+  "scripts": {
+    "build:css": "tailwindcss -i ./css/tailwind-src.css -o ./css/tailwind.build.css --minify",
+    "watch:css": "tailwindcss -i ./css/tailwind-src.css -o ./css/tailwind.build.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}

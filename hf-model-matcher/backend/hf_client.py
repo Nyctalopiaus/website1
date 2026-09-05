@@ -34,6 +34,14 @@ class HuggingFaceClient:
         self.api = HfApi()
         self._cache: Dict[str, Any] = {}
         self._cache_ttl = 600
+        # get_exact_gguf_info() now runs over a ~15-model bounded slice per
+        # request (previously only the 3 hero picks) so the same popular
+        # repos get re-verified on nearly every request with the same
+        # defaults (goal + context_k=16) - cache results the same way the
+        # raw search results are cached above, keyed on the exact lookup
+        # inputs since quant_bits/context_k both affect the answer.
+        self._verify_cache: Dict[str, Any] = {}
+        self._verify_cache_ttl = 600
 
     def _get_cache_key(self, goal: str, query: str = "") -> str:
         return f"{goal}:{query}"
@@ -121,22 +129,33 @@ class HuggingFaceClient:
         tags its base model - the real KV-cache size via get_exact_kv_cache_gb()
         instead of the flat lookup table.
 
-        Deliberately only called for the (up to 3, deduped) hero picks after
-        selection - never for the full ~40-candidate search batch - to keep this
-        cheap. Sums split-file sizes together (large models are often shipped as
+        Called over a bounded pre-hero-selection verification slice (~15 models:
+        top-by-score + smallest-by-params among the vetted pool - see main.py's
+        get_model_recommendations) rather than the full ~40-candidate search
+        batch, to keep this cheap while still closing the gap where a model that
+        never actually gets a real check could win a hero slot. Sums split-file
+        sizes together (large models are often shipped as
         "...-Q4_K_M-00001-of-00003.gguf" etc. rather than one file). Returns None
         on ANY failure (network, 404, no matching quant file) so callers always
         have a safe fallback to the estimate - this must never be able to break a
         request, only improve it when it can. The KV-cache lookup is independent
         of the file-size lookup succeeding: a repo with an unmatched quant file
         can still get its KV cache upgraded to a real number, and vice versa.
+        Results are cached (see __init__) since the same popular repos tend to
+        recur across requests with the default goal/context_k.
         """
+        cache_key = f"{repo_id}:{quant_bits}:{context_k}"
+        cached = self._verify_cache.get(cache_key)
+        if cached is not None and (time.time() - cached["timestamp"] < self._verify_cache_ttl):
+            return cached["data"]
+
         try:
             url = f"https://huggingface.co/api/models/{repo_id}?blobs=true"
             req = Request(url, headers={"User-Agent": "hf-model-matcher/1.0"})
             with urlopen(req, timeout=6) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
         except Exception:
+            self._verify_cache[cache_key] = {"timestamp": time.time(), "data": None}
             return None
 
         siblings = data.get("siblings") or []
@@ -184,7 +203,9 @@ class HuggingFaceClient:
             if kv_result:
                 result.update(kv_result)
 
-        return result or None
+        final_result = result or None
+        self._verify_cache[cache_key] = {"timestamp": time.time(), "data": final_result}
+        return final_result
 
     def parse_parameter_count_b(self, repo_id: str, tags: List[str] = None) -> float:
         tags = tags or []

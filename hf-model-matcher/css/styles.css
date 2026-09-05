@@ -146,6 +146,36 @@ body {
   display: flex;
   align-items: center;
   gap: 1.2rem;
+  flex-wrap: wrap;
+}
+
+/* Breadcrumb-style grouping next to the back-link, signaling this is one
+   tool inside a larger suite rather than a standalone page. */
+.logo-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lab-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.breadcrumb-sep {
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 .btn-back {
@@ -296,6 +326,29 @@ body {
 /* Hardware Profiler Controls */
 .control-group {
   margin-bottom: 24px;
+}
+
+/* CPU / RAM-only mode: the VRAM slider, Card Model dropdown, and GPU-count
+   buttons all get disabled (see hardware-profile.js's applyCpuModeUI) since
+   none of them apply when there's no GPU at all. A plain :disabled dim
+   covers each control regardless of which .control-group box it lives in
+   (the VRAM slider and the GPU-count buttons are in two different boxes). */
+.range-slider:disabled,
+.btn-gpu-count:disabled,
+select.input-search:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.range-slider:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Subtle extra dimming on the VRAM slider's own box specifically, so it
+   reads as "not applicable right now" rather than merely unfocused. */
+.cpu-mode-disabled {
+  opacity: 0.75;
 }
 
 .label-row {
@@ -609,6 +662,23 @@ body {
   vertical-align: middle;
 }
 
+/* Real GGUF-file check ran and came back negative (see the hero-eligibility
+   fix in engine.py/main.py) - distinct from a plain "estimated" model, which
+   was simply never checked. */
+.vram-unverified-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: #FBBF24;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  vertical-align: middle;
+}
+
 .vram-track {
   height: 8px;
   background: rgba(255, 255, 255, 0.08);
@@ -739,6 +809,50 @@ body {
   margin-bottom: 16px;
 }
 
+/* Sort/filter controls above the candidate table - re-order/re-filter the
+   already-fetched candidate batch client-side, no network call. */
+.candidate-controls-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.chip-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Same recipe as .btn-gpu-count.active - the established toggle-pill idiom
+   used throughout this app (GPU-count presets, modal tabs, goal cards). */
+.chip-filter {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.chip-filter:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
+}
+
+.chip-filter.active {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: var(--accent-blue);
+  color: #FFFFFF;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+}
+
 .input-search {
   flex: 1;
   background: rgba(15, 23, 42, 0.8);
@@ -756,9 +870,12 @@ body {
 }
 
 .model-list-item {
+  /* Column container: the header row (name/stats + action buttons) plus an
+     optional justification dropdown and an optional collapsed variant-group
+     stack below it. */
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 10px;
   padding: 14px 18px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border-color);
@@ -770,6 +887,52 @@ body {
 .model-list-item:hover {
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.15);
+}
+
+.model-list-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Collapsed "+N more quantizations" sub-list for near-duplicate quant/format
+   variants of the same base model (see groupByBaseModel in
+   candidate-filters.js). Reuses the same collapsed-<details> idiom as
+   .hero-justification. */
+.variant-group {
+  border-top: 1px solid var(--border-color);
+  padding-top: 10px;
+}
+
+.variant-group summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  list-style: revert;
+}
+
+.variant-group summary:hover {
+  color: var(--text-primary);
+}
+
+.variant-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.variant-row:first-of-type {
+  border-top: none;
+  padding-top: 10px;
 }
 
 /* Modal Popup */
@@ -867,6 +1030,24 @@ body {
   color: #F87171;
 }
 
+/* Fits in VRAM, but large relative to the GPU's memory bandwidth - sits
+   visually between "moderate" (amber) and "spillover" (red). */
+.badge-speed-slow {
+  background: rgba(234, 88, 12, 0.15);
+  border: 1px solid rgba(234, 88, 12, 0.4);
+  color: #FB923C;
+}
+
+/* CPU / RAM-only inference - a rough size-only bucket estimate rather than
+   the GPU-bandwidth roofline model, so it gets its own distinct (neutral
+   slate) color rather than borrowing one of the GPU speed tiers' colors,
+   which would visually imply the same precision. */
+.badge-speed-cpu {
+  background: rgba(100, 116, 139, 0.2);
+  border: 1px solid rgba(100, 116, 139, 0.45);
+  color: #CBD5E1;
+}
+
 /* STAGE 2: Launcher Modal Tabs */
 .modal-tabs {
   display: flex;
@@ -955,6 +1136,11 @@ body {
 
   .logo {
     gap: 0.6rem;
+  }
+
+  .lab-badge {
+    font-size: 10px;
+    padding: 2px 8px;
   }
 
   .btn-back {
@@ -1078,14 +1264,27 @@ body {
     gap: 8px;
   }
 
+  .candidate-controls-row {
+    gap: 8px;
+  }
+
+  .candidate-controls-row select {
+    flex: 1;
+    min-width: 140px;
+  }
+
   .model-list-item {
     padding: 12px 14px;
+    gap: 12px;
+  }
+
+  .model-list-item-row {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
   }
 
-  .model-list-item > div:last-child {
+  .model-list-item-row > div:last-child {
     display: flex;
     gap: 8px;
     justify-content: flex-end;

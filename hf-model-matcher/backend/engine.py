@@ -16,17 +16,40 @@ class RecommendationEngine:
     def get_kv_cache_overhead(cls, context_k: int) -> float:
         return cls.KV_CACHE_OVERHEAD_GB.get(context_k, 1.5)
 
+    # RAM reserved for the OS/desktop/other apps when running CPU-only (no GPU
+    # at all) - the fit-gate budget in that mode is system RAM minus this,
+    # rather than a VRAM figure that doesn't exist. Deliberately a flat
+    # constant rather than a percentage: a fixed few GB of OS overhead doesn't
+    # scale with total RAM the way it would need to for a percentage to make
+    # sense at both 8GB and 256GB.
+    CPU_ONLY_RAM_RESERVE_GB = 4.0
+
     @classmethod
-    def run_pipeline(
+    def score_models(
         cls,
         models: List[Dict[str, Any]],
         user_vram_gb: float,
         user_ram_gb: float,
         goal: str,
         preferred_quant: int = 4,
-        context_k: int = 16
-    ) -> Dict[str, Any]:
-        user_vram_gb = max(user_vram_gb, 1.0)
+        context_k: int = 16,
+        cpu_only: bool = False
+    ) -> List[Dict[str, Any]]:
+        """VRAM-fit filtering + task mapping + scoring only - no hero selection.
+        Split out of the old run_pipeline so main.py can run real GGUF
+        verification on a bounded slice of these results BEFORE hero picks are
+        made, instead of only verifying the 3 winners after the fact (see
+        select_heroes and main.py's get_model_recommendations).
+
+        `cpu_only=True` switches the fit-gate budget from GPU VRAM to system
+        RAM (minus CPU_ONLY_RAM_RESERVE_GB reserved for the OS/other apps) -
+        for the RAM-only / no-GPU inference path. Every field name below
+        (vram_req_gb, vram_usage_pct, etc.) is left as-is either way; only the
+        budget they're measured against changes. The frontend relabels the
+        user-facing copy for CPU mode (see gpu-catalog.js's budgetLabel()) so
+        keeping "vram_*" as the internal field name here doesn't leak into the
+        UI as a mislabeled "VRAM" figure when the real constraint is RAM."""
+        effective_budget_gb = max(user_ram_gb - cls.CPU_ONLY_RAM_RESERVE_GB, 1.0) if cpu_only else max(user_vram_gb, 1.0)
         kv_overhead_gb = cls.get_kv_cache_overhead(context_k)
         surviving_models = []
 
@@ -40,15 +63,15 @@ class RecommendationEngine:
             vram_weight_gb = cls.calculate_vram_required(params_b, quant_bits=active_quant_bits)
             vram_req = round(vram_weight_gb + kv_overhead_gb, 2)
 
-            if vram_req > user_vram_gb:
+            if vram_req > effective_budget_gb:
                 active_quant_bits = 4
                 vram_weight_gb = vram_req_q4
                 vram_req = round(vram_weight_gb + kv_overhead_gb, 2)
 
-            if vram_req > user_vram_gb * 1.02:
+            if vram_req > effective_budget_gb * 1.02:
                 continue
 
-            vram_pct = round((vram_req / user_vram_gb) * 100.0, 1)
+            vram_pct = round((vram_req / effective_budget_gb) * 100.0, 1)
 
             model_item = dict(m)
             model_item.update({
@@ -61,7 +84,17 @@ class RecommendationEngine:
                 "vram_req_fp16_gb": vram_req_fp16,
                 "active_quant_bits": active_quant_bits,
                 "vram_usage_pct": min(vram_pct, 100.0),
-                "fits_in_hardware": True
+                "fits_in_hardware": True,
+                # Uniform defaults on every row (not just whichever end up as hero
+                # picks) - main.py's verification pass fills these in for real for
+                # a bounded slice of the pool, everything else keeps these honest
+                # "not checked" defaults rather than silently looking identical to
+                # a verified row.
+                "vram_source": "estimated",
+                "kv_overhead_source": "estimated",
+                "verified_gguf": None,
+                "hero_eligible": True,
+                "cpu_only": cpu_only
             })
 
             surviving_models.append(model_item)
@@ -89,7 +122,7 @@ class RecommendationEngine:
             task_mapped_models.append(m)
 
         if not task_mapped_models:
-            return {"hero_cards": {}, "all_candidates": []}
+            return []
 
         downloads_list = [m["downloads"] for m in task_mapped_models]
         likes_list = [m["likes"] for m in task_mapped_models]
@@ -142,6 +175,17 @@ class RecommendationEngine:
 
         scored_models.sort(key=lambda x: x["recommendation_score"], reverse=True)
 
+        return scored_models
+
+    @classmethod
+    def select_heroes(cls, scored_models: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Hero-card selection only, run over the OUTPUT of score_models after
+        main.py has had a chance to run real GGUF verification and mark any
+        model that failed it as hero_eligible=False (see main.py's
+        get_model_recommendations). A model that never got verified keeps the
+        default hero_eligible=True from score_models - verification is only
+        run over a bounded slice of the pool for cost reasons, so "never
+        checked" intentionally still means "eligible," not "excluded.\""""
         # Hero cards are drawn from a "vetted" subset requiring some real community
         # engagement (>=1000 downloads AND >=5 likes) before a model can headline a
         # hero slot. Falls back to the full list if nothing clears the bar (a very
@@ -151,6 +195,13 @@ class RecommendationEngine:
         # path whenever it's reachable) gets the same protection.
         vetted_pool = [m for m in scored_models if m.get("downloads", 0) >= 1000 and m.get("likes", 0) >= 5]
         hero_pool = vetted_pool if vetted_pool else scored_models
+        hero_pool = [m for m in hero_pool if m.get("hero_eligible", True)]
+        if not hero_pool:
+            # Every vetted candidate failed real GGUF verification - fall back to
+            # the full scored list rather than showing empty hero cards, still
+            # respecting hero_eligible where possible.
+            eligible_all = [m for m in scored_models if m.get("hero_eligible", True)]
+            hero_pool = eligible_all if eligible_all else scored_models
 
         sweet_spot = [m for m in hero_pool if 60.0 <= m["vram_usage_pct"] <= 88.0]
         hero_best_overall = sweet_spot[0] if sweet_spot else (hero_pool[0] if hero_pool else None)
@@ -169,9 +220,9 @@ class RecommendationEngine:
         used_ids = set()
         if hero_best_overall:
             used_ids.add(hero_best_overall["id"])
-        
+
         if hero_speed_demon and hero_speed_demon["id"] in used_ids:
-            others = [m for m in scored_models if m["id"] not in used_ids]
+            others = [m for m in hero_pool if m["id"] not in used_ids]
             if others:
                 hero_speed_demon = sorted(others, key=lambda x: x["params_b"])[0]
 
@@ -179,7 +230,7 @@ class RecommendationEngine:
             used_ids.add(hero_speed_demon["id"])
 
         if hero_max_capability and hero_max_capability["id"] in used_ids:
-            others = [m for m in scored_models if m["id"] not in used_ids]
+            others = [m for m in hero_pool if m["id"] not in used_ids]
             if others:
                 hero_max_capability = sorted(others, key=lambda x: x["params_b"], reverse=True)[0]
 
@@ -192,3 +243,24 @@ class RecommendationEngine:
             "all_candidates": scored_models,
             "total_candidates": len(scored_models)
         }
+
+    @classmethod
+    def run_pipeline(
+        cls,
+        models: List[Dict[str, Any]],
+        user_vram_gb: float,
+        user_ram_gb: float,
+        goal: str,
+        preferred_quant: int = 4,
+        context_k: int = 16,
+        cpu_only: bool = False
+    ) -> Dict[str, Any]:
+        """Thin convenience wrapper (score + select with no verification pass in
+        between) for callers that don't need main.py's verification step -
+        e.g. quick scripts/tests. The live request path in main.py calls
+        score_models() and select_heroes() directly with a verification pass
+        run in between."""
+        scored_models = cls.score_models(models, user_vram_gb, user_ram_gb, goal, preferred_quant, context_k, cpu_only)
+        if not scored_models:
+            return {"hero_cards": {}, "all_candidates": [], "total_candidates": 0}
+        return cls.select_heroes(scored_models)

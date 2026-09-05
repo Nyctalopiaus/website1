@@ -72,5 +72,72 @@ export const GPU_CATALOG = {
     ],
     custom: [
         { label: '✏️ Custom / Not Listed (Manual VRAM Slider)', vram: 'custom' }
+    ],
+    // RAM-only / no-GPU inference. Reuses the existing vendor-switch plumbing
+    // (populateGpuModels, restoreProfilerUI, saveStateToStorage) the same way
+    // `custom` already works as a special sentinel vram value - see
+    // hardware-profile.js's cpu-mode handling for how the VRAM slider and
+    // GPU-count buttons get disabled when this is selected.
+    cpu: [
+        { label: '🖥️ N/A — CPU / RAM-Bound Inference', vram: 'cpu', default: true }
     ]
 };
+
+// Rough memory-bandwidth estimate (GB/s) by vendor + capacity class, used to
+// make the generation-speed badge respond to how large a model is relative to
+// the GPU's real bottleneck, not just whether it fits in VRAM at all (see
+// getGenerationSpeed() in recommendation-engine.js). Local LLM decode is
+// memory-bandwidth-bound, not compute-bound, so bandwidth - not a GPU's raw
+// TFLOPS or even its VRAM capacity alone - is the right proxy for "how fast
+// does this actually run." This is intentionally a coarse, capacity-tiered
+// lookup rather than a per-card spec sheet: it's a hobbyist-facing directional
+// estimate (same spirit as the existing "30-60+ t/s" style ranges), not a
+// benchmark. Tiers are ordered highest-VRAM-first; the first row whose `min`
+// the card's VRAM meets or exceeds wins.
+const BANDWIDTH_TIERS_GBS = {
+    // Datacenter/prosumer cards at 80GB+ (H100/H200/A100) sit far above
+    // consumer GDDR6X bandwidth thanks to HBM.
+    nvidia: [[80, 2000], [40, 1500], [24, 950], [16, 650], [12, 500], [0, 350]],
+    amd: [[24, 960], [16, 620], [12, 480], [0, 350]],
+    // Apple Silicon unified memory bandwidth scales with the chip tier (Max/
+    // Ultra have wider memory buses), which correlates loosely with the total
+    // unified memory capacity a given SKU ships with.
+    apple: [[96, 800], [48, 550], [36, 400], [18, 250], [0, 200]],
+    intel: [[0, 450]],
+    custom: [[0, 400]]
+};
+
+export function estimateBandwidthGBs(vendor, vramGb) {
+    const tiers = BANDWIDTH_TIERS_GBS[vendor] || BANDWIDTH_TIERS_GBS.custom;
+    const vram = typeof vramGb === 'number' ? vramGb : 0;
+    const match = tiers.find(([minVram]) => vram >= minVram);
+    return (match || tiers[tiers.length - 1])[1];
+}
+
+// RAM reserved for the OS/desktop/other apps when running CPU-only - mirrors
+// backend/engine.py's CPU_ONLY_RAM_RESERVE_GB (kept in sync by hand, same as
+// every other constant shared between the two engines in this app).
+const CPU_ONLY_RAM_RESERVE_GB = 4.0;
+
+// The effective hardware-fit budget for the currently-selected vendor: GPU
+// VRAM normally, or system RAM (minus a fixed OS/app reserve) when the user
+// has no GPU at all (gpuVendor === 'cpu'). Centralized here so every call
+// site - the client-side fallback engine, and the renderer's redisplay-time
+// recompute of a model's speed badge - swaps budgets identically instead of
+// each reimplementing the same `gpuVendor === 'cpu' ? ... : ...` check.
+export function getEffectiveBudgetGb(state) {
+    if (state.gpuVendor === 'cpu') {
+        return Math.max((state.ramGb || 0) - CPU_ONLY_RAM_RESERVE_GB, 1.0);
+    }
+    return Math.max(state.vramGb || 0, 1.0);
+}
+
+// Swaps the unit word used in the handful of most-visible budget-related
+// labels (the sidebar's VRAM slider heading, hero-card/candidate VRAM lines)
+// between "VRAM" and "RAM" depending on mode. Deliberately narrow in scope -
+// this isn't chasing every string in the app that happens to say "VRAM" (the
+// engine-tier explainer box, tooltips, etc. are left as-is), just the labels
+// a CPU-mode user would actually read while looking at their results.
+export function budgetLabel(state) {
+    return state.gpuVendor === 'cpu' ? 'RAM' : 'VRAM';
+}

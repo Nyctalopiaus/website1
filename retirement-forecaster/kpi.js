@@ -2,6 +2,7 @@ export function syncLabels(dom) {
   dom.valCurrentAge.textContent = dom.currentAgeInput.value;
   dom.valRetirementAge.textContent = dom.retirementAgeInput.value;
   dom.valLifeExpectancy.textContent = dom.lifeExpectancyInput.value;
+  if (dom.valSsClaimAge) dom.valSsClaimAge.textContent = dom.ssClaimAgeInput.value;
 
   const curr = parseInt(dom.currentAgeInput.value, 10);
   let ret = parseInt(dom.retirementAgeInput.value, 10);
@@ -36,7 +37,7 @@ export function updatePurchasingPowerUI(dom, isDiscounted) {
   }
 }
 
-export function renderKPIs({ dom, model, simulation, burnDataRaw, optimalRetirementAge, maxMonthlyIncome, formatCurrency }) {
+export function renderKPIs({ dom, model, simulation, optimalRetirementAge, maxMonthlyIncome, formatCurrency }) {
   const isDiscounted = dom.togglePurchasingPower.checked;
 
   const peakVal = simulation.processedAccum[simulation.processedAccum.length - 1].total;
@@ -131,6 +132,4 @@ export function renderKPIs({ dom, model, simulation, burnDataRaw, optimalRetirem
   dom.accumAgeEnd.textContent = dom.retirementAgeInput.value;
   dom.burnAgeStart.textContent = dom.retirementAgeInput.value;
   dom.burnAgeEnd.textContent = dom.lifeExpectancyInput.value;
-
-  void burnDataRaw;
 }

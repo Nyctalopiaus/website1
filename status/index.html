@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20" />
+  <link rel="stylesheet" href="styles.css?v=21" />
 </head>
 <body>
 
@@ -23,9 +23,9 @@
         </div>
       </div>
       <div class="header-status-area">
-        <div id="overall-status-badge" class="system-status-badge status-operational">
+        <div id="overall-status-badge" class="system-status-badge status-checking">
           <span class="status-dot"></span>
-          <span id="overall-status-text">All Systems Operational</span>
+          <span id="overall-status-text">Checking status…</span>
         </div>
         <div class="last-check-meta">
           <span>Last Checked:</span> <strong id="last-check-time">Loading...</strong>
@@ -36,6 +36,11 @@
 
   <main class="main-container">
 
+    <!-- Fallback / Stale Data Notice -->
+    <div id="fallback-banner" class="fallback-banner" style="display: none;">
+      ⚠️ Live telemetry feed unreachable — the numbers below are sample data, not a real reading.
+    </div>
+
     <!-- Hero Metrics Dashboard Cards -->
     <section class="metrics-grid" aria-label="System Health Overview">
       <div class="metric-card">
@@ -43,7 +48,7 @@
           <span class="metric-title">24h System Availability</span>
           <span class="metric-icon">🛡️</span>
         </div>
-        <div class="metric-value text-emerald" id="metric-uptime">99.9%</div>
+        <div class="metric-value" id="metric-uptime">—</div>
         <span class="metric-subtext">Calculated across all monitored connections</span>
       </div>
 
@@ -52,7 +57,7 @@
           <span class="metric-title">Average Outbound Latency</span>
           <span class="metric-icon">⚡</span>
         </div>
-        <div class="metric-value" id="metric-latency">142 ms</div>
+        <div class="metric-value" id="metric-latency">—</div>
         <span class="metric-subtext">Average network response time</span>
       </div>
 
@@ -61,7 +66,7 @@
           <span class="metric-title">Monitored Connections</span>
           <span class="metric-icon">🔗</span>
         </div>
-        <div class="metric-value" id="metric-monitored">11</div>
+        <div class="metric-value" id="metric-monitored">—</div>
         <span class="metric-subtext">Active API endpoints &amp; services</span>
       </div>
 
@@ -70,8 +75,8 @@
           <span class="metric-title">Active Incidents</span>
           <span class="metric-icon">🚨</span>
         </div>
-        <div class="metric-value" id="metric-incidents">0</div>
-        <span class="metric-subtext" id="metric-incidents-sub">0 degraded or offline endpoints</span>
+        <div class="metric-value" id="metric-incidents">—</div>
+        <span class="metric-subtext" id="metric-incidents-sub">Checking…</span>
       </div>
     </section>
 
@@ -98,10 +103,15 @@
           <h2>Historical Latency &amp; Response Trends</h2>
           <p class="section-desc">Average network response time (ms) recorded across hourly automated monitoring sweeps.</p>
         </div>
-        <div class="timeframe-selector" id="timeframe-selector" role="tablist" aria-label="Latency historical timeframe options">
-          <button type="button" class="timeframe-btn active" data-timeframe="24h" role="tab" aria-selected="true">Last 24 Hours</button>
-          <button type="button" class="timeframe-btn" data-timeframe="7d" role="tab" aria-selected="false">Last 7 Days</button>
-          <button type="button" class="timeframe-btn" data-timeframe="30d" role="tab" aria-selected="false">Last Month</button>
+        <div class="chart-controls">
+          <select id="app-filter-select" class="app-filter-select" aria-label="Filter latency chart by application">
+            <option value="all">All Apps (Average)</option>
+          </select>
+          <div class="timeframe-selector" id="timeframe-selector" role="tablist" aria-label="Latency historical timeframe options">
+            <button type="button" class="timeframe-btn active" data-timeframe="24h" role="tab" aria-selected="true">Last 24 Hours</button>
+            <button type="button" class="timeframe-btn" data-timeframe="7d" role="tab" aria-selected="false">Last 7 Days</button>
+            <button type="button" class="timeframe-btn" data-timeframe="30d" role="tab" aria-selected="false">Last Month</button>
+          </div>
         </div>
       </div>
       <div class="chart-wrapper">
@@ -159,10 +169,11 @@
       <div class="section-card-header">
         <div>
           <h2>System Audit &amp; Event Log</h2>
-          <p class="section-desc">Recent verification sweeps, rate checks, and operational events.</p>
+          <p class="section-desc">Real incident history (recorded automatically as apps go degraded/offline and recover), plus this session's own activity.</p>
         </div>
       </div>
       <div class="terminal-container" id="terminal-log">
+        <div id="incident-history-rows"></div>
         <div class="terminal-row">[INIT] Status monitoring console loaded. Querying data cache...</div>
       </div>
     </section>
@@ -202,6 +213,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=20"></script>
+  <script src="app.js?v=21"></script>
 </body>
 </html>

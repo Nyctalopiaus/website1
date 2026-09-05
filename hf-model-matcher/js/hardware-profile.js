@@ -13,7 +13,7 @@
    pattern app.js already used internally before this was split out, just
    passed in explicitly instead of captured by a shared closure.
    ========================================================================== */
-import { GPU_CATALOG } from './gpu-catalog.js';
+import { GPU_CATALOG, budgetLabel } from './gpu-catalog.js';
 
 const vramInput = document.getElementById('vram-slider');
 const vramVal = document.getElementById('vram-val');
@@ -26,6 +26,7 @@ const gpuModelSelect = document.getElementById('gpu-model-select');
 const gpuCountBtns = document.querySelectorAll('.btn-gpu-count');
 const gpuCountVal = document.getElementById('gpu-count-val');
 const gpuVramCalcBadge = document.getElementById('gpu-vram-calc-badge');
+const vramSectionLabel = document.getElementById('vram-section-label');
 const btnAutoDetect = document.getElementById('btn-auto-detect');
 const autoDetectInlineNotice = document.getElementById('auto-detect-inline-notice');
 const autoDetectNoticeIcon = document.getElementById('auto-detect-notice-icon');
@@ -67,6 +68,24 @@ export function getGpuModelSelectValue() {
     return gpuModelSelect ? gpuModelSelect.value : '64';
 }
 
+// Toggles the VRAM slider, Card Model dropdown, and GPU-count buttons between
+// usable and disabled/greyed depending on whether CPU (RAM-only, no GPU)
+// mode is selected, and relabels the two spots that would otherwise still
+// read like a GPU VRAM figure applies. Reuses the existing vendor-switch
+// plumbing rather than a separate toggle - `cpu` is just another vendor
+// value in GPU_CATALOG (see gpu-catalog.js), the same way `custom` already
+// works as a special sentinel.
+function applyCpuModeUI(state) {
+    const isCpu = state.gpuVendor === 'cpu';
+    if (vramInput) vramInput.disabled = isCpu;
+    if (gpuModelSelect) gpuModelSelect.disabled = isCpu;
+    if (gpuCountBtns) gpuCountBtns.forEach(b => { b.disabled = isCpu; });
+    if (vramSectionLabel) vramSectionLabel.textContent = `Total Effective ${budgetLabel(state)}`;
+    if (gpuVramCalcBadge && isCpu) gpuVramCalcBadge.textContent = 'RAM-Bound (No GPU)';
+    const vramControlGroup = vramInput ? vramInput.closest('.control-group') : null;
+    if (vramControlGroup) vramControlGroup.classList.toggle('cpu-mode-disabled', isCpu);
+}
+
 // Applies a (possibly just-restored-from-localStorage) state object to every
 // profiler DOM element. Called from app.js's loadStateFromStorage after it
 // has parsed and applied the saved values onto the shared state object.
@@ -97,6 +116,8 @@ export function restoreProfilerUI(state, savedGpuModelVal) {
             gpuVramCalcBadge.textContent = `${state.gpuBaseVram} GB per GPU`;
         }
     }
+
+    applyCpuModeUI(state);
 }
 
 // Wires up every profiler control. Call once, after the shared `state` object
@@ -116,6 +137,16 @@ export function initHardwareProfile({ state, saveStateToStorage, triggerRecommen
         gpuVendorSelect.addEventListener('change', (e) => {
             state.gpuVendor = e.target.value;
             populateGpuModels(state.gpuVendor);
+            applyCpuModeUI(state);
+
+            if (state.gpuVendor === 'cpu') {
+                // No VRAM concept applies - the System RAM slider becomes the
+                // fit-gate budget instead (see getEffectiveBudgetGb in
+                // gpu-catalog.js and cpu_only in the backend/client engines).
+                saveStateToStorage();
+                triggerRecommendations();
+                return;
+            }
 
             if (gpuModelSelect && gpuModelSelect.value !== 'custom') {
                 state.gpuBaseVram = parseFloat(gpuModelSelect.value);

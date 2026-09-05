@@ -5,6 +5,11 @@
       <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.open-meteo.com https://unpkg.com https://widgets.mortgagenewsdaily.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://cdn.jsdelivr.net https://*.basemaps.cartocdn.com; connect-src 'self' https://photon.komoot.io https://cdn.jsdelivr.net https://unpkg.com https://api.open-meteo.com https://nominatim.openstreetmap.org https://widgets.mortgagenewsdaily.com https://router.project-osrm.org https://overpass-api.de https://overpass.kumi.systems https://overpass.private.coffee https://maps.mail.ru;" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Open Road Advisor</title>
+  <meta name="description" content="Plan a road trip with weather-timed milestones, wind and rain risk, fuel cost, elevation, and nearby restaurants or lodging along your route — all calculated client-side in your browser." />
+  <meta property="og:title" content="Open Road Advisor" />
+  <meta property="og:description" content="Plan a road trip with weather-timed milestones, wind and rain risk, fuel cost, elevation, and nearby restaurants or lodging along your route." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
@@ -13,7 +18,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
   <!-- Chart.js library for elevation graphing -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link rel="stylesheet" href="advisor.css?v=25" />
+  <link rel="stylesheet" href="advisor.css?v=26" />
 </head>
 <body>
 
@@ -44,7 +49,7 @@
         <details open>
           <summary class="text-primary" style="cursor: pointer; outline: none; font-weight: 600; list-style: none;">How to Use the Open Road Advisor <span class="summary-arrow"></span></summary>
           <div class="instructions-content" style="margin-top: 1rem; font-size: 0.9rem; line-height: 1.6; color: var(--text-muted);">
-            <p style="margin-bottom: 0.5rem;">This utility maps your driving route, computes milestone arrival offsets, and queries predictive weather forecasts to assess wind impacts and rain risks along your journey.</p>
+            <p style="margin-bottom: 0.5rem;">This tool maps your route, figures out when you'll reach each stop, and checks the forecast along the way for wind and rain risks.</p>
             <p style="margin-bottom: 0.5rem;">1. <strong>Select Stops</strong>: Enter your starting origin, dynamic intermediate stops, and final destination (e.g. "Seattle, WA").</p>
             <p style="margin-bottom: 0.5rem;">2. <strong>Set Ride Parameters</strong>: Choose departure time, planned speed (MPH), sampling intervals, and your vehicle profile (Car, Jeep, or Motorcycle).</p>
             <p>3. <strong>Scan Highway</strong>: Click <strong>Analyze Open Road Journey</strong> to calculate routes, overlay paths on the map, resolve names, and check milestone conditions.</p>
@@ -99,15 +104,23 @@
           <div class="input-group" style="margin-top: 0.75rem;">
             <label>Route Stops</label>
             <div id="route-stops-list" style="display: flex; flex-direction: column; gap: 0.75rem; width: 100%;">
-              <div class="stop-input-row" style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
-                <span class="drag-handle" style="cursor: move; padding: 0.25rem; font-size: 0.9rem;">☰</span>
-                <input type="text" list="cities-list" value="Seattle, WA" placeholder="Route stop..." class="terminal-input route-stop-input" style="flex: 1;" />
-                <button type="button" class="btn-action btn-remove-stop" style="background: transparent; border: 1px solid var(--border-color); color: var(--accent-red); padding: 0.65rem 0.85rem; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;">✕</button>
+              <div class="stop-input-row">
+                <span class="drag-handle">☰</span>
+                <div class="stop-move-buttons">
+                  <button type="button" class="btn-move-stop btn-move-up" title="Move stop up">▲</button>
+                  <button type="button" class="btn-move-stop btn-move-down" title="Move stop down">▼</button>
+                </div>
+                <input type="text" list="cities-list" value="Seattle, WA" placeholder="Route stop..." class="terminal-input route-stop-input" />
+                <button type="button" class="btn-action btn-remove-stop">✕</button>
               </div>
-              <div class="stop-input-row" style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
-                <span class="drag-handle" style="cursor: move; padding: 0.25rem; font-size: 0.9rem;">☰</span>
-                <input type="text" list="cities-list" value="Portland, OR" placeholder="Route stop..." class="terminal-input route-stop-input" style="flex: 1;" />
-                <button type="button" class="btn-action btn-remove-stop" style="background: transparent; border: 1px solid var(--border-color); color: var(--accent-red); padding: 0.65rem 0.85rem; border-radius: 6px; cursor: pointer; transition: all 0.2s ease;">✕</button>
+              <div class="stop-input-row">
+                <span class="drag-handle">☰</span>
+                <div class="stop-move-buttons">
+                  <button type="button" class="btn-move-stop btn-move-up" title="Move stop up">▲</button>
+                  <button type="button" class="btn-move-stop btn-move-down" title="Move stop down">▼</button>
+                </div>
+                <input type="text" list="cities-list" value="Portland, OR" placeholder="Route stop..." class="terminal-input route-stop-input" />
+                <button type="button" class="btn-action btn-remove-stop">✕</button>
               </div>
             </div>
             <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
@@ -135,8 +148,9 @@
 
         <!-- Group 2: Pacing & Stops -->
         <div class="settings-group" style="border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; background: rgba(255,255,255,0.01);">
-          <h3 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary-color); margin-bottom: 0.75rem; font-weight: 700;">Pacing &amp; Stops</h3>
-          
+          <details class="settings-group-details">
+          <summary class="settings-group-summary summary-arrow">Pacing &amp; Stops</summary>
+
           <div class="grid-2-col">
             <div class="input-group">
               <label for="avg-speed" id="label-avg-speed">Average Speed (MPH)</label>
@@ -216,12 +230,14 @@
               </div>
             </div>
           </div>
+          </details>
         </div>
 
         <!-- Group 3: Travel Boundaries -->
         <div class="settings-group" style="border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; margin-bottom: 1.25rem; background: rgba(255,255,255,0.01);">
-          <h3 style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary-color); margin-bottom: 0.75rem; font-weight: 700;">Travel Boundaries</h3>
-          
+          <details class="settings-group-details">
+          <summary class="settings-group-summary summary-arrow">Travel Boundaries</summary>
+
           <div class="grid-2-col" style="margin-bottom: 0.75rem;">
             <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem; height: 100%;">
               <input id="enforce-curfew" type="checkbox" style="width: 1.1rem; height: 1.1rem; accent-color: var(--primary-color); cursor: pointer;" />
@@ -250,6 +266,7 @@
               <input id="curfew-end" type="time" value="22:00" class="terminal-input" />
             </div>
           </div>
+          </details>
         </div>
 
         <datalist id="cities-list">
@@ -352,16 +369,16 @@
         <div class="hud-grid">
           <div class="hud-stat-box">
             <div class="label-with-tooltip">
-              <span class="hud-stat-label" id="hud-stability-label">Exposure & Fatigue Risk</span>
-              <span class="tooltip-icon" data-tooltip="An aggregate score combining extreme temperatures, UV intensity, and humidity to estimate how quickly physical fatigue will set in.">?</span>
+              <span class="hud-stat-label" id="hud-stability-label">Heat & Fatigue Risk</span>
+              <span class="tooltip-icon" data-tooltip="Combines heat, UV, and humidity along your route to estimate how quickly you'll get fatigued.">?</span>
             </div>
             <span id="hud-stability" class="hud-stat-val">--%</span>
             <span class="hud-stat-desc" id="hud-health-score">Trip Health: --% (Pending)</span>
           </div>
           <div class="hud-stat-box">
             <div class="label-with-tooltip">
-              <span class="hud-stat-label">Surface Grip &amp; Crosswind</span>
-              <span class="tooltip-icon" data-tooltip="Calculates the physical risk to the vehicle by combining precipitation (slick roads) with high wind gusts (crosswind destabilization).">?</span>
+              <span class="hud-stat-label">Road &amp; Wind Conditions</span>
+              <span class="tooltip-icon" data-tooltip="Combines rain (slick roads) and wind gusts to estimate how risky conditions will be along your route.">?</span>
             </div>
             <span id="hud-exposure" class="hud-stat-val">--%</span>
             <span class="hud-stat-desc">Route road conditions rating</span>
@@ -392,6 +409,7 @@
             <h2>Journey Details</h2>
           </div>
           <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <button id="btn-copy-link" class="btn-action" style="padding: 0.45rem 1.05rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-bright); display: flex; align-items: center; gap: 0.4rem; cursor: pointer; transition: all 0.2s;" disabled title="Copy a link to this exact trip plan">🔗 Copy Link</button>
             <button id="btn-copy-itinerary" class="btn-action" style="padding: 0.45rem 1.05rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-bright); display: flex; align-items: center; gap: 0.4rem; cursor: pointer; transition: all 0.2s;" disabled>📋 Copy Itinerary</button>
             <button id="btn-export-gpx" class="btn-action" style="padding: 0.45rem 1.05rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-bright); display: flex; align-items: center; gap: 0.4rem; cursor: pointer; transition: all 0.2s;" disabled>📂 Export GPX</button>
             <button id="btn-print" class="btn-action" style="padding: 0.45rem 1.05rem; font-size: 0.8rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-bright); display: flex; align-items: center; gap: 0.4rem; cursor: pointer; transition: all 0.2s;" disabled>🖨️ Print Itinerary</button>
@@ -485,6 +503,6 @@
 
   <!-- Leaflet GIS Mapping library script -->
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script type="module" src="advisor.js?v=42"></script>
+  <script type="module" src="advisor.js?v=43"></script>
 </body>
 </html>

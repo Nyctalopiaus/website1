@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-      <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.open-meteo.com https://unpkg.com https://widgets.mortgagenewsdaily.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://*.basemaps.cartocdn.com; connect-src 'self' https://api.open-meteo.com https://nominatim.openstreetmap.org https://widgets.mortgagenewsdaily.com https://router.project-osrm.org;" />
+      <!-- Scoped to what this page actually loads: this page's own module script
+           plus Google Fonts. (Previously allow-listed several domains — a weather
+           API, mortgage widgets, OpenStreetMap tiles/routing — that belong to other
+           pages on the Nycto dashboard, not this one.) -->
+      <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Retirement Forecaster</title>
   <!-- Google Fonts for premium tech feel -->
@@ -23,13 +27,16 @@
       </div>
     </div>
     
-    <div class="header-right" style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.65rem;">
-      <div class="header-buttons-row" style="display: flex; align-items: center; gap: 0.65rem;">
+    <div class="header-right">
+      <div class="header-buttons-row">
         <button type="button" id="btn-open-quickstart" class="btn-quickstart-retire" title="Show Quick Start Guide">
           <span>ℹ️</span> <span>Quick Start</span>
         </button>
         <button type="button" id="btn-open-features" class="btn-feature-retire" title="View Forecaster Features">
           <span>📈</span> <span>Features</span>
+        </button>
+        <button type="button" id="btn-open-scenarios" class="btn-feature-retire" title="Save, load, compare and share scenarios">
+          <span>📁</span> <span>Scenarios</span>
         </button>
       </div>
       <div class="toggle-container">
@@ -51,6 +58,17 @@
         <strong style="color: var(--color-success); font-family: var(--font-display); letter-spacing: 0.01em; display: block; margin-bottom: 0.15rem; font-size: 0.95rem;">100% Private & Local.</strong>
         Your financial data never leaves your device. All calculations happen securely within your own browser. We do not track, store, or transmit your numbers.
       </div>
+    </div>
+    <div style="background: var(--color-warning-dim); border: 1px solid rgba(180, 83, 9, 0.15); border-radius: 1rem; padding: 1rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.85rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+      <span style="font-size: 1.25rem; line-height: 1.2;">⚠️</span>
+      <div>
+        <strong style="color: var(--color-warning); font-family: var(--font-display); letter-spacing: 0.01em; display: block; margin-bottom: 0.15rem; font-size: 0.95rem;">Not financial, tax, or legal advice.</strong>
+        This is a simplified planning model — see <a href="#methodology-drawer" style="color: var(--color-warning); font-weight: 600;">how this calculator works</a> for the assumptions it makes and what it doesn't account for by default (state taxes, Roth withdrawal ordering rules). Consult a qualified professional before making retirement decisions.
+      </div>
+    </div>
+    <div id="example-data-banner" style="background: var(--color-primary-dim); border: 1px solid rgba(2, 132, 199, 0.15); border-radius: 1rem; padding: 0.85rem 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--text-muted);">
+      <span>You're viewing example numbers so you can see the calculator in action. Swap in your own balances whenever you're ready.</span>
+      <button type="button" id="btn-clear-example" class="btn-back">Clear example data</button>
     </div>
     <section class="control-bar" aria-label="Primary retirement controls">
       <div class="control-group">
@@ -88,6 +106,14 @@
           <span class="prefix">$</span>
           <input type="number" id="social-security" min="0" max="150000" step="500" value="4500">
         </div>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label-row">
+          <label for="ss-claim-age">SS Claiming Age</label>
+          <span class="control-value" id="val-ss-claim-age">67</span>
+        </div>
+        <input type="range" id="ss-claim-age" min="62" max="70" step="1" value="67" class="slider">
       </div>
     </section>
 
@@ -135,14 +161,14 @@
                 <label for="pretax-balance">Current Balance</label>
                 <div class="input-prefix-container">
                   <span class="prefix">$</span>
-                  <input type="number" id="pretax-balance" min="0" max="10000000" step="5000" value="0">
+                  <input type="number" id="pretax-balance" min="0" max="10000000" step="5000" value="150000">
                 </div>
               </div>
               <div class="input-group">
                 <label for="pretax-monthly">Monthly Add</label>
                 <div class="input-prefix-container">
                   <span class="prefix">$</span>
-                  <input type="number" id="pretax-monthly" min="0" max="10000" step="100" value="0">
+                  <input type="number" id="pretax-monthly" min="0" max="10000" step="100" value="800">
                 </div>
               </div>
             </div>
@@ -151,7 +177,7 @@
               <div class="input-group">
                 <label for="employer-match-rate">Employer Match (%)</label>
                 <div class="input-suffix-container">
-                  <input type="number" id="employer-match-rate" min="0" max="100" step="0.1" value="0">
+                  <input type="number" id="employer-match-rate" min="0" max="100" step="0.1" value="50">
                   <span class="suffix">%</span>
                 </div>
               </div>
@@ -171,14 +197,14 @@
                 <label for="roth-balance">Current Balance</label>
                 <div class="input-prefix-container">
                   <span class="prefix">$</span>
-                  <input type="number" id="roth-balance" min="0" max="10000000" step="5000" value="0">
+                  <input type="number" id="roth-balance" min="0" max="10000000" step="5000" value="40000">
                 </div>
               </div>
               <div class="input-group">
                 <label for="roth-monthly">Monthly Add</label>
                 <div class="input-prefix-container">
                   <span class="prefix">$</span>
-                  <input type="number" id="roth-monthly" min="0" max="10000" step="100" value="0">
+                  <input type="number" id="roth-monthly" min="0" max="10000" step="100" value="300">
                 </div>
               </div>
             </div>
@@ -190,15 +216,26 @@
                 <label for="taxable-balance">Brokerage / Cash Balance</label>
                 <div class="input-prefix-container">
                   <span class="prefix">$</span>
-                  <input type="number" id="taxable-balance" min="0" max="10000000" step="5000" value="0">
+                  <input type="number" id="taxable-balance" min="0" max="10000000" step="5000" value="60000">
                 </div>
               </div>
               <div class="input-group">
                 <label for="taxable-monthly">Monthly Add</label>
                 <div class="input-prefix-container">
                   <span class="prefix">$</span>
-                  <input type="number" id="taxable-monthly" min="0" max="20000" step="100" value="0">
+                  <input type="number" id="taxable-monthly" min="0" max="20000" step="100" value="400">
                 </div>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <div class="label-with-tooltip">
+                <label for="taxable-unrealized-gains">Unrealized Gains So Far <span class="label-info">(Optional)</span></label>
+                <span class="tooltip-icon" data-tooltip="How much of your current Brokerage / Cash balance is investment growth rather than money you put in. Used to estimate capital gains tax on withdrawals. Leave at $0 if unsure — we'll assume today's balance is all cost basis.">?</span>
+              </div>
+              <div class="input-prefix-container">
+                <span class="prefix">$</span>
+                <input type="number" id="taxable-unrealized-gains" min="0" max="10000000" step="1000" value="15000">
               </div>
             </div>
 
@@ -207,14 +244,14 @@
                 <label for="taxable-hysa-balance">HYSA Balance</label>
                 <div class="input-prefix-container">
                   <span class="prefix">$</span>
-                  <input type="number" id="taxable-hysa-balance" min="0" max="10000000" step="5000" value="0">
+                  <input type="number" id="taxable-hysa-balance" min="0" max="10000000" step="5000" value="20000">
                 </div>
               </div>
               <div class="input-group">
                 <label for="taxable-hysa-monthly">HYSA Monthly Add</label>
                 <div class="input-prefix-container">
                   <span class="prefix">$</span>
-                  <input type="number" id="taxable-hysa-monthly" min="0" max="20000" step="100" value="0">
+                  <input type="number" id="taxable-hysa-monthly" min="0" max="20000" step="100" value="100">
                 </div>
               </div>
             </div>
@@ -284,6 +321,54 @@
                 </div>
               </div>
             </div>
+
+            <div class="grid-2-col" style="align-items: end;">
+              <div class="input-group">
+                <div class="label-with-tooltip">
+                  <label for="capital-gains-rate">Capital Gains Tax Rate</label>
+                  <span class="tooltip-icon" data-tooltip="Applied to the growth portion of Taxable/Brokerage withdrawals, based on Unrealized Gains So Far plus growth since then.">?</span>
+                </div>
+                <div class="input-suffix-container">
+                  <input type="number" id="capital-gains-rate" min="0" max="40" step="0.1" value="15.0">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+
+              <div class="input-group">
+                <div class="label-with-tooltip">
+                  <label for="early-withdrawal-penalty">Early Withdrawal Penalty</label>
+                  <span class="tooltip-icon" data-tooltip="10% IRS penalty applied to Traditional 401k/IRA withdrawals before age 59½. Roth and Taxable withdrawal ordering rules are simplified and not separately penalized.">?</span>
+                </div>
+                <div class="input-suffix-container">
+                  <input type="number" id="early-withdrawal-penalty" min="0" max="25" step="0.1" value="10.0">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid-2-col" style="align-items: end;">
+              <div class="input-group">
+                <div class="label-with-tooltip">
+                  <label for="toggle-market-variability">Include Market Variability</label>
+                  <span class="tooltip-icon" data-tooltip="Off (default): returns compound at a fixed rate every year, same as the rest of this calculator. On: runs 300 simulated paths with random year-to-year returns and shows the 10th-90th percentile range on the charts, plus a Probability of Success estimate.">?</span>
+                </div>
+                <label class="switch-control">
+                  <input type="checkbox" id="toggle-market-variability">
+                  <span class="slider-switch"></span>
+                </label>
+              </div>
+
+              <div class="input-group">
+                <div class="label-with-tooltip">
+                  <label for="return-stdev">Return Volatility (Std Dev)</label>
+                  <span class="tooltip-icon" data-tooltip="How much a single year's return can swing above or below the averages above. Only used when Market Variability is on. ~12% is roughly historical for a diversified stock portfolio; lower it for a more conservative allocation.">?</span>
+                </div>
+                <div class="input-suffix-container">
+                  <input type="number" id="return-stdev" min="0" max="30" step="0.5" value="12.0">
+                  <span class="suffix">%</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -335,6 +420,11 @@
                 <span class="breakdown-label" id="kpi-max-income-aftertax-label">After Tax</span>
               </div>
             </div>
+          </div>
+          <div class="hud-card" id="kpi-probability-card" style="display:none;">
+            <span class="hud-label">Probability of Success</span>
+            <span class="hud-value" id="kpi-probability-success">—</span>
+            <span class="hud-desc">Share of 300 simulated market paths that don't run out of money before life expectancy</span>
           </div>
         </div>
 
@@ -400,6 +490,28 @@
           </details>
         </div>
 
+        <!-- Methodology / Assumptions Details Card -->
+        <div class="ledger-card">
+          <details id="methodology-drawer">
+            <summary class="ledger-summary">
+              <span>How This Calculator Works</span>
+              <span class="summary-arrow"></span>
+            </summary>
+            <div class="ledger-content" style="padding: 0.25rem 1.25rem 1.25rem;">
+              <ul style="margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+                <li><strong>Withdrawal order:</strong> each year's spending need (Desired Income minus Social Security) is drawn from Taxable/Brokerage first, then Traditional (Pre-Tax), then Roth last.</li>
+                <li><strong>Social Security:</strong> your benefit is scaled up or down from the amount you enter based on your SS Claiming Age (62-70), using the standard early/delayed-claiming reduction and credit curve. It doesn't start until that age, regardless of your retirement age.</li>
+                <li><strong>Traditional withdrawals</strong> are taxed at your Effective Tax Rate, plus a 10% early-withdrawal penalty on any amount withdrawn before age 59½.</li>
+                <li><strong>Taxable/Brokerage withdrawals</strong> are taxed at your Capital Gains Tax Rate, but only on the gain portion — tracked from your Unrealized Gains So Far input plus growth since then. HYSA balances are treated as 100% basis (their interest isn't separately taxed in this model).</li>
+                <li><strong>Roth withdrawals</strong> are never taxed, matching real Roth treatment for qualified distributions.</li>
+                <li><strong>Required Minimum Distributions:</strong> from age 73, a minimum Traditional withdrawal is forced each year using the IRS Uniform Lifetime Table, even if your desired spending is lower. Any RMD amount beyond what you spend moves into the Taxable bucket as already-taxed cash.</li>
+                <li><strong>Market variability (opt-in):</strong> by default every return is a flat assumed rate, same value every year. Turn on "Include Market Variability" (Market &amp; Economy card) to instead run 300 simulated paths with random year-to-year returns around your assumed averages, showing the 10th-90th percentile range on both charts and a Probability of Success estimate — a basic model of sequence-of-returns risk, not a full Monte Carlo engine with correlated asset classes.</li>
+                <li><strong>What's not modeled:</strong> state or local taxes, Roth contribution/conversion ordering and the 5-year rule, salary growth or contribution escalation over time, and employer match caps.</li>
+              </ul>
+            </div>
+          </details>
+        </div>
+
       </section>
     </div>
   </main>
@@ -451,6 +563,48 @@
           All account balances, salaries, and retirement goals remain 100% private inside your browser. No financial data is ever stored, tracked, or transmitted.
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Scenarios Modal: save/load/delete, shareable link, CSV export, compare -->
+  <div id="scenarios-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" style="max-height: min(85vh, 720px); overflow-y: auto;" role="dialog" aria-modal="true" aria-labelledby="scenarios-modal-title">
+      <button id="btn-close-scenarios" class="modal-close-button" aria-label="Close scenarios">&times;</button>
+      <h2 id="scenarios-modal-title" class="feature-modal-title">📁 Scenarios</h2>
+      <p class="feature-modal-intro">Save the current numbers, load them back later, share a link, export the ledger, or compare two scenarios side by side. Saved scenarios live only in this browser (localStorage) — nothing is uploaded.</p>
+
+      <div style="margin-bottom: 1.5rem;">
+        <h3 style="font-family: var(--font-display); font-size: 0.95rem; margin: 0 0 0.6rem;">Save current scenario</h3>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <input type="text" id="scenario-name-input" placeholder="e.g. Retire at 62" maxlength="60" style="flex: 1 1 200px; padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: inherit;">
+          <button type="button" id="btn-save-scenario" class="btn-back">Save</button>
+        </div>
+        <div id="scenario-save-status" style="font-size: 0.8rem; color: var(--color-success, #10b981); margin-top: 0.4rem; min-height: 1.1em;"></div>
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <h3 style="font-family: var(--font-display); font-size: 0.95rem; margin: 0 0 0.6rem;">Saved scenarios</h3>
+        <div id="saved-scenarios-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <div style="font-size: 0.8rem; opacity: 0.6;">No saved scenarios yet.</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <h3 style="font-family: var(--font-display); font-size: 0.95rem; margin: 0 0 0.6rem;">Compare two scenarios</h3>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+          <select id="compare-select-a" style="flex: 1 1 160px; padding: 0.5rem; border-radius: 8px; background: rgba(255,255,255,0.05); color: inherit; border: 1px solid rgba(255,255,255,0.2);"></select>
+          <span style="opacity: 0.6;">vs.</span>
+          <select id="compare-select-b" style="flex: 1 1 160px; padding: 0.5rem; border-radius: 8px; background: rgba(255,255,255,0.05); color: inherit; border: 1px solid rgba(255,255,255,0.2);"></select>
+          <button type="button" id="btn-compare-scenarios" class="btn-back">Compare</button>
+        </div>
+        <div id="compare-results" style="margin-top: 0.85rem;"></div>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.25rem;">
+        <button type="button" id="btn-copy-share-link" class="btn-back">🔗 Copy Share Link</button>
+        <button type="button" id="btn-export-csv" class="btn-back">⬇ Download Ledger as CSV</button>
+      </div>
+      <div id="share-link-status" style="font-size: 0.8rem; color: var(--color-success, #10b981); margin-top: 0.5rem; min-height: 1.1em;"></div>
     </div>
   </div>
 

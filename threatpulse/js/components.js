@@ -334,6 +334,15 @@
   // without reading the source name closely, especially once TAXII/JSON sources sit next to
   // blog RSS in the same column. Tier is config-driven (see config.json's per-feed "tier"),
   // resolved server-side, and shipped on item.source.tier.
+  // Icon shape per severity tier (used by createKanbanCardDOM's badge below) — each is a distinct
+  // silhouette (triangle / bolt / circle), not just a color swap, so the cue survives grayscale
+  // and colorblind viewing rather than relying on the card's border-left hue alone.
+  const SEVERITY_ICONS = {
+    warning: '<svg width="11" height="11" class="w-2.5 h-2.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>',
+    active: '<svg width="11" height="11" class="w-2.5 h-2.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"/></svg>',
+    info: '<svg width="11" height="11" class="w-2.5 h-2.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+  };
+
   const TIER_META = {
     gov: { icon: '🏛️', label: 'Government / CERT source' },
     vendor: { icon: '🏢', label: 'Vendor / commercial security research' },
@@ -359,11 +368,20 @@
     const tierMeta = getTierMeta(item.source && item.source.tier);
     const sourceLabel = `<span title="${escapeHtml(tierMeta.label)}">${tierMeta.icon} ${escapeHtml(item.source.name)}</span>`;
 
+    // Redundant non-color severity cue: each tier gets its own icon SHAPE (not just a color),
+    // so severity reads correctly for colorblind users and at a glance, not only via the card's
+    // border-left hue. "critical" already had one (the pulsing dot); "warning" previously used a
+    // semantically-mismatched cloud emoji; "active"/"info" had no cue at all (both silently fell
+    // through to the same plain .badge-subdued style).
     let sourceBadge = '';
     if (severity === 'critical') {
       sourceBadge = `<span class="badge-critical"><span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span> ${sourceLabel}</span>`;
     } else if (severity === 'warning') {
-      sourceBadge = `<span class="badge-warning">☁️ ${sourceLabel}</span>`;
+      sourceBadge = `<span class="badge-warning">${SEVERITY_ICONS.warning} ${sourceLabel}</span>`;
+    } else if (severity === 'active') {
+      sourceBadge = `<span class="badge-active">${SEVERITY_ICONS.active} ${sourceLabel}</span>`;
+    } else if (severity === 'info') {
+      sourceBadge = `<span class="badge-info">${SEVERITY_ICONS.info} ${sourceLabel}</span>`;
     } else {
       sourceBadge = `<span class="badge-subdued">${sourceLabel}</span>`;
     }

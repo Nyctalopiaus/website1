@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="styles.css?v=123" />
+  <link rel="stylesheet" href="styles.css?v=124" />
 </head>
 <body>
 
@@ -83,25 +83,67 @@
                   <span>What should count toward your score?</span>
                 </div>
                 <div class="pref-check-grid" id="pref-check-grid">
-                  <label class="pref-check"><input id="pref-trails" type="checkbox" checked /> Cycling &amp; Trail Networks</label>
-                  <label class="pref-check"><input id="pref-grocery" type="checkbox" checked /> Grocery Stores</label>
-                  <label class="pref-check"><input id="pref-fitness" type="checkbox" checked /> Fitness &amp; Athletics</label>
-                  <label class="pref-check"><input id="pref-cuisine" type="checkbox" checked /> Cuisine Matches</label>
-                  <label class="pref-check"><input id="pref-gas" type="checkbox" /> Gas Stations</label>
-                  <label class="pref-check"><input id="pref-parks" type="checkbox" /> Parks</label>
-                  <label class="pref-check"><input id="pref-pharmacy" type="checkbox" /> Pharmacies</label>
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-trails" type="checkbox" checked /> Cycling &amp; Trail Networks</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-trails" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-trails-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-trails" type="number" min="0.5" max="50" step="0.5" value="2" class="pref-target-input" /><span>mi</span></label>
+                    </div>
+                  </div>
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-grocery" type="checkbox" checked /> Grocery Stores</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-grocery" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-grocery-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-grocery" type="number" min="1" max="30" step="1" value="3" class="pref-target-input" /></label>
+                    </div>
+                  </div>
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-fitness" type="checkbox" checked /> Fitness &amp; Athletics</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-fitness" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-fitness-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-fitness" type="number" min="1" max="30" step="1" value="4" class="pref-target-input" /></label>
+                    </div>
+                  </div>
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-cuisine" type="checkbox" checked /> Cuisine Matches</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-cuisine" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-cuisine-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-cuisine" type="number" min="1" max="30" step="1" value="6" class="pref-target-input" /></label>
+                    </div>
+                  </div>
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-gas" type="checkbox" /> Gas Stations</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-gas" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-gas-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-gas" type="number" min="1" max="30" step="1" value="3" class="pref-target-input" /></label>
+                    </div>
+                  </div>
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-parks" type="checkbox" /> Parks</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-parks" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-parks-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-parks" type="number" min="1" max="30" step="1" value="3" class="pref-target-input" /></label>
+                    </div>
+                  </div>
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-pharmacy" type="checkbox" /> Pharmacies</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-pharmacy" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-pharmacy-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-pharmacy" type="number" min="1" max="30" step="1" value="2" class="pref-target-input" /></label>
+                    </div>
+                  </div>
                 </div>
-                <span class="slider-desc">Only selected categories contribute to your location match score.</span>
+                <span class="slider-desc">Only checked categories count toward your score. Priority controls how much each one is weighted; Target is how many (or how many miles of trail) count as "fully met."</span>
               </div>
 
               <div class="preferences-subcol">
                 <div class="input-group">
                   <div class="slider-header">
-                    <span>Maximum Desired Transit Radius</span>
+                    <span>Maximum Desired Radius (~13 mph pace)</span>
                     <span id="val-transit-radius" class="slider-val text-orange">10 min</span>
                   </div>
                   <input id="transit-radius" type="range" min="2" max="30" step="1" value="10" class="terminal-slider slider-orange" />
-                  <span class="slider-desc">All counts and score logic use this universal radius.</span>
+                  <span class="slider-desc">All counts and score logic use this universal radius, converted from minutes at a fixed ~13 mph pace (faster than walking, slower than driving).</span>
                 </div>
 
                 <div class="input-group border-top-divider">
@@ -122,6 +164,7 @@
 
           <div class="search-actions border-top-divider">
             <button id="btn-use-current" type="button" class="ghost-btn">Use Last Search</button>
+            <button id="btn-save-shortlist" type="button" class="ghost-btn">☆ Save to Shortlist</button>
             <button id="btn-export-report" type="button" class="ghost-btn">Export Report</button>
           </div>
 
@@ -144,6 +187,17 @@
               <button type="button" id="btn-retry-compare" class="btn-retry-pill" aria-label="Retry compare location search" title="Retry compare location lookup" hidden>🔄 Retry</button>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- Saved Shortlist (multiple candidate addresses, not just Primary/Compare) -->
+      <section class="panel-card shortlist-panel" id="shortlist-panel" hidden>
+        <div class="panel-header">
+          <span class="panel-icon">⭐</span>
+          <h2>Saved Shortlist</h2>
+        </div>
+        <div class="shortlist-list" id="shortlist-list">
+          <!-- Dynamic shortlist rows -->
         </div>
       </section>
 
@@ -177,6 +231,10 @@
           </div>
           <div id="match-score-explain" class="match-score-explain">Select preferences and run a search to see what this location matches well. Your 100-point Match Score is calculated by comparing nearby live amenities against the target goals shown below.</div>
 
+          <div id="related-tools-row" class="related-tools-row" hidden>
+            <a href="../mortgage-calculator/" class="related-tool-link">🏠 Estimate the mortgage for this move →</a>
+          </div>
+
           <div class="scoreboard-inline-wrap">
             <div class="scoreboard-inline-header">Selected Category Snapshot</div>
             <div class="scoreboard-list scoreboard-inline" id="scoreboard-list">
@@ -208,20 +266,6 @@
 
 
 
-      <!-- Live Activity Feed (Bottom - Currently Hidden) -->
-      <section class="panel-card scanner-panel" hidden style="display: none;">
-        <div class="panel-header">
-          <span class="panel-icon">💻</span>
-          <h2>Live Activity Feed</h2>
-        </div>
-        <div class="scanner-wrapper">
-          <div id="scanner-status" class="scanner-status">Idle. Waiting for your search.</div>
-          <div class="scanner-matrix-grid" id="scanner-grid">
-            <!-- Activity events are inserted dynamically -->
-          </div>
-        </div>
-      </section>
-
     </div>
   </main>
 
@@ -237,7 +281,7 @@
       <p class="feature-modal-intro">Follow these 4 steps to evaluate street address livability and compare target locations.</p>
       <ol class="quickstart-steps-list">
         <li><strong>1) Enter Target Address</strong> Type any candidate street address or city to trigger real-time spatial geocoding.</li>
-        <li><strong>2) Define Priority Weights</strong> Customize sliders for grocery proximity, parks, cycling trails, gyms, and dining preferences.</li>
+        <li><strong>2) Define Priority Weights &amp; Targets</strong> Check the categories you care about, set a 1-5 priority slider for how much each should count, and adjust its target (e.g. how many grocery stores, or how many miles of trail, counts as "fully met").</li>
         <li><strong>3) Set Transit Radius</strong> Adjust your transit time radius (2 to 30 minutes) to recalculate amenity counts instantly.</li>
         <li><strong>4) Compare Livability Scores</strong> Review the 100-point match scorecard and side-by-side comparison against alternative locations.</li>
       </ol>
@@ -259,7 +303,7 @@
       <p class="feature-modal-intro">A spatial analytics & livability assessment tool designed to evaluate street addresses against custom transit radii and real-world amenities.</p>
       <ul class="feature-modal-list">
         <li><strong>Street Address Geocoding:</strong> Real-time location lookup with automatic address autocomplete and spatial coordinate mapping.</li>
-        <li><strong>100-Point Match Score Engine:</strong> Custom scoring matrix comparing nearby amenities (grocery stores, cycling trails, gyms, parks, pharmacies) against personalized goals.</li>
+        <li><strong>100-Point Match Score Engine:</strong> Custom scoring matrix comparing nearby amenities (grocery stores, cycling trails, gyms, parks, pharmacies) against your own per-category priority weight and target goal.</li>
         <li><strong>Side-by-Side Location Comparison:</strong> Compare two street addresses simultaneously to evaluate relative livability scores and amenity density.</li>
         <li><strong>Dynamic Transit Radius:</strong> Adjust transit time boundaries (2 to 30 minutes) to recalculate amenity counts instantly.</li>
         <li><strong>Cuisine Matching:</strong> Specify custom cuisine tags (e.g. Thai, Vietnamese, Indian) to evaluate dining relevance.</li>
@@ -280,8 +324,8 @@
   <script src="logger.js?v=1"></script>
   <script src="geocoder.js?v=151"></script>
   <script src="autocomplete.js?v=143"></script>
-  <script src="spatial.js?v=148"></script>
-  <script src="scoring.js?v=142"></script>
-  <script src="app.js?v=210"></script>
+  <script src="spatial.js?v=149"></script>
+  <script src="scoring.js?v=143"></script>
+  <script src="app.js?v=211"></script>
 </body>
 </html>

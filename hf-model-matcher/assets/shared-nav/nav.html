@@ -1,0 +1,38 @@
+<!--
+  NYCTO'S AI LAB — SHARED NAVIGATION SNIPPET
+  ============================================
+  A drop-in top nav for any tool in the AI Lab suite. Self-contained: link
+  nav.css (or inline its contents) and paste this fragment right after
+  <body>. It has no dependency on the host page's own CSS - every rule in
+  nav.css is scoped under .nycto-nav-header and reads from its own --nav-*
+  custom properties (defined at the top of nav.css, with sane dark-mode
+  defaults matching this app's look), so dropping it into another tool can't
+  collide with or inherit that tool's own classes/variables.
+
+  To use in another tool:
+    1. Copy this file's <header> block into that page, right after <body>.
+    2. Copy nav.css next to that tool's own stylesheet and link it in <head>.
+    3. Replace the "TOOL NAME HERE" placeholder below with that tool's own
+       display name.
+    4. If that tool lives at a different depth under the Lab root than one
+       folder down, adjust the href="../" back-link to match.
+
+  Scope note: this was authored from inside the hf-model-matcher project
+  only - this session's file access didn't extend to the sibling tool
+  folders (the other ~10 tools under nycto.ninja), so it hasn't been rolled
+  out to any of them yet. Either Josh drops it into each sibling tool by
+  hand, or a future session granted access to the parent
+  "AI Projects/Website1/vm_code/" folder can apply it lab-wide.
+-->
+<header class="nycto-nav-header">
+    <div class="nycto-nav-container">
+        <div class="nycto-nav-identity">
+            <a href="../" class="nycto-nav-back" title="Back to Nycto's AI Lab">← Back to Lab</a>
+            <div class="nycto-nav-breadcrumb">
+                <span class="nycto-nav-badge" title="One of several tools in Nycto's AI Lab">🧪 Nycto's AI Lab</span>
+                <span class="nycto-nav-sep" aria-hidden="true">/</span>
+                <span class="nycto-nav-title"><!-- TOOL NAME HERE --></span>
+            </div>
+        </div>
+    </div>
+</header>

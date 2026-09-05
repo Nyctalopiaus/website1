@@ -15,6 +15,8 @@
    redisplay a model's speed rating and workflow-fit tag.
    ========================================================================== */
 
+import { estimateBandwidthGBs, getEffectiveBudgetGb } from './gpu-catalog.js';
+
 // Helper: KV-Cache Overhead Calculator
 function getKvCacheOverhead(contextK) {
     const map = { 4: 0.4, 8: 0.8, 16: 1.5, 32: 3.5, 64: 5.5, 128: 8.0 };
@@ -98,9 +100,10 @@ async function getExactKvCacheGb(baseModelId, contextK) {
 // Q4_K_M runs closer to ~4.5-5 effective bits/weight than a clean 4), plus the
 // real architecture-derived KV-cache size when the repo tags its base model.
 // Mirrors backend/hf_client.py's get_exact_gguf_info() - see that docstring for
-// the full rationale. Only called for the 3 (deduped) hero picks after
-// selection, never the full search batch. Returns null on any failure so
-// callers always have a safe fallback to the estimate.
+// the full rationale. Called over a bounded pre-hero-selection verification
+// slice (top-by-score + smallest-by-params among the vetted pool - see
+// runClientSideEngine below), never the full search batch. Returns null on
+// any failure so callers always have a safe fallback to the estimate.
 async function getExactGgufInfo(repoId, quantBits, contextK) {
     let data;
     try {
@@ -149,28 +152,73 @@ async function getExactGgufInfo(repoId, quantBits, contextK) {
     return Object.keys(result).length > 0 ? result : null;
 }
 
-// Helper: Generation Speed Status Rating
-export function getGenerationSpeed(vramReqTotal, userVramGb) {
-    const pct = (vramReqTotal / Math.max(userVramGb, 1.0)) * 100.0;
-    if (vramReqTotal <= userVramGb) {
-        if (pct <= 80.0) {
+// Fallback bandwidth (GB/s) used only if a caller doesn't pass one - matches
+// the mid-tier consumer-GPU estimate in gpu-catalog.js's estimateBandwidthGBs.
+const DEFAULT_BANDWIDTH_GBS = 500;
+
+// Real-world sustained throughput lands well below a GPU's theoretical peak
+// bandwidth (attention/kernel overhead, batch-of-1 inefficiency, etc.) - this
+// factor calibrates the roofline estimate toward realistic single-stream
+// llama.cpp-style numbers (e.g. ~80-100 t/s for a 7B Q4 model on a 24GB
+// consumer card, ~15-25 t/s for a 32B Q4 model on the same card) rather than
+// the much higher numbers a naive bandwidth/weight-size division would give.
+const SUSTAINED_THROUGHPUT_EFFICIENCY = 0.35;
+
+// Helper: Generation Speed Status Rating.
+//
+// Previously this was purely "does it fit in VRAM, and with how much
+// headroom" (a percentage of the user's total budget) - which meant a 1.5B
+// model and a 30B model could both land in the same "Blistering" bucket as
+// long as each individually cleared the VRAM-fit threshold, even though real
+// single-stream decode speed drops substantially as parameter count rises on
+// the same GPU. Local LLM decode is memory-bandwidth-bound: each generated
+// token requires streaming the model's active weights through memory once, so
+// a simple roofline estimate - GPU bandwidth (GB/s) divided by the model's
+// weight size (GB) - is a much better proxy for realistic tokens/sec than
+// VRAM-fit percentage alone. Known simplification: this treats every param as
+// "active" per token, which over-estimates cost for sparse/MoE architectures
+// (e.g. Qwen3-Coder-30B-A3B only activates ~3B params per token) - the same
+// simplification the existing VRAM-sizing math already makes elsewhere in
+// this file, not a new limitation introduced here.
+// CPU/RAM-bound inference is dramatically slower and far less uniform across
+// hardware (RAM channel count/speed, AVX512 support, thread count all matter
+// far more here than on a GPU) than the bandwidth-roofline model above -
+// deliberately a rough, size-only bucket table rather than a bandwidth
+// estimate, and labeled "(rough)" in the UI so it doesn't read as precise as
+// the GPU badges.
+function getCpuSpeedTier(paramsB) {
+    const p = paramsB || 7;
+    if (p <= 4) {
+        return {
+            level: 'cpu', label: '🖥️ CPU Estimate (rough): ~5–15 t/s', badge_class: 'badge-speed-cpu',
+            tps: '~5–15 t/s', desc: 'Rough CPU/RAM-bound estimate - actual speed varies a lot by RAM speed & CPU core count'
+        };
+    }
+    if (p <= 14) {
+        return {
+            level: 'cpu', label: '🖥️ CPU Estimate (rough): ~2–6 t/s', badge_class: 'badge-speed-cpu',
+            tps: '~2–6 t/s', desc: 'Rough CPU/RAM-bound estimate - actual speed varies a lot by RAM speed & CPU core count'
+        };
+    }
+    return {
+        level: 'cpu', label: '🖥️ CPU Estimate (rough): <2 t/s', badge_class: 'badge-speed-cpu',
+        tps: '<2 t/s', desc: 'Rough CPU/RAM-bound estimate - large models are very slow to run without a GPU'
+    };
+}
+
+export function getGenerationSpeed(model, userBudgetGb, gpuBandwidthGBs, cpuOnly = false) {
+    const fits = model.vram_req_gb <= userBudgetGb;
+
+    if (!fits) {
+        if (cpuOnly) {
             return {
-                level: 'blistering',
-                label: '🟢 Blistering (30–60+ t/s)',
-                badge_class: 'badge-speed-blistering',
-                tps: '30–60+ t/s',
-                desc: '100% inside GPU VRAM'
-            };
-        } else {
-            return {
-                level: 'moderate',
-                label: '🟡 Moderate (12–25 t/s)',
-                badge_class: 'badge-speed-moderate',
-                tps: '12–25 t/s',
-                desc: 'Fits in VRAM with tight context room'
+                level: 'spillover',
+                label: '🔴 Exceeds RAM Budget',
+                badge_class: 'badge-speed-spillover',
+                tps: 'N/A',
+                desc: 'Larger than your available System RAM budget - will not run without swapping to disk'
             };
         }
-    } else {
         return {
             level: 'spillover',
             label: '🔴 Slow Spillover (2–8 t/s)',
@@ -179,6 +227,40 @@ export function getGenerationSpeed(vramReqTotal, userVramGb) {
             desc: 'Pushed past GPU VRAM into System RAM'
         };
     }
+
+    if (cpuOnly) {
+        return getCpuSpeedTier(model.params_b);
+    }
+
+    const bandwidth = gpuBandwidthGBs || DEFAULT_BANDWIDTH_GBS;
+    const weightGb = Math.max(model.vram_weight_gb || model.vram_req_gb, 0.1);
+    const estimatedTps = (bandwidth * SUSTAINED_THROUGHPUT_EFFICIENCY) / weightGb;
+
+    if (estimatedTps >= 30) {
+        return {
+            level: 'blistering',
+            label: '🟢 Blistering (30–60+ t/s)',
+            badge_class: 'badge-speed-blistering',
+            tps: '30–60+ t/s',
+            desc: '100% inside GPU VRAM, small relative to your GPU’s memory bandwidth'
+        };
+    }
+    if (estimatedTps >= 12) {
+        return {
+            level: 'moderate',
+            label: '🟡 Moderate (12–25 t/s)',
+            badge_class: 'badge-speed-moderate',
+            tps: '12–25 t/s',
+            desc: 'Fits in VRAM, but sized large enough relative to your GPU to slow decoding'
+        };
+    }
+    return {
+        level: 'slow',
+        label: '🟠 Slow (fits, but <12 t/s)',
+        badge_class: 'badge-speed-slow',
+        tps: '<12 t/s',
+        desc: 'Fits in VRAM, but this model is large relative to your GPU’s memory bandwidth'
+    };
 }
 
 // Helper: Workflow Suitability Badging
@@ -312,8 +394,13 @@ export async function runClientSideEngine(params) {
         if (filtered.length > 0) rawModels = filtered;
     }
     const dataSource = anyLiveResults ? 'live' : 'fallback';
-    const userVram = Math.max(params.vramGb, 1.0);
+    const cpuOnly = params.gpuVendor === 'cpu';
+    // Mirrors backend/engine.py's score_models cpu_only branch: no VRAM
+    // concept exists in CPU mode, so the fit-gate budget becomes system RAM
+    // minus a fixed OS/app reserve instead (see getEffectiveBudgetGb).
+    const userVram = getEffectiveBudgetGb(params);
     const kvOverhead = getKvCacheOverhead(params.contextK || 16);
+    const gpuBandwidth = estimateBandwidthGBs(params.gpuVendor, params.gpuBaseVram);
     const surviving = [];
 
     rawModels.forEach(m => {
@@ -360,7 +447,7 @@ export async function runClientSideEngine(params) {
             const nameParts = repoId.split('/');
             const author = nameParts.length > 1 ? nameParts[0] : 'Community';
             const name = nameParts.length > 1 ? nameParts[1] : repoId;
-            const speedObj = getGenerationSpeed(vramReqTotal, userVram);
+            const speedObj = getGenerationSpeed({ vram_req_gb: vramReqTotal, vram_weight_gb: vramWeight, params_b: paramsB }, userVram, gpuBandwidth, cpuOnly);
 
             surviving.push({
                 id: repoId,
@@ -377,6 +464,16 @@ export async function runClientSideEngine(params) {
                 trending_score: trendingScore,
                 task_boost: taskBoost,
                 generation_speed: speedObj,
+                // Uniform defaults on every row (mirrors backend/engine.py's
+                // score_models) - the verification pass below only actually
+                // checks a bounded slice of this list, so everything outside
+                // that slice keeps these honest "not checked" defaults rather
+                // than silently looking identical to a verified row.
+                vram_source: 'estimated',
+                kv_overhead_source: 'estimated',
+                verified_gguf: null,
+                hero_eligible: true,
+                cpu_only: cpuOnly,
                 run_instructions: {
                     ollama: `ollama run ${name.toLowerCase()}`,
                     vllm: `python -m vllm.entrypoints.openai.api_server --model ${repoId}`,
@@ -415,8 +512,71 @@ export async function runClientSideEngine(params) {
 
     surviving.sort((a, b) => b.recommendation_score - a.recommendation_score);
 
+    // Real GGUF verification runs BEFORE hero selection, over a bounded slice of
+    // the pool - not just the eventual 3 winners after the fact. `isGguf` above
+    // (the ingestion-time gate) is a cheap tag/substring heuristic, not a real
+    // check against the repo's actual files, so a model that heuristically looks
+    // GGUF-tagged but isn't could otherwise win a hero slot with fully-computed
+    // but fake quantized VRAM numbers. Mirrors backend/main.py's verification
+    // ordering (kept in sync by hand, same as everything else in this file).
+    //
+    // Bounded set: top ~6 by score (covers best_overall/max_capability) + bottom
+    // ~2 by params_b (covers speed_demon) among the vetted pool - smaller than
+    // the backend's ~15 since this runs synchronously in the user's own browser.
+    const vettedForVerification = surviving.filter(m => (m.downloads || 0) >= 1000 && (m.likes || 0) >= 5);
+    const verificationPool = vettedForVerification.length > 0 ? vettedForVerification : surviving;
+    const topByScore = [...verificationPool].sort((a, b) => b.recommendation_score - a.recommendation_score).slice(0, 6);
+    const bottomByParams = [...verificationPool].sort((a, b) => a.params_b - b.params_b).slice(0, 2);
+    const verificationCandidates = [...new Map([...topByScore, ...bottomByParams].map(m => [m.id, m])).values()];
+
+    const verifyContextK = params.contextK || 16;
+    await Promise.all(verificationCandidates.map(async (m) => {
+        const verified = await getExactGgufInfo(m.id, 4, verifyContextK); // client engine always sizes weights at 4-bit today
+
+        if (verified && verified.exactWeightGb) {
+            m.vram_weight_gb = verified.exactWeightGb;
+            m.vram_source = 'exact';
+            m.verified_gguf = true;
+            m.matched_quant_files = verified.matchedFiles;
+            if (verified.exactParamsB) m.exact_params_b = verified.exactParamsB;
+            if (verified.nativeContextLength) m.native_context_length = verified.nativeContextLength;
+        } else {
+            // Actually looked up and found no real .gguf file - distinct from
+            // "never checked" (verified_gguf stays null on every model outside
+            // this verification slice). Excluded from hero eligibility below,
+            // but kept in the table with this flag rather than hidden outright.
+            m.vram_source = 'estimated';
+            m.verified_gguf = false;
+            m.hero_eligible = false;
+        }
+
+        if (verified && verified.exactKvOverheadGb) {
+            m.kv_overhead_gb = verified.exactKvOverheadGb;
+            m.kv_overhead_source = 'exact';
+            m.kv_architecture = verified.kvArchitecture;
+        } else {
+            m.kv_overhead_source = 'estimated';
+        }
+
+        // Recompute totals once, after both pieces (weight, KV) have had their
+        // chance to be upgraded independently - either, both, or neither may
+        // have come back exact.
+        m.vram_req_gb = Math.round((m.vram_weight_gb + m.kv_overhead_gb) * 100) / 100;
+        m.vram_usage_pct = Math.min(Math.round((m.vram_req_gb / userVram) * 1000) / 10, 100);
+        // Re-derive the speed badge too, now that vram_weight_gb may have been
+        // upgraded from the params-based estimate to the model's real file size.
+        m.generation_speed = getGenerationSpeed(m, userVram, gpuBandwidth, cpuOnly);
+    }));
+
     const vettedPool = surviving.filter(m => (m.downloads || 0) >= 1000 && (m.likes || 0) >= 5);
-    const heroPool = vettedPool.length > 0 ? vettedPool : surviving;
+    let heroPool = (vettedPool.length > 0 ? vettedPool : surviving).filter(m => m.hero_eligible !== false);
+    if (heroPool.length === 0) {
+        // Everything vetted failed real verification - fall back to the full
+        // scored list rather than showing empty hero cards, still respecting
+        // hero_eligible where possible.
+        const eligibleAll = surviving.filter(m => m.hero_eligible !== false);
+        heroPool = eligibleAll.length > 0 ? eligibleAll : surviving;
+    }
 
     // Range matches backend/engine.py's sweet_spot (60-88%) - was 48-92% here, a
     // wider window that could pick a different "Best Overall" than the backend
@@ -439,13 +599,13 @@ export async function runClientSideEngine(params) {
     // Backend/engine.py de-dupes the three hero picks (used_ids) so the same model
     // never fills two "different" hero slots; that logic wasn't ported here, so a
     // small candidate pool could show one model recommended 2-3 times under
-    // different labels. Mirror the backend's reassignment approach, searching the
-    // full surviving list (not just heroPool) for a replacement.
+    // different labels. Mirror the backend's reassignment approach, searching
+    // heroPool (already filtered to hero-eligible) for a replacement.
     const usedIds = new Set();
     if (heroBest) usedIds.add(heroBest.id);
 
     if (heroSpeed && usedIds.has(heroSpeed.id)) {
-        const others = surviving.filter(m => !usedIds.has(m.id));
+        const others = heroPool.filter(m => !usedIds.has(m.id));
         if (others.length > 0) {
             heroSpeed = [...others].sort((a, b) => a.params_b - b.params_b)[0];
         }
@@ -453,47 +613,11 @@ export async function runClientSideEngine(params) {
     if (heroSpeed) usedIds.add(heroSpeed.id);
 
     if (heroMax && usedIds.has(heroMax.id)) {
-        const others = surviving.filter(m => !usedIds.has(m.id));
+        const others = heroPool.filter(m => !usedIds.has(m.id));
         if (others.length > 0) {
             heroMax = [...others].sort((a, b) => b.params_b - a.params_b)[0];
         }
     }
-
-    // Verify the (up to 3, deduped) hero picks against their real .gguf file size
-    // AND real architecture-derived KV-cache size, in parallel, replacing both
-    // estimates with exact numbers where possible. Mirrors backend/main.py's
-    // verification pass so both engines get the same accuracy upgrade. Scoped to
-    // just the heroes, never the full candidate list.
-    const verifyContextK = params.contextK || 16;
-    const heroModels = [heroBest, heroSpeed, heroMax].filter(Boolean);
-    const uniqueHeroesById = [...new Map(heroModels.map(m => [m.id, m])).values()];
-    await Promise.all(uniqueHeroesById.map(async (m) => {
-        const verified = await getExactGgufInfo(m.id, 4, verifyContextK); // client engine always sizes weights at 4-bit today
-
-        if (verified && verified.exactWeightGb) {
-            m.vram_weight_gb = verified.exactWeightGb;
-            m.vram_source = 'exact';
-            m.matched_quant_files = verified.matchedFiles;
-            if (verified.exactParamsB) m.exact_params_b = verified.exactParamsB;
-            if (verified.nativeContextLength) m.native_context_length = verified.nativeContextLength;
-        } else {
-            m.vram_source = 'estimated';
-        }
-
-        if (verified && verified.exactKvOverheadGb) {
-            m.kv_overhead_gb = verified.exactKvOverheadGb;
-            m.kv_overhead_source = 'exact';
-            m.kv_architecture = verified.kvArchitecture;
-        } else {
-            m.kv_overhead_source = 'estimated';
-        }
-
-        // Recompute totals once, after both pieces (weight, KV) have had their
-        // chance to be upgraded independently - either, both, or neither may
-        // have come back exact.
-        m.vram_req_gb = Math.round((m.vram_weight_gb + m.kv_overhead_gb) * 100) / 100;
-        m.vram_usage_pct = Math.min(Math.round((m.vram_req_gb / userVram) * 1000) / 10, 100);
-    }));
 
     return {
         source: dataSource,

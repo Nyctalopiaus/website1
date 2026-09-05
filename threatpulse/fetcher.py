@@ -776,7 +776,13 @@ def build_feed_manifest(config: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "category_id": category.get("id"),
                 "category_name": category.get("name"),
                 "tier": feed.get("tier", "aggregator"),
-                "enabled": feed.get("enabled") is not False
+                "enabled": feed.get("enabled") is not False,
+                # General engineering/homelab blogs (Tailscale, Pi-hole, etc.) mixed into the
+                # "Informational & Research" category aren't core threat intel. This rides along
+                # in the manifest (and gets mirrored onto each item's source object below) so the
+                # front-end can offer a default-off "include homelab content" toggle without
+                # touching category_id or the Kanban column-routing logic.
+                "engineering_homelab": feed.get("engineering_homelab", False)
             })
     return manifest
 
@@ -794,6 +800,7 @@ def generate_static_json(conn: sqlite3.Connection, feeds_processed: int, feeds_f
     """
     feed_manifest = feed_manifest or []
     source_tier_map = {f["id"]: f["tier"] for f in feed_manifest}
+    source_lab_map = {f["id"]: bool(f.get("engineering_homelab")) for f in feed_manifest}
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     cursor = conn.cursor()
 
@@ -829,7 +836,8 @@ def generate_static_json(conn: sqlite3.Connection, feeds_processed: int, feeds_f
                 "name": source_name,
                 "category_id": category_id,
                 "category_name": category_name,
-                "tier": source_tier_map.get(source_id, "aggregator")
+                "tier": source_tier_map.get(source_id, "aggregator"),
+                "is_lab_content": source_lab_map.get(source_id, False)
             },
             "link": link,
             "published_at": published_at,

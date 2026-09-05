@@ -9,7 +9,7 @@
  */
 
 import { CONFIG, DEFAULTS } from './config.js';
-import { parseFloatSafe, parseIntSafe, mergeDefaults } from './utils.js';
+import { parseFloatSafe, parseIntSafe, mergeDefaults, setVisible } from './utils.js';
 
 /**
  * Loads calculator state from localStorage
@@ -49,6 +49,36 @@ export function saveInputs(data) {
 }
 
 /**
+ * Encodes calculator state into a URL-safe string for the "Copy Link" share
+ * feature — same JSON shape as the localStorage blob, just percent-encoded
+ * into a query-string value instead of written to disk. Never touches a
+ * server: the numbers live entirely in the link itself, so sharing one
+ * doesn't compromise the "100% Private & Local" promise shown in the UI.
+ * @param {Object} data - Same shape as saveInputs()'s argument (see buildSaveData() in app.js)
+ * @returns {string} Percent-encoded JSON, safe to use as a query param value
+ */
+export function encodeStateForSharing(data) {
+  return encodeURIComponent(JSON.stringify(data));
+}
+
+/**
+ * Reverses encodeStateForSharing(). Returns null on any malformed input
+ * (hand-edited URL, truncated copy/paste, a link from a much older version
+ * of this app, etc.) so the caller can fall back to the normal localStorage
+ * load instead of crashing on startup.
+ * @param {string} encoded
+ * @returns {Object|null}
+ */
+export function decodeStateFromSharing(encoded) {
+  try {
+    return JSON.parse(decodeURIComponent(encoded));
+  } catch (error) {
+    console.error('[ERROR] Failed to decode shared calculator link:', error);
+    return null;
+  }
+}
+
+/**
  * Applies loaded data to DOM input elements
  * @param {Object} data - Loaded state
  * @param {Object} domRefs - Object containing DOM element references
@@ -72,6 +102,15 @@ export function applyLoadedDataToDOM(data, domRefs) {
   safeSet(domRefs.pmiRateInput, data.pmiRate);
   safeSet(domRefs.grossAnnualIncomeInput, data.grossAnnualIncome);
   safeSet(domRefs.otherMonthlyDebtsInput, data.otherMonthlyDebts);
+  // Max Affordability solver + Cash-to-Close tally. The credit-score band's
+  // suggested-DTI note is re-rendered separately by app.js (it isn't a
+  // simple value-based restore since it also needs the lookup-table note text).
+  safeSet(domRefs.targetBackEndDTIInput, data.targetBackEndDTI !== undefined ? data.targetBackEndDTI : CONFIG.DEFAULT_TARGET_BACKEND_DTI);
+  safeSet(domRefs.creditScoreBandInput, data.creditScoreBand || '');
+  safeSet(domRefs.closingCostPercentInput, data.closingCostPercent !== undefined ? data.closingCostPercent : CONFIG.DEFAULT_CLOSING_COST_PERCENT);
+  safeSet(domRefs.reserveMonthsInput, data.reserveMonths !== undefined ? data.reserveMonths : CONFIG.DEFAULT_RESERVE_MONTHS);
+  safeSet(domRefs.extraProjectCashInput, data.extraProjectCash || 0);
+  safeSet(domRefs.cashAvailableInput, data.cashAvailable || 0);
   // Income-basis toggle, pay frequency, and the fine-tune slider/number
   // field are all restored by app.js (setIncomeBasis()/setPayFrequency())
   // right after this runs — not simple value-based restores, since the
@@ -98,7 +137,7 @@ export function applyLoadedDataToDOM(data, domRefs) {
   }
 
   if (domRefs.biweeklyExtraContainer) {
-    domRefs.biweeklyExtraContainer.style.display = (freq === 'biweekly' || freq === 'accelerated') ? 'block' : 'none';
+    setVisible(domRefs.biweeklyExtraContainer, freq === 'biweekly' || freq === 'accelerated');
   }
 
   // "Have a house to sell?" section. The checkbox's checked state and the
@@ -114,6 +153,8 @@ export function applyLoadedDataToDOM(data, domRefs) {
   safeSet(domRefs.sellConcessionsInput, data.sellConcessions);
   safeSet(domRefs.sellMovingCostsInput, data.sellMovingCosts);
   safeSet(domRefs.sellProceedsPercentSliderInput, data.sellProceedsPercent);
+  safeSet(domRefs.asIsSaleValueInput, data.asIsSaleValue !== undefined ? data.asIsSaleValue : CONFIG.DEFAULT_AS_IS_SALE_VALUE);
+  safeSet(domRefs.asIsMonthsSavedInput, data.asIsMonthsSaved !== undefined ? data.asIsMonthsSaved : CONFIG.DEFAULT_AS_IS_MONTHS_SAVED);
 
   // Bridge Loan mode fields. saleMode itself (which sub-panel is visible)
   // is restored by app.js's setSaleMode() right after this runs — not
@@ -124,6 +165,17 @@ export function applyLoadedDataToDOM(data, domRefs) {
   safeSet(domRefs.bridgeLoanRateInput, data.bridgeLoanRate);
   safeSet(domRefs.bridgeLoanFeesPercentInput, data.bridgeLoanFeesPercent);
   safeSet(domRefs.recastFeeInput, data.recastFee);
+
+  // Keep as Rental mode fields. saleMode itself is restored by app.js's
+  // setSaleMode() right after this runs, same as the other sub-modes.
+  safeSet(domRefs.rentalProjectedMonthlyRentInput, data.rentalProjectedMonthlyRent !== undefined ? data.rentalProjectedMonthlyRent : CONFIG.DEFAULT_RENTAL_PROJECTED_RENT);
+  safeSet(domRefs.rentalOffsetPercentInput, data.rentalOffsetPercent !== undefined ? data.rentalOffsetPercent : CONFIG.DEFAULT_RENTAL_OFFSET_PERCENT);
+  // Rental down-payment funding sub-choice (Cash Only vs. HELOC). The mode
+  // itself (which sub-panel is visible) is restored by app.js's
+  // setRentalFundingMode() right after this runs, same pattern as saleMode.
+  safeSet(domRefs.rentalHelocAmountInput, data.rentalHelocAmount || 0);
+  safeSet(domRefs.rentalHelocRateInput, data.rentalHelocRate !== undefined ? data.rentalHelocRate : CONFIG.DEFAULT_RENTAL_HELOC_RATE);
+  safeSet(domRefs.rentalHelocPaymentInput, data.rentalHelocPayment || 0);
 }
 
 /**

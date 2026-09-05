@@ -143,6 +143,12 @@ body {
   border: 1px solid var(--color-red-border);
 }
 
+.status-checking {
+  background-color: rgba(148, 163, 184, 0.12);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
@@ -154,6 +160,17 @@ body {
 .last-check-meta {
   font-size: 0.775rem;
   color: var(--text-muted);
+}
+
+/* Fallback / Stale Data Banner */
+.fallback-banner {
+  background-color: var(--color-amber-bg);
+  border: 1px solid var(--color-amber-border);
+  color: var(--color-amber);
+  border-radius: 10px;
+  padding: 0.75rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 
 /* Main Container */
@@ -346,6 +363,31 @@ body {
   border-radius: 9999px;
 }
 
+.chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.app-filter-select {
+  background-color: rgba(15, 23, 42, 0.7);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.775rem;
+  font-weight: 600;
+  padding: 0.4rem 0.65rem;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+}
+
+.app-filter-select:hover,
+.app-filter-select:focus {
+  border-color: var(--border-hover);
+}
+
 .timeframe-selector {
   display: inline-flex;
   align-items: center;
@@ -407,8 +449,9 @@ body {
 
 /* Applications Grid */
 .apps-grid {
-  columns: 2 340px;
-  column-gap: 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.25rem;
 }
 
 .app-card {
@@ -420,13 +463,12 @@ body {
   flex-direction: column;
   gap: 0.85rem;
   transition: all 0.2s ease;
-  break-inside: avoid;
-  margin-bottom: 1.25rem;
   width: 100%;
 }
 
 .app-card.featured-card {
-  /* Featured multi-item cards display full-width within column flow */
+  /* Apps with many endpoints span the full grid width instead of being squeezed into one column */
+  grid-column: 1 / -1;
   background-color: rgba(15, 23, 42, 0.7);
 }
 
@@ -476,15 +518,6 @@ body {
 .endpoint-name {
   font-weight: 600;
   color: var(--text-main);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.endpoint-url-sub {
-  font-size: 0.725rem;
-  color: var(--text-dark);
-  font-family: monospace;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -580,6 +613,20 @@ body {
 
 .terminal-row {
   line-height: 1.4;
+}
+
+.terminal-row.incident-ongoing {
+  color: var(--color-amber);
+}
+
+.terminal-row.incident-resolved {
+  color: var(--text-dark);
+}
+
+#incident-history-rows:not(:empty) {
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px dashed var(--border-color);
 }
 
 /* Modal Overlay & Admin Auth */

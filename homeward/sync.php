@@ -28,6 +28,21 @@
 // calling this endpoint and tells the user to use JSON Backup instead for a
 // full copy with photos. This endpoint also rejects an oversized body as a
 // second line of defense.
+//
+// Auto-Backup (added 2026-09-03): a second, non-expiring flavor of the same
+// push/pull primitive above, for a different problem. Push/pull moves a
+// tour to a *specific other device on purpose*, on request, and expires in
+// 14 days; auto-backup is a silent safety net against losing the only copy
+// (browser data cleared, crashed profile, new machine), written
+// automatically by js/storage.js after every save, and never expires on
+// its own (overwritten/refreshed on every write instead). Same trust model
+// as push/pull — a random id is the only credential, no accounts — just
+// keyed by a stable per-browser id instead of a freshly-generated code.
+//   POST sync.php   body: {"action":"autobackup","deviceId":"<hex id>","tour":{...}}
+//                    -> {"ok":true,"savedAt":"<ISO8601>"}
+//   GET  sync.php?autobackup=<deviceId>
+//                    -> {"ok":true,"tour":{...},"savedAt":"<ISO8601>"}
+//                    -> {"ok":false,"error":"not_found"} (HTTP 404) if none saved yet
 
 header('Content-Type: application/json');
 
@@ -39,6 +54,12 @@ define('SYNC_CODE_ALPHABET', 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789');
 define('SYNC_TTL_SECONDS', 14 * 24 * 3600); // 14 days
 define('SYNC_MAX_BODY_BYTES', 4 * 1024 * 1024); // 4MB — see note above on photos
 define('SYNC_DIR', __DIR__ . '/.sync-cache');
+// Auto-backup ids are client-generated hex strings (see js/storage.js
+// getOrCreateBackupDeviceId) — bounded length/charset so the id can't be
+// used to construct a path outside SYNC_DIR, and kept visually distinct
+// from the uppercase push/pull alphabet.
+define('AUTOBACKUP_ID_PATTERN', '/^[a-f0-9]{16,64}$/');
+define('AUTOBACKUP_FILE_PREFIX', 'autobackup-');
 
 function sync_fail($httpCode, $error) {
     http_response_code($httpCode);
@@ -62,14 +83,25 @@ function sync_code_path($code) {
     return SYNC_DIR . '/' . $code . '.json';
 }
 
-// Opportunistic cleanup of expired entries. Cheap at the scale this tool
-// actually runs at (a handful of files for one user), so it's fine to run
-// on every request rather than adding a cron job for it.
+function autobackup_path($deviceId) {
+    return SYNC_DIR . '/' . AUTOBACKUP_FILE_PREFIX . $deviceId . '.json';
+}
+
+// Opportunistic cleanup of expired push/pull entries. Cheap at the scale
+// this tool actually runs at (a handful of files for one user), so it's
+// fine to run on every request rather than adding a cron job for it.
+// Auto-backup files (autobackup-*.json) are deliberately skipped here —
+// they're the safety net and don't expire on the push/pull TTL; see
+// AUTOBACKUP_STALE_SECONDS below for their own, much longer, cleanup.
 function sync_cleanup_expired() {
     $files = @glob(SYNC_DIR . '/*.json');
     if (!$files) return;
     $now = time();
+    $prefixLen = strlen(AUTOBACKUP_FILE_PREFIX);
     foreach ($files as $file) {
+        if (substr(basename($file), 0, $prefixLen) === AUTOBACKUP_FILE_PREFIX) {
+            continue;
+        }
         $raw = @file_get_contents($file);
         $entry = $raw ? json_decode($raw, true) : null;
         if (!is_array($entry) || !isset($entry['savedAt']) || ($now - $entry['savedAt']) > SYNC_TTL_SECONDS) {
@@ -114,6 +146,28 @@ if ($method === 'POST') {
         sync_fail(400, 'invalid_request');
     }
 
+    if ($body['action'] === 'autobackup') {
+        $deviceId = isset($body['deviceId']) ? (string)$body['deviceId'] : '';
+        if (!preg_match(AUTOBACKUP_ID_PATTERN, $deviceId)) {
+            sync_fail(400, 'invalid_device_id');
+        }
+
+        $tour = isset($body['tour']) ? $body['tour'] : null;
+        if (!is_array($tour) || !isset($tour['stops']) || !is_array($tour['stops'])) {
+            sync_fail(400, 'invalid_tour');
+        }
+
+        $now = time();
+        $entry = ['tour' => $tour, 'savedAt' => $now];
+        $written = @file_put_contents(autobackup_path($deviceId), json_encode($entry));
+        if ($written === false) {
+            sync_fail(500, 'write_failed');
+        }
+
+        echo json_encode(['ok' => true, 'savedAt' => gmdate('c', $now)]);
+        exit;
+    }
+
     if ($body['action'] !== 'push') {
         sync_fail(400, 'unknown_action');
     }
@@ -145,6 +199,31 @@ if ($method === 'POST') {
 }
 
 if ($method === 'GET') {
+    if (isset($_GET['autobackup'])) {
+        $deviceId = (string)$_GET['autobackup'];
+        if (!preg_match(AUTOBACKUP_ID_PATTERN, $deviceId)) {
+            sync_fail(400, 'invalid_device_id');
+        }
+
+        $path = autobackup_path($deviceId);
+        if (!is_readable($path)) {
+            sync_fail(404, 'not_found');
+        }
+
+        $raw = @file_get_contents($path);
+        $entry = $raw ? json_decode($raw, true) : null;
+        if (!is_array($entry) || !isset($entry['tour']) || !isset($entry['savedAt'])) {
+            sync_fail(404, 'not_found');
+        }
+
+        echo json_encode([
+            'ok' => true,
+            'tour' => $entry['tour'],
+            'savedAt' => gmdate('c', $entry['savedAt']),
+        ]);
+        exit;
+    }
+
     $code = isset($_GET['code']) ? strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $_GET['code'])) : '';
     if (!preg_match('/^[' . preg_quote(SYNC_CODE_ALPHABET, '/') . ']{' . SYNC_CODE_LENGTH . '}$/', $code)) {
         sync_fail(400, 'invalid_code');

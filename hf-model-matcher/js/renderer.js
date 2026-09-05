@@ -10,6 +10,7 @@
    takes an `onLaunchClick` callback instead of importing app.js directly.
    ========================================================================== */
 import { getGenerationSpeed, getSuitabilityTag } from './recommendation-engine.js';
+import { estimateBandwidthGBs, getEffectiveBudgetGb, budgetLabel } from './gpu-catalog.js';
 
 // --- DOM Elements ---
 const heroContainer = document.getElementById('hero-cards-container');
@@ -41,26 +42,52 @@ export function showErrorState(message) {
    (Hugging Face popularity + goal-keyword relevance), not a claim of
    benchmarked quality.
    ========================================================================== */
-function buildRoleRationale(cfg, model, state) {
+function buildRoleRationale(cfg, model, state, candidates) {
+    if (!cfg || !cfg.key) return buildRankRationale(model, state, candidates);
     const vramPct = model.vram_usage_pct;
+    // Real budget figure + unit word, not state.vramGb - in CPU mode that's a
+    // stale/unused GPU number that would otherwise contradict the percentage
+    // right next to it (already computed against the real RAM-derived budget).
+    const budgetGb = Math.round(getEffectiveBudgetGb(state) * 10) / 10;
+    const unit = budgetLabel(state);
     if (cfg.key === 'best_overall') {
         const vettingNote = ` Hero cards only draw from models with at least 1,000 downloads <em>and</em> 5 likes &mdash; downloads alone can come from tooling/mirrors with no human behind them, so likes are required too before a model can headline a pick.`;
         if (vramPct >= 60 && vramPct <= 88) {
-            return `<strong>Best Overall</strong> is chosen from the models using <strong>60&ndash;88%</strong> of your ${state.vramGb}GB VRAM budget &mdash; enough headroom to avoid out-of-memory errors and leave room for your context window, without leaving a bigger, better-fitting model on the table. This model uses <strong>${vramPct}%</strong>, landing right in that window, and had the highest popularity + relevance score among the candidates that did.${vettingNote}`;
+            return `<strong>Best Overall</strong> is chosen from the models using <strong>60&ndash;88%</strong> of your ${budgetGb}GB ${unit} budget &mdash; enough headroom to avoid out-of-memory errors and leave room for your context window, without leaving a bigger, better-fitting model on the table. This model uses <strong>${vramPct}%</strong>, landing right in that window, and had the highest popularity + relevance score among the candidates that did.${vettingNote}`;
         }
-        return `No candidate landed in the ideal 60&ndash;88% VRAM "sweet spot" for your ${state.vramGb}GB budget on this search, so <strong>Best Overall</strong> fell back to the single highest popularity + relevance score among everything that fit at all. This model uses <strong>${vramPct}%</strong> of your budget.${vettingNote}`;
+        return `No candidate landed in the ideal 60&ndash;88% ${unit} "sweet spot" for your ${budgetGb}GB budget on this search, so <strong>Best Overall</strong> fell back to the single highest popularity + relevance score among everything that fit at all. This model uses <strong>${vramPct}%</strong> of your budget.${vettingNote}`;
     }
     if (cfg.key === 'speed_demon') {
         if (vramPct <= 45) {
-            return `<strong>Speed Demon</strong> is the <em>smallest</em> model (by parameter count) using <strong>45% or less</strong> of your VRAM budget &mdash; guaranteeing it runs fully inside VRAM with headroom to spare, for the fastest, most consistent tokens/sec even with other apps open. This model uses ${vramPct}%.`;
+            return `<strong>Speed Demon</strong> is the <em>smallest</em> model (by parameter count) using <strong>45% or less</strong> of your ${unit} budget &mdash; guaranteeing it runs fully inside ${unit} with headroom to spare, for the fastest, most consistent tokens/sec even with other apps open. This model uses ${vramPct}%.`;
         }
-        return `No candidate fit under the 45% VRAM threshold on this search, so <strong>Speed Demon</strong> fell back to the smallest available model by parameter count (${model.params_b}B), which still uses ${vramPct}% of your budget.`;
+        return `No candidate fit under the 45% ${unit} threshold on this search, so <strong>Speed Demon</strong> fell back to the smallest available model by parameter count (${model.params_b}B), which still uses ${vramPct}% of your budget.`;
     }
     if (cfg.key === 'max_capability') {
         const paramsB = model.exact_params_b || model.params_b;
-        return `<strong>Max Capability</strong> is the <em>largest</em> model (by parameter count) that still fits inside your VRAM budget at ${model.active_quant_bits || 4}-bit quantization &mdash; maximizing reasoning depth and answer quality, at the cost of some speed headroom. At ${paramsB}B parameters, it's the biggest one your ${state.vramGb}GB budget can hold.`;
+        return `<strong>Max Capability</strong> is the <em>largest</em> model (by parameter count) that still fits inside your ${unit} budget at ${model.active_quant_bits || 4}-bit quantization &mdash; maximizing reasoning depth and answer quality, at the cost of some speed headroom. At ${paramsB}B parameters, it's the biggest one your ${budgetGb}GB budget can hold.`;
     }
     return '';
+}
+
+// Generic per-row rationale for the candidate table (any rank, not just the 3
+// fixed hero slots) - describes where this specific model landed and why,
+// using only numbers already on the model object and the candidate batch.
+function buildRankRationale(model, state, candidates) {
+    const poolSize = (candidates || []).length || 1;
+    const rankIdx = (candidates || []).findIndex(c => c.id === model.id);
+    const rank = rankIdx >= 0 ? rankIdx + 1 : poolSize;
+
+    let verifiedNote = '';
+    if (model.verified_gguf === true) {
+        verifiedNote = ' Its real GGUF file was independently verified against the repo on Hugging Face.';
+    } else if (model.verified_gguf === false) {
+        verifiedNote = ' <strong style="color:#FBBF24;">⚠ Heads up:</strong> when checked, this repo could not be confirmed to have a real quantized (GGUF) file - it may not actually be downloadable/runnable as shown, despite the VRAM math below.';
+    }
+
+    const budgetGb = Math.round(getEffectiveBudgetGb(state) * 10) / 10;
+    const unit = budgetLabel(state);
+    return `This model ranked <strong>#${rank}</strong> of ${poolSize} candidates found for your "${state.goal}" search, scoring <strong>${model.recommendation_score}/100</strong> (see the popularity/relevance math below). It uses <strong>${model.vram_usage_pct}%</strong> of your ${budgetGb}GB ${unit} budget at ${model.active_quant_bits || 4}-bit quantization.${verifiedNote}`;
 }
 
 function buildKvCacheLine(model, contextK) {
@@ -106,11 +133,37 @@ function buildJustificationHTML(model, cfg, state, candidates) {
         <details class="hero-justification">
             <summary>Why this pick? 🔍</summary>
             <div class="hero-justification-body">
-                <p>${buildRoleRationale(cfg, model, state)}</p>
+                <p>${buildRoleRationale(cfg, model, state, candidates)}</p>
                 <p><strong>VRAM math:</strong> ${buildVramMath(model, state)}</p>
                 <p><strong>Popularity/relevance score:</strong> ${buildScoreMath(model, candidates, state)}</p>
                 <p class="hero-justification-caveat">The VRAM number is deterministic math (exact when verified, a documented formula otherwise) &mdash; you can check it yourself. The score is a Hugging Face popularity + goal-relevance heuristic, a proxy for "well-vetted, likely to work well," not an independent benchmark of output quality.</p>
             </div>
+        </details>
+    `;
+}
+
+// Collapsed "+N more quantizations" sub-list for near-duplicate quant/format
+// variants of the same base model (see groupByBaseModel in
+// candidate-filters.js, wired in from app.js's refreshCandidateView()).
+// `variants` is the array attached to a candidate's `_variants` property, or
+// undefined/empty when this model wasn't grouped with anything - in which
+// case this renders nothing.
+function buildVariantGroupHTML(variants) {
+    if (!variants || variants.length === 0) return '';
+    const rows = variants.map(v => `
+        <div class="variant-row">
+            <span title="${v.id}">${v.id}</span>
+            <span style="display:flex; gap:8px; align-items:center;">
+                <span class="stat-pill" style="font-size: 11px;">Score: ${v.recommendation_score}</span>
+                <button class="btn-action btn-copy-model-id" data-id="${v.id}" style="padding: 3px 8px; font-size: 11px;" title="Copy exact Model ID for LM Studio / Ollama">Copy ID 📋</button>
+                <button class="btn-action primary btn-launch" data-repoid="${v.id}" style="padding: 3px 8px; font-size: 11px;" title="Get the download link and step-by-step setup instructions">Setup ⚡</button>
+            </span>
+        </div>
+    `).join('');
+    return `
+        <details class="variant-group">
+            <summary>+${variants.length} more quantization${variants.length > 1 ? 's' : ''} of this model ▾</summary>
+            ${rows}
         </details>
     `;
 }
@@ -127,6 +180,14 @@ export function renderResults(data, { state, onLaunchClick }) {
     if (dataSourceNotice) {
         dataSourceNotice.style.display = data.source === 'fallback' ? 'flex' : 'none';
     }
+
+    // Effective hardware-fit budget & speed-model mode for this render pass -
+    // computed once here rather than per-model, since neither depends on the
+    // model being displayed (see getEffectiveBudgetGb/budgetLabel in
+    // gpu-catalog.js for the CPU/RAM-only vs GPU/VRAM swap).
+    const cpuOnly = state.gpuVendor === 'cpu';
+    const effectiveBudgetGb = getEffectiveBudgetGb(state);
+    const budgetWord = budgetLabel(state);
 
     if (heroContainer) {
         heroContainer.innerHTML = '';
@@ -146,7 +207,7 @@ export function renderResults(data, { state, onLaunchClick }) {
             if (vramPct > 80) barColorClass = 'fill-coral';
             else if (vramPct > 60) barColorClass = 'fill-amber';
 
-            const speed = model.generation_speed || getGenerationSpeed(model.vram_req_gb, state.vramGb);
+            const speed = model.generation_speed || getGenerationSpeed(model, effectiveBudgetGb, estimateBandwidthGBs(state.gpuVendor, state.gpuBaseVram), cpuOnly);
             const suitabilityTag = getSuitabilityTag(state.goal, cfg.key);
 
             // Weight size and KV-cache size are verified independently (different
@@ -181,7 +242,7 @@ export function renderResults(data, { state, onLaunchClick }) {
 
                     <div class="vram-bar-container" style="margin-top: 10px;" title="VRAM Footprint: Requires ${model.vram_req_gb} GB (Model: ${model.vram_weight_gb || model.vram_req_gb}GB + KV-Cache: ${model.kv_overhead_gb || 1.5}GB @ ${state.contextK}k tokens)">
                         <div class="vram-label">
-                            <span>VRAM (${state.contextK}k Context)${vramBadge}</span>
+                            <span>${budgetWord} (${state.contextK}k Context)${vramBadge}</span>
                             <span><strong>${model.vram_req_gb} GB</strong> (${vramPct}%)</span>
                         </div>
                         <div class="vram-track">
@@ -222,24 +283,31 @@ export function renderResults(data, { state, onLaunchClick }) {
         }
 
         candidates.forEach(m => {
-            const speed = m.generation_speed || getGenerationSpeed(m.vram_req_gb, state.vramGb);
+            const speed = m.generation_speed || getGenerationSpeed(m, effectiveBudgetGb, estimateBandwidthGBs(state.gpuVendor, state.gpuBaseVram), cpuOnly);
+            const unverifiedBadge = m.verified_gguf === false
+                ? ' <span class="vram-unverified-badge" title="Checked against Hugging Face and no real GGUF file was found - may not actually be downloadable/runnable as shown">⚠ unverified</span>'
+                : '';
             const item = document.createElement('div');
             item.className = 'model-list-item';
             item.innerHTML = `
-                <div>
-                    <div style="font-weight: 700; font-size: 15px; color: #F8FAFC;" title="${m.id}">${m.id}</div>
-                    <div style="font-size: 12px; color: #94A3B8; margin-top: 2px;" title="Model Parameter Size & Hardware Memory Fit">
-                        ${m.params_b}B Params | ${m.vram_req_gb} GB VRAM required (${m.vram_usage_pct}% of budget @ ${state.contextK}k context)
+                <div class="model-list-item-row">
+                    <div>
+                        <div style="font-weight: 700; font-size: 15px; color: #F8FAFC;" title="${m.id}">${m.id}${unverifiedBadge}</div>
+                        <div style="font-size: 12px; color: #94A3B8; margin-top: 2px;" title="Model Parameter Size & Hardware Memory Fit">
+                            ${m.params_b}B Params | ${m.vram_req_gb} GB ${budgetWord} required (${m.vram_usage_pct}% of budget @ ${state.contextK}k context)
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <span class="stat-pill ${speed.badge_class}" style="font-size: 11px;" title="${speed.desc}">${speed.label}</span>
+                        <span class="stat-pill" title="Weighted Community Score">Score: ${m.recommendation_score}</span>
+                        <!-- STAGE 2: 1-Click Copy Model ID button -->
+                        <button class="btn-action btn-copy-model-id" data-id="${m.id}" style="padding: 4px 10px; font-size: 12px;" title="Copy exact Model ID for LM Studio / Ollama">Copy ID 📋</button>
+                        <a href="https://huggingface.co/${m.id}" target="_blank" class="btn-action" style="padding: 4px 10px; font-size: 12px;" title="View official model repo on Hugging Face Hub">HF ↗</a>
+                        <button class="btn-action primary btn-launch" data-repoid="${m.id}" style="padding: 4px 10px; font-size: 12px;" title="Get the download link and step-by-step setup instructions">Setup ⚡</button>
                     </div>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <span class="stat-pill ${speed.badge_class}" style="font-size: 11px;" title="${speed.desc}">${speed.label}</span>
-                    <span class="stat-pill" title="Weighted Community Score">Score: ${m.recommendation_score}</span>
-                    <!-- STAGE 2: 1-Click Copy Model ID button -->
-                    <button class="btn-action btn-copy-model-id" data-id="${m.id}" style="padding: 4px 10px; font-size: 12px;" title="Copy exact Model ID for LM Studio / Ollama">Copy ID 📋</button>
-                    <a href="https://huggingface.co/${m.id}" target="_blank" class="btn-action" style="padding: 4px 10px; font-size: 12px;" title="View official model repo on Hugging Face Hub">HF ↗</a>
-                    <button class="btn-action primary btn-launch" data-repoid="${m.id}" style="padding: 4px 10px; font-size: 12px;" title="Get the download link and step-by-step setup instructions">Setup ⚡</button>
-                </div>
+                ${buildJustificationHTML(m, null, state, candidates)}
+                ${buildVariantGroupHTML(m._variants)}
             `;
             candidatesContainer.appendChild(item);
         });

@@ -19,13 +19,14 @@ import { populateGpuModels, getGpuModelSelectValue, restoreProfilerUI, initHardw
 import { runClientSideEngine } from './recommendation-engine.js';
 import { renderResults, showLoadingState, showErrorState } from './renderer.js';
 import { openCodeModal } from './modal.js';
+import { applyCandidateFilters, groupByBaseModel } from './candidate-filters.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const STORAGE_KEY = 'nycto_hf_matcher_state';
 
     // --- Application State ---
     const state = {
-        vramGb: 64.0,
+        vramGb: 24.0,       // matches index.html's #vram-slider value="24" (was 64.0 — cold-load mismatch bug)
         ramGb: 64.0,
         contextK: 16,
         gpuVendor: 'nvidia',
@@ -34,8 +35,17 @@ document.addEventListener('DOMContentLoaded', () => {
         query: '',
         preferredQuant: 4,
         gpuCount: 1,
-        gpuBaseVram: 64.0,
-        recommendations: null
+        gpuBaseVram: 24.0,  // matches the "24 GB per GPU" badge (was 64.0 — same bug)
+        recommendations: null,
+        // Candidate-table sort/filter view state. Deliberately NOT persisted to
+        // localStorage (see saveStateToStorage/loadStateFromStorage below) - a
+        // fresh search shouldn't silently carry over a stale filter from a
+        // previous session. Re-sorting/re-filtering never re-fetches from the
+        // network - see refreshCandidateView() - it only re-displays whatever
+        // state.recommendations.all_candidates already holds.
+        candidateSort: 'score_desc',
+        candidateFilterQuant: 'all',
+        candidateFilterVerified: 'all'
     };
 
     // --- DOM Elements ---
@@ -44,6 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const goalCards = document.querySelectorAll('.goal-card');
     const searchInput = document.getElementById('search-input');
     const btnRefresh = document.getElementById('btn-refresh');
+    const candidateSortSelect = document.getElementById('candidate-sort-select');
+    const candidateQuantSelect = document.getElementById('candidate-quant-select');
+    const candidateVerifiedChips = document.querySelectorAll('[data-verified-filter]');
 
     // Hero-card & candidate-list containers are owned by renderer.js now -
     // see the import above. Modal DOM elements are owned by modal.js now -
@@ -125,6 +138,53 @@ document.addEventListener('DOMContentLoaded', () => {
         btnRefresh.addEventListener('click', () => triggerRecommendations());
     }
 
+    // --- Candidate-table sort/filter controls ---
+    // These never re-fetch from the network - they only re-sort/re-filter/
+    // re-group whatever state.recommendations.all_candidates already holds
+    // (see renderWithCurrentFilters below), which is a distinct mechanism
+    // from the free-text search box above (that one changes WHICH models get
+    // searched for, so it correctly still triggers a real request).
+    if (candidateSortSelect) {
+        candidateSortSelect.addEventListener('change', (e) => {
+            state.candidateSort = e.target.value;
+            renderWithCurrentFilters();
+        });
+    }
+    if (candidateQuantSelect) {
+        candidateQuantSelect.addEventListener('change', (e) => {
+            state.candidateFilterQuant = e.target.value;
+            renderWithCurrentFilters();
+        });
+    }
+    candidateVerifiedChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            candidateVerifiedChips.forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            state.candidateFilterVerified = chip.dataset.verifiedFilter;
+            renderWithCurrentFilters();
+        });
+    });
+
+    // Re-sorts/re-filters/re-groups the current fetched candidate batch and
+    // re-renders - no network call. Shared by the controls above AND by
+    // triggerRecommendations() below, so a fresh fetch is displayed through
+    // the same pipeline as a manual sort/filter change (keeping the current
+    // sort/filter selection applied to new results too, e.g. after switching
+    // goals) rather than two divergent code paths.
+    function renderWithCurrentFilters() {
+        if (!state.recommendations) return;
+        const filtered = applyCandidateFilters(state.recommendations.all_candidates || [], {
+            sort: state.candidateSort,
+            quant: state.candidateFilterQuant,
+            verified: state.candidateFilterVerified
+        });
+        const grouped = groupByBaseModel(filtered).map(g => ({ ...g.primary, _variants: g.variants }));
+        renderResults(
+            { ...state.recommendations, all_candidates: grouped },
+            { state, onLaunchClick: (repoId) => openCodeModal(repoId, state) }
+        );
+    }
+
     // GPU/RAM/context controls, presets, and auto-detect are all wired up
     // here - see hardware-profile.js. Safe to call before triggerRecommendations
     // is textually defined below: it's a hoisted function declaration, and
@@ -153,14 +213,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     gpu_type: state.gpuType,
                     goal: state.goal,
                     preferred_quant: state.preferredQuant,
-                    query: state.query
+                    query: state.query,
+                    // RAM-only / no-GPU inference mode - see gpu-catalog.js's
+                    // "cpu" vendor entry and backend/engine.py's cpu_only branch.
+                    cpu_only: state.gpuVendor === 'cpu'
                 })
             });
 
             if (response.ok) {
                 const data = await response.json();
                 state.recommendations = data;
-                renderResults(data, { state, onLaunchClick: (repoId) => openCodeModal(repoId, state) });
+                renderWithCurrentFilters();
                 return;
             }
         } catch (err) {
@@ -170,7 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const data = await runClientSideEngine(state);
             state.recommendations = data;
-            renderResults(data, { state, onLaunchClick: (repoId) => openCodeModal(repoId, state) });
+            renderWithCurrentFilters();
         } catch (clientErr) {
             console.error('Client engine failed:', clientErr);
             showErrorState(clientErr.message);

@@ -47,12 +47,6 @@ function verifyAdminAuth() {
     // 2. Extract submitted credentials
     $adminUser = trim((string)($_POST['admin_user'] ?? $_SERVER['PHP_AUTH_USER'] ?? ''));
     $adminPass = (string)($_POST['admin_pass'] ?? $_SERVER['PHP_AUTH_PW'] ?? '');
-    $adminToken = (string)($_POST['admin_token'] ?? '');
-
-    if (!empty($adminToken) && hash_equals('soar_secret_token_2026', $adminToken)) {
-        return true;
-    }
-
     if (empty($adminUser) || empty($adminPass)) {
         return false;
     }
@@ -161,6 +155,32 @@ $monitoredEndpoints = [
         'url' => 'https://photon.komoot.io/api/?q=Seattle',
         'type' => 'outbound'
     ],
+    // ADDED (this audit): fuel-price-proxy.php, ors-directions-proxy.php, and
+    // ors-elevation-proxy.php are real, live, EIA_API_KEY/ORS_API_KEY-authenticated
+    // server-side proxies (see open-road-advisor/*.php) that were never added here -
+    // the app grew a server side after MEMORY.md's "no server-side dependency, all
+    // public APIs called directly from the browser" description was written.
+    [
+        'app_key' => 'open-road-advisor',
+        'app_name' => 'Open Road Advisor',
+        'name' => 'EIA Fuel Price API',
+        'url' => 'https://api.eia.gov/v2/seriesid/PET.EMD_EPMR_PTE_NUS_DPG.W',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'open-road-advisor',
+        'app_name' => 'Open Road Advisor',
+        'name' => 'OpenRouteService Directions API',
+        'url' => 'https://api.openrouteservice.org/v2/directions/driving-car/geojson',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'open-road-advisor',
+        'app_name' => 'Open Road Advisor',
+        'name' => 'OpenRouteService Elevation API',
+        'url' => 'https://api.openrouteservice.org/elevation/line',
+        'type' => 'outbound'
+    ],
     [
         'app_key' => 'relocation-assessment',
         'app_name' => 'Relocation Assessment',
@@ -179,19 +199,72 @@ $monitoredEndpoints = [
         'app_key' => 'mortgage-calculator',
         'app_name' => 'Housing Cost Calculator',
         'name' => 'Mortgage News Daily Provider',
-        'url' => 'https://www.mortgagenewsdaily.com/',
+        // FIXED (this audit): was checking the bare www.mortgagenewsdaily.com homepage, which
+        // isn't what the app actually calls. rates-proxy.php's real dependency is this widget
+        // JSON endpoint - pointing the check at the homepage meant a real outage of the rates
+        // feed itself could go undetected while a homepage-only hiccup would (correctly but
+        // for the wrong reason) still show green.
+        'url' => 'https://widgets.mortgagenewsdaily.com/widget/rates',
         'type' => 'outbound'
     ],
-    // NOTE: "Social Security Admin (SSA.gov)" removed from monitoring 2026-08-18. The Retirement
-    // Forecaster app never calls SSA.gov server-side - it's a plain <a target="_blank"> link users
-    // open in their own browser (see retirement-forecaster/index.html). There was no real server-side
-    // dependency for this check to reflect, and repeated automated hits to a .gov domain with no
-    // corresponding real usage pattern were getting flagged by their bot detection.
+    // ADDED (this audit): shared /backend/server.js exposes /api/rates, a FRED-backed fallback
+    // rate source used when rates-proxy.php itself fails (see MEMORY.md "Shared Backend
+    // Service"). Real, live, unauthenticated dependency that was never monitored.
     [
-        'app_key' => 'crypto-game',
-        'app_name' => 'Crypto Trading Simulator',
-        'name' => 'CoinGecko Public API',
-        'url' => 'https://api.coingecko.com/api/v3/ping',
+        'app_key' => 'mortgage-calculator',
+        'app_name' => 'Housing Cost Calculator',
+        'name' => 'FRED Mortgage Rate Fallback',
+        'url' => 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=MORTGAGE30US',
+        'type' => 'outbound'
+    ],
+    // NOTE: property-lookup.php (shared by mortgage-calculator and homeward) does NOT get a
+    // monitored entry. This audit traced its actual code path: it's cache-lookup + bookmarklet
+    // -import only now (no live server-side Scrape.do/Redfin fetch remains in property-lookup.php
+    // itself - see backend/import-property.php). mls-proxy.php in both apps is a 410 stub. So
+    // despite MEMORY.md's Scrape.do budget warning still describing this as a live scrape path,
+    // there is currently no real outbound call here to monitor. Worth a MEMORY.md refresh
+    // separately - flagging, not fixing that file as part of this status-page audit.
+    // ADDED (this audit): homeward had zero monitored endpoints despite real, live outbound
+    // geocoding calls (js/geocoder.js). Representative sample, matching this file's existing
+    // one-check-per-concern pattern for other apps.
+    [
+        'app_key' => 'homeward',
+        'app_name' => 'Homeward',
+        'name' => 'Nominatim OSM Geocoder',
+        'url' => 'https://nominatim.openstreetmap.org/search?format=json&q=Denver',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'homeward',
+        'app_name' => 'Homeward',
+        'name' => 'Overpass API (Parcel/Lot Lookup)',
+        'url' => 'https://overpass-api.de/api/interpreter?data=[out:json];node(39.7,-105,39.8,-104.9);out%201;',
+        'type' => 'outbound'
+    ],
+    // ADDED (this audit): door-scout had zero monitored endpoints despite being a live TSP route
+    // solver (js/router.js) with its own OSRM + Overpass calls, same pattern as open-road-advisor.
+    [
+        'app_key' => 'door-scout',
+        'app_name' => 'DoorScout',
+        'name' => 'OSRM Driving Router',
+        'url' => 'https://router.project-osrm.org/route/v1/driving/-104.9903,39.7392;-104.8214,39.7086?overview=false',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'door-scout',
+        'app_name' => 'DoorScout',
+        'name' => 'Overpass API',
+        'url' => 'https://overpass-api.de/api/interpreter?data=[out:json];node(39.7,-105,39.8,-104.9);out%201;',
+        'type' => 'outbound'
+    ],
+    // ADDED (this audit): hf-model-matcher had zero monitored endpoints despite the Hugging Face
+    // Hub API being this app's core, load-bearing dependency (backend/hf_client.py calls it live,
+    // server-side, on every recommendation request).
+    [
+        'app_key' => 'hf-model-matcher',
+        'app_name' => 'HF Model Matcher',
+        'name' => 'Hugging Face Hub API',
+        'url' => 'https://huggingface.co/api/models/gpt2',
         'type' => 'outbound'
     ],
     [
@@ -251,6 +324,111 @@ $monitoredEndpoints = [
         'url' => 'https://cervantesmasterpiece.com/events/',
         'type' => 'scraper'
     ],
+    // ADDED (this audit): queried the live scraped_venues table in gigs.db directly - all 19 rows
+    // are is_active=1. Hi-Dive, Skylark Lounge, Washington's, and The Armory already redirect to
+    // do303.com inside VenueScraper::scrape() (covered by the Do303 check above), but these 13
+    // hosts are distinct, actively-scraped targets with no representation here at all - some via
+    // dedicated custom parsers in VenueScraper.php (Gothic Theatre's real feed is the AEG blob
+    // JSON, not gothictheatre.com; Meow Wolf and 7th Circle have their own parser branches), the
+    // rest via the generic scrape() path. URLs are each venue's exact scrape_url from gigs.db.
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => 'Gothic Theatre (AEG JSON Feed)',
+        'url' => 'https://aegwebprod.blob.core.windows.net/json/events/37/events.json',
+        'type' => 'scraper'
+    ],
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => 'Meow Wolf Denver Scraper',
+        'url' => 'https://meowwolf.com/visit/denver',
+        'type' => 'scraper'
+    ],
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => '7th Circle Music Collective Scraper',
+        'url' => 'https://www.7thcirclemusiccollective.org/posts/',
+        'type' => 'scraper'
+    ],
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => 'Red Rocks Amphitheatre Scraper',
+        'url' => 'https://www.redrocksonline.com/events/',
+        'type' => 'scraper'
+    ],
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => 'Club Vinyl Scraper',
+        'url' => 'https://vinylnightclub.com/events/',
+        'type' => 'scraper'
+    ],
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => 'La Rumba Scraper',
+        'url' => 'https://larumbadenver.com/events-schedule/',
+        'type' => 'scraper'
+    ],
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => 'Globe Hall Scraper',
+        'url' => 'https://globehall.com/events/',
+        'type' => 'scraper'
+    ],
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => 'Larimer Lounge Scraper',
+        'url' => 'https://larimerlounge.com/events/',
+        'type' => 'scraper'
+    ],
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => 'Lost Lake Scraper',
+        'url' => 'https://lost-lake.com/events/',
+        'type' => 'scraper'
+    ],
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => 'Goosetown Tavern Scraper',
+        'url' => 'https://goosetowntavern.com/events/',
+        'type' => 'scraper'
+    ],
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => 'Ante Up Scraper',
+        'url' => 'https://www.anteupdenver.com/events',
+        'type' => 'scraper'
+    ],
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => 'The Oriental Theater Scraper',
+        'url' => 'https://theorientaltheater.com/',
+        'type' => 'scraper'
+    ],
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => 'The Federal Theatre Scraper',
+        'url' => 'https://thefederaltheatre.com/',
+        'type' => 'scraper'
+    ],
+    [
+        'app_key' => 'nyctos-gig-grid',
+        'app_name' => "Nycto's Gig Grid",
+        'name' => 'Moxi Theater Scraper',
+        'url' => 'https://moxitheater.com/',
+        'type' => 'scraper'
+    ],
     [
         'app_key' => 'nyctos-gig-grid',
         'app_name' => "Nycto's Gig Grid",
@@ -265,13 +443,15 @@ $monitoredEndpoints = [
         'url' => 'https://nycto.ninja/nyctos-gig-grid/',
         'type' => 'internal'
     ],
-    [
-        'app_key' => 'game-rating-log',
-        'app_name' => 'Game Rating Log',
-        'name' => 'Steam Store API',
-        'url' => 'https://store.steampowered.com/api/appdetails?appids=105600',
-        'type' => 'outbound'
-    ],
+    // REMOVED (this audit): "CoinGecko Public API" (crypto-game) and "Steam Store API"
+    // (game-rating-log) removed. Checked both apps' full source (app.js + index.html) end to
+    // end - neither makes any network call of any kind (no fetch/XHR/API reference anywhere).
+    // crypto-game is "Interactive Cryptographic Matrix," a client-side cipher/encryption puzzle,
+    // not a live trading simulator - the CoinGecko check never reflected a real dependency.
+    // game-rating-log is confirmed localStorage-only per its own MEMORY.md entry. Both were
+    // already is_hidden in index.html/app.js's hiddenAppKeys, so removing them doesn't change
+    // what's shown on the dashboard - it just stops the hourly cron from making two outbound
+    // calls that were never standing in for anything real.
     [
         'app_key' => 'cism-training',
         'app_name' => 'CISM Exam Prep',
@@ -418,11 +598,62 @@ $monitoredEndpoints = [
         'url' => 'https://www.theregister.com/security/headlines.atom',
         'type' => 'outbound'
     ],
+    // REMOVED (this audit): "AlienVault OTX Threat Pulses" (RSS, /rss/pulses/recent) - config.json
+    // has this source's "enabled" explicitly set to false, with its own _note explaining why:
+    // "superseded by the 'alienvault_otx_iocs' entry under ioc_feeds, which pulls structured
+    // indicators from the OTX API v2... instead of headline-only RSS." fetcher.py no longer fetches
+    // this URL. Replaced below with the feed that's actually enabled and live now.
+    // ADDED (this audit): four ioc_feeds entries in config.json are "enabled": true, and their
+    // auth env vars (ABUSECH_AUTH_KEY, OTX_API_KEY) are both present in /home/nyctltlc/api.env -
+    // these are real, live, currently-fetched dependencies with zero monitoring coverage.
     [
         'app_key' => 'threatpulse',
         'app_name' => "Nycto's ThreatPulse",
-        'name' => 'AlienVault OTX Threat Pulses',
-        'url' => 'https://otx.alienvault.com/rss/pulses/recent',
+        'name' => 'AlienVault OTX (Structured Indicators)',
+        'url' => 'https://otx.alienvault.com/api/v1/pulses/subscribed',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'URLhaus (abuse.ch)',
+        'url' => 'https://urlhaus-api.abuse.ch/v1/urls/recent/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'ThreatFox (abuse.ch)',
+        'url' => 'https://threatfox-api.abuse.ch/api/v1/',
+        'type' => 'outbound'
+    ],
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'MalwareBazaar (abuse.ch)',
+        'url' => 'https://mb-api.abuse.ch/api/v1/',
+        'type' => 'outbound'
+    ],
+    // ADDED (this audit): fetcher.py's NVD CVSS-enrichment pass (services.nvd.nist.gov) runs
+    // unconditionally every fetch cycle - unauthenticated if NVD_API_KEY isn't set, keyed (higher
+    // rate limit) if it is, and NVD_API_KEY is present in api.env. This is a separate, real
+    // dependency from the "NIST CVE Intelligence Stream" entry above, which actually points at the
+    // third-party aggregator cvefeed.io, not nvd.nist.gov.
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'NVD CVE API (CVSS Enrichment)',
+        'url' => 'https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-44228',
+        'type' => 'outbound'
+    ],
+    // ADDED (this audit): GreyNoise IOC enrichment is gated on GREYNOISE_API_KEY, which is present
+    // in api.env, so it's live in production. Uses a well-known public IP (Google DNS) as a stable
+    // health-check target, matching the /v3/community/{ip} pattern fetcher.py actually calls.
+    [
+        'app_key' => 'threatpulse',
+        'app_name' => "Nycto's ThreatPulse",
+        'name' => 'GreyNoise IP Reputation API',
+        'url' => 'https://api.greynoise.io/v3/community/8.8.8.8',
         'type' => 'outbound'
     ],
     [
@@ -561,7 +792,13 @@ function checkEndpoint($url, $opts = []) {
         $parsed = parse_url($url);
         $path = $parsed['path'] ?? '/';
         $host = $parsed['host'] ?? '';
-        if ($path === '/' || strpos($url, 'mortgagenewsdaily') !== false || strpos($host, 'ticketmaster.com') !== false) {
+        // NOTE (this audit): dropped the old strpos($url, 'mortgagenewsdaily') branch here. It
+        // existed to HEAD-request the bare www.mortgagenewsdaily.com homepage cheaply, but that
+        // URL has been corrected to the real widgets.mortgagenewsdaily.com/widget/rates JSON
+        // endpoint (see the mortgage-calculator entry above), which rates-proxy.php always GETs -
+        // forcing HEAD here would test a request shape the real app never makes and risks a false
+        // 405 if the widget API doesn't support HEAD.
+        if ($path === '/' || strpos($host, 'ticketmaster.com') !== false) {
             curl_setopt($ch, CURLOPT_NOBODY, true);
         } else {
             curl_setopt($ch, CURLOPT_NOBODY, false);
@@ -766,12 +1003,62 @@ foreach ($monitoredEndpoints as $ep) {
     ];
 }
 
+// 3b. Detect App-Level Incident Transitions (open/resolve rows in the `incidents` table)
+if (isset($pdo)) {
+    try {
+        // Aggregate current status per app_key (OUTAGE beats DEGRADED beats OPERATIONAL)
+        $appStatusNow = [];
+        foreach ($currentResults as $r) {
+            $key = $r['app_key'];
+            if (!isset($appStatusNow[$key])) {
+                $appStatusNow[$key] = ['app_name' => $r['app_name'], 'status' => 'OPERATIONAL'];
+            }
+            if ($r['status'] === 'OUTAGE') {
+                $appStatusNow[$key]['status'] = 'OUTAGE';
+            } else if ($r['status'] === 'DEGRADED' && $appStatusNow[$key]['status'] !== 'OUTAGE') {
+                $appStatusNow[$key]['status'] = 'DEGRADED';
+            }
+        }
+
+        $openStmt = $pdo->prepare("SELECT id, status FROM incidents WHERE app_key = ? AND resolved_at IS NULL ORDER BY created_at DESC LIMIT 1");
+        $openInsert = $pdo->prepare("INSERT INTO incidents (created_at, resolved_at, app_key, title, status, description) VALUES (?, NULL, ?, ?, ?, ?)");
+        $openResolve = $pdo->prepare("UPDATE incidents SET resolved_at = ? WHERE id = ?");
+
+        foreach ($appStatusNow as $key => $info) {
+            $openStmt->execute([$key]);
+            $openRow = $openStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($info['status'] !== 'OPERATIONAL') {
+                if (!$openRow) {
+                    // Not currently tracked as an open incident - start one now.
+                    $openInsert->execute([
+                        $now,
+                        $key,
+                        $info['app_name'] . ' — ' . $info['status'],
+                        $info['status'],
+                        $info['app_name'] . ' reported ' . strtolower($info['status']) . ' at ' . gmdate('Y-m-d H:i:s \U\T\C', $now) . '.'
+                    ]);
+                }
+                // If already open (regardless of exact severity), leave the existing row as-is.
+            } else if ($openRow) {
+                // Back to OPERATIONAL - resolve the open incident.
+                $openResolve->execute([$now, $openRow['id']]);
+            }
+        }
+    } catch (Exception $e) {
+        error_log("[SOAR INCIDENTS ERROR] " . $e->getMessage());
+    }
+}
+
 // 4. Calculate Rolling Historical Metrics from DB (24h / 7d / 30d)
 $globalUptime24h = 99.8;
 $avgLatency24h = $totalChecks > 0 ? round($totalLatency / $totalChecks) : 120;
 $historyTrend24h = [];
 $historyTrend7d = [];
 $historyTrend30d = [];
+$historyByApp24h = [];
+$historyByApp7d = [];
+$historyByApp30d = [];
 
 if (isset($pdo)) {
     try {
@@ -802,8 +1089,40 @@ if (isset($pdo)) {
         $stmt30d = $pdo->prepare("SELECT strftime('%Y-%m-%d', timestamp, 'unixepoch') as hr, AVG(latency_ms) as avg_lat, SUM(is_success)*100.0/COUNT(*) as uptime FROM endpoint_checks WHERE timestamp >= ? GROUP BY hr ORDER BY hr ASC LIMIT 30");
         $stmt30d->execute([$thirtyDaysAgo]);
         $historyTrend30d = $stmt30d->fetchAll(PDO::FETCH_ASSOC);
+
+        // 4. Same three windows, but broken out per app_key, so the chart can show a
+        // single dependency's latency instead of only the blended average across all apps.
+        $byApp24 = $pdo->prepare("SELECT strftime('%Y-%m-%d %H:00', timestamp, 'unixepoch') as hr, app_key, AVG(latency_ms) as avg_lat FROM endpoint_checks WHERE timestamp >= ? GROUP BY hr, app_key ORDER BY hr ASC");
+        $byApp24->execute([$oneDayAgo]);
+        foreach ($byApp24->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $historyByApp24h[$row['app_key']][] = ['hr' => $row['hr'], 'avg_lat' => round($row['avg_lat'])];
+        }
+
+        $byApp7 = $pdo->prepare("SELECT strftime('%Y-%m-%d', timestamp, 'unixepoch') as hr, app_key, AVG(latency_ms) as avg_lat FROM endpoint_checks WHERE timestamp >= ? GROUP BY hr, app_key ORDER BY hr ASC");
+        $byApp7->execute([$sevenDaysAgo]);
+        foreach ($byApp7->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $historyByApp7d[$row['app_key']][] = ['hr' => $row['hr'], 'avg_lat' => round($row['avg_lat'])];
+        }
+
+        $byApp30 = $pdo->prepare("SELECT strftime('%Y-%m-%d', timestamp, 'unixepoch') as hr, app_key, AVG(latency_ms) as avg_lat FROM endpoint_checks WHERE timestamp >= ? GROUP BY hr, app_key ORDER BY hr ASC");
+        $byApp30->execute([$thirtyDaysAgo]);
+        foreach ($byApp30->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $historyByApp30d[$row['app_key']][] = ['hr' => $row['hr'], 'avg_lat' => round($row['avg_lat'])];
+        }
     } catch (Exception $e) {
         // Fallback default history
+    }
+}
+
+// 4b. Pull Recent Incident History (real open/resolved rows, not just this session's log)
+$recentIncidents = [];
+if (isset($pdo)) {
+    try {
+        $incStmt = $pdo->prepare("SELECT id, created_at, resolved_at, app_key, title, status, description FROM incidents ORDER BY created_at DESC LIMIT 15");
+        $incStmt->execute();
+        $recentIncidents = $incStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        // leave empty on query failure
     }
 }
 
@@ -820,7 +1139,11 @@ $outputPayload = [
     'history_trend' => $historyTrend24h,
     'history_trend_24h' => $historyTrend24h,
     'history_trend_7d' => $historyTrend7d,
-    'history_trend_30d' => $historyTrend30d
+    'history_trend_30d' => $historyTrend30d,
+    'history_by_app_24h' => $historyByApp24h,
+    'history_by_app_7d' => $historyByApp7d,
+    'history_by_app_30d' => $historyByApp30d,
+    'recent_incidents' => $recentIncidents
 ];
 
 // 6. Cache to JSON file

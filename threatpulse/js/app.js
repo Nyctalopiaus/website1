@@ -60,6 +60,11 @@
     DOM.metricThreatsCount = document.getElementById('metric-threats-count');
     DOM.metricLastSync = document.getElementById('metric-last-sync');
     DOM.metricRiskCoverage = document.getElementById('metric-risk-coverage');
+    DOM.metricSyncStatusPreview = document.getElementById('metric-sync-status-preview');
+    DOM.metricSyncStatusPreviewPill = document.getElementById('metric-sync-status-preview-pill');
+    DOM.metricSyncStatusPreviewDot = document.getElementById('metric-sync-status-preview-dot');
+    DOM.metricSyncStatusPill = document.getElementById('metric-sync-status-pill');
+    DOM.metricSyncStatusDot = document.getElementById('metric-sync-status-dot');
     DOM.feedsModalSubtitle = document.getElementById('feeds-modal-subtitle');
     DOM.feedsModalBody = document.getElementById('feeds-modal-body');
     DOM.metricIocCoverage = document.getElementById('metric-ioc-coverage');
@@ -69,6 +74,7 @@
     DOM.btnDesktopMore = document.getElementById('btn-desktop-more');
     DOM.desktopMorePanel = document.getElementById('desktop-more-panel');
     DOM.headerMoreMenu = document.getElementById('header-more-menu');
+    DOM.chkShowLabContent = document.getElementById('chk-show-lab-content');
   }
 
   // Shows the floating "Back to Top" pill once the page has scrolled past the
@@ -128,6 +134,40 @@
     informational: { dot: 'bg-brand-accent', text: 'text-brand-accent' }
   };
 
+  // How old feed.json's generated_at can get before the UI calls it "stale" instead of just
+  // showing a quiet relative-time string. 24h matches the threshold already used elsewhere
+  // (State.viewScope === 'briefing', the Digest button) for "recent" vs "old" data.
+  const STALE_DATA_MS = 24 * 60 * 60 * 1000;
+
+  function isDataStale(generatedAt) {
+    if (!generatedAt) return false;
+    const ageMs = Date.now() - new Date(generatedAt).getTime();
+    return !isNaN(ageMs) && ageMs > STALE_DATA_MS;
+  }
+
+  // Tri-state color tone shared by the two Tailwind-utility-based sync pills (the collapsed
+  // summary-bar preview and the expanded ThreatPulse Status tile) — both use plain Tailwind
+  // color utilities rather than the custom .system-status/.status-indicator classes the header
+  // pill uses, so this swaps utility classes directly instead of toggling a CSS modifier class.
+  const SYNC_PREVIEW_TONE = {
+    ok: { pill: ['bg-emerald-500/10', 'text-emerald-400', 'border-emerald-500/20'], dot: 'bg-emerald-400' },
+    degraded: { pill: ['bg-amber-500/10', 'text-amber-400', 'border-amber-500/20'], dot: 'bg-amber-400' },
+    stale: { pill: ['bg-rose-500/10', 'text-rose-400', 'border-rose-500/20'], dot: 'bg-rose-400' }
+  };
+  const SYNC_PREVIEW_TONE_CLASSES = Object.values(SYNC_PREVIEW_TONE).flatMap(t => [...t.pill, t.dot]);
+
+  function applySyncTone(pillEl, dotEl, tone) {
+    const meta = SYNC_PREVIEW_TONE[tone] || SYNC_PREVIEW_TONE.ok;
+    if (pillEl) {
+      pillEl.classList.remove(...SYNC_PREVIEW_TONE_CLASSES);
+      pillEl.classList.add(...meta.pill);
+    }
+    if (dotEl) {
+      dotEl.classList.remove(...SYNC_PREVIEW_TONE_CLASSES);
+      dotEl.classList.add(meta.dot);
+    }
+  }
+
   const FEED_STATUS_META = {
     success: { color: 'bg-emerald-400', title: 'Synced successfully on the last run' },
     failed: { color: 'bg-rose-500', title: 'Failed on the last run — see fetcher.py logs' },
@@ -178,6 +218,12 @@
         const pendingBadge = !s.enabled
           ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-700/60 text-slate-400 ml-1.5">Pending</span>'
           : '';
+        // Homelab/engineering feeds are hidden from the default stream (see the "Include
+        // homelab..." toggle in the tag-filter panel) -- flagged here too so it's clear from
+        // the Feed List modal alone why one of these might show zero items in the stream.
+        const labBadge = s.engineering_homelab
+          ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-brand-accent/10 text-brand-accent ml-1.5" title="Hidden from the default stream unless the homelab/engineering toggle is on">Homelab</span>'
+          : '';
         return `
           <a href="${Components.escapeHtml(s.url || '#')}" target="_blank" rel="noopener noreferrer"
              class="bg-brand-bg/80 border border-brand-border/60 hover:border-brand-accent/50 p-2.5 rounded-lg flex items-center justify-between text-slate-200 hover:text-white transition-all ${!s.enabled ? 'opacity-60' : ''}"
@@ -186,7 +232,7 @@
               <span class="w-1.5 h-1.5 rounded-full ${statusMeta.color} shrink-0"></span>
               <span title="${Components.escapeHtml(tierMeta.label)}">${tierMeta.icon}</span>
               <span class="truncate">${Components.escapeHtml(s.name)}</span>
-              ${pendingBadge}
+              ${pendingBadge}${labBadge}
             </span>
             <span class="text-brand-accent shrink-0">↗</span>
           </a>
@@ -279,12 +325,13 @@
   }
 
   function updateSyncStatus(generatedAt) {
+    if (DOM.statusPill) DOM.statusPill.classList.toggle('is-stale', isDataStale(generatedAt));
     if (!generatedAt) {
       setStatus('Engine Active', false);
       return;
     }
     const relTime = Components.formatRelativeTime(generatedAt);
-    setStatus(`Updated ${relTime}`, false);
+    setStatus(isDataStale(generatedAt) ? `Stale — updated ${relTime}` : `Updated ${relTime}`, false);
   }
 
   function updateMetricsCard(data) {
@@ -327,13 +374,31 @@
         ? `EPSS ${epssScored}/${cveTagged} · CVSS ${cvssScored}/${cveTagged}`
         : 'No CVE-tagged items yet';
     }
+    // Single tri-state derivation (ok / degraded / stale) shared by every sync indicator on the
+    // page — the header pill, the expanded ThreatPulse Status tile, and the collapsed summary-bar
+    // preview — so a degraded/stale sync is never shown as green in one spot and not another.
+    const stale = isDataStale(data.generated_at);
+    const tone = stale ? 'stale' : (failed > 0 ? 'degraded' : 'ok');
+
     if (DOM.metricSyncStatus) {
-      if (failed === 0 && processed > 0) {
-        DOM.metricSyncStatus.textContent = 'Ingestion Active';
-      } else {
-        DOM.metricSyncStatus.textContent = `Sync (${failed} failed)`;
-      }
+      DOM.metricSyncStatus.textContent = stale
+        ? 'Data Stale'
+        : (failed === 0 && processed > 0 ? 'Ingestion Active' : `Sync (${failed} failed)`);
     }
+    applySyncTone(DOM.metricSyncStatusPill, DOM.metricSyncStatusDot, tone);
+
+    // Collapsed "Status & Highlights" bar preview — previously a static "Ingestion Active
+    // (35/35)" string that never updated once real data loaded. Now reflects the same
+    // stale/degraded/ok state as the header pill and the expanded metrics tile above, so the
+    // signal is visible without expanding the panel.
+    if (DOM.metricSyncStatusPreview) {
+      DOM.metricSyncStatusPreview.textContent = stale
+        ? `Data Stale · ${data.generated_at ? Components.formatRelativeTime(data.generated_at) : 'unknown'}`
+        : (failed > 0
+          ? `${failed} Feed${failed === 1 ? '' : 's'} Degraded (${processed}/${totalFeeds})`
+          : `Ingestion Active (${processed}/${totalFeeds})`);
+    }
+    applySyncTone(DOM.metricSyncStatusPreviewPill, DOM.metricSyncStatusPreviewDot, tone);
   }
 
   // IOC Watch (Phase 3) — loaded from its own data/iocs.json, entirely independent of
@@ -680,6 +745,12 @@
 
   function filterAndRender() {
     State.filteredItems = State.allItems.filter(item => {
+      // Homelab/engineering blogs (Storage.getShowLabContent, defaults off) are excluded from
+      // the main stream unless explicitly opted into via the "Include homelab..." toggle in the
+      // tag-filter panel. Older feed.json payloads without item.source.is_lab_content simply
+      // never match this, so nothing is hidden until fetcher.py regenerates the data.
+      if (!State.showLabContent && item.source && item.source.is_lab_content) return false;
+
       if (!isItemInActiveViewScope(item)) return false;
 
       // Selected Threat Tag & Entity Checkbox Filter
@@ -1569,6 +1640,16 @@
       });
     }
 
+    // Homelab/Engineering Content Toggle (defaults off -- see Storage.getShowLabContent)
+    if (DOM.chkShowLabContent) {
+      DOM.chkShowLabContent.addEventListener('change', () => {
+        State.showLabContent = DOM.chkShowLabContent.checked;
+        Storage.setShowLabContent(State.showLabContent);
+        resetColumnLimits();
+        filterAndRender();
+      });
+    }
+
     setupSavedViews();
 
     // Briefing Mode Toggle Slider
@@ -2137,6 +2218,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     cacheDOMElements();
+    if (DOM.chkShowLabContent) DOM.chkShowLabContent.checked = State.showLabContent;
     updateBriefingSliderUI();
     updateTriageButtonsUI();
     updateSortButtonsUI();

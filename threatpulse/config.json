@@ -242,21 +242,27 @@
           "name": "Tailscale Blog",
           "url": "https://tailscale.com/blog/index.xml",
           "type": "rss",
-          "tier": "vendor"
+          "tier": "vendor",
+          "engineering_homelab": true,
+          "_note": "General product/engineering blog, not threat intel -- flagged so the front-end can exclude it from the default view (js/app.js's Storage.getShowLabContent, defaults off) without removing it from config. Uncheck via config if you'd rather drop it outright."
         },
         {
           "id": "pihole_blog",
           "name": "Pi-hole Network Security",
           "url": "https://pi-hole.net/feed/",
           "type": "rss",
-          "tier": "community"
+          "tier": "community",
+          "engineering_homelab": true,
+          "_note": "Homelab/self-hosting content, not threat intel -- see tailscale_blog's note above."
         },
         {
           "id": "jeff_geerling",
           "name": "Jeff Geerling Engineering",
           "url": "https://www.jeffgeerling.com/blog.xml",
           "type": "rss",
-          "tier": "aggregator"
+          "tier": "aggregator",
+          "engineering_homelab": true,
+          "_note": "Homelab/engineering blog, not threat intel -- see tailscale_blog's note above."
         }
       ]
     }

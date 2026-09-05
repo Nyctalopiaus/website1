@@ -218,6 +218,28 @@ export function daysSince(timestampMs, nowMs = Date.now()) {
 }
 
 /**
+ * Shows or hides an element that may carry the `.hidden-init` CSS class
+ * (`display: none !important` — used throughout index.html so elements
+ * start hidden before any JS runs). A plain `el.style.display = '...'`
+ * assignment can NEVER override that `!important` rule on its own — the
+ * class itself has to come off. Found 2026-08-31 when the "Have a house
+ * to sell?" panel's fields silently never appeared despite the checkbox
+ * and inline style both being set correctly; the same broken pattern
+ * (`el.style.display = cond ? X : 'none'` with no classList change) was
+ * then found at every other reveal site in the app, so this helper
+ * replaces all of them — use it instead of a raw `el.style.display =`
+ * assignment for any element that might carry `.hidden-init`.
+ * @param {HTMLElement|null|undefined} el - Element to show/hide (no-op if falsy)
+ * @param {boolean} visible - Whether the element should be shown
+ * @param {string} [displayValue='block'] - CSS display value to use when visible
+ */
+export function setVisible(el, visible, displayValue = 'block') {
+  if (!el) return;
+  el.classList.toggle('hidden-init', !visible);
+  el.style.display = visible ? displayValue : 'none';
+}
+
+/**
  * Helper to detect human-readable provider name (Redfin, Zillow, Realtor.com, Homes.com, etc.)
  * @param {string} [url] - Listing URL
  * @param {string} [provider] - Provider string from API if available

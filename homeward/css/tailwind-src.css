@@ -1,0 +1,7 @@
+/* Input file for the Tailwind CLI build — see package.json's build:css
+   script. Compiles to css/tailwind.build.css, which index.html links to
+   in place of the old Play CDN <script src="https://cdn.tailwindcss.com">.
+   Custom hand-written rules stay in css/style.css, unchanged. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

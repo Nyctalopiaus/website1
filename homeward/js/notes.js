@@ -7,6 +7,27 @@ class NotesManager {
     this.currentEditingStopId = null;
   }
 
+  // Renders the "Auto-detected Xh ago" / "no price/sqft found" / "Never
+  // auto-detected" badge next to the spec grid header, from a cached
+  // property record (or null). See StorageManager.getFreshnessInfo for the
+  // three states this reflects.
+  updateFreshnessBadge(cachedProp) {
+    const badge = document.getElementById('notebook-freshness-badge');
+    if (!badge || !window.storageManager) return;
+
+    const info = window.storageManager.getFreshnessInfo(cachedProp);
+    const styles = {
+      fresh: { icon: '✅', classes: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' },
+      partial: { icon: '⚠️', classes: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
+      none: { icon: '⏳', classes: 'bg-slate-800 text-slate-400 border-slate-700' }
+    };
+    const style = styles[info.state] || styles.none;
+
+    badge.textContent = `${style.icon} ${info.label}`;
+    badge.className = `text-[10px] px-2 py-0.5 rounded-full font-semibold border ${style.classes}`;
+    badge.classList.remove('hidden');
+  }
+
   openNotebook(stopData, onSaveCallback) {
     if (!stopData) return;
     this.currentEditingStopId = stopData.id;
@@ -64,6 +85,7 @@ class NotesManager {
     // Auto-populate from permanent LocalStorage cache for previously saved observations & media
     if (window.storageManager) {
       window.storageManager.getCachedProperty(stopData.address).then(cached => {
+        this.updateFreshnessBadge(cached);
         if (!cached) return;
         if (!document.getElementById('note-text').value && cached.notes) document.getElementById('note-text').value = cached.notes;
         if (!document.getElementById('note-pros').value && cached.pros) {
@@ -116,6 +138,12 @@ class NotesManager {
     };
 
     toggleAutoBadges(!!stopData.isAutoDetected);
+
+    // Reset the freshness badge immediately (before the async cache read
+    // below resolves) so a fast re-open for a different property never
+    // shows a stale reading from whichever property was open before it.
+    const freshnessBadgeReset = document.getElementById('notebook-freshness-badge');
+    if (freshnessBadgeReset) freshnessBadgeReset.classList.add('hidden');
 
     // Auto-detect Elevation, Slope, Facing, Specs & Photo handler
     const autoDetectBtn = document.getElementById('btn-autodetect-elevation');
@@ -203,6 +231,7 @@ class NotesManager {
               hoaNotes: document.getElementById('note-hoa') ? document.getElementById('note-hoa').value : ''
             };
             window.storageManager.setCachedProperty(stopData.address, combinedCache);
+            this.updateFreshnessBadge(window.storageManager.getCachedPropertySync(stopData.address));
 
             this.updateNotebookScoreLive(stopData);
 

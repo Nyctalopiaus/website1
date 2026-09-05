@@ -11,6 +11,7 @@ export function getDomRefs() {
     rothMonthlyInput: document.getElementById('roth-monthly'),
     taxableBalanceInput: document.getElementById('taxable-balance'),
     taxableMonthlyInput: document.getElementById('taxable-monthly'),
+    taxableUnrealizedGainsInput: document.getElementById('taxable-unrealized-gains'),
     taxableHysaBalanceInput: document.getElementById('taxable-hysa-balance'),
     taxableHysaMonthlyInput: document.getElementById('taxable-hysa-monthly'),
     taxableHysaCompoundInput: document.getElementById('taxable-hysa-compound'),
@@ -18,10 +19,18 @@ export function getDomRefs() {
     taxableHysaNote: document.getElementById('taxable-hysa-note'),
     retirementIncomeInput: document.getElementById('retirement-income'),
     socialSecurityInput: document.getElementById('social-security'),
+    ssClaimAgeInput: document.getElementById('ss-claim-age'),
+    valSsClaimAge: document.getElementById('val-ss-claim-age'),
     preReturnInput: document.getElementById('pre-return'),
     postReturnInput: document.getElementById('post-return'),
     inflationRateInput: document.getElementById('inflation-rate'),
     taxRateInput: document.getElementById('tax-rate'),
+    capitalGainsRateInput: document.getElementById('capital-gains-rate'),
+    earlyWithdrawalPenaltyInput: document.getElementById('early-withdrawal-penalty'),
+    toggleMarketVariability: document.getElementById('toggle-market-variability'),
+    returnStdevInput: document.getElementById('return-stdev'),
+    kpiProbabilityCard: document.getElementById('kpi-probability-card'),
+    kpiProbabilitySuccess: document.getElementById('kpi-probability-success'),
     togglePurchasingPower: document.getElementById('toggle-purchasing-power'),
     purchasingPowerLabel: document.getElementById('purchasing-power-label'),
     valCurrentAge: document.getElementById('val-current-age'),
@@ -62,15 +71,52 @@ export function toModel(dom) {
     rothMonthly: parseFloat(dom.rothMonthlyInput.value) || 0,
     initialTaxable: parseFloat(dom.taxableBalanceInput.value) || 0,
     taxableMonthly: parseFloat(dom.taxableMonthlyInput.value) || 0,
+    initialTaxableUnrealizedGains: parseFloat(dom.taxableUnrealizedGainsInput.value) || 0,
     initialHysa: parseFloat(dom.taxableHysaBalanceInput.value) || 0,
     hysaMonthly: parseFloat(dom.taxableHysaMonthlyInput.value) || 0,
     hysaCompounds: !!dom.taxableHysaCompoundInput.checked,
     hysaRate: parseFloat(dom.taxableHysaRateInput.value) || 0,
     desiredIncome: parseFloat(dom.retirementIncomeInput.value) || 0,
     socialSecurityMonthly: parseFloat(dom.socialSecurityInput.value) || 0,
+    socialSecurityClaimAge: parseInt(dom.ssClaimAgeInput.value, 10) || 67,
     preReturn: parseFloat(dom.preReturnInput.value) || 0,
     postReturn: parseFloat(dom.postReturnInput.value) || 0,
     inflation: parseFloat(dom.inflationRateInput.value) || 0,
-    taxRate: parseFloat(dom.taxRateInput.value) || 0
+    taxRate: parseFloat(dom.taxRateInput.value) || 0,
+    capitalGainsRate: parseFloat(dom.capitalGainsRateInput.value) || 0,
+    earlyWithdrawalPenaltyRate: parseFloat(dom.earlyWithdrawalPenaltyInput.value) || 0
+  };
+}
+
+// Same field mapping as toModel(), but reading from a plain {fieldId: value} object
+// (as produced by scenario.js's readScenarioFromForm/saved scenarios) instead of live
+// DOM elements — used by the Scenarios compare view to build a model for a saved
+// scenario without writing it into the form first.
+export function modelFromRawValues(v) {
+  return {
+    currentAge: parseInt(v['current-age'], 10),
+    retirementAge: parseInt(v['retirement-age'], 10),
+    lifeExpectancy: parseInt(v['life-expectancy'], 10),
+    initialPretax: parseFloat(v['pretax-balance']) || 0,
+    pretaxMonthly: parseFloat(v['pretax-monthly']) || 0,
+    employerMatchRate: parseFloat(v['employer-match-rate']) || 0,
+    initialRoth: parseFloat(v['roth-balance']) || 0,
+    rothMonthly: parseFloat(v['roth-monthly']) || 0,
+    initialTaxable: parseFloat(v['taxable-balance']) || 0,
+    taxableMonthly: parseFloat(v['taxable-monthly']) || 0,
+    initialTaxableUnrealizedGains: parseFloat(v['taxable-unrealized-gains']) || 0,
+    initialHysa: parseFloat(v['taxable-hysa-balance']) || 0,
+    hysaMonthly: parseFloat(v['taxable-hysa-monthly']) || 0,
+    hysaCompounds: !!v['taxable-hysa-compound'],
+    hysaRate: parseFloat(v['taxable-hysa-rate']) || 0,
+    desiredIncome: parseFloat(v['retirement-income']) || 0,
+    socialSecurityMonthly: parseFloat(v['social-security']) || 0,
+    socialSecurityClaimAge: parseInt(v['ss-claim-age'], 10) || 67,
+    preReturn: parseFloat(v['pre-return']) || 0,
+    postReturn: parseFloat(v['post-return']) || 0,
+    inflation: parseFloat(v['inflation-rate']) || 0,
+    taxRate: parseFloat(v['tax-rate']) || 0,
+    capitalGainsRate: parseFloat(v['capital-gains-rate']) || 0,
+    earlyWithdrawalPenaltyRate: parseFloat(v['early-withdrawal-penalty']) || 0
   };
 }

@@ -5,7 +5,7 @@
  */
 
 import { CONFIG } from './config.js';
-import { looksLikeUrl, encodeUrlParam, getProviderLabel } from './utils.js';
+import { looksLikeUrl, encodeUrlParam, getProviderLabel, setVisible } from './utils.js';
 
 /**
  * Fetches property data from a Redfin URL
@@ -119,7 +119,7 @@ function applyPropertyData(data, homePrice, domRefs, inputUrl = '') {
     const badge = document.getElementById('badge-redfin-price');
     if (badge) {
       badge.textContent = `✓ ${providerLabel}`;
-      badge.style.display = 'inline-block';
+      setVisible(badge, true, 'inline-block');
     }
   }
 
@@ -137,7 +137,7 @@ function applyPropertyData(data, homePrice, domRefs, inputUrl = '') {
     const badge = document.getElementById('badge-redfin-hoa');
     if (badge) {
       badge.textContent = `✓ ${providerLabel}`;
-      badge.style.display = 'inline-block';
+      setVisible(badge, true, 'inline-block');
     }
   }
 
@@ -148,7 +148,7 @@ function applyPropertyData(data, homePrice, domRefs, inputUrl = '') {
     const badge = document.getElementById('badge-redfin-tax');
     if (badge) {
       badge.textContent = `✓ ${providerLabel}`;
-      badge.style.display = 'inline-block';
+      setVisible(badge, true, 'inline-block');
     }
   }
 }

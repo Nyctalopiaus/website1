@@ -24,6 +24,13 @@
     const radiusMeters = spatial.radiusMetersFromMinutes(radiusMinutes);
     const center = candidate.center;
     const categoryPrefs = options.categoryPrefs || {};
+    // Per-category { elements, termsAttempted, termsErrored, allTermsFailed }
+    // from a Photon-fallback fetch (see spatial.js's fetchPhotonFallbackData),
+    // or null when this assessment's data came straight from Overpass (which
+    // doesn't have this per-term failure mode). Passed through untouched so
+    // app.js's scoreboard rendering can show "couldn't confirm" instead of a
+    // bare 0 for a category whose fallback lookups all failed.
+    const categoryFetchStatus = options.categoryFetchStatus || null;
 
     const groceryInRange = spatial.countWithin(center, parsed.grocery || [], radiusMeters);
     const fitnessInRange = spatial.countWithin(center, parsed.fitness || [], radiusMeters);
@@ -45,21 +52,53 @@
       trails: Number(trailMiles.toFixed(2))
     };
 
+    // A per-search target override (from the user's own "Target" input, see
+    // app.js's getCategoryPrefs()) takes priority; a category with no valid
+    // override, or an old caller that never passed categoryPrefs at all,
+    // falls back to the CATEGORY_META default -- keeps this function usable
+    // even if categoryPrefs is missing/legacy-shaped.
+    function targetFor(key) {
+      const override = categoryPrefs[key] && typeof categoryPrefs[key] === 'object' ? categoryPrefs[key].target : null;
+      return (typeof override === 'number' && override > 0) ? override : CATEGORY_META[key].target;
+    }
+
+    const targets = {};
+    CATEGORY_ORDER.forEach((key) => { targets[key] = targetFor(key); });
+
     const norms = {
-      grocery: Math.min(counts.grocery / CATEGORY_META.grocery.target, 1),
-      fitness: Math.min(counts.fitness / CATEGORY_META.fitness.target, 1),
-      cuisine: Math.min(counts.cuisine / CATEGORY_META.cuisine.target, 1),
-      gas: Math.min(counts.gas / CATEGORY_META.gas.target, 1),
-      parks: Math.min(counts.parks / CATEGORY_META.parks.target, 1),
-      pharmacy: Math.min(counts.pharmacy / CATEGORY_META.pharmacy.target, 1),
-      trails: Math.min(counts.trails / CATEGORY_META.trails.target, 1)
+      grocery: Math.min(counts.grocery / targets.grocery, 1),
+      fitness: Math.min(counts.fitness / targets.fitness, 1),
+      cuisine: Math.min(counts.cuisine / targets.cuisine, 1),
+      gas: Math.min(counts.gas / targets.gas, 1),
+      parks: Math.min(counts.parks / targets.parks, 1),
+      pharmacy: Math.min(counts.pharmacy / targets.pharmacy, 1),
+      trails: Math.min(counts.trails / targets.trails, 1)
     };
 
-    const selected = CATEGORY_ORDER.filter((key) => categoryPrefs[key] !== false);
+    // "Selected" and "weight" both come from the new { enabled, weight,
+    // target } shape (see app.js's state.categoryPrefs). A bare `false`
+    // (the old pre-weighting shape) is still honored as "not selected" for
+    // any caller that hasn't been upgraded.
+    function isSelected(key) {
+      const pref = categoryPrefs[key];
+      if (pref && typeof pref === 'object') return pref.enabled !== false;
+      return pref !== false;
+    }
+    function weightFor(key) {
+      const pref = categoryPrefs[key];
+      const w = pref && typeof pref === 'object' ? pref.weight : null;
+      return (typeof w === 'number' && w > 0) ? w : 1;
+    }
+
+    const selected = CATEGORY_ORDER.filter(isSelected);
+    const weights = {};
+    selected.forEach((key) => { weights[key] = weightFor(key); });
+
     let score = 0;
     if (selected.length) {
-      const sum = selected.reduce((acc, key) => acc + (norms[key] || 0), 0);
-      score = Math.round((sum / selected.length) * 100);
+      const weightTotal = selected.reduce((acc, key) => acc + weights[key], 0);
+      const weightedSum = selected.reduce((acc, key) => acc + (norms[key] || 0) * weights[key], 0);
+      score = weightTotal > 0 ? Math.round((weightedSum / weightTotal) * 100) : 0;
     }
 
     return {
@@ -71,6 +110,8 @@
       radiusMeters,
       counts,
       norms,
+      targets,
+      weights,
       score,
       selected,
       markers: {
@@ -83,7 +124,8 @@
         trails: trailsInRange
       },
       isEstimated,
-      sourceLabel
+      sourceLabel,
+      categoryFetchStatus
     };
   }
 

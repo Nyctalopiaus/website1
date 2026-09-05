@@ -49,8 +49,12 @@
     <header class="header">
         <div class="container header-content">
             <div class="logo">
-                <a href="../" class="btn-back">← Back to Lab</a>
-                <span class="logo-text">Hugging Face Model Matcher</span>
+                <a href="../" class="btn-back" title="Back to Nycto's AI Lab">← Back to Lab</a>
+                <div class="logo-identity">
+                    <span class="lab-badge" title="One of several tools in Nycto's AI Lab">🧪 Nycto's AI Lab</span>
+                    <span class="breadcrumb-sep" aria-hidden="true">/</span>
+                    <span class="logo-text">Hugging Face Model Matcher</span>
+                </div>
             </div>
             <div style="display: flex; align-items: center; gap: 0.6rem; margin-left: auto;">
                 <button type="button" id="btn-open-onboarding" class="btn-header-action primary-glow" title="Runner Setup Guide">
@@ -109,6 +113,7 @@
                         <option value="apple">🍏 Apple Silicon (Mac Unified Memory)</option>
                         <option value="intel">🔵 Intel Arc & Battlemage</option>
                         <option value="custom">✏️ Custom / Manual Slider Mode</option>
+                        <option value="cpu">🖥️ CPU / RAM-Only (No GPU)</option>
                     </select>
 
                     <div class="label-row">
@@ -139,7 +144,7 @@
 
                     <!-- Total Effective VRAM Slider -->
                     <div class="label-row">
-                        <span class="control-label">Total Effective VRAM</span>
+                        <span id="vram-section-label" class="control-label">Total Effective VRAM</span>
                         <span id="vram-val" class="control-value">24 GB</span>
                     </div>
                     <input type="range" id="vram-slider" class="range-slider" min="2" max="192" step="1" value="24" aria-label="Total effective VRAM in gigabytes" aria-valuetext="24 gigabytes" style="margin-bottom: 12px;">
@@ -237,6 +242,28 @@
                     <div class="search-bar-row">
                         <input type="text" id="search-input" class="input-search" placeholder="Search model name or tag (e.g. llama, qwen, flux)..." aria-label="Search model name or tag">
                         <button id="btn-refresh" class="btn-action" style="padding: 0 16px;">Refresh 🔄</button>
+                    </div>
+
+                    <!-- Sort/filter the already-fetched candidate batch client-side - no
+                         network call, distinct from the search box above. -->
+                    <div class="candidate-controls-row">
+                        <select id="candidate-sort-select" class="input-search" style="flex: 0 0 auto; width: auto;" aria-label="Sort candidates">
+                            <option value="score_desc">Sort: Highest Score</option>
+                            <option value="vram_asc">Sort: Lowest VRAM</option>
+                            <option value="params_asc">Sort: Smallest Params</option>
+                            <option value="params_desc">Sort: Largest Params</option>
+                        </select>
+                        <select id="candidate-quant-select" class="input-search" style="flex: 0 0 auto; width: auto;" aria-label="Filter by quantization level">
+                            <option value="all">All Quant Levels</option>
+                            <option value="4">4-bit</option>
+                            <option value="8">8-bit</option>
+                            <option value="16">16-bit / FP16</option>
+                        </select>
+                        <div class="chip-filter-group" role="group" aria-label="Filter by GGUF verification status">
+                            <button type="button" class="chip-filter active" data-verified-filter="all">All</button>
+                            <button type="button" class="chip-filter" data-verified-filter="verified">✓ Verified Only</button>
+                            <button type="button" class="chip-filter" data-verified-filter="hide_flagged">Hide ⚠ Unverified</button>
+                        </div>
                     </div>
 
                     <div id="candidates-container" aria-live="polite">

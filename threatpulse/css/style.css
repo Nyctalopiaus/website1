@@ -1,5 +1,26 @@
 /* ThreatPulse Executive Dark-Mode Design System */
 
+/* Self-hosted JetBrains Mono (previously loaded from Google Fonts -- see Phase 4 notes).
+   Only Regular (400) and Bold (700) ship as real files; the browser synthesizes the
+   500/600 "medium/semibold" weights Tailwind's font-mono utilities sometimes request by
+   interpolating toward Bold, which looks slightly heavier than a true 500/600 cut would.
+   That's an acceptable trade for zero external font requests -- revisit if it ever looks
+   off in practice. */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../assets/fonts/JetBrainsMono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../assets/fonts/JetBrainsMono-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg-main: #070b14;
   --bg-card: #0f172a;
@@ -14,8 +35,8 @@
   --accent-rose: #f43f5e;
   --accent-amber: #fbbf24;
   --accent-emerald: #34d399;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
 /* Base Resets */
@@ -269,6 +290,20 @@ footer {
   letter-spacing: 0.03em;
 }
 
+/* Feed-health / staleness cue: header status pill flips from its default blue to rose when
+   feed.json's generated_at is older than STALE_DATA_MS (js/app.js), so a stale sync is visible
+   at a glance instead of only showing up as small "Updated 2 days ago" text. */
+.system-status.is-stale {
+  background: rgba(244, 63, 94, 0.08);
+  border-color: rgba(244, 63, 94, 0.3);
+  color: var(--accent-rose);
+}
+
+.system-status.is-stale .status-indicator {
+  background-color: var(--accent-rose);
+  box-shadow: 0 0 8px var(--accent-rose);
+}
+
 .search-wrap {
   position: relative;
   display: flex;
@@ -463,11 +498,20 @@ footer {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
 }
 
-/* Kanban Grid Columns */
+/* Kanban Grid Columns.
+   BUG FIX (tablet ~1024px column-disappearing issue): this ID selector's grid-template-columns
+   used to unconditionally override index.html's Tailwind responsive classes (grid-cols-1
+   md:grid-cols-2 lg:grid-cols-3) at every viewport width, because an ID selector (specificity
+   1,0,0) always beats Tailwind's class-based utilities (0,1,0) regardless of source order. The
+   real layout was actually being driven by this auto-fit rule the whole time, not the 1/2/3-col
+   breakpoints the markup implies — auto-fit's minmax(320px,1fr) math happens to land on 1/2/3
+   columns at most widths, but diverges right around 1024px (three 320px columns + two 1.5rem
+   gaps = 1008px, close enough to typical tablet container widths to flicker between fitting and
+   overflowing/clipping the third column instead of cleanly reflowing to two). Fix: drop the
+   conflicting column/gap properties so index.html's Tailwind classes are what actually controls
+   column count at each breakpoint; keep only min-height (prevents the grid from collapsing to
+   zero height before content renders). */
 #view-kanban {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1.5rem;
   min-height: 520px;
 }
 
@@ -590,6 +634,40 @@ footer {
   background-color: rgba(30, 41, 59, 0.8);
   color: #94a3b8;
   border: 1px solid rgba(51, 65, 85, 0.8);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Accessibility fix: "active" and "info" severity items previously both fell through to
+   .badge-subdued with zero visual distinction beyond the card's border-left color (violet vs
+   sky) — meaning a colorblind user (or anyone glancing quickly) couldn't tell an active-threat
+   item from a plain informational one at all. .badge-active and .badge-info give each its own
+   icon (js/components.js) plus a color-matched badge, so severity is now encoded redundantly
+   (border color + distinct icon shape + badge color) rather than by hue alone. */
+.badge-active {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.375rem;
+  background-color: rgba(167, 139, 250, 0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.badge-info {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.375rem;
+  background-color: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;

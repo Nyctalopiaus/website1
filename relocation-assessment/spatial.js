@@ -298,6 +298,13 @@ ${outMode}
     const terms = PHOTON_FALLBACK_TERMS[fKey] || [fKey];
 
     const elements = [];
+    // Tracked so a bare "0 found" can be told apart from "we couldn't
+    // actually confirm that" -- see categoryFetchStatus below. A term
+    // counts as errored if the request threw (timeout/network) or came
+    // back non-OK; a term that completed and legitimately found nothing
+    // is not an error.
+    let termsErrored = 0;
+    const termsAttempted = terms.length;
 
     await Promise.all(
       terms.map(async (term) => {
@@ -308,7 +315,10 @@ ${outMode}
             if (!res || !res.ok) return null;
             return res.json();
           });
-          if (!data) return;
+          if (!data) {
+            termsErrored++;
+            return;
+          }
           const features = Array.isArray(data?.features) ? data.features : [];
           features.forEach((f) => {
             const coords = f.geometry?.coordinates || [];
@@ -335,12 +345,13 @@ ${outMode}
             });
           });
         } catch (err) {
+          termsErrored++;
           logger?.warn('spatial:photon-fallback', `Category lookup "${term}" (${fKey}) failed`, logger?.describeError(err));
         }
       })
     );
 
-    return elements;
+    return { elements, termsAttempted, termsErrored };
   }
 
   async function fetchPhotonFallbackData(center, selectedKeys) {
@@ -349,12 +360,27 @@ ${outMode}
       selected.map((key) => fetchPhotonCategoryPOIs(key, center.lat, center.lon))
     );
     const combinedElements = [];
-    results.forEach((list) => combinedElements.push(...list));
+    // Per-category fetch status so the UI can tell "confirmed zero nearby"
+    // apart from "couldn't confirm -- every term lookup for this category
+    // errored/timed out." allTermsFailed is deliberately strict (every
+    // single term request failed, not just most): a category with even one
+    // completed term lookup has real, if partial, confirmation.
+    const categoryFetchStatus = {};
+    selected.forEach((key, idx) => {
+      const r = results[idx];
+      combinedElements.push(...r.elements);
+      categoryFetchStatus[key] = {
+        elements: r.elements.length,
+        termsAttempted: r.termsAttempted,
+        termsErrored: r.termsErrored,
+        allTermsFailed: r.termsAttempted > 0 && r.termsErrored === r.termsAttempted
+      };
+    });
     // No synthetic/placeholder data here on purpose: if nothing real comes back,
     // the caller treats that as "no results" and says so honestly rather than
     // inventing POIs that don't exist (a prior version of this fallback did
     // fabricate placeholder points here -- removed 2026-08-30, see project memory).
-    return { elements: combinedElements };
+    return { elements: combinedElements, categoryFetchStatus };
   }
 
   async function runOverpassQuery(queryText, options = {}) {
@@ -369,6 +395,7 @@ ${outMode}
         if (data && Array.isArray(data.elements) && data.elements.length > 0) {
           overpassEndpointIndex = (overpassEndpointIndex + i + 1) % numEndpoints;
           logger?.info('spatial:overpass', `${hostnameOf(endpoint)} returned ${data.elements.length} element(s)`);
+          data.usedFallback = false;
           return data;
         }
         logger?.warn('spatial:overpass', `${hostnameOf(endpoint)} returned 0 elements`);
@@ -385,6 +412,7 @@ ${outMode}
       const fallbackData = await fetchPhotonFallbackData(options.center, options.selectedKeys);
       if (fallbackData.elements.length > 0) {
         logger?.info('spatial:photon-fallback', `Photon fallback returned ${fallbackData.elements.length} element(s)`);
+        fallbackData.usedFallback = true;
         return fallbackData;
       }
       logger?.warn('spatial:photon-fallback', 'Photon fallback also returned nothing');

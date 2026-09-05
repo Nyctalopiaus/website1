@@ -1,0 +1,10 @@
+[2026-09-05 18:18:06] [FAILURE] User: 'nonexistent_user' | IP: 127.0.0.1 | Reason: Username not found in database | UA: TestClient/1.0
+[2026-09-05 18:18:07] [FAILURE] User: 'admin' | IP: 127.0.0.1 | Reason: Password mismatch | UA: TestClient/1.0
+[2026-09-05 18:18:07] [SUCCESS] User: 'admin' | IP: 127.0.0.1 | Reason: Authentication successful | UA: TestClient/1.0
+[2026-09-05 18:20:53] [SUCCESS] User: 'admin' | IP: 127.0.0.1 | Reason: Authentication successful | UA: Unknown
+[2026-09-05 18:22:26] [SUCCESS] User: 'admin' | IP: 127.0.0.1 | Reason: Authentication successful | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+[2026-09-05 18:22:26] [SUCCESS] User: 'admin' | IP: 127.0.0.1 | Reason: Authentication successful | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+[2026-09-05 18:22:34] [FAILURE] User: 'admin' | IP: 127.0.0.1 | Reason: Password mismatch | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+[2026-09-05 18:22:34] [FAILURE] User: 'admin' | IP: 127.0.0.1 | Reason: Password mismatch | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+[2026-09-05 18:22:39] [SUCCESS] User: 'admin' | IP: 127.0.0.1 | Reason: Authentication successful | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+[2026-09-05 18:22:39] [SUCCESS] User: 'admin' | IP: 127.0.0.1 | Reason: Authentication successful | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36

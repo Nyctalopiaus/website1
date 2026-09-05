@@ -1,0 +1,125 @@
+/* ==========================================================================
+   NYCTO'S AI LAB — SHARED NAV STYLES
+   Pairs with nav.html in this same folder. Self-contained: every value comes
+   from the --nav-* custom properties defined below (dark-mode defaults
+   matching the Lab's shared aesthetic), and every selector is scoped under
+   .nycto-nav-header, so dropping this into any tool's <head> can't collide
+   with or override that tool's own styles - it only affects what's inside
+   the nav header itself.
+   ========================================================================== */
+.nycto-nav-header {
+  --nav-bg: rgba(7, 11, 20, 0.85);
+  --nav-border: rgba(255, 255, 255, 0.08);
+  --nav-text: #F8FAFC;
+  --nav-text-muted: #64748B;
+  --nav-accent: #06B6D4;
+  --nav-accent-bg: rgba(6, 182, 212, 0.12);
+  --nav-accent-border: rgba(6, 182, 212, 0.35);
+  --nav-radius-full: 9999px;
+  --nav-font: 'Inter', -apple-system, sans-serif;
+
+  font-family: var(--nav-font);
+  border-bottom: 1px solid var(--nav-border);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--nav-bg);
+  padding: 16px 0;
+  box-sizing: border-box;
+}
+
+.nycto-nav-header *,
+.nycto-nav-header *::before,
+.nycto-nav-header *::after {
+  box-sizing: inherit;
+}
+
+.nycto-nav-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.nycto-nav-identity {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.nycto-nav-back {
+  color: var(--nav-text-muted);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid var(--nav-border);
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--nav-radius-full);
+  background: rgba(255, 255, 255, 0.03);
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.nycto-nav-back:hover {
+  color: var(--nav-accent);
+  border-color: var(--nav-accent);
+  background: var(--nav-accent-bg);
+}
+
+.nycto-nav-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.nycto-nav-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--nav-accent);
+  background: var(--nav-accent-bg);
+  border: 1px solid var(--nav-accent-border);
+  padding: 3px 10px;
+  border-radius: var(--nav-radius-full);
+  white-space: nowrap;
+}
+
+.nycto-nav-sep {
+  color: var(--nav-text-muted);
+  font-size: 13px;
+}
+
+.nycto-nav-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--nav-text);
+}
+
+@media (max-width: 768px) {
+  .nycto-nav-header {
+    padding: 10px 0;
+  }
+
+  .nycto-nav-container {
+    padding: 0 12px;
+  }
+
+  .nycto-nav-back {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.75rem;
+  }
+
+  .nycto-nav-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+
+  .nycto-nav-title {
+    font-size: 1rem;
+  }
+}

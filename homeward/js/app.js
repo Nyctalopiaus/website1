@@ -15,6 +15,12 @@ class HomewardApp {
     this.scheduleData = null;
     this.startPointGeocoded = null;
     this.draggedIdx = null;
+    // Phase 5 additions: which itinerary cards have their inline Quick Note
+    // panel expanded, and which stop ids are checked for the Compare view.
+    // Both are transient UI state (not persisted) — cleared naturally on
+    // page reload, which is fine since they're just view toggles.
+    this.expandedQuickNoteIds = new Set();
+    this.compareSelection = new Set();
   }
 
   init() {
@@ -535,6 +541,7 @@ class HomewardApp {
     // Open Sync Modal
     document.getElementById('btn-open-sync-modal').addEventListener('click', () => {
       document.getElementById('sync-modal').classList.remove('hidden');
+      this.refreshAutoBackupStatus();
     });
 
     // Close Sync Modal
@@ -556,6 +563,140 @@ class HomewardApp {
     document.getElementById('btn-sync-pull').addEventListener('click', () => {
       this.handleSyncPull();
     });
+
+    // Copy this device's Auto-Backup ID
+    document.getElementById('btn-autobackup-copy-id').addEventListener('click', () => {
+      this.handleAutoBackupCopyId();
+    });
+
+    // Restore a tour from an Auto-Backup ID
+    document.getElementById('btn-autobackup-restore').addEventListener('click', () => {
+      this.handleAutoBackupRestore();
+    });
+  }
+
+  // Populates the Auto-Backup sub-section of the Sync modal with this
+  // device's backup id and a human-readable "last backed up" status. Called
+  // whenever the Sync modal opens, not on a timer — this is just a display
+  // refresh, the actual background backup runs from storage.js's
+  // _scheduleAutoBackup regardless of whether this modal is ever opened.
+  refreshAutoBackupStatus() {
+    const idSpan = document.getElementById('autobackup-device-id');
+    const statusP = document.getElementById('autobackup-status');
+    if (!idSpan || !statusP || !window.storageManager) return;
+
+    // Ensure an id exists (first time the modal is opened on a fresh
+    // browser, before any save has happened yet to create one).
+    const deviceId = window.storageManager.getOrCreateBackupDeviceId();
+    const status = window.storageManager.getBackupStatus();
+
+    idSpan.textContent = deviceId || 'unavailable';
+
+    if (!deviceId) {
+      statusP.textContent = 'Status: unavailable in this browser (local storage blocked).';
+    } else if (!status.lastBackupAt) {
+      statusP.textContent = 'Status: no backup yet — happens automatically ~30s after your next change.';
+    } else {
+      statusP.textContent = `Status: last backed up ${this.formatRelativeTime(status.lastBackupAt)}.`;
+    }
+  }
+
+  // Small "3m ago" / "2h ago" / "5d ago" formatter, used by the Auto-Backup
+  // status line and available for the Phase 4 staleness badges too.
+  formatRelativeTime(timestampMs) {
+    const diffMs = Date.now() - timestampMs;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  }
+
+  handleAutoBackupCopyId() {
+    const idSpan = document.getElementById('autobackup-device-id');
+    const id = idSpan ? idSpan.textContent.trim() : '';
+    if (!id || id === '—' || id === 'unavailable') return;
+
+    const copyBtn = document.getElementById('btn-autobackup-copy-id');
+    const markCopied = () => {
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+    };
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(id).then(markCopied).catch(() => {});
+    } else {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = id;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        markCopied();
+      } catch (e) {
+        // Clipboard unavailable; the id is still visible on screen to copy by hand.
+      }
+    }
+  }
+
+  // Restores a tour from an Auto-Backup id — either this browser's own id
+  // recovered from a note (localStorage got cleared but the id was written
+  // down) or one copied deliberately from another device. Replaces the
+  // current tour outright, same as Pull & Replace, since a restore implies
+  // there's nothing worth merging with.
+  async handleAutoBackupRestore() {
+    const input = document.getElementById('autobackup-restore-id-input');
+    const errorP = document.getElementById('autobackup-restore-error');
+    const successP = document.getElementById('autobackup-restore-success');
+    const btn = document.getElementById('btn-autobackup-restore');
+
+    errorP.classList.add('hidden');
+    successP.classList.add('hidden');
+
+    const id = input.value.trim();
+    if (!id) {
+      errorP.textContent = 'Enter the auto-backup ID from the other device.';
+      errorP.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
+    btn.textContent = 'Restoring...';
+
+    try {
+      const result = await window.syncManager.restoreAutoBackup(id);
+      const incomingStops = (result.tour && Array.isArray(result.tour.stops)) ? result.tour.stops : [];
+
+      this.currentTour.stops = incomingStops;
+      if (result.tour) {
+        if (result.tour.tourName) this.currentTour.tourName = result.tour.tourName;
+        if (result.tour.startAddress) this.currentTour.startAddress = result.tour.startAddress;
+        if (result.tour.loopBack !== undefined) this.currentTour.loopBack = result.tour.loopBack;
+        if (result.tour.stayDurationMins !== undefined) this.currentTour.stayDurationMins = result.tour.stayDurationMins;
+        if (result.tour.preferences) this.currentTour.preferences = result.tour.preferences;
+      }
+
+      this.populateUIFromState();
+      window.storageManager.saveTour(this.currentTour);
+      await this.handleOptimizeTrigger();
+
+      successP.textContent = `Restored ${incomingStops.length} stop${incomingStops.length === 1 ? '' : 's'} from that auto-backup.`;
+      successP.classList.remove('hidden');
+      input.value = '';
+    } catch (err) {
+      errorP.textContent = window.syncManager.describeError(err);
+      errorP.classList.remove('hidden');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
   }
 
   // Pushes the current device's tour to sync.php and displays the code the
@@ -1019,6 +1160,14 @@ class HomewardApp {
           </button>
         </div>
 
+        ${this.compareSelection.size >= 2 ? `
+          <div class="mb-4">
+            <button id="btn-open-compare" onclick="window.homewardApp.openCompareModal()" class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-slate-950 font-bold text-xs shadow-md shadow-sky-500/20 hover:from-sky-400 hover:to-indigo-500 transition-all">
+              📊 Compare Selected (${this.compareSelection.size})
+            </button>
+          </div>
+        ` : ''}
+
         <div class="mb-4">
           <a href="${googleMultiNavUrl}" target="_blank" class="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-500 transition-all">
             <svg class="w-5 h-5 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
@@ -1041,6 +1190,17 @@ class HomewardApp {
         const matchRes = window.propertyScorer ? window.propertyScorer.calculateMatchScore(stop, prefs) : { scorePct: 100, badgeColor: 'emerald' };
         const badgeClass = matchRes.badgeColor === 'emerald' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : (matchRes.badgeColor === 'rose' ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30');
 
+        // Auto-Detect staleness badge — see StorageManager.getFreshnessInfo.
+        // Reuses the same cachedProp lookup already done above for the
+        // listing URL, so this is free (no extra localStorage read).
+        const freshnessInfo = window.storageManager ? window.storageManager.getFreshnessInfo(cachedProp) : { state: 'none', label: 'Never auto-detected' };
+        const freshnessStyles = {
+          fresh: { icon: '✅', classes: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+          partial: { icon: '⚠️', classes: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+          none: { icon: '⏳', classes: 'bg-slate-800/60 text-slate-500 border-slate-700' }
+        };
+        const freshnessStyle = freshnessStyles[freshnessInfo.state] || freshnessStyles.none;
+
         html += `
           <div class="bg-slate-900 border border-slate-800 hover:border-sky-500/40 rounded-xl p-4 transition-all duration-200 group">
             <div class="flex items-start justify-between gap-3">
@@ -1054,6 +1214,7 @@ class HomewardApp {
                   <div class="flex items-center gap-2 flex-wrap">
                     <h4 class="font-bold text-slate-100 text-sm group-hover:text-sky-300 transition-colors truncate" title="${stop.address}">${stop.address}</h4>
                     <span class="px-2 py-0.5 rounded-full text-[11px] font-bold border ${badgeClass}">🎯 ${matchRes.scorePct}% Match</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold border ${freshnessStyle.classes}" title="${freshnessInfo.label}">${freshnessStyle.icon} ${freshnessInfo.label}</span>
                   </div>
                   
                   <div class="flex items-center gap-3 text-xs text-slate-400 mt-1">
@@ -1087,6 +1248,23 @@ class HomewardApp {
                         🔖 Ingest Listing ↗
                       </a>
                     `}
+                    <button onclick="window.homewardApp.toggleQuickNote('${stop.id}')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-semibold transition-colors">
+                      ✏️ Quick Note
+                    </button>
+                    <button onclick="window.homewardApp.toggleCompareSelection('${stop.id}')" class="px-2 py-1 rounded font-semibold transition-colors border ${this.compareSelection.has(stop.id) ? 'bg-sky-500/20 text-sky-300 border-sky-500/40' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'}">
+                      ${this.compareSelection.has(stop.id) ? '✅ Comparing' : '📊 Compare'}
+                    </button>
+                  </div>
+
+                  <!-- Quick Note inline panel: collapsed by default, no need to open the full Inspection Notebook for a fast note -->
+                  <div id="quicknote-panel-${stop.id}" class="${this.expandedQuickNoteIds.has(stop.id) ? '' : 'hidden'} mt-2 pt-2 border-t border-slate-800/60">
+                    <textarea id="quicknote-textarea-${stop.id}" rows="2" placeholder="Quick note about this property..." class="w-full px-2.5 py-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:border-sky-500 focus:outline-none resize-y">${stop.notes || ''}</textarea>
+                    <div class="flex items-center gap-2 mt-1.5">
+                      <button onclick="window.homewardApp.quickSaveNote('${stop.id}')" class="px-2.5 py-1 rounded-md bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 font-semibold border border-sky-500/30 text-[11px] transition-colors">
+                        Save Note
+                      </button>
+                      <span id="quicknote-saved-${stop.id}" class="hidden text-[11px] text-emerald-400 font-semibold">Saved ✓</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1124,6 +1302,118 @@ class HomewardApp {
     } catch (e) {
       console.warn('Render itinerary error:', e);
     }
+  }
+
+  // --- Quick Note (Phase 5) ---
+  // Expands/collapses the inline note panel on an itinerary card without a
+  // full re-render of the list (keeps other cards' state/scroll position
+  // untouched). expandedQuickNoteIds just tracks which panels should start
+  // open if the list IS re-rendered for some other reason later.
+  toggleQuickNote(stopId) {
+    const panel = document.getElementById(`quicknote-panel-${stopId}`);
+    if (!panel) return;
+    const nowHidden = panel.classList.toggle('hidden');
+    if (nowHidden) {
+      this.expandedQuickNoteIds.delete(stopId);
+    } else {
+      this.expandedQuickNoteIds.add(stopId);
+      const textarea = document.getElementById(`quicknote-textarea-${stopId}`);
+      if (textarea) textarea.focus();
+    }
+  }
+
+  // Writes straight to stop.notes — the exact same field the full
+  // Inspection Notebook modal reads/writes (js/notes.js note-text field) —
+  // so a quick note taken here shows up there too, and vice versa. No
+  // modal, no navigation away from the itinerary list.
+  quickSaveNote(stopId) {
+    const stop = this.currentTour.stops.find(s => s.id === stopId);
+    const textarea = document.getElementById(`quicknote-textarea-${stopId}`);
+    if (!stop || !textarea) return;
+
+    stop.notes = textarea.value;
+    window.storageManager.saveTour(this.currentTour);
+
+    const savedLabel = document.getElementById(`quicknote-saved-${stopId}`);
+    if (savedLabel) {
+      savedLabel.classList.remove('hidden');
+      setTimeout(() => savedLabel.classList.add('hidden'), 1800);
+    }
+  }
+
+  // --- Comparison View (Phase 5) ---
+  // Toggling doesn't need a full re-render either, EXCEPT the button's own
+  // visual state and the "Compare Selected (N)" button's visibility/count
+  // depend on selection size, both of which live in the itinerary list's
+  // template — so this one re-renders. Cheap enough (client-side template,
+  // no network) not to bother with a more surgical DOM update.
+  toggleCompareSelection(stopId) {
+    if (this.compareSelection.has(stopId)) {
+      this.compareSelection.delete(stopId);
+    } else {
+      this.compareSelection.add(stopId);
+    }
+    this.renderItineraryList();
+  }
+
+  openCompareModal() {
+    const modal = document.getElementById('compare-modal');
+    const body = document.getElementById('compare-modal-body');
+    if (!modal || !body) return;
+
+    const selectedStops = this.currentTour.stops.filter(s => this.compareSelection.has(s.id));
+    if (selectedStops.length < 2) return;
+
+    const prefs = this.currentTour.preferences || {};
+    const rows = [
+      { label: 'Price', get: s => s.price || '—' },
+      { label: 'Home Sq Ft', get: s => s.sqft || '—' },
+      { label: 'Lot Size', get: s => s.lotSize || '—' },
+      { label: 'HOA', get: s => s.hoaNotes || '—' },
+      { label: 'Year Built', get: s => s.yearBuilt || '—' },
+      { label: 'Terrain', get: s => s.terrain || '—' },
+      { label: 'House Facing', get: s => s.facingDirection || '—' },
+      { label: 'Rating', get: s => '★'.repeat(s.rating || 3) },
+      {
+        label: 'Match Score',
+        get: s => {
+          const res = window.propertyScorer ? window.propertyScorer.calculateMatchScore(s, prefs) : { scorePct: 100 };
+          return `${res.scorePct}%`;
+        }
+      },
+      { label: 'Pros', get: s => (s.pros && s.pros.length) ? s.pros.join(', ') : '—' },
+      { label: 'Cons', get: s => (s.cons && s.cons.length) ? s.cons.join(', ') : '—' }
+    ];
+
+    let html = `<div class="overflow-x-auto"><table class="w-full text-xs border-collapse">`;
+    html += `<thead><tr>`;
+    html += `<th class="text-left p-2 text-slate-400 font-semibold border-b border-slate-800 sticky left-0 bg-slate-900">Spec</th>`;
+    selectedStops.forEach(s => {
+      html += `<th class="text-left p-2 text-slate-100 font-bold border-b border-slate-800 whitespace-nowrap">${s.address}</th>`;
+    });
+    html += `</tr></thead><tbody>`;
+    rows.forEach(row => {
+      html += `<tr class="border-b border-slate-800/60"><td class="p-2 text-slate-400 font-semibold sticky left-0 bg-slate-900">${row.label}</td>`;
+      selectedStops.forEach(s => {
+        html += `<td class="p-2 text-slate-200">${row.get(s)}</td>`;
+      });
+      html += `</tr>`;
+    });
+    html += `</tbody></table></div>`;
+
+    body.innerHTML = html;
+    modal.classList.remove('hidden');
+  }
+
+  closeCompareModal() {
+    const modal = document.getElementById('compare-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  clearCompareSelection() {
+    this.compareSelection.clear();
+    this.closeCompareModal();
+    this.renderItineraryList();
   }
 
   openImageLightbox(photoUrl, title = 'Property Photo') {

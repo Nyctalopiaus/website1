@@ -20,48 +20,19 @@
   <meta name="twitter:description" content="High-signal, distraction-free security advisory and technical news intelligence dashboard.">
   <meta name="twitter:image" content="https://nycto.ninja/threatpulse/assets/cyber_threatpulse_bg.jpg">
 
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  
-  <!-- Fallback Stylesheet -->
-  <link rel="stylesheet" href="css/style.css?v=20260816-7">
+  <!-- Fonts: self-hosted (see css/style.css @font-face). No Google Fonts / external font CDN. -->
 
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              bg: '#0b0f19',
-              card: '#111827',
-              'card-hover': '#1e293b',
-              border: '#1f2937',
-              subtle: '#374151',
-              accent: '#38bdf8',
-              critical: '#f43f5e',
-              warning: '#fbbf24',
-              success: '#34d399'
-            }
-          },
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace']
-          }
-        }
-      }
-    }
-  </script>
+  <!-- Tailwind CSS, compiled at build time (see tailwind.config.js) -- no cdn.tailwindcss.com. -->
+  <link rel="stylesheet" href="css/tailwind.generated.css?v=20260904-1">
+
+  <!-- Fallback / project stylesheet -->
+  <link rel="stylesheet" href="css/style.css?v=20260904-1">
 
   <style>
     body {
       background-color: #0b0f19;
       color: #f8fafc;
-      font-family: 'Inter', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     }
 
     /* Strict SVG bounds protection if Tailwind fails or CDN is blocked */
@@ -162,11 +133,11 @@
              hamburger toggle under 768px instead of silently overflowing the row. -->
         <div id="header-actions-group" class="header-actions-group">
           <button type="button" id="btn-open-palette" class="btn-header-action flex items-center gap-1.5" title="Jump to any item (Ctrl/Cmd+K)">
-            <span>🔎</span> <span class="header-btn-text">Jump</span> <span class="hidden sm:inline text-[10px] text-slate-500 font-mono border border-brand-border/70 rounded px-1 ml-0.5">⌘K</span>
+            <span class="icon-search"><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></span> <span class="header-btn-text">Jump</span> <span class="hidden sm:inline text-[10px] text-slate-500 font-mono border border-brand-border/70 rounded px-1 ml-0.5">⌘K</span>
           </button>
 
           <button type="button" id="btn-open-iocwatch" class="btn-header-action flex items-center gap-1.5" title="IOC Watch — structured indicators (hashes, URLs, domains, IPs)">
-            <span>🧬</span> <span class="header-btn-text">IOC Watch</span>
+            <span><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l7 4v5c0 4.97-3.16 9.16-7 10-3.84-.84-7-5.03-7-10V7l7-4z M9 12.2l2 2 4-4.4"/></svg></span> <span class="header-btn-text">IOC Watch</span>
           </button>
 
           <!-- MOCKUP: desktop-only "More" dropdown, styled after the mobile hamburger menu,
@@ -179,15 +150,15 @@
 
             <div id="desktop-more-panel" class="desktop-more-panel">
               <button type="button" id="btn-open-feeds" class="btn-header-action flex items-center gap-1.5" title="View Monitored Security Feeds">
-                <span>📡</span> <span class="header-btn-text">Feed List</span>
+                <span><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="5" cy="19" r="1.4" fill="currentColor" stroke="none"/><path stroke-linecap="round" d="M4 12a8 8 0 018 8M4 5a15 15 0 0115 15"/></svg></span> <span class="header-btn-text">Feed List</span>
               </button>
 
               <button type="button" id="btn-open-quickstart" class="btn-header-action flex items-center gap-1.5" title="Show Quick Start Guide">
-                <span>ℹ️</span> <span class="header-btn-text">Quick Start</span>
+                <span><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span> <span class="header-btn-text">Quick Start</span>
               </button>
 
               <button type="button" id="btn-open-features" class="btn-header-action flex items-center gap-1.5" title="Show Features">
-                <span>⚡</span> <span class="header-btn-text">Features</span>
+                <span><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"/></svg></span> <span class="header-btn-text">Features</span>
               </button>
             </div>
           </div>
@@ -208,7 +179,7 @@
       <!-- Summary Bar Header (Always Visible - 44px Height) -->
       <div id="executive-summary-header" class="flex items-center justify-between gap-3 p-3 cursor-pointer select-none" title="Click to expand/collapse system status & KEV highlights">
         <div class="flex items-center gap-3 min-w-0">
-          <div class="p-1 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-xs font-mono shrink-0">⚡</div>
+          <div class="p-1 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-xs font-mono shrink-0"><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"/></svg></div>
           <div class="flex items-center gap-2 truncate">
             <span class="text-xs font-bold uppercase tracking-wider text-slate-200 shrink-0">Status & Highlights:</span>
             <span id="summary-preview-text" class="text-xs font-mono text-slate-400 truncate">Loading CISA KEV highlights...</span>
@@ -216,8 +187,8 @@
         </div>
 
         <div class="flex items-center gap-2 shrink-0">
-          <div class="p-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono text-[11px] flex items-center gap-1.5 hidden sm:flex">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <div id="metric-sync-status-preview-pill" class="p-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono text-[11px] flex items-center gap-1.5 hidden sm:flex">
+            <span id="metric-sync-status-preview-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span id="metric-sync-status-preview">Ingestion Active (35/35)</span>
           </div>
           <button type="button" id="btn-toggle-summary" class="section-toggle-btn px-2.5 py-1 text-xs rounded-full flex items-center gap-1.5">
@@ -244,13 +215,13 @@
               <!-- Dual Widget Comparison Tabs -->
               <div class="flex items-center gap-1 bg-brand-bg/80 border border-brand-border p-0.5 rounded-lg text-xs font-mono">
                 <button type="button" id="tab-widget-ticker" class="widget-tab-btn active" data-widget="ticker">
-                  ⚡ KEV Ticker
+                  <svg width="14" height="14" class="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"/></svg> KEV Ticker
                 </button>
                 <button type="button" id="tab-widget-checklist" class="widget-tab-btn" data-widget="checklist">
-                  📋 Triage Checklist
+                  <svg width="14" height="14" class="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h6M9 16h6"/></svg> Triage Checklist
                 </button>
                 <button type="button" id="tab-widget-priority" class="widget-tab-btn" data-widget="priority">
-                  🎯 Top Priority
+                  <svg width="14" height="14" class="w-3.5 h-3.5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg> Top Priority
                 </button>
               </div>
             </div>
@@ -313,8 +284,8 @@
             <div class="absolute top-0 right-0 w-32 h-32 bg-brand-accent/5 rounded-full blur-2xl pointer-events-none"></div>
             <div id="metrics-header" class="flex items-center justify-between gap-4 border-b border-brand-border/60 pb-2.5 mb-3 select-none">
               <div class="flex items-center gap-2">
-                <div class="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono text-[11px] flex items-center gap-1.5">
-                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <div id="metric-sync-status-pill" class="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono text-[11px] flex items-center gap-1.5">
+                  <span id="metric-sync-status-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                   <span id="metric-sync-status">Ingestion Active</span>
                 </div>
                 <h2 class="text-xs font-semibold text-white tracking-wide">ThreatPulse Status</h2>
@@ -380,10 +351,10 @@
         <div class="flex items-center gap-2.5 shrink-0">
           <div class="briefing-toggle-slider segmented-control shrink-0">
             <button type="button" id="btn-mode-briefing" class="briefing-mode-btn segmented-btn active" data-mode="briefing" title="Filter to recent 24h items & active KEV advisories">
-              <span>⚡</span> <span>Today's Triage Briefing (24h)</span>
+              <span><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"/></svg></span> <span>Today's Triage Briefing (24h)</span>
             </button>
             <button type="button" id="btn-mode-full" class="briefing-mode-btn segmented-btn" data-mode="full" title="Show full complete feed stream">
-              <span>🌐</span> <span>Full Stream</span>
+              <span><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M3 12h18M12 3a15 15 0 010 18M12 3a15 15 0 000 18"/></svg></span> <span>Full Stream</span>
             </button>
           </div>
           <span id="scope-count-badge" class="hidden md:inline-block px-2.5 py-1 rounded-lg bg-brand-bg/80 border border-brand-border text-slate-300 font-mono text-xs font-semibold shrink-0">
@@ -401,10 +372,10 @@
 
           <div class="segmented-control" title="Sort order">
             <button type="button" id="btn-sort-recency" class="segmented-btn active" data-sort="recency" title="Sort by most recently published">
-              <span>🕒</span> <span>Newest</span>
+              <span><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 7v5l3.5 2"/></svg></span> <span>Newest</span>
             </button>
             <button type="button" id="btn-sort-urgency" class="segmented-btn" data-sort="urgency" title="Sort by severity, then nearest CISA KEV remediation deadline">
-              <span>🚨</span> <span>Urgent</span>
+              <span><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg></span> <span>Urgent</span>
             </button>
           </div>
 
@@ -413,7 +384,7 @@
               <span>✓</span> <span>Read All</span>
             </button>
             <button type="button" id="btn-daily-digest" class="segmented-btn" title="Copy today's top critical/high items as a Markdown digest">
-              <span>📋</span> <span>Digest</span>
+              <span><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h6M9 16h6"/></svg></span> <span>Digest</span>
             </button>
             <button type="button" id="btn-refresh" class="segmented-btn" title="Refresh feed (r)">
               <svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -421,6 +392,10 @@
               </svg>
               <span>Sync</span>
             </button>
+            <a href="data/critical-feed.xml" target="_blank" rel="noopener noreferrer" id="btn-critical-rss" class="segmented-btn" title="Subscribe: RSS feed of Critical/KEV items from the last 24h">
+              <svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="5" cy="19" r="1.4" fill="currentColor" stroke="none"/><path stroke-linecap="round" d="M4 12a8 8 0 018 8M4 5a15 15 0 0115 15"/></svg>
+              <span>RSS</span>
+            </a>
           </div>
         </div>
       </div>
@@ -429,7 +404,7 @@
       <div id="tag-filter-panel" class="border-t border-brand-border/40 pt-3">
         <div id="tag-filter-header" class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 cursor-pointer select-none pb-0 rounded-lg -m-1 p-1" title="Click to expand/collapse Threat Entity & Tag Filters">
           <div class="flex items-center gap-2.5">
-            <div class="p-1.5 sm:p-2 rounded-lg bg-brand-accent/10 text-brand-accent border border-brand-accent/20 text-base sm:text-lg shrink-0">🏷️</div>
+            <div class="p-1.5 sm:p-2 rounded-lg bg-brand-accent/10 text-brand-accent border border-brand-accent/20 text-base sm:text-lg shrink-0"><svg width="18" height="18" class="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M3 11.5V6a2 2 0 012-2h5.5a2 2 0 011.41.59l8 8a2 2 0 010 2.82l-5.59 5.59a2 2 0 01-2.82 0l-8-8A2 2 0 013 11.5z"/></svg></div>
             <div class="min-w-0">
               <h3 class="text-xs sm:text-sm font-bold text-white tracking-wide flex items-center gap-1.5 flex-wrap">
                 <span><span class="hidden sm:inline">Threat Intelligence </span>Entity & Tag Filters</span>
@@ -468,7 +443,7 @@
                 <option value="">Saved Views…</option>
               </select>
               <button type="button" id="btn-save-view" title="Save current filters as a new view" class="px-2 sm:px-3 py-1 text-[10px] sm:text-xs font-mono rounded-lg bg-brand-accent/10 text-brand-accent hover:bg-brand-accent/20 border border-brand-accent/30 transition-all">
-                💾 Save
+<svg width="12" height="12" class="w-3 h-3 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4h11l3 3v13H5V4z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4v5h7V4M8 14h8v6H8z"/></svg> Save
               </button>
               <!-- Inline name entry (replaces the Save button on click) — deliberately not a
                    native prompt()/confirm() dialog: those are jarring for a "premium" UI and
@@ -480,15 +455,25 @@
                 <button type="button" id="btn-save-view-cancel" title="Cancel" class="px-1.5 py-1 text-xs rounded-lg bg-slate-500/15 text-slate-400 hover:bg-slate-500/25 border border-slate-500/30 transition-all">✕</button>
               </div>
               <button type="button" id="btn-delete-view" title="Delete selected view" class="hidden px-2 py-1 text-[10px] sm:text-xs font-mono rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-all">
-                🗑️
+<svg width="12" height="12" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-7 0v12a2 2 0 002 2h6a2 2 0 002-2V7H7z"/></svg>
               </button>
             </div>
           </div>
 
           <div class="relative w-full max-w-sm">
             <input type="text" id="tag-search-input" placeholder="Search tags (e.g. Windows, RCE, WordPress)..." class="w-full bg-brand-bg/90 border border-brand-border/80 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-brand-accent/60 font-mono">
-            <span class="absolute left-2.5 top-2 text-slate-500 text-xs">🔍</span>
+            <span class="absolute left-2.5 top-2 text-slate-500 text-xs"><svg width="12" height="12" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></span>
           </div>
+
+          <!-- Homelab/engineering blogs (Tailscale, Pi-hole, Jeff Geerling, etc. -- config.json's
+               per-feed "engineering_homelab" flag) are general engineering/hobby content mixed
+               into Informational & Research, not core threat intel. Off by default so the main
+               stream stays signal-focused; individual feeds are still filterable as always via
+               the Feeds & Sources checkboxes below regardless of this toggle. -->
+          <label class="flex items-center gap-2 text-[11px] sm:text-xs font-mono text-slate-400 hover:text-slate-200 cursor-pointer select-none w-fit" title="Tailscale, Pi-hole, Jeff Geerling, and similar general engineering/homelab blogs are hidden from the stream by default">
+            <input type="checkbox" id="chk-show-lab-content" class="accent-brand-accent w-3.5 h-3.5 rounded cursor-pointer">
+            Include homelab &amp; engineering blogs (Tailscale, Pi-hole, etc.)
+          </label>
 
           <div id="tag-checkbox-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-h-[350px] overflow-y-auto pr-1">
             <!-- Dynamic Tag Categories Rendered via app.js -->
@@ -594,7 +579,7 @@
     <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="quickstart-modal-title">
       <button id="btn-close-quickstart" class="modal-close-button" aria-label="Close Quick Start guide">&times;</button>
       <h2 id="quickstart-modal-title" class="feature-modal-title flex items-center gap-2">
-        <span>ℹ️</span> <span>THREATPULSE QUICK START GUIDE</span>
+        <span><svg width="18" height="18" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span> <span>THREATPULSE QUICK START GUIDE</span>
       </h2>
       <p class="feature-modal-intro">Get up to speed in 4 simple steps with your distraction-free security advisory & technical intelligence dashboard.</p>
       <ol class="quickstart-steps-list">
@@ -607,7 +592,7 @@
       <!-- Prominent Training Manual & SOP PDF Download Banner -->
       <div class="mt-4 pt-3 border-t border-brand-border/60 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-brand-bg/60 p-3 rounded-lg border border-brand-accent/30">
         <div class="flex items-center gap-2.5">
-          <div class="p-2 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-lg shrink-0">📄</div>
+          <div class="p-2 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 text-lg shrink-0"><svg width="20" height="20" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 3h7l5 5v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 3v5h5"/></svg></div>
           <div>
             <h4 class="text-xs font-bold text-white font-mono">CTI Operations & Analyst Training Manual</h4>
             <p class="text-[11px] text-slate-400 font-mono">Complete SOP, EPSS/CVSS scoring math, IOC models & analyst workflow guide</p>
@@ -619,7 +604,7 @@
       </div>
 
       <div class="modal-privacy-notice mt-3">
-        <span class="modal-privacy-icon">🔒</span>
+        <span class="modal-privacy-icon"><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 10V7a6 6 0 1112 0v3M5 10h14v10H5V10z"/></svg></span>
         <div>
           <strong>100% STATELESS & PRIVATE CLIENT STORAGE</strong>
           All read item IDs, bookmarked advisories, and filter preferences process strictly within your browser's local storage sandbox.
@@ -633,7 +618,7 @@
     <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
       <button id="btn-close-features" class="modal-close-button" aria-label="Close feature overview">&times;</button>
       <h2 id="feature-modal-title" class="feature-modal-title flex items-center gap-2">
-        <span>⚡</span> <span>THREATPULSE ENGINE CAPABILITIES</span>
+        <span><svg width="18" height="18" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 3L4 14h6l-1 7 9-11h-6l1-7z"/></svg></span> <span>THREATPULSE ENGINE CAPABILITIES</span>
       </h2>
       <p class="feature-modal-intro">An executive-grade threat intelligence and advisory aggregation system built for speed, signal, and distraction-free monitoring.</p>
       <ul class="feature-modal-list">
@@ -645,7 +630,7 @@
         <li><strong>Automated DB Vacuum & Retention:</strong> Runs automated 30-day database retention pruning and SQLite WAL mode maintenance to maintain sub-50ms query speeds.</li>
       </ul>
       <div class="modal-privacy-notice">
-        <span class="modal-privacy-icon">🔒</span>
+        <span class="modal-privacy-icon"><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 10V7a6 6 0 1112 0v3M5 10h14v10H5V10z"/></svg></span>
         <div>
           <strong>100% Private Client Telemetry</strong>
           No user authentication, user tracking, or third-party cookies. All saved bookmarks and read flags remain local to your browser.
@@ -660,7 +645,7 @@
       <button type="button" class="modal-close-button btn-close-feeds" aria-label="Close feed list">&times;</button>
       
       <div class="flex items-center gap-3 border-b border-brand-border/60 pb-3 mb-4">
-        <div class="p-2 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20 text-lg">📡</div>
+        <div class="p-2 rounded-lg bg-sky-500/10 text-sky-400 border border-sky-500/20 text-lg"><svg width="20" height="20" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="5" cy="19" r="1.4" fill="currentColor" stroke="none"/><path stroke-linecap="round" d="M4 12a8 8 0 018 8M4 5a15 15 0 0115 15"/></svg></div>
         <div>
           <h2 id="feeds-modal-title" class="text-base font-bold text-white tracking-wide">Monitored Security Feeds</h2>
           <p id="feeds-modal-subtitle" class="text-xs text-slate-400 font-mono">Loading source list...</p>
@@ -686,7 +671,7 @@
   <div id="command-palette-modal" class="modal-overlay hidden" aria-hidden="true">
     <div class="modal-card max-w-xl !p-0 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="command-palette-title">
       <div class="flex items-center gap-2 border-b border-brand-border/60 px-4 py-3">
-        <span class="text-slate-400 text-sm">🔎</span>
+        <span class="text-slate-400 text-sm"><svg width="14" height="14" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></span>
         <input type="text" id="command-palette-input" autocomplete="off" spellcheck="false"
                placeholder="Jump to a threat, CVE, or source..."
                class="flex-1 bg-transparent border-0 outline-none text-sm text-slate-100 placeholder-slate-500 font-mono">
@@ -705,7 +690,7 @@
       <button type="button" id="btn-close-iocwatch" class="modal-close-button" aria-label="Close IOC Watch">&times;</button>
 
       <div class="flex items-center gap-3 border-b border-brand-border/60 pb-3 mb-4">
-        <div class="p-2 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 text-lg">🧬</div>
+        <div class="p-2 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 text-lg"><svg width="20" height="20" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l7 4v5c0 4.97-3.16 9.16-7 10-3.84-.84-7-5.03-7-10V7l7-4z M9 12.2l2 2 4-4.4"/></svg></div>
         <div class="min-w-0">
           <h2 id="iocwatch-modal-title" class="text-base font-bold text-white tracking-wide">IOC Watch — Structured Indicators</h2>
           <p id="iocwatch-modal-subtitle" class="text-xs text-slate-400 font-mono">Loading indicator payload...</p>

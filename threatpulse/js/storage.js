@@ -78,6 +78,14 @@
     getIocSortOrder: () => localStorage.getItem('tp_ioc_sort_order') || 'desc',
     setIocSortOrder: (order) => localStorage.setItem('tp_ioc_sort_order', order),
 
+    // Homelab/engineering feeds (Tailscale, Pi-hole, Jeff Geerling, etc. -- config.json's
+    // per-feed "engineering_homelab" flag) are general engineering/hobby content, not core
+    // threat intel. Defaults OFF so the main stream stays signal-focused; a person can opt back
+    // in per-browser. Individual feeds stay filterable as always via the Feeds & Sources tag
+    // checkboxes -- this is a separate, coarser on/off switch for the whole homelab bucket.
+    getShowLabContent: () => localStorage.getItem('tp_show_lab_content') === 'true',
+    setShowLabContent: (show) => localStorage.setItem('tp_show_lab_content', show ? 'true' : 'false'),
+
     clearAll: () => {
       localStorage.removeItem('tp_read_items');
       localStorage.removeItem('tp_bookmarked_items');
@@ -97,6 +105,7 @@
       localStorage.removeItem('tp_ioc_type_filter');
       localStorage.removeItem('tp_ioc_sort_col');
       localStorage.removeItem('tp_ioc_sort_order');
+      localStorage.removeItem('tp_show_lab_content');
     }
   };
 
@@ -120,6 +129,7 @@
     visibleColumns: Storage.getVisibleColumns(),
     savedViews: Storage.getSavedViews(),
     tagsCollapsed: Storage.getTagsCollapsed(),
+    showLabContent: Storage.getShowLabContent(),
     summaryCollapsed: Storage.getSummaryCollapsed(),
     tagMatchMode: 'OR',
     preferredView: 'kanban',

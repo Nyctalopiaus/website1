@@ -1,5 +1,3 @@
-import { getScaledSocialSecurityBenefit } from './simulation.js';
-
 function clearElement(el) {
   while (el.firstChild) el.removeChild(el.firstChild);
 }
@@ -36,6 +34,26 @@ function drawStrokePath(svg, points, className) {
   path.setAttribute('d', 'M ' + points.join(' L '));
   path.setAttribute('class', className);
   svg.appendChild(path);
+}
+
+// Draws the Monte Carlo 10th-90th percentile band (a shaded polygon) plus a dashed
+// median line, when the "include market variability" toggle is on. `band` is an
+// array of { age, p10, p50, p90 } aligned to the chart's own age range — omitted
+// entirely (band is undefined) when the toggle is off, so this is a no-op and the
+// chart renders exactly as it did before Phase 4.
+function drawPercentileBand(svg, band, xScale, yScale) {
+  if (!band || band.length === 0) return;
+
+  const topPoints = band.map(b => `${xScale(b.age)},${yScale(b.p90)}`);
+  const bottomPoints = [...band].reverse().map(b => `${xScale(b.age)},${yScale(b.p10)}`);
+
+  const bandPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  bandPath.setAttribute('d', `M ${topPoints.join(' L ')} L ${bottomPoints.join(' L ')} Z`);
+  bandPath.setAttribute('class', 'variability-band');
+  svg.appendChild(bandPath);
+
+  const medianPoints = band.map(b => `${xScale(b.age)},${yScale(b.p50)}`);
+  drawStrokePath(svg, medianPoints, 'variability-median-line');
 }
 
 function setAccumTooltip(tooltip, item, formatCurrency) {
@@ -85,6 +103,75 @@ function setAccumTooltip(tooltip, item, formatCurrency) {
   tooltip.appendChild(totalRow);
 }
 
+// Shared setup for both charts: clears the SVG, computes the age/value scales
+// (accounting for the optional percentile band so it isn't clipped), and draws
+// the grid lines and age-axis labels both charts use identically.
+function setupChart(svg, data, band) {
+  clearElement(svg);
+
+  const padding = { top: 20, right: 30, bottom: 30, left: 60 };
+  const width = svg.parentElement.clientWidth || 600;
+  const height = 240;
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+  const minAge = data[0].age;
+  const maxAge = data[data.length - 1].age;
+
+  let maxVal = 0;
+  data.forEach(d => {
+    if (d.total > maxVal) maxVal = d.total;
+  });
+  if (band) band.forEach(b => { if (b.p90 > maxVal) maxVal = b.p90; });
+  maxVal = maxVal * 1.15 || 100000;
+
+  const xScale = age => padding.left + ((age - minAge) / (maxAge - minAge)) * (width - padding.left - padding.right);
+  const yScale = val => height - padding.bottom - ((val / maxVal) * (height - padding.top - padding.bottom));
+
+  const stepY = Math.ceil(maxVal / 4 / 25000) * 25000 || 25000;
+  const roundedYMax = stepY * 4;
+
+  drawGridLines(svg, padding, roundedYMax, yScale, stepY, width, height);
+
+  // Guard against a zero-width age range (e.g. minAge === maxAge): Math.ceil(0/5)
+  // is 0, which would make this loop's `age += stepAge` never advance and hang forever.
+  const stepAge = Math.max(1, Math.ceil((maxAge - minAge) / 5));
+  for (let age = minAge; age <= maxAge; age += stepAge) {
+    const xCoord = xScale(age);
+    const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    labelText.setAttribute('x', xCoord);
+    labelText.setAttribute('y', height - 10);
+    labelText.setAttribute('text-anchor', 'middle');
+    labelText.setAttribute('class', 'chart-axis-label');
+    labelText.textContent = `Age ${age}`;
+    svg.appendChild(labelText);
+  }
+
+  return {
+    padding, width, height, minAge, maxAge, xScale, yScale,
+    startX: xScale(minAge), endX: xScale(maxAge), zeroY: yScale(0)
+  };
+}
+
+function createHoverBar(svg, padding, height) {
+  const hoverBar = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  hoverBar.setAttribute('y1', padding.top);
+  hoverBar.setAttribute('y2', height - padding.bottom);
+  hoverBar.setAttribute('class', 'hover-bar');
+  hoverBar.style.display = 'none';
+  svg.appendChild(hoverBar);
+  return hoverBar;
+}
+
+function createHoverCircle(svg, fill) {
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('r', '5');
+  circle.setAttribute('class', 'hover-circle');
+  circle.style.display = 'none';
+  if (fill) circle.style.fill = fill;
+  svg.appendChild(circle);
+  return circle;
+}
+
 function setBurnTooltip(tooltip, item, formatCurrency) {
   clearElement(tooltip);
 
@@ -116,45 +203,10 @@ function setBurnTooltip(tooltip, item, formatCurrency) {
   tooltip.appendChild(row2);
 }
 
-export function renderAccumChart(data, dom, formatCurrency) {
+export function renderAccumChart(data, dom, formatCurrency, band) {
   const { accumSvg, accumTooltip } = dom;
-  clearElement(accumSvg);
-
-  const padding = { top: 20, right: 30, bottom: 30, left: 60 };
-  const width = accumSvg.parentElement.clientWidth || 600;
-  const height = 240;
-  accumSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-
-  const minAge = data[0].age;
-  const maxAge = data[data.length - 1].age;
-
-  let maxVal = 0;
-  data.forEach(d => {
-    if (d.total > maxVal) maxVal = d.total;
-  });
-  maxVal = maxVal * 1.15 || 100000;
-
-  const xScale = age => padding.left + ((age - minAge) / (maxAge - minAge)) * (width - padding.left - padding.right);
-  const yScale = val => height - padding.bottom - ((val / maxVal) * (height - padding.top - padding.bottom));
-
-  const stepY = Math.ceil(maxVal / 4 / 25000) * 25000 || 25000;
-  const roundedYMax = stepY * 4;
-
-  drawGridLines(accumSvg, padding, roundedYMax, yScale, stepY, width, height);
-
-  // Guard against a zero-width age range (e.g. minAge === maxAge): Math.ceil(0/5)
-  // is 0, which would make this loop's `age += stepAge` never advance and hang forever.
-  const stepAge = Math.max(1, Math.ceil((maxAge - minAge) / 5));
-  for (let age = minAge; age <= maxAge; age += stepAge) {
-    const xCoord = xScale(age);
-    const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    labelText.setAttribute('x', xCoord);
-    labelText.setAttribute('y', height - 10);
-    labelText.setAttribute('text-anchor', 'middle');
-    labelText.setAttribute('class', 'chart-axis-label');
-    labelText.textContent = `Age ${age}`;
-    accumSvg.appendChild(labelText);
-  }
+  const { padding, width, height, minAge, maxAge, xScale, yScale, startX, endX, zeroY } =
+    setupChart(accumSvg, data, band);
 
   const taxablePoints = [];
   const rothPoints = [];
@@ -166,10 +218,6 @@ export function renderAccumChart(data, dom, formatCurrency) {
     rothPoints.push(`${x},${yScale(d.taxable + d.roth)}`);
     traditionalPoints.push(`${x},${yScale(d.total)}`);
   });
-
-  const startX = xScale(minAge);
-  const endX = xScale(maxAge);
-  const zeroY = yScale(0);
 
   const pathTaxable = `M ${startX},${zeroY} L ${taxablePoints.join(' L ')} L ${endX},${zeroY} Z`;
   const pathRoth = `M ${startX},${zeroY} L ${rothPoints.join(' L ')} L ${endX},${zeroY} Z`;
@@ -193,26 +241,18 @@ export function renderAccumChart(data, dom, formatCurrency) {
   pTaxable.setAttribute('opacity', '0.65');
   accumSvg.appendChild(pTaxable);
 
+  drawPercentileBand(accumSvg, band, xScale, yScale);
+
   drawStrokePath(accumSvg, traditionalPoints, 'chart-line-traditional');
   drawStrokePath(accumSvg, rothPoints, 'chart-line-roth');
   drawStrokePath(accumSvg, taxablePoints, 'chart-line-taxable');
 
-  const hoverBar = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  hoverBar.setAttribute('y1', padding.top);
-  hoverBar.setAttribute('y2', height - padding.bottom);
-  hoverBar.setAttribute('class', 'hover-bar');
-  hoverBar.style.display = 'none';
-  accumSvg.appendChild(hoverBar);
-
-  const hoverCircles = [];
-  for (let i = 0; i < 3; i++) {
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('r', '5');
-    circle.setAttribute('class', 'hover-circle');
-    circle.style.display = 'none';
-    accumSvg.appendChild(circle);
-    hoverCircles.push(circle);
-  }
+  const hoverBar = createHoverBar(accumSvg, padding, height);
+  const hoverCircles = [
+    createHoverCircle(accumSvg),
+    createHoverCircle(accumSvg),
+    createHoverCircle(accumSvg)
+  ];
 
   accumSvg.onmousemove = e => {
     const rect = accumSvg.getBoundingClientRect();
@@ -265,50 +305,12 @@ export function renderAccumChart(data, dom, formatCurrency) {
   };
 }
 
-export function renderBurnChart(data, dom, formatCurrency, context) {
+export function renderBurnChart(data, dom, formatCurrency, band) {
   const { burnSvg, burnTooltip } = dom;
-  clearElement(burnSvg);
-
-  const padding = { top: 20, right: 30, bottom: 30, left: 60 };
-  const width = burnSvg.parentElement.clientWidth || 600;
-  const height = 240;
-  burnSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-
-  const minAge = data[0].age;
-  const maxAge = data[data.length - 1].age;
-
-  let maxVal = 0;
-  data.forEach(d => {
-    if (d.total > maxVal) maxVal = d.total;
-  });
-  maxVal = maxVal * 1.15 || 100000;
-
-  const xScale = age => padding.left + ((age - minAge) / (maxAge - minAge)) * (width - padding.left - padding.right);
-  const yScale = val => height - padding.bottom - ((val / maxVal) * (height - padding.top - padding.bottom));
-
-  const stepY = Math.ceil(maxVal / 4 / 25000) * 25000 || 25000;
-  const roundedYMax = stepY * 4;
-
-  drawGridLines(burnSvg, padding, roundedYMax, yScale, stepY, width, height);
-
-  // Guard against a zero-width age range (e.g. minAge === maxAge): Math.ceil(0/5)
-  // is 0, which would make this loop's `age += stepAge` never advance and hang forever.
-  const stepAge = Math.max(1, Math.ceil((maxAge - minAge) / 5));
-  for (let age = minAge; age <= maxAge; age += stepAge) {
-    const xCoord = xScale(age);
-    const labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    labelText.setAttribute('x', xCoord);
-    labelText.setAttribute('y', height - 10);
-    labelText.setAttribute('text-anchor', 'middle');
-    labelText.setAttribute('class', 'chart-axis-label');
-    labelText.textContent = `Age ${age}`;
-    burnSvg.appendChild(labelText);
-  }
+  const { padding, width, height, minAge, maxAge, xScale, yScale, startX, endX, zeroY } =
+    setupChart(burnSvg, data, band);
 
   const points = data.map(d => `${xScale(d.age)},${yScale(d.total)}`);
-  const startX = xScale(minAge);
-  const endX = xScale(maxAge);
-  const zeroY = yScale(0);
 
   const pathArea = `M ${startX},${zeroY} L ${points.join(' L ')} L ${endX},${zeroY} Z`;
   const pArea = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -317,21 +319,12 @@ export function renderBurnChart(data, dom, formatCurrency, context) {
   pArea.setAttribute('opacity', '0.6');
   burnSvg.appendChild(pArea);
 
+  drawPercentileBand(burnSvg, band, xScale, yScale);
+
   drawStrokePath(burnSvg, points, 'chart-line-traditional');
 
-  const hoverBar = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  hoverBar.setAttribute('y1', padding.top);
-  hoverBar.setAttribute('y2', height - padding.bottom);
-  hoverBar.setAttribute('class', 'hover-bar');
-  hoverBar.style.display = 'none';
-  burnSvg.appendChild(hoverBar);
-
-  const hoverCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  hoverCircle.setAttribute('r', '5');
-  hoverCircle.setAttribute('class', 'hover-circle');
-  hoverCircle.style.display = 'none';
-  hoverCircle.style.fill = 'var(--color-primary)';
-  burnSvg.appendChild(hoverCircle);
+  const hoverBar = createHoverBar(burnSvg, padding, height);
+  const hoverCircle = createHoverCircle(burnSvg, 'var(--color-primary)');
 
   burnSvg.onmousemove = e => {
     const rect = burnSvg.getBoundingClientRect();
@@ -353,12 +346,6 @@ export function renderBurnChart(data, dom, formatCurrency, context) {
     hoverCircle.setAttribute('cx', xPos);
     hoverCircle.setAttribute('cy', yPos);
     hoverCircle.style.display = 'block';
-
-    const socialSecurityAnnual = getScaledSocialSecurityBenefit(context.socialSecurityMonthly, item.age) * 12;
-    const netToday = Math.max(0, context.desiredIncome - socialSecurityAnnual);
-    const discountFactor = Math.pow(1 + context.inflation / 100, item.age - context.currentAge);
-    const netFuture = netToday * discountFactor;
-    void netFuture;
 
     burnTooltip.style.display = 'flex';
     const tooltipWidth = 160;

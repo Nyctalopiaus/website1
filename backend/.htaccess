@@ -1,0 +1,12 @@
+# Deny direct access to environment/secret files served from this
+# otherwise-public directory (api.env holds the Scrape.do token).
+# The PHP endpoints in this directory (property-lookup.php,
+# import-property.php, sync-db.php, admin-auth.php, etc.) are meant to
+# stay publicly reachable, so this only blocks *.env, not the whole dir.
+<FilesMatch "\.env$">
+    # Apache 2.4+
+    Require all denied
+    # Apache 2.2 fallback
+    Order allow,deny
+    Deny from all
+</FilesMatch>

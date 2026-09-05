@@ -62,6 +62,64 @@ class SyncManager {
     return json; // { ok, code, savedAt, expiresAt }
   }
 
+  // Silent, best-effort background backup — called by storage.js after every
+  // save. deviceId is a persisted-once per-browser id (see
+  // storageManager.getOrCreateBackupDeviceId), NOT the 6-char push/pull
+  // code: this slot never expires and is meant to be a safety net, not a
+  // deliberate handoff. Same 4MB/photo limit as pushTour, checked the same
+  // way, so an oversized tour fails the same clear way a push would.
+  async autoBackup(tourData, deviceId) {
+    if (!deviceId) {
+      throw new Error('missing_device_id');
+    }
+    const sizeCheck = this.checkPayloadSize(tourData);
+    if (sizeCheck.tooLarge) {
+      const err = new Error('payload_too_large_client');
+      err.offendingAddresses = sizeCheck.offendingAddresses;
+      throw err;
+    }
+
+    let resp;
+    try {
+      resp = await fetch(this.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'autobackup', deviceId, tour: tourData })
+      });
+    } catch (networkErr) {
+      throw new Error('network_error');
+    }
+
+    const json = await resp.json().catch(() => null);
+    if (!resp.ok || !json || !json.ok) {
+      throw new Error((json && json.error) || 'autobackup_failed');
+    }
+    return json; // { ok, savedAt }
+  }
+
+  // Restores a tour from a device's auto-backup id — either this browser's
+  // own id (recovery after localStorage was cleared but the id survived) or
+  // one copied from another device on purpose.
+  async restoreAutoBackup(deviceId) {
+    const cleanId = (deviceId || '').trim().toLowerCase();
+    if (!cleanId) {
+      throw new Error('missing_device_id');
+    }
+
+    let resp;
+    try {
+      resp = await fetch(`${this.endpoint}?autobackup=${encodeURIComponent(cleanId)}`);
+    } catch (networkErr) {
+      throw new Error('network_error');
+    }
+
+    const json = await resp.json().catch(() => null);
+    if (!resp.ok || !json || !json.ok) {
+      throw new Error((json && json.error) || 'restore_failed');
+    }
+    return json; // { ok, tour, savedAt }
+  }
+
   async pullTour(code) {
     const cleanCode = (code || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     if (!cleanCode) {
@@ -97,6 +155,9 @@ class SyncManager {
         return 'That code was not found or has expired (codes last 14 days). Push again from the other device to get a fresh code.';
       case 'network_error':
         return "Couldn't reach the sync server. Check your connection and try again.";
+      case 'missing_device_id':
+      case 'invalid_device_id':
+        return 'Enter the auto-backup ID exactly as shown on the other device.';
       default:
         return 'Something went wrong with sync. Please try again.';
     }

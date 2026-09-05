@@ -678,6 +678,95 @@ input[type="range"]::-webkit-slider-thumb:hover {
   content: '▼';
 }
 
+/* Collapsible settings groups (Pacing & Stops, Travel Boundaries) */
+.settings-group-summary {
+  cursor: pointer;
+  outline: none;
+  list-style: none;
+  display: block;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--primary-color);
+  font-weight: 700;
+}
+
+.settings-group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-group-details[open] .settings-group-summary {
+  margin-bottom: 0.75rem;
+}
+
+.settings-group-details:not([open]) .summary-arrow::after {
+  content: '▼';
+}
+
+/* Route stop rows — shared by the two hardcoded rows in index.html and the
+   dynamically-created row in route-stops.js, so both stay in sync. */
+.stop-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+}
+
+.drag-handle {
+  cursor: move;
+  padding: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.route-stop-input {
+  flex: 1;
+}
+
+.btn-remove-stop {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--accent-red);
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Touch-friendly stop reordering (drag-and-drop has no touch equivalent) */
+.stop-move-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.btn-move-stop {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.65rem;
+  line-height: 1.3;
+}
+
+.btn-move-stop:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Shown after loading settings from a shared/bookmarked link (Phase 4 URL state) */
+.url-restore-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: var(--accent-orange-dim);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.6rem 0.85rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
 /* Leaflet Container customization */
 .leaflet-container {
   font-family: var(--font-sans) !important;

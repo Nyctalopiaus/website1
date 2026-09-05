@@ -4,7 +4,7 @@
  */
 
 import { CONFIG } from './config.js';
-import { parseFloatSafe } from './utils.js';
+import { parseFloatSafe, formatCurrency } from './utils.js';
 
 /**
  * Calculates monthly principal + interest payment using the standard amortization formula
@@ -166,6 +166,84 @@ export function simulatePayoff(
     totalExtraMonthly,
     totalBiweeklyExtra,
     totalLumpsum
+  };
+}
+
+/**
+ * Solves for the extra payment (per payment period, matching the given
+ * payment frequency) needed to pay a loan off in fewer years than its
+ * original term — e.g. "how much extra to pay a 30-year loan off in 15".
+ * Binary-searches over simulatePayoff() itself so the result honors the
+ * exact same payment-count mechanics (10 months w/ 2 biweekly payments,
+ * 2 months w/ 3, etc.) as the rest of the app's extra-payment math, rather
+ * than approximating with a closed-form formula.
+ * @param {number} principal - Loan amount
+ * @param {number} annualRate - Annual interest rate (%)
+ * @param {number} originalYears - The loan's actual term (e.g. 30)
+ * @param {number} targetYears - Desired payoff term (e.g. 15)
+ * @param {string} [paymentFrequency='monthly'] - 'monthly' | 'biweekly' | 'accelerated'
+ * @returns {Object} { alreadyMet, extraPerPayment, paymentsPerYear, monthsToPayoff, totalInterest, interestSaved }
+ */
+export function calcExtraForTargetPayoff(principal, annualRate, originalYears, targetYears, paymentFrequency = 'monthly') {
+  const paymentsPerYear = paymentFrequency === 'monthly' ? 12 : 26;
+
+  if (principal <= 0 || targetYears <= 0 || targetYears >= originalYears) {
+    return {
+      alreadyMet: targetYears >= originalYears,
+      extraPerPayment: 0,
+      paymentsPerYear,
+      monthsToPayoff: 0,
+      totalInterest: 0,
+      interestSaved: 0
+    };
+  }
+
+  const targetMonths = Math.round(targetYears * CONFIG.MONTHS_PER_YEAR);
+  const useMonthlyExtra = paymentFrequency === 'monthly';
+
+  const runWithExtra = (extra) => useMonthlyExtra
+    ? simulatePayoff(principal, annualRate, originalYears, extra, 0, 12, paymentFrequency, 0)
+    : simulatePayoff(principal, annualRate, originalYears, 0, 0, 12, paymentFrequency, extra);
+
+  const baseline = runWithExtra(0);
+
+  if (baseline.monthsToPayoff <= targetMonths) {
+    return {
+      alreadyMet: true,
+      extraPerPayment: 0,
+      paymentsPerYear,
+      monthsToPayoff: baseline.monthsToPayoff,
+      totalInterest: baseline.totalInterest,
+      interestSaved: 0
+    };
+  }
+
+  // Grow the upper bound until it clears the target, then binary-search down
+  // to the smallest extra payment that still hits it.
+  let hi = Math.max(50, principal / targetMonths);
+  for (let i = 0; i < 60 && runWithExtra(hi).monthsToPayoff > targetMonths; i++) {
+    hi *= 2;
+  }
+
+  let lo = 0;
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    if (runWithExtra(mid).monthsToPayoff <= targetMonths) {
+      hi = mid;
+    } else {
+      lo = mid;
+    }
+  }
+
+  const finalResult = runWithExtra(hi);
+
+  return {
+    alreadyMet: false,
+    extraPerPayment: hi,
+    paymentsPerYear,
+    monthsToPayoff: finalResult.monthsToPayoff,
+    totalInterest: finalResult.totalInterest,
+    interestSaved: Math.max(0, baseline.totalInterest - finalResult.totalInterest)
   };
 }
 
@@ -425,6 +503,37 @@ function clamp01Percent(value) {
 }
 
 /**
+ * Compares two paths for a departing home: sell traditionally (after the
+ * repairs already budgeted in sellInputs.sellRepairCosts) vs. sell as-is
+ * right now at a lower price with no repairs. Reuses calculateSaleProceeds()
+ * for both legs — the as-is leg just swaps in the as-is price and zeroes
+ * the repair line, so commission/closing (both %-of-price) scale down
+ * automatically. The traditional leg's advantage is discounted by the
+ * extra carrying cost of the months it takes longer (repairs + slower
+ * traditional listing) — an as-is sale is assumed to close sooner.
+ * @param {Object} params
+ * @param {Object} params.sellInputs - Same shape calculateSaleProceeds() takes (from getSellInputs())
+ * @param {number} params.asIsSaleValue - Estimated as-is sale price (no repairs done)
+ * @param {number} params.monthsSavedByAsIs - Months of carrying cost skipped by not waiting on repairs/a slower traditional sale
+ * @param {number} params.monthlyCarryingCost - Monthly cost of holding the home during that extra time (typically the departure PITI)
+ * @returns {{ traditional: Object, asIs: Object, extraCarryingCost: number, netAdvantage: number }}
+ *   netAdvantage > 0 means as-is comes out ahead once the traditional path's extra carrying cost is subtracted; < 0 means traditional still wins.
+ */
+export function compareSaleStrategies({ sellInputs = {}, asIsSaleValue = 0, monthsSavedByAsIs = 0, monthlyCarryingCost = 0 } = {}) {
+  const traditional = calculateSaleProceeds(sellInputs);
+  const asIs = calculateSaleProceeds({
+    ...sellInputs,
+    sellHomeValue: Math.max(0, asIsSaleValue),
+    sellRepairCosts: 0
+  });
+
+  const extraCarryingCost = Math.max(0, monthsSavedByAsIs) * Math.max(0, monthlyCarryingCost);
+  const netAdvantage = asIs.netProceeds - (traditional.netProceeds - extraCarryingCost);
+
+  return { traditional, asIs, extraCarryingCost, netAdvantage };
+}
+
+/**
  * Normalizes an existing (departure) home mortgage payment to an equivalent monthly amount.
  * @param {number} payment - raw payment amount
  * @param {'monthly'|'biweekly'} [schedule='monthly'] - payment schedule
@@ -467,6 +576,70 @@ export function calculateBridgeLoanCosts(inputs) {
     totalBridgeInterest,
     totalBridgeCost,
     totalBorrowed
+  };
+}
+
+/**
+ * HELOC cost when "Keep as Rental" funds its down payment by borrowing
+ * against the departure home's equity instead of using cash. Deliberately
+ * simpler than calculateBridgeLoanCosts() above: no origination fee, no
+ * holding-period/total-interest tally, and no recast, because there's no
+ * future sale event this loan gets paid off by — it's a permanent revolving
+ * debt, so only the ongoing interest-only draw-period payment is modeled.
+ * That payment isn't netted against rental income like the departure
+ * mortgage is (see calculateRentalOffset below); it's counted as a straight
+ * additional monthly debt, since (unlike a sale-contingent Bridge Loan/HELOC
+ * in Sell mode) there's no future event that would let underwriting exclude
+ * it from DTI.
+ * @param {Object} inputs - { rentalHelocAmount, rentalHelocRate }
+ * @returns {{ monthlyPayment: number }}
+ */
+export function calculateRentalHelocCost(inputs) {
+  const { rentalHelocAmount = 0, rentalHelocRate = 0 } = inputs;
+  const amount = Math.max(0, rentalHelocAmount);
+  const rate = Math.max(0, rentalHelocRate);
+  return { monthlyPayment: amount * (rate / 100 / 12) };
+}
+
+/**
+ * DTI qualification math for "Keep as Rental" mode: instead of selling the
+ * departing home, convert it to a rental and let a documented lease/market-rent
+ * estimate offset its own mortgage payment for qualifying purposes. Standard
+ * conventional (Fannie Mae/Freddie Mac) underwriting rule: only a percentage
+ * of gross rent counts (a vacancy/expense haircut — 75% by default, editable
+ * since some portfolio/local lenders use a different figure), then that offset
+ * rent is netted against the departure home's own PITIA payment.
+ *   - If the offset rent covers the payment (net position >= 0), the
+ *     departure PITIA is excluded from DTI entirely (the standard treatment
+ *     when a lease documents the rental income) — conservatively, the
+ *     surplus itself is NOT added to qualifying income by default, since not
+ *     every lender allows that; it's returned for informational display only.
+ *   - If it doesn't cover the payment (net position < 0), the shortfall
+ *     counts as a monthly debt against DTI, same as any other obligation.
+ * Deliberately scoped to this one qualification question — where the new
+ * home's down payment comes from (cash, or a HELOC against this same home's
+ * equity) is handled separately by calculateRentalHelocCost() above, and no
+ * recast ever applies here since no future sale is planned.
+ * @param {Object} inputs - { rentalProjectedMonthlyRent, rentalOffsetPercent, departureMortgagePayment }
+ * @returns {{ offsetRent: number, departureMortgagePayment: number, netPosition: number, qualifyingHousingObligation: number, surplusIncome: number }}
+ */
+export function calculateRentalOffset(inputs) {
+  const {
+    rentalProjectedMonthlyRent = 0,
+    rentalOffsetPercent = 0,
+    departureMortgagePayment = 0
+  } = inputs;
+
+  const offsetRent = Math.max(0, rentalProjectedMonthlyRent) * (clamp01Percent(rentalOffsetPercent) / 100);
+  const safeDeparturePayment = Math.max(0, departureMortgagePayment);
+  const netPosition = offsetRent - safeDeparturePayment;
+
+  return {
+    offsetRent,
+    departureMortgagePayment: safeDeparturePayment,
+    netPosition,
+    qualifyingHousingObligation: netPosition >= 0 ? 0 : Math.abs(netPosition),
+    surplusIncome: Math.max(0, netPosition)
   };
 }
 
@@ -712,7 +885,8 @@ export function performCalculations(inputs) {
     monthlyPmi,
     paymentFrequency,
     biweeklyExtra,
-    
+    interest30,
+
     // 30-year
     baselinePi30,
     baselineInterest30,
@@ -931,5 +1105,506 @@ export function generateLoanComparisonMatrix({
   }
 
   return rows;
+}
+
+/**
+ * Rough industry rule-of-thumb mapping a self-reported credit-score band to
+ * a SUGGESTED back-end DTI ceiling for conventional/automated-underwriting
+ * loans (this is what lets a well-qualified borrower get approved above the
+ * standard 45% back-end cap defined in CONFIG.DTI_BACKEND_MODERATE_MAX).
+ * This is a heuristic used only to prefill the free-form Target DTI field
+ * elsewhere in the UI — never a guarantee of approval. Actual AUS ceilings
+ * also depend on reserves, loan-to-value, loan program (FHA/VA/jumbo differ
+ * from conventional), and lender-specific overlays.
+ * @param {string} band - one of CONFIG.CREDIT_SCORE_DTI_BANDS[].value
+ * @returns {{ suggestedDTI: number|null, label: string, note: string }} suggestedDTI is
+ *   null when the band has no meaningful DTI ceiling to suggest (e.g. sub-620).
+ */
+export function creditScoreToSuggestedDTI(band) {
+  const match = (CONFIG.CREDIT_SCORE_DTI_BANDS || []).find(b => b.value === band);
+  if (!match) {
+    return { suggestedDTI: null, label: '', note: '' };
+  }
+  return { suggestedDTI: match.suggestedDTI, label: match.label, note: match.note };
+}
+
+/**
+ * Reverse-solves the maximum purchase price / loan amount that keeps the new
+ * home's payment within a target back-end DTI, given whatever other monthly
+ * obligations already apply — other debts, and (while carrying two homes)
+ * the departure mortgage + bridge/HELOC interest-only payment. Inverts the
+ * same PITI math used elsewhere in this file (calcPIPayment's factor, the
+ * PMI-threshold rule) algebraically instead of scanning price steps like
+ * generateLoanComparisonMatrix does, so the answer is exact rather than
+ * rounded to a step size.
+ * @param {Object} inputs
+ * @param {number} inputs.targetBackEndDTI - target back-end DTI, as a percentage (e.g. 45)
+ * @param {number} inputs.monthlyIncome - effective monthly income (gross or net, whichever basis is active)
+ * @param {number} [inputs.otherMonthlyDebts=0]
+ * @param {number} [inputs.existingHousingObligation=0] - 0 for a plain purchase or once the departure home is sold; departure mortgage + bridge/HELOC interest-only payment while still carrying both homes
+ * @param {number} [inputs.fixedDownPaymentCash=0] - cash portion of the down payment (not counting any bridge/HELOC draw or sale proceeds)
+ * @param {number} [inputs.otherDownPaymentSource=0] - non-cash down payment source: sale proceeds already applied, or the bridge/HELOC draw directed to the down payment
+ * @param {number} inputs.interestRate - annual rate, % for the active term
+ * @param {number} [inputs.termYears=30]
+ * @param {number} [inputs.taxRate=0] - annual property tax rate, % of price
+ * @param {number} [inputs.homeInsurance=0] - annual $ (flat, not price-based — matches the rest of this file)
+ * @param {number} [inputs.hoaFees=0] - monthly $
+ * @param {number} [inputs.pmiRate=0] - annual PMI rate, % of loan
+ * @returns {Object|null} { maxPurchasePrice, maxLoanAmount, totalDown, monthlyPI,
+ *   monthlyTax, monthlyInsurance, monthlyPmi, hoaFees, piti, frontEndDTI, backEndDTI,
+ *   pmiApplies } — null when there's no room at all (existing obligations + other
+ *   debts already meet or exceed the target, or income is 0).
+ */
+export function solveMaxAffordablePrice(inputs) {
+  const {
+    targetBackEndDTI = 0,
+    monthlyIncome = 0,
+    otherMonthlyDebts = 0,
+    existingHousingObligation = 0,
+    fixedDownPaymentCash = 0,
+    otherDownPaymentSource = 0,
+    interestRate = 0,
+    termYears = 30,
+    taxRate = 0,
+    homeInsurance = 0,
+    hoaFees = 0,
+    pmiRate = 0
+  } = inputs;
+
+  if (monthlyIncome <= 0) return null;
+
+  const maxTotalMonthlyDebt = (Math.max(0, targetBackEndDTI) / 100) * monthlyIncome;
+  const maxNewHousingPayment = maxTotalMonthlyDebt - Math.max(0, otherMonthlyDebts) - Math.max(0, existingHousingObligation);
+  if (maxNewHousingPayment <= 0) return null;
+
+  const totalDown = Math.max(0, fixedDownPaymentCash) + Math.max(0, otherDownPaymentSource);
+  const monthlyRate = interestRate / 12 / 100;
+  const totalMonths = Math.max(1, termYears * CONFIG.MONTHS_PER_YEAR);
+
+  // Monthly P&I per $1 of loan amount — same formula as calcPIPayment(),
+  // just expressed as a per-dollar factor so it can be inverted algebraically.
+  const piFactor = interestRate > 0
+    ? (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
+    : (1 / totalMonths);
+
+  const taxFactor = Math.max(0, taxRate) / 100 / 12;
+  const monthlyInsurance = Math.max(0, homeInsurance) / 12;
+  const safeHoa = Math.max(0, hoaFees);
+
+  // price * (piFactor + pmiFactor + taxFactor) = M + totalDown*(piFactor + pmiFactor) - insurance - hoa
+  const solveForPmi = (pmiFactor) => {
+    const denom = piFactor + pmiFactor + taxFactor;
+    if (denom <= 0) return null;
+    return (maxNewHousingPayment + totalDown * (piFactor + pmiFactor) - monthlyInsurance - safeHoa) / denom;
+  };
+
+  // Two-pass PMI resolution: solve assuming no PMI first, check whether the
+  // resulting down% would actually require it, then redo with PMI if so.
+  let price = solveForPmi(0);
+  let pmiApplies = false;
+  if (price !== null && price > 0 && pmiRate > 0) {
+    const downPercent = (totalDown / price) * 100;
+    if (downPercent < CONFIG.PMI_THRESHOLD_PERCENT) {
+      pmiApplies = true;
+      price = solveForPmi(pmiRate / 100 / 12);
+    }
+  }
+
+  if (price === null || price <= 0) return null;
+
+  const maxLoanAmount = Math.max(0, price - totalDown);
+  const monthlyPI = maxLoanAmount * piFactor;
+  const monthlyTax = price * taxFactor;
+  const monthlyPmi = pmiApplies ? maxLoanAmount * (pmiRate / 100 / 12) : 0;
+  const piti = monthlyPI + monthlyTax + monthlyInsurance + monthlyPmi + safeHoa;
+
+  return {
+    maxPurchasePrice: price,
+    maxLoanAmount,
+    totalDown,
+    monthlyPI,
+    monthlyTax,
+    monthlyInsurance,
+    monthlyPmi,
+    hoaFees: safeHoa,
+    piti,
+    frontEndDTI: (piti / monthlyIncome) * 100,
+    backEndDTI: ((piti + existingHousingObligation + otherMonthlyDebts) / monthlyIncome) * 100,
+    pmiApplies
+  };
+}
+
+/**
+ * Tallies the actual liquid cash needed at/after closing, kept deliberately
+ * separate from any revolving HELOC/bridge draw — reserves and closing costs
+ * must be real cash (or vested stocks/401k/IRA), never satisfiable from a
+ * HELOC/bridge line, mirroring standard lender reserve requirements.
+ * @param {Object} inputs
+ * @param {number} [inputs.downPaymentCash=0] - cash portion of the down payment (not the HELOC/bridge draw)
+ * @param {number} [inputs.purchasePrice=0]
+ * @param {number} [inputs.closingCostPercent=0] - % of purchase price
+ * @param {number} [inputs.reserveMonths=0] - months of housing payment required in reserve
+ * @param {number} [inputs.monthlyHousingObligation=0] - the payment reserves are sized against (combined holding-period cost while carrying two homes, else the new PITI)
+ * @param {number} [inputs.extraProjectCash=0] - additional cash budgeted separately (repairs, moving, etc.)
+ * @returns {{ downPaymentCash: number, closingCostsDollars: number, reserveDollars: number, extraProjectCash: number, totalCashNeeded: number }}
+ */
+export function calculateCashToClose(inputs) {
+  const {
+    downPaymentCash = 0,
+    purchasePrice = 0,
+    closingCostPercent = 0,
+    reserveMonths = 0,
+    monthlyHousingObligation = 0,
+    extraProjectCash = 0
+  } = inputs;
+
+  const safeDownPayment = Math.max(0, downPaymentCash);
+  const closingCostsDollars = Math.max(0, purchasePrice) * (Math.max(0, closingCostPercent) / 100);
+  const reserveDollars = Math.max(0, reserveMonths) * Math.max(0, monthlyHousingObligation);
+  const safeExtra = Math.max(0, extraProjectCash);
+
+  return {
+    downPaymentCash: safeDownPayment,
+    closingCostsDollars,
+    reserveDollars,
+    extraProjectCash: safeExtra,
+    totalCashNeeded: safeDownPayment + closingCostsDollars + reserveDollars + safeExtra
+  };
+}
+
+/**
+ * Compares cash actually on hand against the total cash needed to close
+ * (calculateCashToClose()'s totalCashNeeded) and gives a rough read on
+ * whether the leftover surplus is generous enough that lenders might treat
+ * it as a compensating factor for a higher back-end DTI ceiling. Purely
+ * informational — same "suggests, never forces" pattern as
+ * creditScoreToSuggestedDTI(); never writes to the Target DTI field itself.
+ * @param {Object} inputs
+ * @param {number} [inputs.cashAvailable=0] - liquid cash the user reports having on hand
+ * @param {number} [inputs.totalCashNeeded=0] - calculateCashToClose().totalCashNeeded
+ * @param {number} [inputs.monthlyHousingObligation=0] - same basis calculateCashToClose() sized reserves against
+ * @returns {{ surplus: number, extraReserveMonths: number, suggestedDTIBonus: number }}
+ *   surplus can be negative (a shortfall). extraReserveMonths is how many
+ *   additional months of the housing payment the surplus, if any, would
+ *   cover on top of the reserves already required. suggestedDTIBonus is a
+ *   small heuristic bump in percentage points (0, 2, or 3) — 0 whenever no
+ *   cash figure is entered or there's no real surplus.
+ */
+export function evaluateCashCushion(inputs) {
+  const {
+    cashAvailable = 0,
+    totalCashNeeded = 0,
+    monthlyHousingObligation = 0
+  } = inputs;
+
+  const safeCash = Math.max(0, cashAvailable);
+  const surplus = safeCash - Math.max(0, totalCashNeeded);
+  const extraReserveMonths = monthlyHousingObligation > 0 ? surplus / monthlyHousingObligation : 0;
+
+  let suggestedDTIBonus = 0;
+  if (safeCash > 0 && surplus >= 0) {
+    if (extraReserveMonths >= 6) suggestedDTIBonus = 3;
+    else if (extraReserveMonths >= 3) suggestedDTIBonus = 2;
+  }
+
+  return { surplus, extraReserveMonths, suggestedDTIBonus };
+}
+
+/**
+ * Synthesizes the currently-filled-out settings and the feasibility of the
+ * scenario they describe into a short, plain-language "outlook" — a handful
+ * of read lines plus one overall verdict. Entirely rule-based: every line is
+ * templated off values and status helpers already computed elsewhere in this
+ * file (getBackEndDTIStatus, the PMI threshold, solveMaxAffordablePrice,
+ * calculateCashToClose, calculateRecast, calculateResidualIncome) — no LLM
+ * call, no new financial thresholds beyond CONFIG.
+ * @param {Object} results - the results object from performCalculations(),
+ *   extended with the fields calculateAll() adds (effectiveMonthlyIncome,
+ *   isNetIncomeBasis, isRecastActive, recast30/recast15, etc.)
+ * @param {Object} [context={}] - values local to calculateAll() at call time
+ * @param {number} [context.activeTerm=30] - 30 or 15
+ * @param {number} [context.activeRate=0] - the active term's interest rate, %
+ * @param {number} [context.homePrice=0]
+ * @param {number} [context.backEndDtiValue=0] - back-end DTI %, already computed for the active phase
+ * @param {number} [context.otherMonthlyDebts=0]
+ * @param {boolean} [context.isBridgeActive=false]
+ * @param {Object|null} [context.activeRecast=null] - results.recast30/recast15 for the active term, when a recast is active
+ * @param {Object|null} [context.maxAfford=null] - solveMaxAffordablePrice() output, when a target DTI is set
+ * @param {number} [context.targetBackEndDTI=0]
+ * @param {Object|null} [context.cashToClose=null] - calculateCashToClose() output
+ * @param {number} [context.cashAvailable=0] - liquid cash the user reports having on hand
+ * @param {number} [context.extraMonthlyOutlay=0] - extraMonthlyOutlay30/15 for the active term
+ * @param {Object|null} [context.asIsCompare=null] - compareSaleStrategies() output, when an as-is sale value is entered
+ * @param {boolean} [context.isAsIsPricingApplied=false] - true once the user has clicked "Apply As-Is Pricing to Sale", copying the as-is value into the real sale inputs
+ * @param {Object|null} [context.asIsAppliedComparison=null] - compareSaleStrategies() output replayed against the pre-apply snapshot vs. the now-applied sale inputs, when isAsIsPricingApplied is true
+ * @param {number} [context.asIsPriceDelta=0] - pre-apply sellHomeValue minus the applied as-is price (>0 means the as-is price is lower)
+ * @param {number} [context.asIsRepairsSaved=0] - pre-apply sellRepairCosts (now zeroed by the apply)
+ * @param {Object|null} [context.rentalOffset=null] - calculateRentalOffset() output, when "Keep as Rental" mode is active
+ * @param {Object|null} [context.rentalHeloc=null] - { helocAmount, monthlyPayment }, when Keep as Rental funds its down payment via a HELOC
+ * @returns {{ verdict: 'good'|'moderate'|'high', verdictLabel: string, verdictClass: string,
+ *   lines: Array<{tone: 'good'|'moderate'|'high'|'neutral', icon: string, text: string}> }}
+ */
+export function generateOutlookSummary(results, context = {}) {
+  const {
+    activeTerm = 30,
+    activeRate = 0,
+    homePrice = 0,
+    backEndDtiValue = 0,
+    otherMonthlyDebts = 0,
+    isBridgeActive = false,
+    activeRecast = null,
+    bridgeSaleStrategy = null,
+    maxAfford = null,
+    targetBackEndDTI = 0,
+    cashToClose = null,
+    cashAvailable = 0,
+    extraMonthlyOutlay = 0,
+    asIsCompare = null,
+    isAsIsPricingApplied = false,
+    asIsAppliedComparison = null,
+    asIsPriceDelta = 0,
+    asIsRepairsSaved = 0,
+    rentalOffset = null,
+    rentalHeloc = null
+  } = context;
+
+  const isNetIncomeBasis = !!results.isNetIncomeBasis;
+  const effectiveMonthlyIncome = results.effectiveMonthlyIncome || 0;
+  const hasIncome = effectiveMonthlyIncome > 0;
+  const loanAmount = results.loanAmount || 0;
+  const downPercent = results.downPercent || 0;
+  const monthlyPmi = results.monthlyPmi || 0;
+  const pmiApplies = downPercent < CONFIG.PMI_THRESHOLD_PERCENT && monthlyPmi > 0;
+  const totalMonthly = activeTerm === 30 ? results.totalMonthly30 : results.totalMonthly15;
+
+  const lines = [];
+  let highRiskSignal = false;
+  let moderateSignal = false;
+
+  // 1. Headline — loan size, rate, term, current effective payment.
+  lines.push({
+    tone: 'neutral',
+    icon: 'icon-home',
+    text: `${formatCurrency(loanAmount)} loan at ${activeRate}% over ${activeTerm} years — about ${formatCurrency(totalMonthly)}/mo right now.`
+  });
+
+  // 2. Back-end DTI feasibility — skipped until income is actually filled in,
+  // since a 0/0 DTI would otherwise read as a false "Healthy".
+  if (hasIncome) {
+    const dtiStatus = getBackEndDTIStatus(backEndDtiValue, isNetIncomeBasis);
+    if (dtiStatus.className === 'bg-high') highRiskSignal = true;
+    else if (dtiStatus.className === 'bg-moderate') moderateSignal = true;
+
+    lines.push({
+      tone: dtiStatus.className === 'bg-healthy' ? 'good' : dtiStatus.className === 'bg-moderate' ? 'moderate' : 'high',
+      icon: dtiStatus.className === 'bg-high' ? 'icon-warning' : 'icon-check',
+      text: dtiStatus.description
+    });
+  }
+
+  // 3. PMI / down payment.
+  if (pmiApplies) {
+    const pointsToTwentyPercent = Math.max(0, CONFIG.PMI_THRESHOLD_PERCENT - downPercent);
+    lines.push({
+      tone: 'moderate',
+      icon: 'icon-info',
+      text: `Your ${downPercent.toFixed(1)}% down payment is ${pointsToTwentyPercent.toFixed(1)} points below the 20% mark, so PMI applies at about ${formatCurrency(monthlyPmi)}/mo until you cross that threshold.`
+    });
+  } else if (downPercent > 0) {
+    lines.push({
+      tone: 'good',
+      icon: 'icon-check',
+      text: `Your ${downPercent.toFixed(1)}% down payment clears the 20% PMI threshold — no mortgage insurance required.`
+    });
+  }
+
+  // 4. Bridge / recast feasibility — only while the "sell house" bridge flow is active.
+  if (isBridgeActive && activeRecast) {
+    if (bridgeSaleStrategy === CONFIG.SALE_PAYOFF_STRATEGY_KEEP_CASH) {
+      lines.push({
+        tone: 'neutral',
+        icon: 'icon-info',
+        text: `You're keeping the leftover sale proceeds as cash instead of applying them to the new loan — this payment won't change once the sale closes.`
+      });
+    } else if (activeRecast.monthlySavings > 0) {
+      lines.push({
+        tone: 'good',
+        icon: 'icon-trend-down',
+        text: `Once your current home sells and the recast applies, this payment drops by about ${formatCurrency(activeRecast.monthlySavings)}/mo — a real reduction, not just cash spent.`
+      });
+    } else if (bridgeSaleStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT) {
+      lines.push({
+        tone: 'good',
+        icon: 'icon-trend-down',
+        text: `You're applying the leftover sale proceeds as an extra principal payment instead of recasting — this payment stays the same, but the loan pays off sooner and you save on interest.`
+      });
+    } else {
+      moderateSignal = true;
+      lines.push({
+        tone: 'moderate',
+        icon: 'icon-warning',
+        text: `The planned recast isn't projected to lower this payment — the sale proceeds may be fully absorbed by the bridge payoff and recast fee.`
+      });
+    }
+  }
+
+  // 4b. Rental-income DTI offset — only while "Keep as Rental" mode is active.
+  if (rentalOffset) {
+    if (rentalOffset.netPosition >= 0) {
+      lines.push({
+        tone: 'good',
+        icon: 'icon-check',
+        text: `Renting your current home at ${formatCurrency(rentalOffset.offsetRent)}/mo (after the offset) fully covers its ${formatCurrency(rentalOffset.departureMortgagePayment)}/mo mortgage, so it's excluded from your DTI entirely.`
+      });
+    } else {
+      moderateSignal = true;
+      lines.push({
+        tone: 'moderate',
+        icon: 'icon-warning',
+        text: `Renting your current home offsets ${formatCurrency(rentalOffset.offsetRent)}/mo of its ${formatCurrency(rentalOffset.departureMortgagePayment)}/mo mortgage — the remaining ${formatCurrency(Math.abs(rentalOffset.netPosition))}/mo shortfall still counts against your DTI.`
+      });
+    }
+  }
+
+  // 4c. Rental HELOC financing — only when Keep as Rental funds its down
+  // payment with a HELOC against the departure home instead of cash. Purely
+  // informational (the payment is already folded into the back-end DTI shown
+  // in line 2 above) — flags WHY that DTI is as high as it is, since unlike
+  // the sale-contingent Bridge Loan case there's no future payoff event.
+  if (rentalHeloc && rentalHeloc.monthlyPayment > 0) {
+    lines.push({
+      tone: 'neutral',
+      icon: 'icon-info',
+      text: `Your down payment draws ${formatCurrency(rentalHeloc.helocAmount)} from a HELOC against your current home — with no sale planned to pay it off, its ${formatCurrency(rentalHeloc.monthlyPayment)}/mo interest-only payment counts as a permanent monthly debt in your DTI.`
+    });
+  }
+
+  // 5. Extra-payment sustainability — Net income mode only, same gating as
+  // the Residual Cash Flow banner this reuses calculateResidualIncome from.
+  let residual = null;
+  if (isNetIncomeBasis && hasIncome) {
+    residual = calculateResidualIncome(effectiveMonthlyIncome, totalMonthly, otherMonthlyDebts);
+    if (residual.residualAmount < 0) {
+      highRiskSignal = true;
+      lines.push({
+        tone: 'high',
+        icon: 'icon-warning',
+        text: `After housing and other debts, your budget currently runs ${formatCurrency(Math.abs(residual.residualAmount))}/mo short against take-home pay${extraMonthlyOutlay > 0 ? ` — and that's before the ${formatCurrency(extraMonthlyOutlay)}/mo you're adding on top of the minimum` : ''}.`
+      });
+    } else if (extraMonthlyOutlay > 0) {
+      lines.push({
+        tone: 'good',
+        icon: 'icon-check',
+        text: `Your accelerated/extra-payment plan adds ${formatCurrency(extraMonthlyOutlay)}/mo, and still leaves about ${formatCurrency(residual.residualAmount)}/mo in cash flow after housing and other debts.`
+      });
+    }
+  }
+
+  // 6. Max-affordability cross-check — only when a target DTI ceiling is set.
+  if (maxAfford && targetBackEndDTI > 0 && homePrice > 0) {
+    const headroom = maxAfford.maxPurchasePrice - homePrice;
+    if (headroom >= 0) {
+      lines.push({
+        tone: 'good',
+        icon: 'icon-bar-chart',
+        text: `At your ${targetBackEndDTI}% target DTI, you could afford up to ${formatCurrency(maxAfford.maxPurchasePrice)} — this ${formatCurrency(homePrice)} price leaves about ${formatCurrency(headroom)} of headroom.`
+      });
+    } else {
+      highRiskSignal = true;
+      lines.push({
+        tone: 'high',
+        icon: 'icon-warning',
+        text: `This ${formatCurrency(homePrice)} price is about ${formatCurrency(Math.abs(headroom))} over what your ${targetBackEndDTI}% target DTI would support (max ${formatCurrency(maxAfford.maxPurchasePrice)}).`
+      });
+    }
+  }
+
+  // 7. Cash to close — compares against cash on hand when entered, always
+  // separated from any HELOC/bridge draw.
+  if (cashToClose && cashToClose.totalCashNeeded > 0) {
+    if (cashAvailable > 0) {
+      const surplus = cashAvailable - cashToClose.totalCashNeeded;
+      if (surplus >= 0) {
+        lines.push({
+          tone: 'good',
+          icon: 'icon-cash',
+          text: `Your ${formatCurrency(cashAvailable)} in cash on hand covers the ${formatCurrency(cashToClose.totalCashNeeded)} needed to close, with about ${formatCurrency(surplus)} to spare.`
+        });
+      } else {
+        highRiskSignal = true;
+        lines.push({
+          tone: 'high',
+          icon: 'icon-warning',
+          text: `Your ${formatCurrency(cashAvailable)} in cash on hand is about ${formatCurrency(Math.abs(surplus))} short of the ${formatCurrency(cashToClose.totalCashNeeded)} needed to close.`
+        });
+      }
+    } else {
+      lines.push({
+        tone: 'neutral',
+        icon: 'icon-cash',
+        text: `You'll need roughly ${formatCurrency(cashToClose.totalCashNeeded)} in actual liquid cash at closing (down payment, closing costs, and reserves) — separate from any HELOC/bridge draw.`
+      });
+    }
+  }
+
+  // 7b. Sell As-Is comparison — only once entered, and only when the gap
+  // clears a small noise threshold (a few hundred dollars either way isn't
+  // worth a line). Purely informational either direction — neither path is
+  // treated as objectively "better," so this never feeds highRiskSignal/moderateSignal.
+  if (asIsCompare && Math.abs(asIsCompare.netAdvantage) > 2000) {
+    const asIsWins = asIsCompare.netAdvantage >= 0;
+    lines.push({
+      tone: 'neutral',
+      icon: 'icon-bar-chart',
+      text: asIsWins
+        ? `Selling as-is instead of repairing first could net you about ${formatCurrency(asIsCompare.netAdvantage)} more, once the traditional path's extra carrying costs are factored in.`
+        : `Repairing and selling traditionally still nets about ${formatCurrency(Math.abs(asIsCompare.netAdvantage))} more than selling as-is, even after accounting for the extra carrying costs of waiting.`
+    });
+  }
+
+  // 7c. As-Is pricing applied — shown only after the user has actually
+  // clicked "Apply As-Is Pricing to Sale" on the compare box above, not just
+  // for entering a what-if value. Two lines: the financial "why" (price/
+  // repair/carrying-cost tradeoff, replaying the same compareSaleStrategies()
+  // math the box itself used, against the pre-apply snapshot) and a
+  // buyer-pool caution. Neither feeds highRiskSignal/moderateSignal or moves
+  // the overall verdict badge — same "informational" reasoning as 7b above.
+  if (isAsIsPricingApplied && asIsAppliedComparison) {
+    const netAdvantageAbs = Math.abs(asIsAppliedComparison.netAdvantage);
+    const netAdvantageWins = asIsAppliedComparison.netAdvantage >= 0;
+    const priceVerb = asIsPriceDelta >= 0 ? 'dropped' : 'raised';
+    const priceAmt = formatCurrency(Math.abs(asIsPriceDelta));
+    const repairsClause = asIsRepairsSaved > 0 ? ` and skipped ${formatCurrency(asIsRepairsSaved)} in repairs` : '';
+
+    lines.push({
+      tone: 'neutral',
+      icon: 'icon-bar-chart',
+      text: `Applying As-Is pricing ${priceVerb} your sale price by about ${priceAmt}${repairsClause} — after the extra carrying costs a repair-first sale would've added, that nets you about ${formatCurrency(netAdvantageAbs)} ${netAdvantageWins ? 'more' : 'less'} than selling traditionally would have.`
+    });
+    lines.push({
+      tone: 'moderate',
+      icon: 'icon-warning',
+      text: `Keep in mind many buyers prefer move-in-ready homes, so listing as-is can shrink your buyer pool and mean more time on market than a repaired, traditional sale.`
+    });
+  }
+
+  // 8. Bottom-line verdict — a small deterministic decision table over the
+  // signals collected above, not a new judgment call.
+  let verdict = 'good';
+  if (highRiskSignal) verdict = 'high';
+  else if (moderateSignal) verdict = 'moderate';
+
+  const verdictMeta = {
+    good: { label: 'Feasible', className: 'bg-healthy' },
+    moderate: { label: 'Feasible, but tight', className: 'bg-moderate' },
+    high: { label: 'A stretch', className: 'bg-high' }
+  }[verdict];
+
+  return {
+    verdict,
+    verdictLabel: verdictMeta.label,
+    verdictClass: verdictMeta.className,
+    lines
+  };
 }
 

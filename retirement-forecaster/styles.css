@@ -120,6 +120,19 @@ body {
   margin-top: 0.25rem;
 }
 
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.65rem;
+}
+
+.header-buttons-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
 /* Toggle Switch Control */
 .toggle-container {
   display: flex;
@@ -819,6 +832,23 @@ svg {
 .traditional-fill { fill: var(--color-traditional); }
 .roth-fill { fill: var(--color-roth); }
 .taxable-fill { fill: var(--color-taxable); }
+
+/* Monte Carlo 10th-90th percentile band, shown only when "Include Market
+   Variability" is on (Phase 4). Semi-transparent so it reads as a range drawn
+   over the deterministic fill rather than replacing it. */
+.variability-band {
+  fill: var(--text-muted);
+  opacity: 0.18;
+  stroke: none;
+}
+
+.variability-median-line {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+  opacity: 0.7;
+}
 
 /* Chart Tooltip Overlay */
 .chart-tooltip {

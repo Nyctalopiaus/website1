@@ -40,6 +40,7 @@ class RecommendationRequest(BaseModel):
     preferred_quant: Optional[int] = Field(4, description="Quantization bits (4, 8, 16)")
     query: Optional[str] = Field("", description="Optional search keyword override")
     context_k: Optional[Literal[4, 8, 16, 32, 64, 128]] = Field(16, description="Target context window in thousands of tokens, used to size KV-cache overhead")
+    cpu_only: Optional[bool] = Field(False, description="RAM-only / no-GPU inference mode - fit-gate budget becomes system RAM (minus a fixed OS reserve) instead of vram_gb")
 
 @app.get("/api/health")
 def health_check():
@@ -57,31 +58,67 @@ def get_hardware_profile():
 def get_model_recommendations(req: RecommendationRequest):
     try:
         raw_models = hf_client.fetch_models_for_goal(goal=req.goal, query=req.query or "")
-        results = RecommendationEngine.run_pipeline(
+        context_k = req.context_k or 16
+        cpu_only = bool(req.cpu_only)
+        # Same effective-budget swap as RecommendationEngine.score_models - kept
+        # in sync here because the post-verification recompute below (line
+        # ~156 originally) needs it too, and that recompute previously always
+        # divided by req.vram_gb regardless of cpu_only, silently reverting a
+        # CPU-mode result's percentages back to a VRAM-relative number the
+        # instant verification touched a model.
+        effective_budget_gb = max(req.ram_gb - RecommendationEngine.CPU_ONLY_RAM_RESERVE_GB, 1.0) if cpu_only else max(req.vram_gb, 1.0)
+        scored_models = RecommendationEngine.score_models(
             models=raw_models,
             user_vram_gb=req.vram_gb,
             user_ram_gb=req.ram_gb,
             goal=req.goal,
             preferred_quant=req.preferred_quant or 4,
-            context_k=req.context_k or 16
+            context_k=context_k,
+            cpu_only=cpu_only
         )
 
-        # Verify the (up to 3, deduped) hero picks against their real .gguf file
-        # size AND real architecture-derived KV-cache size on the Hub, replacing
-        # both estimates with exact numbers where possible. Deliberately scoped to
-        # just the hero cards, never the full candidate list - run_pipeline()
-        # already decided who the heroes are, this only upgrades the accuracy of
-        # what gets displayed for them. Runs the (at most 3) distinct lookups in
-        # parallel so one slow/unreachable host can't stack latency to 3x; each
-        # individual lookup already has its own short timeout and fails safe to
-        # None inside get_exact_gguf_info().
-        context_k = req.context_k or 16
-        hero_models = [m for m in results.get("hero_cards", {}).values() if m]
-        unique_lookups = list({m["id"]: m.get("active_quant_bits", 4) for m in hero_models}.items())
+        if not scored_models:
+            data_source = raw_models[0]["source"] if raw_models else "live"
+            return {
+                "request_hardware": {
+                    "vram_gb": req.vram_gb, "ram_gb": req.ram_gb, "gpu_type": req.gpu_type,
+                    "goal": req.goal, "context_k": context_k, "cpu_only": cpu_only
+                },
+                "source": data_source,
+                "hero_cards": {}, "all_candidates": [], "total_candidates": 0
+            }
+
+        # Real GGUF verification runs BEFORE hero selection, over a bounded slice
+        # of the pool - not just the 3 eventual winners after the fact. The
+        # ingestion-time gate in hf_client.fetch_models_for_goal() that decides
+        # what makes it into `scored_models` at all is a cheap tag/substring
+        # heuristic, not a real check against the repo's actual files; a model
+        # that heuristically looks GGUF-tagged but isn't could otherwise win a
+        # hero slot (or rank highly in the table) with fully-computed but fake
+        # quantized VRAM numbers. Verifying first and gating hero eligibility on
+        # the result closes that gap instead of only relabeling it afterward.
+        #
+        # The slice: the models actually reachable by hero selection (the vetted
+        # >=1000dl/>=5like pool, or the full list if nothing clears that bar) -
+        # top ~12 by score (covers best_overall/max_capability candidates) plus
+        # bottom ~3 by params_b (covers speed_demon, which optimizes for
+        # smallest-not-highest-score). Bounded so this stays cheap regardless of
+        # pool size; every model outside the slice keeps score_models()'s honest
+        # "estimated / not checked" defaults rather than being silently treated
+        # as verified.
+        vetted_for_verification = [m for m in scored_models if m.get("downloads", 0) >= 1000 and m.get("likes", 0) >= 5]
+        verification_pool = vetted_for_verification if vetted_for_verification else scored_models
+        top_by_score = sorted(verification_pool, key=lambda x: x["recommendation_score"], reverse=True)[:12]
+        bottom_by_params = sorted(verification_pool, key=lambda x: x["params_b"])[:3]
+        verification_candidates: Dict[str, Dict[str, Any]] = {}
+        for m in (top_by_score + bottom_by_params):
+            verification_candidates[m["id"]] = m
+
+        unique_lookups = [(m["id"], m.get("active_quant_bits", 4)) for m in verification_candidates.values()]
 
         verify_by_id: Dict[str, Optional[Dict[str, Any]]] = {}
         if unique_lookups:
-            with ThreadPoolExecutor(max_workers=len(unique_lookups)) as executor:
+            with ThreadPoolExecutor(max_workers=min(len(unique_lookups), 10)) as executor:
                 futures = {
                     executor.submit(hf_client.get_exact_gguf_info, repo_id, quant_bits, context_k): repo_id
                     for repo_id, quant_bits in unique_lookups
@@ -93,19 +130,27 @@ def get_model_recommendations(req: RecommendationRequest):
                     except Exception:
                         verify_by_id[repo_id] = None
 
-        for m in hero_models:
+        for m in verification_candidates.values():
             verified = verify_by_id.get(m["id"]) or {}
 
             if "exact_weight_gb" in verified:
                 m["vram_weight_gb"] = verified["exact_weight_gb"]
                 m["vram_source"] = "exact"
+                m["verified_gguf"] = True
                 m["matched_quant_files"] = verified["matched_files"]
                 if "exact_params_b" in verified:
                     m["exact_params_b"] = verified["exact_params_b"]
                 if "native_context_length" in verified:
                     m["native_context_length"] = verified["native_context_length"]
             else:
+                # Actually looked up and found no real .gguf file - distinct from
+                # "never checked" (verified_gguf stays None on every model outside
+                # this verification slice). Excluded from hero eligibility, but
+                # kept in the table with this flag so the frontend can show an
+                # honest "unverified" marker rather than hiding it outright.
                 m["vram_source"] = "estimated"
+                m["verified_gguf"] = False
+                m["hero_eligible"] = False
 
             if "exact_kv_overhead_gb" in verified:
                 m["kv_overhead_gb"] = verified["exact_kv_overhead_gb"]
@@ -118,7 +163,9 @@ def get_model_recommendations(req: RecommendationRequest):
             # chance to be upgraded independently - either, both, or neither may
             # have come back exact.
             m["vram_req_gb"] = round(m["vram_weight_gb"] + m["kv_overhead_gb"], 2)
-            m["vram_usage_pct"] = min(round((m["vram_req_gb"] / max(req.vram_gb, 1.0)) * 100.0, 1), 100.0)
+            m["vram_usage_pct"] = min(round((m["vram_req_gb"] / effective_budget_gb) * 100.0, 1), 100.0)
+
+        results = RecommendationEngine.select_heroes(scored_models)
 
         # All models in a batch come from the same source (either the live HF Hub
         # search succeeded, or it failed and we fell back to the seed list) - surface

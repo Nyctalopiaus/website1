@@ -15,7 +15,10 @@
   
   --accent-cyan: #38bdf8;
   --accent-cyan-dim: rgba(56, 189, 248, 0.12);
-  
+
+  --accent-purple: #a855f7;
+  --accent-purple-dim: rgba(168, 85, 247, 0.12);
+
   /* Chart segment colors */
   --color-pi: #e5c158;
   --color-tax: #38bdf8;
@@ -35,6 +38,21 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+.disclaimer-banner {
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-align: center;
+  padding: 6px 16px;
+}
+
+.disclaimer-banner strong {
+  color: var(--accent-emerald);
+  font-weight: 600;
 }
 
 html {
@@ -397,11 +415,30 @@ body {
   margin-bottom: 0;
 }
 
+/* Inside a 2-col row, the right-hand .input-group also counts as
+   ":last-child" of its own row, so the rule above was zeroing its
+   bottom margin while the left column kept its 2rem — making the right
+   box quietly taller and throwing off the bottom-alignment fix below.
+   Restore its margin so both columns start from the same natural height. */
+.grid-2-col > .input-group:last-child {
+  margin-bottom: 2rem;
+}
+
 .grid-2-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
   align-items: stretch;
+}
+
+/* When paired labels wrap to different numbers of lines, anchor the
+   actual field to the bottom of its (stretched) input-group so the two
+   fields line up evenly instead of trailing whichever label is taller. */
+.input-group > input[type="number"],
+.input-group > select,
+.input-group > .input-with-prefix,
+.input-group > .input-with-suffix {
+  margin-top: auto;
 }
 
 /* Payment Schedule Frequency Toggle */
@@ -451,6 +488,22 @@ body {
   background: var(--accent-emerald-dim);
   color: var(--accent-emerald);
   border-color: rgba(229, 193, 88, 0.35);
+}
+
+/* Target-DTI preset chips ("Conservative 36%" / "Standard 45%" /
+   "Aggressive 50%") used to wrap mid-word ("Conservati-ve 36%") because
+   .freq-btn's flex: 1 1 0px/min-width: 0 forces all three into equal
+   thirds regardless of content, and word-break: break-word then had to
+   break the text to fit. Sizing these three by their own content instead
+   (rather than just adding white-space: nowrap, which — with the equal-
+   width flex still in force — let the un-wrappable text overflow into the
+   next chip) lets the row wrap onto a second line between whole chips if
+   they don't all fit, which reads fine, instead of breaking a chip's own
+   label or overlapping its neighbor. */
+#target-dti-presets .freq-btn {
+  flex: 0 1 auto;
+  min-width: max-content;
+  white-space: nowrap;
 }
 
 label {
@@ -512,6 +565,16 @@ select {
 
 select {
   cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  font-size: 0.82rem;
+  padding-left: 0.65rem;
+  padding-right: 1.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  background-size: 0.6rem;
 }
 
 input[type="number"]::-webkit-outer-spin-button,
@@ -933,6 +996,128 @@ select:focus {
   color: var(--text-bright);
 }
 
+/* Payment Breakdown card: "Pay It Off Early" accelerator (30-year only) */
+.payoff-accelerator {
+  width: 100%;
+  margin-top: 1.25rem;
+  padding-top: 1.1rem;
+  border-top: 1px dashed var(--border-color);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.payoff-toggle-row {
+  flex-shrink: 0;
+}
+
+.payoff-toggle-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-bright);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.payoff-accelerator-body {
+  flex-basis: 100%;
+  width: 100%;
+  margin-top: 0.75rem;
+}
+
+.payoff-slider-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.2rem;
+}
+
+.payoff-slider-label {
+  font-size: 0.85rem;
+  color: var(--text-bright);
+}
+
+.payoff-slider-label strong {
+  font-family: var(--font-display);
+  color: var(--accent-emerald);
+  font-size: 1.05rem;
+}
+
+.payoff-slider-sublabel {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.payoff-result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.payoff-result-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.6rem 0.7rem;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  text-align: center;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.payoff-result-item.highlight {
+  border-color: var(--accent-emerald);
+  background: var(--accent-emerald-dim);
+}
+
+.payoff-result-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.payoff-result-value {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+.payoff-result-item.highlight .payoff-result-value {
+  color: var(--accent-emerald);
+}
+
+.payoff-already-met {
+  flex-basis: 100%;
+  width: 100%;
+  margin-top: 0.85rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--accent-emerald-dim);
+  border: 1px solid var(--accent-emerald);
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-bright);
+  text-align: center;
+}
+
+.payoff-already-met .icon {
+  vertical-align: -2px;
+}
+
+@media (max-width: 480px) {
+  .payoff-result-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Affordability Panel */
 .dti-metric {
   display: flex;
@@ -960,7 +1145,12 @@ select:focus {
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  /* "Total Debt DTI (Back-End)" is the longest of the three DTI titles and
+     wraps to 2 lines next to the big percentage value while its siblings
+     stay on 1 — tighter letter-spacing + line-height keep the wrapped case
+     from looking loose/misaligned against the others. */
+  letter-spacing: 0.03em;
+  line-height: 1.25;
 }
 
 .badge-dti {
@@ -1040,6 +1230,81 @@ select:focus {
 .dti-value.bg-healthy { color: var(--color-healthy); }
 .dti-value.bg-moderate { color: var(--color-moderate); }
 .dti-value.bg-high { color: var(--color-high); }
+
+/* Outlook Summary card — sits full-width between the term cards and the
+   Payment Breakdown/Affordability row. Its outline glows green/amber/red
+   (same --color-healthy/-moderate/-high tokens as the DTI badges above)
+   via whichever outlook-verdict-* class updateOutlookSummaryUI() applies. */
+.outlook-summary-card {
+  border-width: 2px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.outlook-summary-card.outlook-verdict-good {
+  border-color: var(--color-healthy);
+  box-shadow: 0 0 20px rgba(74, 222, 128, 0.2), 0 4px 15px rgba(0, 0, 0, 0.25);
+}
+
+.outlook-summary-card.outlook-verdict-moderate {
+  border-color: var(--color-moderate);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2), 0 4px 15px rgba(0, 0, 0, 0.25);
+}
+
+.outlook-summary-card.outlook-verdict-high {
+  border-color: var(--color-high);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.22), 0 4px 15px rgba(0, 0, 0, 0.25);
+}
+
+.outlook-summary-header {
+  gap: 1rem;
+}
+
+.outlook-summary-header h2 {
+  margin-bottom: 0;
+}
+
+/* Groups the title + verdict badge together as one flex item so the
+   chevron (added when this card became collapsible) lands on its own at
+   the far right instead of being squeezed between title and badge by
+   .collapsible-header's justify-content: space-between. */
+.outlook-summary-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.outlook-summary-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.outlook-summary-lines.collapsible-body {
+  margin-top: 1.25rem;
+}
+
+.outlook-summary-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-secondary, var(--text-dark));
+}
+
+.outlook-summary-line .icon {
+  flex-shrink: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.15rem;
+}
+
+.outlook-summary-line.outlook-line-good .icon { color: var(--color-healthy); }
+.outlook-summary-line.outlook-line-moderate .icon { color: var(--color-moderate); }
+.outlook-summary-line.outlook-line-high .icon { color: var(--color-high); }
+.outlook-summary-line.outlook-line-neutral .icon { color: var(--accent-cyan); }
 
 .progress-markers {
   position: absolute;
@@ -1889,6 +2154,25 @@ select:focus {
   box-shadow: 0 0 12px rgba(229, 193, 88, 0.3);
 }
 
+/* Secondary nav treatment (Quick Start / Features / Copy Link) — same
+   gold-accent buttons read as three equal-weight actions next to Rent vs
+   Sell and Loan Comparisons, when only those two are core tools. This
+   demotes the utility buttons to the same quiet "Back to Lab" weight
+   class, so the two real tools stand out. */
+.btn-quickstart-mortgage.btn-nav-secondary,
+.btn-feature-mortgage.btn-nav-secondary {
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.02);
+  border-color: var(--border-color);
+}
+.btn-quickstart-mortgage.btn-nav-secondary:hover,
+.btn-feature-mortgage.btn-nav-secondary:hover {
+  color: var(--accent-emerald, #10b981);
+  background: rgba(229, 193, 88, 0.1);
+  border-color: rgba(229, 193, 88, 0.3);
+  box-shadow: none;
+}
+
 .quickstart-steps-list {
   display: flex;
   flex-direction: column;
@@ -1993,10 +2277,14 @@ select:focus {
   line-height: 1.45;
 }
 .feature-modal-list li::before {
-  content: '🏡';
+  content: '';
   position: absolute;
   left: 0;
-  font-size: 0.8rem;
+  top: 0.5em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-emerald, #10b981);
 }
 .feature-modal-list strong {
   color: #fff;
@@ -2020,6 +2308,27 @@ select:focus {
 }
 .modal-privacy-icon {
   font-size: 1.2rem;
+}
+
+.btn-copy-share-link-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 1.25rem;
+  background: linear-gradient(135deg, var(--accent-emerald, #e5c158), #c9a13f);
+  color: #080a0f;
+  border: none;
+  border-radius: 0.4rem;
+  padding: 0.8rem 1rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: filter 0.2s ease, opacity 0.2s ease;
+}
+.btn-copy-share-link-cta:hover {
+  filter: brightness(1.08);
 }
 
 /* Fetch Property button hover (moved from inline onmouseover/onmouseout so
@@ -2208,6 +2517,36 @@ select:focus {
   color: var(--color-high);
 }
 
+/* "Compare: Sell As-Is Instead?" box — highlight whichever strategy row
+   the verdict favors (true green, bold) and dim the other, so the winner
+   is obvious at a glance instead of relying on the verdict row's static
+   accent color to convey good/bad. */
+.ais-strategy-row {
+  transition: color 0.2s ease, font-weight 0.2s ease;
+}
+
+.ais-strategy-row.ais-winner {
+  color: #10b981;
+  font-weight: 700;
+}
+
+.ais-strategy-row.ais-loser {
+  color: var(--text-dark);
+}
+
+/* Plain inline flow (not inline-flex) on purpose: this is the sole flex
+   item in .sell-net-row's space-between row, so it needs to wrap its own
+   contents like a normal sentence. Nesting another flex container here
+   previously fought the outer row for width and produced a squished,
+   badly-broken wrap ("Wins" running into the dollar amount). */
+.ais-verdict-label-wrap {
+  display: inline;
+}
+
+.ais-verdict-icon {
+  margin-right: 0.3rem;
+}
+
 .sell-warning-text {
   font-size: 0.75rem;
   color: var(--color-high);
@@ -2254,6 +2593,35 @@ select:focus {
 }
 
 .btn-apply-proceeds:active {
+  transform: translateY(1px);
+}
+
+/* "↩ Revert to Repair-First Pricing" — a real, clearly clickable button
+   (not the muted .btn-force-refresh text link) since undoing a sale-price
+   change deserves the same visual weight as applying it did, just in the
+   secondary cyan used for undo/utility actions elsewhere rather than the
+   primary gold of .btn-apply-proceeds. */
+.btn-revert-asis {
+  width: 100%;
+  margin-top: 0.6rem;
+  background: rgba(6, 182, 212, 0.1);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  color: var(--accent-cyan);
+  border-radius: 0.4rem;
+  padding: 0.6rem 1rem;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-align: center;
+  transition: filter 0.2s ease, transform 0.1s ease, background 0.2s ease;
+}
+
+.btn-revert-asis:hover {
+  background: rgba(6, 182, 212, 0.18);
+  filter: brightness(1.05);
+}
+
+.btn-revert-asis:active {
   transform: translateY(1px);
 }
 
@@ -2358,9 +2726,16 @@ select:focus {
    comment). Grouped by purpose, not by which element first used them.
    ============================================================ */
 
-/* JS-driven visibility: every element carrying this starts hidden: JS
-   reveals it later via a direct el.style.display assignment, which always
-   overrides this class regardless of source order, so this is safe. */
+/* JS-driven visibility: every element carrying this starts hidden. The
+   `!important` here is load-bearing for the BEFORE-JS-RUNS state (it has to
+   beat other classes' own `display` rules regardless of stylesheet source
+   order — see utils.js) — but it also means a plain `el.style.display = 'x'`
+   from JS can NEVER reveal the element on its own, since a stylesheet
+   `!important` outranks a normal inline style. Found the hard way 2026-08-31
+   (the "Have a house to sell?" panel silently never appeared). Always use
+   `setVisible(el, visible)` from utils.js to show/hide anything that might
+   carry this class — it removes/re-adds the class itself, not just the
+   inline style. Do not "fix" this by deleting `!important`. */
 .hidden-init {
   display: none !important;
 }
@@ -2550,9 +2925,14 @@ select:focus {
 }
 .strat-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 0.5rem;
   margin-bottom: 0.6rem;
+}
+@media (max-width: 640px) {
+  .strat-columns {
+    grid-template-columns: 1fr;
+  }
 }
 .strat-card {
   padding: 0.65rem;
@@ -2566,6 +2946,10 @@ select:focus {
 .strat-card-extra {
   background: rgba(6, 182, 212, 0.05);
   border: 1px solid rgba(6, 182, 212, 0.25);
+}
+.strat-card-cash {
+  background: rgba(168, 85, 247, 0.05);
+  border: 1px solid rgba(168, 85, 247, 0.25);
 }
 .strat-card-header {
   display: flex;
@@ -2583,6 +2967,7 @@ select:focus {
 }
 .strat-card-title-recast { color: var(--accent-emerald); }
 .strat-card-title-extra { color: var(--accent-cyan); }
+.strat-card-title-cash { color: var(--accent-purple); }
 .strat-active-tag {
   font-size: 0.62rem;
   font-weight: 700;
@@ -2601,6 +2986,11 @@ select:focus {
   background: var(--accent-cyan-dim);
   border-color: rgba(6, 182, 212, 0.3);
 }
+.strat-active-tag-purple {
+  color: var(--accent-purple);
+  background: var(--accent-purple-dim);
+  border-color: rgba(168, 85, 247, 0.3);
+}
 .strat-card-body {
   display: flex;
   flex-direction: column;
@@ -2612,6 +3002,7 @@ select:focus {
 }
 .strat-stat-value-emerald { color: var(--accent-emerald); }
 .strat-stat-value-bright { color: var(--text-bright); }
+.strat-stat-value-purple { color: var(--accent-purple); }
 .strat-stat-value-sm {
   font-weight: 700;
   font-size: 0.82rem;

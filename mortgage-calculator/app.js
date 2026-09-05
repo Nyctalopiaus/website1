@@ -4,7 +4,7 @@
  */
 
 import { CONFIG, DEFAULTS } from './config.js';
-import { debounce, clamp, getElement, getProviderLabel } from './utils.js';
+import { debounce, clamp, getElement, getProviderLabel, setVisible, mergeDefaults } from './utils.js';
 import {
   performCalculations,
   extractInputValues,
@@ -12,11 +12,20 @@ import {
   getNormalizedDepartureMortgagePayment,
   calculateBridgeLoanCosts,
   calculateRecast,
+  calculateBackEndDTI,
   estimateNetAnnualIncome,
   convertPaycheckToMonthly,
-  convertMonthlyToPaycheck
+  convertMonthlyToPaycheck,
+  solveMaxAffordablePrice,
+  calculateCashToClose,
+  evaluateCashCushion,
+  creditScoreToSuggestedDTI,
+  generateOutlookSummary,
+  compareSaleStrategies,
+  calculateRentalOffset,
+  calculateRentalHelocCost
 } from './calculator.js';
-import { loadSavedInputs, applyLoadedDataToDOM, saveInputs, fetchMortgageRates } from './storage.js';
+import { loadSavedInputs, applyLoadedDataToDOM, saveInputs, fetchMortgageRates, encodeStateForSharing, decodeStateFromSharing } from './storage.js';
 import { fetchPropertyData, validateMLSInput, fetchRedfinValueOnly } from './scraper.js';
 import {
   createDOMReferences,
@@ -54,7 +63,16 @@ import {
   setRecastStrategyUI,
   updateStrategyComparisonUI,
   setupLoanComparisonModal,
-  attachTooltipPositioning
+  attachTooltipPositioning,
+  updateMaxAffordabilityUI,
+  updateCashToCloseUI,
+  updateCashCushionNoteUI,
+  updateCreditScoreDtiNoteUI,
+  updateTargetDtiGuidanceUI,
+  updateOutlookSummaryUI,
+  updateAsIsCompareUI,
+  updateAsIsApplyButtonUI,
+  updateRentalOffsetUI
 } from './ui.js';
 
 // ============================================================================
@@ -74,6 +92,22 @@ let saleMode = CONFIG.SALE_MODE_SELL_FIRST;
 let bridgeFinancingType = DEFAULTS.bridgeFinancingType;
 // 'recast' (lower monthly payment) or 'extraPayment' (pay off loan sooner).
 let recastStrategy = CONFIG.SALE_PAYOFF_STRATEGY_RECAST;
+// Remembers whichever of Sell First / Bridge Loan was last active, so the
+// Card 1 "Sell It" button (a plain 2-way Sell/Rental choice) can restore the
+// right one instead of always resetting to Sell First when coming back from
+// Keep as Rental.
+let lastSellFinancingMode = CONFIG.SALE_MODE_SELL_FIRST;
+// 'cash' (down payment funded from savings/another source, no new debt) or
+// 'heloc' (borrow against the departure home's equity instead). Only
+// meaningful when saleMode is SALE_MODE_RENTAL — see RENTAL_FUNDING_CASH/HELOC
+// in config.js for why Bridge Loan isn't an option here.
+let rentalFundingMode = DEFAULTS.rentalFundingMode;
+// True once the user has typed their own figure into the rental HELOC
+// Monthly Payment field — after that, changing the draw amount/rate no
+// longer overwrites it. Same "auto-fill, never locked" idea as
+// bridgeLoanAmount in setSaleMode(), just tracked explicitly here since this
+// field needs to keep recomputing live (not just once).
+let rentalHelocPaymentOverridden = false;
 // 'holding' (carrying both homes) or 'recast' (after old home sells & recast applied) —
 // controls which bridge phase the DTI section evaluates when in Bridge Loan mode.
 let bridgeDtiPhase = 'recast';
@@ -89,6 +123,12 @@ let payFrequency = CONFIG.PAY_FREQUENCY_MONTHLY;
 let netMonthlyOverride = null;
 let cardPhase30 = 'post';
 let cardPhase15 = 'post';
+// null until "Apply As-Is Pricing to Sale" is clicked on the As-Is compare
+// box; then holds { sellHomeValue, sellRepairCosts } — the real sale inputs'
+// values from just before applying, so "Revert" can restore them exactly
+// instead of just zeroing Repairs / Prep Costs back out. Cleared back to
+// null on Revert, or if the user manually edits either field afterward.
+let asIsPricingApplied = null;
 const domRefs = createDOMReferences();
 
 // ============================================================================
@@ -121,14 +161,54 @@ function calculateAll() {
 
   const hasHouseToSell = !!domRefs.hasHouseToSellInput?.checked;
   const isBridgeActive = hasHouseToSell && saleMode === CONFIG.SALE_MODE_BRIDGE_LOAN;
+  const isRentalActive = hasHouseToSell && saleMode === CONFIG.SALE_MODE_RENTAL;
 
   const sellInputs = getSellInputs();
   updateSellMortgageScheduleUI(sellInputs.sellMortgageSchedule, domRefs);
 
+  // "Compare: Sell As-Is Instead?" — mode-agnostic (applies whether funding
+  // the down payment via Sell First or Bridge Loan), so it lives outside the
+  // isBridgeActive branch below. Stays null (box shows its dashed
+  // placeholder) until the user has actually entered an as-is value.
+  let asIsCompare = null;
+  if (hasHouseToSell && sellInputs.asIsSaleValue > 0) {
+    const departureCarryingCost = getNormalizedDepartureMortgagePayment(sellInputs.sellMortgagePayment, sellInputs.sellMortgageSchedule);
+    asIsCompare = compareSaleStrategies({
+      sellInputs,
+      asIsSaleValue: sellInputs.asIsSaleValue,
+      monthsSavedByAsIs: sellInputs.asIsMonthsSaved,
+      monthlyCarryingCost: departureCarryingCost
+    });
+  }
+  updateAsIsCompareUI(asIsCompare, domRefs);
+  updateAsIsApplyButtonUI(!!asIsCompare, !!asIsPricingApplied, domRefs);
+
+  // Replays the same compareSaleStrategies() math the box itself used, but
+  // against the pre-apply snapshot vs. the now-applied sale inputs — feeds
+  // the Outlook Summary's "why As-Is was worth it" line below. Uses the
+  // still-live Months Saved field (never reset by handleApplyAsIsPricing())
+  // so the carrying-cost side of the math stays accurate.
+  let asIsAppliedComparison = null;
+  if (hasHouseToSell && asIsPricingApplied) {
+    const departureCarryingCost = getNormalizedDepartureMortgagePayment(sellInputs.sellMortgagePayment, sellInputs.sellMortgageSchedule);
+    asIsAppliedComparison = compareSaleStrategies({
+      sellInputs: { ...sellInputs, sellHomeValue: asIsPricingApplied.sellHomeValue, sellRepairCosts: asIsPricingApplied.sellRepairCosts },
+      asIsSaleValue: sellInputs.sellHomeValue,
+      monthsSavedByAsIs: sellInputs.asIsMonthsSaved,
+      monthlyCarryingCost: departureCarryingCost
+    });
+  }
+
   if (isBridgeActive) {
     const proceeds = calculateSaleProceeds(sellInputs);
     const bridgeInputs = getBridgeInputs();
-    const recastLumpSum = Math.max(0, proceeds.netProceeds - (bridgeInputs.bridgeLoanAmount || 0));
+    const rawRecastLumpSum = Math.max(0, proceeds.netProceeds - (bridgeInputs.bridgeLoanAmount || 0));
+    // Keep as Cash never applies anything to the loan — feeding calculateRecast()
+    // a $0 lump sum here makes recast30/recast15 come back with appliedLumpSum
+    // 0, which is exactly what isRecastActive30/15 in updateAllOutputs() (ui.js)
+    // keys off of to decide whether to show a "Recast Active" banner on the
+    // term-comparison cards at all.
+    const recastLumpSum = recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_KEEP_CASH ? 0 : rawRecastLumpSum;
 
     if (proceeds.netProceeds > 0) {
       results.recast30 = calculateRecast({
@@ -166,6 +246,22 @@ function calculateAll() {
   const extraOutlay = activeTerm === 30 ? results.extraMonthlyOutlay30 : results.extraMonthlyOutlay15;
 
   let bridgePayload = null;
+  // Keep as Rental's DTI-offset result — kept in this outer scope so the
+  // Outlook Summary at the end of this function can reuse it directly.
+  let rentalOffset = null;
+  // Keep as Rental's HELOC financing result (only when funded that way) —
+  // same outer-scope reuse for the Outlook Summary.
+  let rentalHeloc = null;
+  // Mirrors whichever housing cost actually got passed to updateBackEndDTI
+  // below (activeHousingCost while bridging, bankMonthlyTotal otherwise) —
+  // kept in this outer scope so the Outlook Summary at the end of this
+  // function can reuse the same number instead of recomputing it.
+  let outlookHousingCost = bankMonthlyTotal;
+  // Existing housing obligation the Max Affordability solver should treat as
+  // already spoken-for — 0 for a plain purchase or once past the sale (the
+  // 'recast' DTI lens), or the departure mortgage + bridge/HELOC
+  // interest-only payment while still actively carrying both homes.
+  let existingHousingObligation = 0;
 
   if (isBridgeActive) {
     const bridgeInputs = getBridgeInputs();
@@ -173,6 +269,9 @@ function calculateAll() {
     const sellInputs = getSellInputs();
     const departureMortgageMonthly = getNormalizedDepartureMortgagePayment(sellInputs.sellMortgagePayment, sellInputs.sellMortgageSchedule);
     const combinedMonthlyCost = departureMortgageMonthly + bridgeCosts.monthlyInterestOnlyPayment + bankMonthlyTotal;
+    if (bridgeDtiPhase === 'holding') {
+      existingHousingObligation = departureMortgageMonthly + bridgeCosts.monthlyInterestOnlyPayment;
+    }
 
     const proceeds = calculateSaleProceeds(sellInputs);
     const recastLumpSum = Math.max(0, proceeds.netProceeds - bridgeInputs.bridgeLoanAmount);
@@ -186,13 +285,18 @@ function calculateAll() {
       recastFee: bridgeInputs.recastFee
     });
 
-    const isExtraStrategy = recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT;
-    const effectiveSavings = isExtraStrategy ? 0 : recast.monthlySavings;
+    // Only the plain "Recast" strategy actually lowers the real-world
+    // payment — Extra Payment keeps paying the original amount (just pays
+    // off sooner), and Keep as Cash never touches the loan at all, so both
+    // contribute $0 savings toward the housing-cost totals below.
+    const isRecastStrategyActive = recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_RECAST;
+    const effectiveSavings = isRecastStrategyActive ? recast.monthlySavings : 0;
     const recastHousingTotal = Math.max(0, bankMonthlyTotal - effectiveSavings);
     const recastEffectiveTotal = Math.max(0, effectiveMonthlyTotal - effectiveSavings);
 
     const activeHousingCost = bridgeDtiPhase === 'holding' ? combinedMonthlyCost : recastHousingTotal;
     const activeEffectiveCost = bridgeDtiPhase === 'holding' ? (combinedMonthlyCost + extraOutlay) : recastEffectiveTotal;
+    outlookHousingCost = activeHousingCost;
 
     updateAffordability(activeHousingCost, activeEffectiveCost, extraOutlay, results.effectiveMonthlyIncome, domRefs, results.isNetIncomeBasis);
     updateBackEndDTI(activeHousingCost, getOtherMonthlyDebts(), results.effectiveMonthlyIncome, domRefs, results.isNetIncomeBasis);
@@ -201,11 +305,99 @@ function calculateAll() {
       isBridge: true,
       holdingHousingCost: combinedMonthlyCost,
       recastHousingCost: recastHousingTotal,
-      monthlySavings: effectiveSavings
+      monthlySavings: effectiveSavings,
+      recastStrategy
     };
+  } else if (isRentalActive) {
+    const rentalInputs = getRentalInputs();
+    const departureMortgageMonthly = getNormalizedDepartureMortgagePayment(sellInputs.sellMortgagePayment, sellInputs.sellMortgageSchedule);
+    rentalOffset = calculateRentalOffset({
+      rentalProjectedMonthlyRent: rentalInputs.rentalProjectedMonthlyRent,
+      rentalOffsetPercent: rentalInputs.rentalOffsetPercent,
+      departureMortgagePayment: departureMortgageMonthly
+    });
+
+    // If the down payment is funded via a HELOC against this same home,
+    // that payment is a straight, permanent addition to DTI — unlike the
+    // Bridge Loan case above, there's no future sale to pay it off with, so
+    // underwriting can't exclude it. It is NOT netted against the rental
+    // income the way the departure mortgage is; it's a separate debt.
+    syncRentalHelocPayment();
+    const rentalHelocMonthlyPayment = rentalInputs.rentalFundingMode === CONFIG.RENTAL_FUNDING_HELOC
+      ? Math.max(0, parseFloat(domRefs.rentalHelocPaymentInput?.value) || 0)
+      : 0;
+    if (rentalHelocMonthlyPayment > 0) {
+      rentalHeloc = { helocAmount: rentalInputs.rentalHelocAmount, monthlyPayment: rentalHelocMonthlyPayment };
+    }
+
+    existingHousingObligation = rentalOffset.qualifyingHousingObligation + rentalHelocMonthlyPayment;
+    updateRentalOffsetUI(rentalOffset, domRefs);
+
+    // The new home's own DTI panel isn't touched by the departure home at
+    // all in this mode (no combined carrying cost — that's the whole point
+    // of renting instead of bridging) — only a documented shortfall (if any)
+    // plus any rental HELOC payment count as extra monthly debt here, same
+    // treatment the Max Affordability solver gives existingHousingObligation
+    // below.
+    updateBackEndDTI(bankMonthlyTotal, getOtherMonthlyDebts() + existingHousingObligation, results.effectiveMonthlyIncome, domRefs, results.isNetIncomeBasis);
   } else {
     updateBackEndDTI(bankMonthlyTotal, getOtherMonthlyDebts(), results.effectiveMonthlyIncome, domRefs, results.isNetIncomeBasis);
   }
+
+  // Clears the rental-offset box back to its dashed placeholder whenever
+  // Keep as Rental isn't the active mode (bridge, sell-first, or no house to
+  // sell at all) — a single call here instead of duplicating it in every
+  // branch above.
+  if (!isRentalActive) updateRentalOffsetUI(null, domRefs);
+
+  // Max Affordability solver + Cash-to-Close tally. General-purpose — works
+  // for a plain purchase (existingHousingObligation stays 0 above) and for
+  // the bridge/HELOC holding period alike.
+  const affordInputs = getMaxAffordInputs();
+  updateTargetDtiGuidanceUI(affordInputs.targetBackEndDTI, domRefs);
+  const activeRate = activeTerm === 30 ? inputs.interest30 : inputs.interest15;
+  const maxAfford = solveMaxAffordablePrice({
+    targetBackEndDTI: affordInputs.targetBackEndDTI,
+    monthlyIncome: results.effectiveMonthlyIncome,
+    otherMonthlyDebts: getOtherMonthlyDebts(),
+    existingHousingObligation,
+    fixedDownPaymentCash: parseFloat(domRefs.cashDownPaymentInput?.value) || 0,
+    otherDownPaymentSource: getOtherDownPaymentSourceAmount(),
+    interestRate: activeRate,
+    termYears: activeTerm,
+    taxRate: inputs.taxRate,
+    homeInsurance: inputs.homeInsurance,
+    hoaFees: inputs.hoaFees,
+    pmiRate: inputs.pmiRate
+  });
+  updateMaxAffordabilityUI(maxAfford, isBridgeActive && bridgeDtiPhase === 'holding', domRefs);
+
+  // Cash-to-Close reflects the ACTUAL price/down payment entered above (not
+  // the hypothetical max-affordable ceiling) — "how much cash do I need for
+  // this deal", separate from "what's my ceiling."
+  // existingHousingObligation is 0 outside the "carrying both homes" phase,
+  // so this is just bankMonthlyTotal then — and the full combined carrying
+  // cost while holding both, without duplicating that sum a third time.
+  const reserveBasisMonthlyCost = existingHousingObligation + bankMonthlyTotal;
+  const cashToClose = calculateCashToClose({
+    downPaymentCash: parseFloat(domRefs.cashDownPaymentInput?.value) || 0,
+    purchasePrice: inputs.homePrice,
+    closingCostPercent: affordInputs.closingCostPercent,
+    reserveMonths: affordInputs.reserveMonths,
+    monthlyHousingObligation: reserveBasisMonthlyCost,
+    extraProjectCash: affordInputs.extraProjectCash
+  });
+  // Cash cushion: compares cash actually on hand against the tally above —
+  // renders a surplus/shortfall in the Cash to Close box and, when the
+  // surplus is generous, an informational compensating-factor note next to
+  // the Target DTI field. See evaluateCashCushion() in calculator.js.
+  const cashCushion = evaluateCashCushion({
+    cashAvailable: affordInputs.cashAvailable,
+    totalCashNeeded: cashToClose.totalCashNeeded,
+    monthlyHousingObligation: reserveBasisMonthlyCost
+  });
+  updateCashToCloseUI(cashToClose, domRefs, affordInputs.cashAvailable, cashCushion);
+  updateCashCushionNoteUI(cashCushion, affordInputs.cashAvailable, domRefs);
 
   // Update Residual Cash Flow Banner (Net mode only)
   updateResidualCashFlowUI(
@@ -219,6 +411,35 @@ function calculateAll() {
 
   updateBridgeAndRecast(results);
   updateDtiAccordionSummaries(results, domRefs);
+
+  // Outlook Summary — rule-based (no AI) synthesis of everything computed
+  // above into a short read + one verdict. Reuses the local variables this
+  // function already built rather than recalculating any of them; see
+  // generateOutlookSummary() in calculator.js for the actual line logic.
+  const outlookBackEndDti = calculateBackEndDTI(outlookHousingCost, getOtherMonthlyDebts(), results.effectiveMonthlyIncome);
+  const outlookSummary = generateOutlookSummary(results, {
+    activeTerm,
+    activeRate,
+    homePrice: inputs.homePrice,
+    backEndDtiValue: outlookBackEndDti,
+    otherMonthlyDebts: getOtherMonthlyDebts(),
+    isBridgeActive,
+    activeRecast: bridgePayload ? { monthlySavings: bridgePayload.monthlySavings } : null,
+    bridgeSaleStrategy: bridgePayload ? bridgePayload.recastStrategy : null,
+    maxAfford,
+    targetBackEndDTI: affordInputs.targetBackEndDTI,
+    cashToClose,
+    cashAvailable: affordInputs.cashAvailable,
+    extraMonthlyOutlay: extraOutlay,
+    asIsCompare,
+    isAsIsPricingApplied: !!asIsPricingApplied,
+    asIsAppliedComparison,
+    asIsPriceDelta: asIsPricingApplied ? (asIsPricingApplied.sellHomeValue - sellInputs.sellHomeValue) : 0,
+    asIsRepairsSaved: asIsPricingApplied ? asIsPricingApplied.sellRepairCosts : 0,
+    rentalOffset,
+    rentalHeloc
+  });
+  updateOutlookSummaryUI(outlookSummary, domRefs);
 }
 
 /**
@@ -360,14 +581,28 @@ function setPayFrequency(frequency) {
  * breakdown line immediately for a snappy feel; the caller still triggers
  * the actual recalculation afterward (same pattern as setSaleMode below).
  * @param {'gross'|'net'} basis
+ * @param {Object} [options]
+ * @param {boolean} [options.restoring] - true when this call is just
+ *   repainting the toggle to match already-loaded saved state (page init),
+ *   as opposed to a live click. Suppresses the Cash-Flow-group auto-expand
+ *   below in that case — that section's own open/closed state was already
+ *   correctly restored moments earlier by applyCollapsedSectionsState()
+ *   from the user's own saved preference, and this function running again
+ *   on every reload (whenever the saved income basis happens to be 'net')
+ *   was silently overriding it back open regardless of what the user had
+ *   actually left it as. The auto-expand is still exactly right for a real
+ *   user clicking the Net toggle mid-session — it's only page-load restore
+ *   that shouldn't re-trigger a "just switched modes" reveal.
  */
-function setIncomeBasis(basis) {
+function setIncomeBasis(basis, { restoring = false } = {}) {
   const wasGross = incomeBasis === CONFIG.INCOME_BASIS_GROSS;
   incomeBasis = basis === CONFIG.INCOME_BASIS_NET ? CONFIG.INCOME_BASIS_NET : CONFIG.INCOME_BASIS_GROSS;
   setIncomeBasisToggleUI(incomeBasis === CONFIG.INCOME_BASIS_NET, domRefs);
 
-  // If switching to Net mode, auto-expand the Cash Flow sub-accordion group
-  if (incomeBasis === CONFIG.INCOME_BASIS_NET) {
+  // If switching to Net mode live, auto-expand the Cash Flow sub-accordion
+  // group — but not when merely restoring saved state on page load (see
+  // the `restoring` doc note above).
+  if (incomeBasis === CONFIG.INCOME_BASIS_NET && !restoring) {
     expandDtiCashFlowGroup(domRefs);
   }
 
@@ -387,7 +622,12 @@ function setIncomeBasis(basis) {
 }
 
 /**
- * Reads the "Have a house to sell?" fields into the shape calculateSaleProceeds() expects
+ * Reads the "Have a house to sell?" fields into the shape calculateSaleProceeds()
+ * expects, plus a couple of fields calculateSaleProceeds() itself doesn't use
+ * but other consumers of this same section do (sellMortgagePayment/Schedule
+ * for getNormalizedDepartureMortgagePayment(); asIsSaleValue/asIsMonthsSaved
+ * for compareSaleStrategies()) — kept in one read so every "Have a house to
+ * sell?" consumer stays in sync off a single call.
  */
 function getSellInputs() {
   return {
@@ -400,7 +640,9 @@ function getSellInputs() {
     sellRepairCosts: parseFloat(domRefs.sellRepairCostsInput.value) || 0,
     sellConcessions: parseFloat(domRefs.sellConcessionsInput.value) || 0,
     sellMovingCosts: parseFloat(domRefs.sellMovingCostsInput.value) || 0,
-    sellProceedsPercent: parseFloat(domRefs.sellProceedsPercentSliderInput.value) || 0
+    sellProceedsPercent: parseFloat(domRefs.sellProceedsPercentSliderInput.value) || 0,
+    asIsSaleValue: parseFloat(domRefs.asIsSaleValueInput?.value) || 0,
+    asIsMonthsSaved: parseFloat(domRefs.asIsMonthsSavedInput?.value) || 0
   };
 }
 
@@ -427,20 +669,32 @@ function markSellHomeValueFresh() {
 }
 
 /**
- * Switches between Sell First and Bridge Loan sub-panels within the
- * "Have a house to sell?" section. The top part of the panel (Redfin
- * lookup, home value, payoff, costs, net proceeds) is mode-agnostic and
- * stays visible either way — only what happens with those proceeds differs.
- * @param {'sellFirst'|'bridgeLoan'} mode
+ * Switches between Sell First, Bridge Loan, and Keep as Rental. Since the
+ * 2026-09-03 split, this spans two independent toggles across two cards:
+ * Card 1's Sell/Rental choice (home-action-switch) picks the top-level
+ * mode, and Card 2's Sell First/Bridge Loan sub-choice (sale-mode-switch)
+ * only matters while Sell is active — see attachSellHouseListeners() below
+ * for how each button maps to a call here. Also drives which of the "Sell
+ * It" / "Keep It As a Rental" cards is visible (updateSellRentalCardVisibility).
+ * @param {'sellFirst'|'bridgeLoan'|'rental'} mode
  */
 function setSaleMode(mode) {
-  saleMode = mode === CONFIG.SALE_MODE_BRIDGE_LOAN ? CONFIG.SALE_MODE_BRIDGE_LOAN : CONFIG.SALE_MODE_SELL_FIRST;
+  saleMode = mode === CONFIG.SALE_MODE_BRIDGE_LOAN
+    ? CONFIG.SALE_MODE_BRIDGE_LOAN
+    : mode === CONFIG.SALE_MODE_RENTAL
+      ? CONFIG.SALE_MODE_RENTAL
+      : CONFIG.SALE_MODE_SELL_FIRST;
   const isBridge = saleMode === CONFIG.SALE_MODE_BRIDGE_LOAN;
+  const isRental = saleMode === CONFIG.SALE_MODE_RENTAL;
+  if (!isRental) lastSellFinancingMode = saleMode;
 
-  if (domRefs.saleModeSellFirstPanel) domRefs.saleModeSellFirstPanel.style.display = isBridge ? 'none' : 'block';
-  if (domRefs.saleModeBridgePanel) domRefs.saleModeBridgePanel.style.display = isBridge ? 'block' : 'none';
-  if (domRefs.btnSaleModeSellFirst) domRefs.btnSaleModeSellFirst.classList.toggle('active', !isBridge);
+  if (domRefs.saleModeSellFirstPanel) setVisible(domRefs.saleModeSellFirstPanel, !isBridge && !isRental);
+  if (domRefs.saleModeBridgePanel) setVisible(domRefs.saleModeBridgePanel, isBridge);
+  if (domRefs.btnSaleModeSellFirst) domRefs.btnSaleModeSellFirst.classList.toggle('active', !isBridge && !isRental);
   if (domRefs.btnSaleModeBridge) domRefs.btnSaleModeBridge.classList.toggle('active', isBridge);
+  if (domRefs.btnHomeActionSell) domRefs.btnHomeActionSell.classList.toggle('active', !isRental);
+  if (domRefs.btnHomeActionRental) domRefs.btnHomeActionRental.classList.toggle('active', isRental);
+  updateSellRentalCardVisibility();
 
   // Auto-suggest a bridge loan amount the first time this mode is entered
   // with nothing set yet — the gap the down payment currently needs. Always
@@ -450,6 +704,62 @@ function setSaleMode(mode) {
     const cash = parseFloat(domRefs.cashDownPaymentInput.value) || 0;
     domRefs.bridgeLoanAmountInput.value = Math.max(0, Math.round(total - cash));
   }
+}
+
+/**
+ * Shows the "Sell It" card while Sell First/Bridge Loan is active, or the
+ * "Keep It As a Rental" card while Rental is active — both hidden entirely
+ * when "Have a house to sell?" itself is off. Called from setSaleMode() and
+ * from the hasHouseToSell checkbox handler, so either input recomputes it.
+ */
+function updateSellRentalCardVisibility() {
+  const hasHouseToSell = !!domRefs.hasHouseToSellInput?.checked;
+  const isRental = saleMode === CONFIG.SALE_MODE_RENTAL;
+  if (domRefs.sellHouseSellCard) setVisible(domRefs.sellHouseSellCard, hasHouseToSell && !isRental);
+  if (domRefs.sellHouseRentalCard) setVisible(domRefs.sellHouseRentalCard, hasHouseToSell && isRental);
+}
+
+/**
+ * Switches the "Keep as Rental" down-payment funding sub-choice: Cash Only
+ * (no new debt) or a HELOC against the departure home's equity. Mirrors
+ * setBridgeFinancingType()'s job (button styling + panel visibility), but
+ * simpler — no rate/fee defaults to reset, since the HELOC panel has its own
+ * always-visible rate field instead of swapping between two loan types.
+ * @param {'cash'|'heloc'} mode
+ */
+function setRentalFundingMode(mode) {
+  rentalFundingMode = mode === CONFIG.RENTAL_FUNDING_HELOC ? CONFIG.RENTAL_FUNDING_HELOC : CONFIG.RENTAL_FUNDING_CASH;
+  const isHeloc = rentalFundingMode === CONFIG.RENTAL_FUNDING_HELOC;
+
+  if (domRefs.btnRentalFundingCash) domRefs.btnRentalFundingCash.classList.toggle('active', !isHeloc);
+  if (domRefs.btnRentalFundingHeloc) domRefs.btnRentalFundingHeloc.classList.toggle('active', isHeloc);
+  if (domRefs.rentalHelocPanel) setVisible(domRefs.rentalHelocPanel, isHeloc);
+
+  // Auto-suggest a HELOC draw amount the first time this mode is entered
+  // with nothing set yet — same "auto-fill, never locked" pattern as
+  // bridgeLoanAmount in setSaleMode().
+  if (isHeloc && domRefs.rentalHelocAmountInput && (parseFloat(domRefs.rentalHelocAmountInput.value) || 0) === 0) {
+    const total = parseFloat(domRefs.downPaymentAmountInput.value) || 0;
+    const cash = parseFloat(domRefs.cashDownPaymentInput.value) || 0;
+    domRefs.rentalHelocAmountInput.value = Math.max(0, Math.round(total - cash));
+    syncRentalHelocPayment();
+  }
+}
+
+/**
+ * Recomputes the rental HELOC's interest-only monthly payment from the
+ * current draw amount + rate and writes it into the payment field — unless
+ * the user has already typed their own figure into that field
+ * (rentalHelocPaymentOverridden), in which case it's left alone. Called on
+ * every draw-amount/rate edit.
+ */
+function syncRentalHelocPayment() {
+  if (rentalHelocPaymentOverridden || !domRefs.rentalHelocPaymentInput) return;
+  const { monthlyPayment } = calculateRentalHelocCost({
+    rentalHelocAmount: parseFloat(domRefs.rentalHelocAmountInput?.value) || 0,
+    rentalHelocRate: parseFloat(domRefs.rentalHelocRateInput?.value) || 0
+  });
+  domRefs.rentalHelocPaymentInput.value = Math.round(monthlyPayment);
 }
 
 /**
@@ -488,11 +798,18 @@ function setBridgeFinancingType(type, { resetDefaults = true } = {}) {
 }
 
 /**
- * Switches the Sale Proceeds Strategy within Bridge Loan mode ('recast' vs 'extraPayment')
- * @param {'recast'|'extraPayment'} strategy
+ * Switches the Sale Proceeds Strategy within Bridge Loan mode
+ * ('recast' vs 'extraPayment' vs 'keepCash')
+ * @param {'recast'|'extraPayment'|'keepCash'} strategy
  */
 function setRecastStrategy(strategy) {
-  recastStrategy = strategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT ? CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT : CONFIG.SALE_PAYOFF_STRATEGY_RECAST;
+  if (strategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT) {
+    recastStrategy = CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT;
+  } else if (strategy === CONFIG.SALE_PAYOFF_STRATEGY_KEEP_CASH) {
+    recastStrategy = CONFIG.SALE_PAYOFF_STRATEGY_KEEP_CASH;
+  } else {
+    recastStrategy = CONFIG.SALE_PAYOFF_STRATEGY_RECAST;
+  }
   setRecastStrategyUI(recastStrategy, domRefs);
   calculateAll();
   debouncedSave();
@@ -543,8 +860,16 @@ function updateBridgeAndRecast(results) {
   const proceeds = calculateSaleProceeds(sellInputs);
   const recastLumpSum = Math.max(0, proceeds.netProceeds - totalBridgePayoff);
 
-  const isExtraStrategy = recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT;
-  const effectiveFee = isExtraStrategy ? 0 : bridgeInputs.recastFee;
+  // The fee only ever applies when actually recasting — Extra Payment has no
+  // lender fee, and Keep as Cash never touches the loan at all. Note the lump
+  // sum itself stays at its full value here regardless of strategy: the
+  // comparison box (updateStrategyComparisonUI) needs the FULL-amount Recast
+  // and Extra Payment numbers to stay accurate even while Keep as Cash is the
+  // active choice, so the three columns remain a fair side-by-side. The
+  // recast-summary box and effectiveSavings below independently ignore this
+  // `recast` object's applied-amount fields whenever Keep as Cash is active.
+  const isRecastStrategyActive = recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_RECAST;
+  const effectiveFee = isRecastStrategyActive ? bridgeInputs.recastFee : 0;
   const rate = activeTerm === 30 ? parseFloat(domRefs.interest30Input.value) || 0 : parseFloat(domRefs.interest15Input.value) || 0;
   const recast = calculateRecast({
     loanAmount: results.loanAmount,
@@ -558,7 +883,7 @@ function updateBridgeAndRecast(results) {
   updateRecastSummaryUI(proceeds, totalBridgePayoff, bridgeInputs.recastFee, recast, domRefs, newMortgagePayment, recastStrategy);
   updateStrategyComparisonUI(recast, proceeds, totalBridgePayoff, recastStrategy, domRefs);
 
-  const effectiveSavings = isExtraStrategy ? 0 : recast.monthlySavings;
+  const effectiveSavings = isRecastStrategyActive ? recast.monthlySavings : 0;
   // Update Residual Cash Flow Banner with Bridge Loan multi-stage view (Holding vs Post-Recast)
   updateResidualCashFlowUI(
     results.effectiveMonthlyIncome,
@@ -597,16 +922,66 @@ function getBridgeInputs() {
 }
 
 /**
+ * Reads the "Keep as Rental" mode fields
+ */
+function getRentalInputs() {
+  return {
+    rentalProjectedMonthlyRent: parseFloat(domRefs.rentalProjectedMonthlyRentInput?.value) || 0,
+    rentalOffsetPercent: parseFloat(domRefs.rentalOffsetPercentInput?.value) || 0,
+    rentalFundingMode,
+    rentalHelocAmount: parseFloat(domRefs.rentalHelocAmountInput?.value) || 0,
+    rentalHelocRate: parseFloat(domRefs.rentalHelocRateInput?.value) || 0,
+    rentalHelocPayment: parseFloat(domRefs.rentalHelocPaymentInput?.value) || 0
+  };
+}
+
+/**
+ * Reads the Max Affordability solver / Cash-to-Close tally fields
+ */
+function getMaxAffordInputs() {
+  return {
+    targetBackEndDTI: parseFloat(domRefs.targetBackEndDTIInput?.value) || CONFIG.DEFAULT_TARGET_BACKEND_DTI,
+    creditScoreBand: domRefs.creditScoreBandInput?.value || '',
+    closingCostPercent: Math.max(0, parseFloat(domRefs.closingCostPercentInput?.value) || 0),
+    reserveMonths: Math.max(0, parseFloat(domRefs.reserveMonthsInput?.value) || 0),
+    extraProjectCash: Math.max(0, parseFloat(domRefs.extraProjectCashInput?.value) || 0),
+    cashAvailable: Math.max(0, parseFloat(domRefs.cashAvailableInput?.value) || 0)
+  };
+}
+
+/**
+ * Applies the suggested DTI ceiling for the selected credit-score band to
+ * the free-form Target DTI field — a prefill, never a lock; the field stays
+ * fully editable afterward. See creditScoreToSuggestedDTI() in calculator.js
+ * for why this is a rough guideline, not a guarantee.
+ */
+function applyCreditScoreDtiSuggestion() {
+  const band = domRefs.creditScoreBandInput?.value || '';
+  const suggestion = creditScoreToSuggestedDTI(band);
+  if (suggestion.suggestedDTI !== null && domRefs.targetBackEndDTIInput) {
+    domRefs.targetBackEndDTIInput.value = suggestion.suggestedDTI;
+  }
+  updateCreditScoreDtiNoteUI(suggestion, domRefs);
+}
+
+/**
  * Computes the amount contributed to the down payment by whichever
  * non-cash source applies to the current sale mode: net sale proceeds
- * (Sell First — simultaneous close) or the bridge loan draw itself
- * (Bridge Loan — the sale hasn't happened yet, so there are no proceeds
- * to apply until it does).
+ * (Sell First — simultaneous close), the bridge loan draw itself (Bridge
+ * Loan — the sale hasn't happened yet, so there are no proceeds to apply
+ * until it does), or a HELOC draw (Keep as Rental — no sale ever happens in
+ * this mode, so there are never any sale proceeds to fall back to; Cash Only
+ * funding contributes 0 here since it isn't a distinct source at all, just
+ * the plain Cash Contribution field).
  */
 function getOtherDownPaymentSourceAmount() {
   if (!domRefs.hasHouseToSellInput.checked) return 0;
   if (saleMode === CONFIG.SALE_MODE_BRIDGE_LOAN) {
     return Math.max(0, getBridgeInputs().bridgeLoanAmount);
+  }
+  if (saleMode === CONFIG.SALE_MODE_RENTAL) {
+    if (rentalFundingMode !== CONFIG.RENTAL_FUNDING_HELOC) return 0;
+    return Math.max(0, getRentalInputs().rentalHelocAmount);
   }
   const sellInputs = getSellInputs();
   const proceeds = calculateSaleProceeds(sellInputs);
@@ -672,13 +1047,28 @@ function syncDownPaymentFields(source) {
     domRefs.downPaymentSlider.value = Math.round(percent);
   }
 
-  updateDownPaymentBreakdownUI(cash, houseProceeds, total, percent, domRefs, saleMode, bridgeFinancingType);
+  // Financing sub-type to relabel the "other source" box with: Bridge Loan
+  // mode's own Bridge/HELOC choice, or (in Rental mode) whether the rental
+  // funding sub-choice is a HELOC — Cash Only never reaches here since
+  // houseProceeds is 0 and the box just hides.
+  const otherSourceFinancingType = saleMode === CONFIG.SALE_MODE_RENTAL
+    ? (rentalFundingMode === CONFIG.RENTAL_FUNDING_HELOC ? CONFIG.FINANCING_TYPE_HELOC : null)
+    : bridgeFinancingType;
+  updateDownPaymentBreakdownUI(cash, houseProceeds, total, percent, domRefs, saleMode, otherSourceFinancingType);
 }
 
 /**
- * Debounced save function to reduce API calls
+ * Collects every field that gets persisted — the same shape localStorage
+ * saves and loads. Shared by debouncedSave() and the "Copy Link" share
+ * feature so both always serialize the exact same fields; previously this
+ * object was only ever built inline inside the debounce callback, which
+ * would have meant duplicating ~40 lines of DOM-reading logic (and risking
+ * the two falling out of sync on the next field addition) to reuse it for
+ * sharing.
+ * @returns {Object} Current calculator state, ready for saveInputs() or
+ *   encodeStateForSharing()
  */
-const debouncedSave = debounce(() => {
+function buildSaveData() {
   let paymentFreq = 'monthly';
   if (domRefs.btnFreqBiweekly?.classList.contains('active')) {
     paymentFreq = 'biweekly';
@@ -686,7 +1076,7 @@ const debouncedSave = debounce(() => {
     paymentFreq = 'accelerated';
   }
 
-  const data = {
+  return {
     homePrice: parseFloat(domRefs.homePriceInput.value),
     cashDownPayment: parseFloat(domRefs.cashDownPaymentInput.value) || 0,
     downPaymentAmount: parseFloat(domRefs.downPaymentAmountInput.value),
@@ -699,6 +1089,7 @@ const debouncedSave = debounce(() => {
     pmiRate: parseFloat(domRefs.pmiRateInput.value),
     grossAnnualIncome: parseFloat(domRefs.grossAnnualIncomeInput.value),
     otherMonthlyDebts: getOtherMonthlyDebts(),
+    ...getMaxAffordInputs(),
     incomeBasis,
     payFrequency,
     netMonthlyOverride,
@@ -709,10 +1100,17 @@ const debouncedSave = debounce(() => {
     biweeklyExtra: domRefs.biweeklyExtraInput ? (parseFloat(domRefs.biweeklyExtraInput.value) || 0) : 0,
     activeTerm,
 
+    // "Pay It Off Early" accelerator (30-year Payment Breakdown card) — local-only
+    payoffAcceleratorEnabled: !!domRefs.payoffAcceleratorCheckbox?.checked,
+    payoffAcceleratorYearsOff: parseInt(domRefs.payoffYearsOffSlider?.value, 10) || 15,
+
     // "Have a house to sell?" section — local-only, same as everything else
     sellingHouse: domRefs.hasHouseToSellInput.checked,
     ...getSellInputs(),
     sellHomeValueUpdatedAt,
+
+    // As-Is compare box "Apply" state — see asIsPricingApplied declaration
+    asIsPricingApplied,
 
     // Bridge Loan mode
     saleMode,
@@ -721,10 +1119,19 @@ const debouncedSave = debounce(() => {
     bridgeDtiPhase,
     ...getBridgeInputs(),
 
+    // Keep as Rental mode
+    ...getRentalInputs(),
+
     // Left-column card open/closed state — local-only, same as everything else
     collapsedSections: getCollapsedSectionsState()
   };
-  saveInputs(data);
+}
+
+/**
+ * Debounced save function to reduce API calls
+ */
+const debouncedSave = debounce(() => {
+  saveInputs(buildSaveData());
 }, CONFIG.SAVE_DEBOUNCE_MS);
 
 /**
@@ -753,7 +1160,7 @@ function attachInputListeners() {
 
       const freq = btn.getAttribute('data-freq');
       if (domRefs.biweeklyExtraContainer) {
-        domRefs.biweeklyExtraContainer.style.display = (freq === 'biweekly' || freq === 'accelerated') ? 'block' : 'none';
+        setVisible(domRefs.biweeklyExtraContainer, freq === 'biweekly' || freq === 'accelerated');
       }
 
       calculateAll();
@@ -776,6 +1183,20 @@ function attachInputListeners() {
     });
   }
 
+  // "Pay It Off Early" accelerator — checkbox reveals the years-off slider
+  if (domRefs.payoffAcceleratorCheckbox) {
+    domRefs.payoffAcceleratorCheckbox.addEventListener('change', () => {
+      setVisible(domRefs.payoffAcceleratorBodyEl, domRefs.payoffAcceleratorCheckbox.checked);
+      calculateAll();
+      debouncedSave();
+    });
+  }
+  if (domRefs.payoffYearsOffSlider) {
+    domRefs.payoffYearsOffSlider.addEventListener('input', () => {
+      debouncedCalculate();
+    });
+  }
+
   // Home price syncing
   domRefs.homePriceInput.addEventListener('input', () => {
     const val = parseFloat(domRefs.homePriceInput.value) || 0;
@@ -783,7 +1204,7 @@ function attachInputListeners() {
 
     // Hide Redfin badge when manually edited
     const badge = getElement('badge-redfin-price');
-    if (badge) badge.style.display = 'none';
+    if (badge) setVisible(badge, false);
 
     syncDownPaymentFields('amount');
     debouncedCalculate();
@@ -794,7 +1215,7 @@ function attachInputListeners() {
     domRefs.homePriceInput.value = val;
 
     const badge = getElement('badge-redfin-price');
-    if (badge) badge.style.display = 'none';
+    if (badge) setVisible(badge, false);
 
     syncDownPaymentFields('amount');
     debouncedCalculate();
@@ -847,7 +1268,7 @@ function attachInputListeners() {
   numericInputsWithBadges.forEach(({ el, badgeId }) => {
     el.addEventListener('input', () => {
       const badge = getElement(badgeId);
-      if (badge) badge.style.display = 'none';
+      if (badge) setVisible(badge, false);
       debouncedCalculate();
     });
   });
@@ -857,12 +1278,36 @@ function attachInputListeners() {
     domRefs.homeInsuranceInput,
     domRefs.pmiRateInput,
     domRefs.grossAnnualIncomeInput,
-    domRefs.otherMonthlyDebtsInput
+    domRefs.otherMonthlyDebtsInput,
+    domRefs.targetBackEndDTIInput,
+    domRefs.closingCostPercentInput,
+    domRefs.reserveMonthsInput,
+    domRefs.extraProjectCashInput,
+    domRefs.cashAvailableInput
   ];
 
   otherNumericInputs.forEach(input => {
-    input.addEventListener('input', debouncedCalculate);
+    input?.addEventListener('input', debouncedCalculate);
   });
+
+  // Target DTI quick-pick presets — one-shot fills, not a persistent toggle,
+  // since the field stays free-form (someone can type any number afterward).
+  domRefs.targetDtiPresetButtons?.forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (domRefs.targetBackEndDTIInput) {
+        domRefs.targetBackEndDTIInput.value = btn.getAttribute('data-target-dti');
+      }
+      debouncedCalculate();
+    });
+  });
+
+  // Credit-score band → suggested DTI ceiling (prefills Target DTI, never locks it)
+  if (domRefs.creditScoreBandInput) {
+    domRefs.creditScoreBandInput.addEventListener('change', () => {
+      applyCreditScoreDtiSuggestion();
+      debouncedCalculate();
+    });
+  }
 
   // Gross vs. Net (Best Guess) income basis toggle
   if (domRefs.btnIncomeBasisGross) {
@@ -953,7 +1398,8 @@ function attachSellHouseListeners() {
   // Toggle checkbox — show/hide the fields panel
   domRefs.hasHouseToSellInput.addEventListener('change', () => {
     const isChecked = domRefs.hasHouseToSellInput.checked;
-    domRefs.sellHouseFieldsPanel.style.display = isChecked ? 'block' : 'none';
+    setVisible(domRefs.sellHouseFieldsPanel, isChecked);
+    updateSellRentalCardVisibility();
     updateSellProceeds();
     syncDownPaymentFields('house');
     debouncedCalculate();
@@ -972,6 +1418,9 @@ function attachSellHouseListeners() {
   sellNumericInputs.forEach(input => {
     if (!input) return;
     input.addEventListener('input', () => {
+      // Same reasoning as the sellHomeValueInput listener below — a manual
+      // repair-cost edit after applying As-Is pricing invalidates it.
+      if (input === domRefs.sellRepairCostsInput) asIsPricingApplied = null;
       updateSellProceeds();
       syncDownPaymentFields('house');
       debouncedCalculate();
@@ -990,8 +1439,11 @@ function attachSellHouseListeners() {
   // source badge and mark the value as freshly confirmed (resets the
   // stale-value suggestion, since the user just told us what it is right now)
   domRefs.sellHomeValueInput.addEventListener('input', () => {
+    // A manual edit after applying As-Is pricing means the user is telling
+    // us their own number now — the applied snapshot/warning no longer apply.
+    asIsPricingApplied = null;
     const redfinBadge = getElement('badge-sell-redfin');
-    if (redfinBadge) redfinBadge.style.display = 'none';
+    if (redfinBadge) setVisible(redfinBadge, false);
     markSellHomeValueFresh();
     updateSellProceeds();
     syncDownPaymentFields('house');
@@ -1004,6 +1456,37 @@ function attachSellHouseListeners() {
     syncDownPaymentFields('house');
     debouncedCalculate();
   });
+
+  // "Compare: Sell As-Is Instead?" fields — cheap enough to run through the
+  // normal debounced pipeline rather than an instant path like updateSellProceeds().
+  [domRefs.asIsSaleValueInput, domRefs.asIsMonthsSavedInput].forEach(input => {
+    input?.addEventListener('input', debouncedCalculate);
+  });
+
+  // Auto-suggest an as-is value the first time this section is opened with
+  // nothing set yet — same "auto-fill, never locked" pattern as bridgeLoanAmount
+  // in setSaleMode(). ~8% off the entered home value is a rough as-is/investor
+  // discount rule-of-thumb; always editable afterward.
+  if (domRefs.sellAisCompareToggle) {
+    domRefs.sellAisCompareToggle.addEventListener('click', () => {
+      if (domRefs.asIsSaleValueInput && (parseFloat(domRefs.asIsSaleValueInput.value) || 0) === 0) {
+        const homeValue = parseFloat(domRefs.sellHomeValueInput.value) || 0;
+        if (homeValue > 0) {
+          domRefs.asIsSaleValueInput.value = Math.round(homeValue * 0.92);
+          debouncedCalculate();
+        }
+      }
+    });
+  }
+
+  // "Apply As-Is Pricing to Sale" / "Revert" — copies the As-Is compare
+  // box's value into the real sale inputs (or undoes that).
+  if (domRefs.aisApplyBtn) {
+    domRefs.aisApplyBtn.addEventListener('click', handleApplyAsIsPricing);
+  }
+  if (domRefs.aisRevertBtn) {
+    domRefs.aisRevertBtn.addEventListener('click', handleRevertAsIsPricing);
+  }
 
   // Redfin value lookup
   domRefs.btnSearchSellRedfin.addEventListener('click', () => handleSearchSellRedfin(false));
@@ -1026,7 +1509,24 @@ function attachSellHouseListeners() {
     });
   }
 
-  // Sale mode switch (Sell First vs Bridge Loan)
+  // Sale mode switch (Sell First vs Bridge Loan vs Keep as Rental)
+  // Card 1's top-level "What Are You Doing With This Home?" toggle.
+  if (domRefs.btnHomeActionSell) {
+    domRefs.btnHomeActionSell.addEventListener('click', () => {
+      setSaleMode(lastSellFinancingMode);
+      syncDownPaymentFields('house');
+      debouncedCalculate();
+    });
+  }
+  if (domRefs.btnHomeActionRental) {
+    domRefs.btnHomeActionRental.addEventListener('click', () => {
+      setSaleMode(CONFIG.SALE_MODE_RENTAL);
+      syncDownPaymentFields('house');
+      debouncedCalculate();
+    });
+  }
+
+  // Card 2's "Sell It" financing sub-choice — only meaningful while Sell is active.
   if (domRefs.btnSaleModeSellFirst) {
     domRefs.btnSaleModeSellFirst.addEventListener('click', () => {
       setSaleMode(CONFIG.SALE_MODE_SELL_FIRST);
@@ -1038,6 +1538,44 @@ function attachSellHouseListeners() {
     domRefs.btnSaleModeBridge.addEventListener('click', () => {
       setSaleMode(CONFIG.SALE_MODE_BRIDGE_LOAN);
       syncDownPaymentFields('house');
+      debouncedCalculate();
+    });
+  }
+
+  // "Keep as Rental" fields
+  [domRefs.rentalProjectedMonthlyRentInput, domRefs.rentalOffsetPercentInput].forEach(input => {
+    input?.addEventListener('input', debouncedCalculate);
+  });
+
+  // Card 3's down-payment funding sub-choice — Cash Only vs. HELOC.
+  if (domRefs.btnRentalFundingCash) {
+    domRefs.btnRentalFundingCash.addEventListener('click', () => {
+      setRentalFundingMode(CONFIG.RENTAL_FUNDING_CASH);
+      syncDownPaymentFields('house');
+      debouncedCalculate();
+    });
+  }
+  if (domRefs.btnRentalFundingHeloc) {
+    domRefs.btnRentalFundingHeloc.addEventListener('click', () => {
+      setRentalFundingMode(CONFIG.RENTAL_FUNDING_HELOC);
+      syncDownPaymentFields('house');
+      debouncedCalculate();
+    });
+  }
+
+  // Rental HELOC draw amount/rate — live-recompute the interest-only payment
+  // (unless the user has typed their own figure into it directly, see
+  // rentalHelocPaymentOverridden).
+  [domRefs.rentalHelocAmountInput, domRefs.rentalHelocRateInput].forEach(input => {
+    input?.addEventListener('input', () => {
+      syncRentalHelocPayment();
+      syncDownPaymentFields('house');
+      debouncedCalculate();
+    });
+  });
+  if (domRefs.rentalHelocPaymentInput) {
+    domRefs.rentalHelocPaymentInput.addEventListener('input', () => {
+      rentalHelocPaymentOverridden = true;
       debouncedCalculate();
     });
   }
@@ -1068,6 +1606,11 @@ function attachSellHouseListeners() {
   if (domRefs.btnRecastStratExtra) {
     domRefs.btnRecastStratExtra.addEventListener('click', () => {
       setRecastStrategy(CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT);
+    });
+  }
+  if (domRefs.btnRecastStratCash) {
+    domRefs.btnRecastStratCash.addEventListener('click', () => {
+      setRecastStrategy(CONFIG.SALE_PAYOFF_STRATEGY_KEEP_CASH);
     });
   }
 
@@ -1206,6 +1749,72 @@ function attachActionListeners() {
       if (e.key === 'Escape' && !featuresModal.classList.contains('hidden')) {
         closeFeaturesModal();
       }
+    });
+  }
+
+  // "Copy Link" — opens an explainer modal (share-link-modal) aimed at
+  // non-technical users, with the actual copy action as a CTA button at
+  // the bottom of that modal. The copy itself encodes the current
+  // calculator state into a "?share=..." URL query param, the same shape
+  // initializeApp() decodes back out on load (see
+  // encodeStateForSharing()/decodeStateFromSharing() in storage.js).
+  // Nothing is sent to a server; the numbers live entirely in the copied
+  // link, so this doesn't compromise the "100% Private & Local" promise
+  // shown in the trust banner.
+  const btnOpenShareLink = document.getElementById('btn-open-share-link');
+  const shareLinkModal = document.getElementById('share-link-modal');
+  const btnCloseShareLink = document.getElementById('btn-close-share-link');
+  const btnCopyShareLink = document.getElementById('btn-copy-share-link');
+
+  if (btnOpenShareLink && shareLinkModal) {
+    const openShareLinkModal = () => {
+      shareLinkModal.style.display = 'flex';
+      shareLinkModal.classList.remove('hidden');
+      shareLinkModal.setAttribute('aria-hidden', 'false');
+    };
+    const closeShareLinkModal = () => {
+      shareLinkModal.style.display = 'none';
+      shareLinkModal.classList.add('hidden');
+      shareLinkModal.setAttribute('aria-hidden', 'true');
+    };
+
+    btnOpenShareLink.addEventListener('click', openShareLinkModal);
+    if (btnCloseShareLink) btnCloseShareLink.addEventListener('click', closeShareLinkModal);
+    shareLinkModal.addEventListener('click', (e) => {
+      if (e.target === shareLinkModal) closeShareLinkModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !shareLinkModal.classList.contains('hidden')) {
+        closeShareLinkModal();
+      }
+    });
+  }
+
+  if (btnCopyShareLink) {
+    const originalShareLinkLabel = btnCopyShareLink.innerHTML;
+    btnCopyShareLink.addEventListener('click', async () => {
+      const shareUrl = `${window.location.origin}${window.location.pathname}?share=${encodeStateForSharing(buildSaveData())}`;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(shareUrl);
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = shareUrl;
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          textarea.remove();
+        }
+        setButtonLoading(btnCopyShareLink, '✅ Shareable Link Copied!', false);
+      } catch (error) {
+        console.error('[ERROR] Failed to copy share link:', error);
+        setButtonLoading(btnCopyShareLink, '❌ Copy Failed', false);
+      }
+      setTimeout(() => {
+        btnCopyShareLink.innerHTML = originalShareLinkLabel;
+      }, 2000);
     });
   }
 
@@ -1397,7 +2006,7 @@ async function handleSearchSellRedfin(force = false) {
       if (badge) {
         const providerLabel = getProviderLabel(result.url || userInput, result.provider);
         badge.textContent = `✓ ${providerLabel}`;
-        badge.style.display = 'inline-block';
+        setVisible(badge, true, 'inline-block');
       }
       markSellHomeValueFresh();
       updateSellProceeds();
@@ -1427,6 +2036,59 @@ async function handleSearchSellRedfin(force = false) {
  * duplicating the amount/percent/slider sync logic already wired up on
  * downPaymentAmountInput above.
  */
+/**
+ * "Apply As-Is Pricing to Sale" — copies the As-Is compare box's value into
+ * the real Estimated Home Value field and zeroes Repairs / Prep Costs, so
+ * every downstream number (net proceeds, down payment, cash-to-close, DTI,
+ * Outlook) actually reflects an as-is sale instead of just showing a
+ * side-by-side what-if. Snapshots the pre-apply sellHomeValue/sellRepairCosts
+ * into asIsPricingApplied so handleRevertAsIsPricing() can restore them
+ * exactly, and resets the what-if As-Is Sale Value field back to 0 — once
+ * applied, both sides of the comparison would be identical, so leaving it
+ * populated would just show a meaningless "wins by $0" box.
+ */
+function handleApplyAsIsPricing() {
+  const asIsValue = parseFloat(domRefs.asIsSaleValueInput?.value) || 0;
+  if (asIsValue <= 0) return;
+
+  asIsPricingApplied = {
+    sellHomeValue: parseFloat(domRefs.sellHomeValueInput.value) || 0,
+    sellRepairCosts: parseFloat(domRefs.sellRepairCostsInput.value) || 0
+  };
+
+  domRefs.sellHomeValueInput.value = Math.round(asIsValue);
+  domRefs.sellRepairCostsInput.value = 0;
+  domRefs.asIsSaleValueInput.value = 0;
+
+  const redfinBadge = getElement('badge-sell-redfin');
+  if (redfinBadge) setVisible(redfinBadge, false);
+  markSellHomeValueFresh();
+  updateSellProceeds();
+  syncDownPaymentFields('house');
+  calculateAll();
+  debouncedSave();
+}
+
+/**
+ * "↩ Revert to Repair-First Pricing" — undoes handleApplyAsIsPricing(),
+ * restoring the exact sellHomeValue/sellRepairCosts the user had before
+ * applying (never just clearing them, so their original repair-cost figure
+ * isn't lost).
+ */
+function handleRevertAsIsPricing() {
+  if (!asIsPricingApplied) return;
+
+  domRefs.sellHomeValueInput.value = asIsPricingApplied.sellHomeValue;
+  domRefs.sellRepairCostsInput.value = asIsPricingApplied.sellRepairCosts;
+  asIsPricingApplied = null;
+
+  markSellHomeValueFresh();
+  updateSellProceeds();
+  syncDownPaymentFields('house');
+  calculateAll();
+  debouncedSave();
+}
+
 function handleApplyProceeds() {
   const proceeds = updateSellProceeds();
   const houseProceeds = Math.round(Math.max(0, proceeds.amountToDownPayment));
@@ -1461,13 +2123,13 @@ async function loadLiveMortgageRates() {
       if (!isNaN(rate30)) {
         domRefs.interest30Input.value = rate30.toFixed(2);
         const badge = getElement('badge-live-30');
-        if (badge) badge.style.display = 'inline-block';
+        if (badge) setVisible(badge, true, 'inline-block');
 
         const rate15 = data.rate15 ? parseFloat(data.rate15) : (rate30 - 0.70);
         if (!isNaN(rate15)) {
           domRefs.interest15Input.value = rate15.toFixed(2);
           const badge15 = getElement('badge-live-15');
-          if (badge15) badge15.style.display = 'inline-block';
+          if (badge15) setVisible(badge15, true, 'inline-block');
         }
       }
 
@@ -1485,7 +2147,11 @@ async function loadLiveMortgageRates() {
   } catch (error) {
     console.error('[ERROR] Could not fetch live rates:', error);
     if (domRefs.ratesAttributionEl) {
-      domRefs.ratesAttributionEl.textContent = 'Source: Fallback (July 2026)';
+      // Not tied to a specific month — a hardcoded date here ("Fallback
+      // (July 2026)") would keep saying that forever and eventually read as
+      // broken/stale rather than as an honest "still using a reasonable
+      // estimate" note.
+      domRefs.ratesAttributionEl.textContent = 'Source: default estimate — live rates unavailable right now';
       domRefs.ratesAttributionEl.classList.add('visible');
     }
     setButtonLoading(domRefs.loadRatesBtn, CONFIG.MSG_ERROR, false);
@@ -1535,10 +2201,27 @@ function checkRecentImportBanner() {
  */
 async function initializeApp() {
   try {
-    // Load saved data
-    const savedData = await loadSavedInputs();
+    // Load saved data — a "?share=..." link (from the Copy Link button)
+    // takes priority over localStorage the one time it's present, one-time-
+    // import style (same pattern as the MLS bookmarklet's
+    // nycto_recent_imported_property flow elsewhere in this file): apply it,
+    // persist it locally so it survives future reloads, then strip the
+    // param so editing a value afterward and reloading doesn't keep
+    // reverting back to that original shared snapshot.
+    const sharedParam = new URLSearchParams(window.location.search).get('share');
+    const sharedState = sharedParam ? decodeStateFromSharing(sharedParam) : null;
+    const savedData = sharedState ? mergeDefaults(DEFAULTS, sharedState) : await loadSavedInputs();
+    if (sharedState) {
+      saveInputs(savedData);
+      window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+    }
     applyLoadedDataToDOM(savedData, domRefs);
     activeTerm = savedData.activeTerm || 30;
+
+    // Re-render the credit-score band's disclaimer note on reload without
+    // re-triggering its Target DTI prefill — the saved targetBackEndDTI may
+    // have been hand-edited away from the suggestion since it was applied.
+    updateCreditScoreDtiNoteUI(creditScoreToSuggestedDTI(savedData.creditScoreBand || ''), domRefs);
 
     // Wire up the DTI switcher and collapsible cards before anything else
     // touches them (setSaleMode below can fall back to the Bank Qualifying
@@ -1560,18 +2243,49 @@ async function initializeApp() {
     // only restores input values, not this checkbox-driven show/hide state)
     // and the home-value freshness timestamp used by the stale-value suggestion.
     domRefs.hasHouseToSellInput.checked = !!savedData.sellingHouse;
-    domRefs.sellHouseFieldsPanel.style.display = savedData.sellingHouse ? 'block' : 'none';
+    setVisible(domRefs.sellHouseFieldsPanel, !!savedData.sellingHouse);
+
+    // Restore "Pay It Off Early" accelerator state (checkbox-driven show/hide,
+    // same reasoning as the sell-house panel above)
+    if (domRefs.payoffAcceleratorCheckbox) {
+      domRefs.payoffAcceleratorCheckbox.checked = !!savedData.payoffAcceleratorEnabled;
+      setVisible(domRefs.payoffAcceleratorBodyEl, !!savedData.payoffAcceleratorEnabled);
+    }
+    if (domRefs.payoffYearsOffSlider) {
+      domRefs.payoffYearsOffSlider.value = clamp(parseInt(savedData.payoffAcceleratorYearsOff, 10) || 15, 1, 25);
+    }
     sellHomeValueUpdatedAt = savedData.sellHomeValueUpdatedAt || null;
     setSaleMode(savedData.saleMode || CONFIG.SALE_MODE_SELL_FIRST);
     // resetDefaults: false — the saved rate/fee values (restored to the DOM
     // by applyLoadedDataToDOM just above) must win here, not whichever
     // default this financing type would normally reset them to.
     setBridgeFinancingType(savedData.bridgeFinancingType || DEFAULTS.bridgeFinancingType, { resetDefaults: false });
-    recastStrategy = savedData.recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT
-      ? CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT
-      : CONFIG.SALE_PAYOFF_STRATEGY_RECAST;
+    setRentalFundingMode(savedData.rentalFundingMode || DEFAULTS.rentalFundingMode);
+    // A saved HELOC payment that differs from what amount/rate alone would
+    // auto-compute means the user had overridden it before saving — restore
+    // that override state so reloading doesn't silently snap it back.
+    if (domRefs.rentalHelocPaymentInput) {
+      const savedPayment = parseFloat(savedData.rentalHelocPayment) || 0;
+      const autoPayment = calculateRentalHelocCost({
+        rentalHelocAmount: parseFloat(savedData.rentalHelocAmount) || 0,
+        rentalHelocRate: parseFloat(savedData.rentalHelocRate) || 0
+      }).monthlyPayment;
+      rentalHelocPaymentOverridden = savedPayment > 0 && Math.round(savedPayment) !== Math.round(autoPayment);
+    }
+    if (savedData.recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT) {
+      recastStrategy = CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT;
+    } else if (savedData.recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_KEEP_CASH) {
+      recastStrategy = CONFIG.SALE_PAYOFF_STRATEGY_KEEP_CASH;
+    } else {
+      recastStrategy = CONFIG.SALE_PAYOFF_STRATEGY_RECAST;
+    }
     setRecastStrategyUI(recastStrategy, domRefs);
     bridgeDtiPhase = savedData.bridgeDtiPhase === 'recast' ? 'recast' : 'holding';
+    asIsPricingApplied = (savedData.asIsPricingApplied
+      && typeof savedData.asIsPricingApplied.sellHomeValue === 'number'
+      && typeof savedData.asIsPricingApplied.sellRepairCosts === 'number')
+      ? savedData.asIsPricingApplied
+      : null;
 
     // Net (Best Guess) fine-tune state: payFrequency/netMonthlyOverride are
     // plain JS state (not DOM-value-based, since the slider's displayed
@@ -1586,7 +2300,7 @@ async function initializeApp() {
     if (domRefs.btnResetIncomeBasisAdjust) {
       domRefs.btnResetIncomeBasisAdjust.style.display = netMonthlyOverride !== null ? 'inline-block' : 'none';
     }
-    setIncomeBasis(savedData.incomeBasis || CONFIG.INCOME_BASIS_GROSS);
+    setIncomeBasis(savedData.incomeBasis || CONFIG.INCOME_BASIS_GROSS, { restoring: true });
 
     // Attach all listeners
     attachInputListeners();
@@ -1650,6 +2364,29 @@ async function initializeApp() {
     console.error('[ERROR] Failed to initialize app:', error);
   }
 }
+
+// ============================================================================
+// NUMBER INPUT PASTE SANITIZATION
+// ============================================================================
+// Pasting a comma-formatted number (e.g. "$650,000" copied off a listing
+// site) into a native <input type="number"> fails the browser's built-in
+// value sanitizer, which silently blanks the field instead of stripping the
+// formatting. Every value read downstream uses `parseFloat(el.value) || 0`,
+// so a blanked field quietly becomes 0 with no visible error. Intercept the
+// paste ourselves and strip anything but digits/decimal/minus before the
+// browser's native sanitizer gets a chance to reject it.
+document.addEventListener('paste', (e) => {
+  const target = e.target;
+  if (!(target instanceof HTMLInputElement) || target.type !== 'number') return;
+  const pasted = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+  const cleaned = pasted.replace(/[^0-9.-]/g, '');
+  if (!cleaned || isNaN(parseFloat(cleaned))) return; // leave the field as-is
+  e.preventDefault();
+  target.value = cleaned;
+  // Fire both — different listeners in this app bind to 'input' or 'change'.
+  target.dispatchEvent(new Event('input', { bubbles: true }));
+  target.dispatchEvent(new Event('change', { bubbles: true }));
+});
 
 // ============================================================================
 // START APPLICATION

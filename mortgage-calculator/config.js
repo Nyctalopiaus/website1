@@ -36,6 +36,13 @@ export const CONFIG = {
   DEFAULT_SELL_CONCESSIONS: 0,
   DEFAULT_SELL_MOVING_COSTS: 2000,
   DEFAULT_SELL_PROCEEDS_PERCENT: 100,
+  // "Sell As-Is Instead?" comparison — asIsSaleValue starts at 0 (comparison
+  // box stays hidden until the user opens the section, which auto-suggests
+  // a starting value off the entered home value; see attachSellHouseListeners()
+  // in app.js). Months-saved default is a rough rule-of-thumb (skipping
+  // repairs + a typically-faster as-is/investor sale), always editable.
+  DEFAULT_AS_IS_SALE_VALUE: 0,
+  DEFAULT_AS_IS_MONTHS_SAVED: 2,
 
   // Bridge Loan Defaults — used when "Have a house to sell?" is set to
   // Bridge Loan mode instead of Sell First (buy now with a short-term loan
@@ -43,8 +50,19 @@ export const CONFIG = {
   // the old house actually sells).
   SALE_MODE_SELL_FIRST: 'sellFirst',
   SALE_MODE_BRIDGE_LOAN: 'bridgeLoan',
+  // Third "Have a house to sell?" funding mode: don't sell at all — convert
+  // the departing home to a rental instead. No sale proceeds fund the down
+  // payment in this mode (that comes from the generic cash/other-source
+  // fields instead) and no recast ever applies, since there's no future sale
+  // event — see calculateRentalOffset() in calculator.js. Deliberately scoped
+  // to fixing DTI qualification math only.
+  SALE_MODE_RENTAL: 'rental',
   SALE_PAYOFF_STRATEGY_RECAST: 'recast',
   SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT: 'extraPayment',
+  // Leftover sale proceeds (after the bridge loan payoff) are simply kept as
+  // cash and never touch the new mortgage at all — no recast, no extra
+  // principal payment, no change to payment or payoff timeline.
+  SALE_PAYOFF_STRATEGY_KEEP_CASH: 'keepCash',
   DEFAULT_BRIDGE_LOAN_RATE: 8.5,
   DEFAULT_BRIDGE_LOAN_FEES_PERCENT: 1.5,
   DEFAULT_MONTHS_UNTIL_SALE: 4,
@@ -56,6 +74,13 @@ export const CONFIG = {
   // Most lenders want at least this much principal reduction to bother
   // recasting a loan — informational only.
   RECAST_TYPICAL_MIN_LUMP_SUM: 5000,
+
+  // "Keep as Rental" mode defaults. 75% is the standard conventional
+  // (Fannie Mae/Freddie Mac) offset applied to gross rent when qualifying —
+  // some portfolio/local lenders use a different figure, so this is just the
+  // starting point, always editable.
+  DEFAULT_RENTAL_PROJECTED_RENT: 0,
+  DEFAULT_RENTAL_OFFSET_PERCENT: 75,
 
   // Financing Type sub-choice within Bridge Loan mode — 'bridge' (a
   // traditional short-term bridge loan, the original/default behavior above)
@@ -79,6 +104,23 @@ export const CONFIG = {
   // warning only" role as BRIDGE_LOAN_TYPICAL_MAX_CLTV_PERCENT above.
   HELOC_TYPICAL_MAX_CLTV_PERCENT: 85,
 
+  // "Keep as Rental" down-payment funding sub-choice — Cash Only (default;
+  // no draw against the departure home, no new DTI line) vs. a HELOC against
+  // its equity. Deliberately NOT a Bridge Loan option here: a bridge loan is
+  // inherently sale-contingent (paid off in full when the old house sells),
+  // and Keep as Rental means no sale is planned, so there's no payoff event
+  // to bridge to. A HELOC has no such deadline, which is exactly why it (and
+  // only it) fits this mode. Unlike the Sell-mode Bridge Loan/HELOC draw
+  // (which conventional underwriting may exclude from DTI as temporary, tied
+  // to an imminent sale), a rental-mode HELOC has nothing paying it off, so
+  // its payment counts as a permanent monthly debt — see
+  // calculateRentalHelocCost() in calculator.js.
+  RENTAL_FUNDING_CASH: 'cash',
+  RENTAL_FUNDING_HELOC: 'heloc',
+  // Same national-average HELOC rate as the Sell-mode default above; kept as
+  // its own constant so the two can diverge later without coupling them.
+  DEFAULT_RENTAL_HELOC_RATE: 7.3,
+
   // DTI Thresholds (front-end / housing-only - Gross mode)
   DTI_HEALTHY_MAX: 28,
   DTI_MODERATE_MAX: 36,
@@ -90,6 +132,34 @@ export const CONFIG = {
   DTI_BACKEND_HEALTHY_MAX: 36,
   DTI_BACKEND_MODERATE_MAX: 45,
   DEFAULT_OTHER_MONTHLY_DEBTS: 0,
+
+  // Max Affordability solver + Cash-to-Close tally — reverse-solves the max
+  // purchase price/loan for a target back-end DTI, then tallies the actual
+  // liquid cash needed (down payment + closing costs + reserves), kept
+  // separate from any HELOC/bridge draw. See calculator.js
+  // solveMaxAffordablePrice()/calculateCashToClose().
+  DEFAULT_TARGET_BACKEND_DTI: 45,
+  DEFAULT_CLOSING_COST_PERCENT: 2.5,
+  DEFAULT_RESERVE_MONTHS: 3,
+  DEFAULT_EXTRA_PROJECT_CASH: 0,
+  // How much liquid cash the user actually has on hand, compared against
+  // calculateCashToClose()'s totalCashNeeded to show a surplus/shortfall,
+  // and fed into evaluateCashCushion() as a rough DTI compensating-factor
+  // signal. 0 = not entered (that comparison/note stays hidden).
+  DEFAULT_CASH_AVAILABLE: 0,
+  // Rough industry rule-of-thumb bands mapping a self-reported credit score
+  // to a SUGGESTED back-end DTI ceiling for conventional/automated
+  // underwriting (Fannie Mae Desktop Underwriter-style). Used only to
+  // prefill the free-form Target DTI field — never a hard rule. suggestedDTI
+  // is null for the sub-620 band since a DTI ceiling isn't really the
+  // binding constraint at that point.
+  CREDIT_SCORE_DTI_BANDS: [
+    { value: 'below620', label: 'Below 620', suggestedDTI: null, note: 'Most conventional/automated-underwriting programs want at least ~620 — a DTI ceiling is largely moot below that. FHA may still work; talk to a loan officer.' },
+    { value: '620-679', label: '620–679', suggestedDTI: 38, note: 'Conservative conventional ceiling — pushing past this usually needs strong compensating factors (large reserves, low loan-to-value).' },
+    { value: '680-719', label: '680–719', suggestedDTI: 45, note: 'A common conventional/automated-underwriting ceiling for a solid, unremarkable file.' },
+    { value: '720-759', label: '720–759', suggestedDTI: 47, note: 'Strong file — some automated underwriting will stretch a bit past the standard 45% cap.' },
+    { value: '760plus', label: '760+', suggestedDTI: 50, note: "Well-qualified borrowers with reserves can sometimes reach the ~50% ceiling Fannie Mae's Desktop Underwriter allows. Not guaranteed — varies by lender, loan program, and reserves." }
+  ],
 
   // Net Income Basis DTI Thresholds (Take-home pay lifestyle benchmarks)
   DTI_NET_HEALTHY_MAX: 33,
@@ -217,7 +287,12 @@ export const CONFIG = {
   MSG_PARSING_PAGE: '⏳ Parsing Page...',
   MSG_SYNCING_RATES: '⏳ Syncing...',
   MSG_UPDATED: '✅ Updated',
-  MSG_ERROR: '❌ Error',
+  // Shown briefly on the "Load Live Rates" button when the fetch fails —
+  // worded as a soft fallback rather than "Error" so it doesn't read like
+  // the feature (or the page) is broken. The rate fields themselves keep
+  // whatever value they had; see the fallback attribution text this pairs
+  // with in loadLiveMortgageRates().
+  MSG_ERROR: '⚠ Unavailable',
   MSG_FETCH_PROPERTY: '🔍 Load Cached Property',
   MSG_FETCH_VALUE: '🔍 Load Cached Value',
   MSG_SELL_LOOKUP: '⏳ Looking Up Value...',
@@ -241,6 +316,14 @@ export const DEFAULTS = {
   pmiRate: CONFIG.DEFAULT_PMI_RATE,
   grossAnnualIncome: CONFIG.DEFAULT_GROSS_ANNUAL_INCOME,
   otherMonthlyDebts: CONFIG.DEFAULT_OTHER_MONTHLY_DEBTS,
+
+  // Max Affordability solver + Cash-to-Close tally
+  targetBackEndDTI: CONFIG.DEFAULT_TARGET_BACKEND_DTI,
+  creditScoreBand: '',
+  closingCostPercent: CONFIG.DEFAULT_CLOSING_COST_PERCENT,
+  reserveMonths: CONFIG.DEFAULT_RESERVE_MONTHS,
+  extraProjectCash: CONFIG.DEFAULT_EXTRA_PROJECT_CASH,
+  cashAvailable: CONFIG.DEFAULT_CASH_AVAILABLE,
   // Which income figure feeds the DTI panels: 'gross' (default, matches what
   // lenders actually qualify against) or 'net' (Best Guess take-home estimate).
   incomeBasis: CONFIG.INCOME_BASIS_GROSS,
@@ -267,6 +350,8 @@ export const DEFAULTS = {
   sellConcessions: CONFIG.DEFAULT_SELL_CONCESSIONS,
   sellMovingCosts: CONFIG.DEFAULT_SELL_MOVING_COSTS,
   sellProceedsPercent: CONFIG.DEFAULT_SELL_PROCEEDS_PERCENT,
+  asIsSaleValue: CONFIG.DEFAULT_AS_IS_SALE_VALUE,
+  asIsMonthsSaved: CONFIG.DEFAULT_AS_IS_MONTHS_SAVED,
 
   // Payment Frequency & Biweekly Strategy
   paymentFrequency: 'monthly', // 'monthly' | 'biweekly' | 'accelerated'
@@ -295,19 +380,51 @@ export const DEFAULTS = {
   recastFee: CONFIG.DEFAULT_RECAST_FEE,
   recastStrategy: CONFIG.SALE_PAYOFF_STRATEGY_RECAST,
 
-  // Collapsible left-column card state — true = collapsed. All start
-  // collapsed by default (a first-time visitor sees a short page); once
-  // Josh opens a section it stays open across reloads via the same
-  // localStorage blob as everything else. Keyed by each card's
-  // data-section-key attribute in index.html.
+  // "Keep as Rental" mode fields — only matter when saleMode is 'rental'.
+  rentalProjectedMonthlyRent: CONFIG.DEFAULT_RENTAL_PROJECTED_RENT,
+  rentalOffsetPercent: CONFIG.DEFAULT_RENTAL_OFFSET_PERCENT,
+  // How the down payment gets funded when keeping the departure home as a
+  // rental instead of selling — see RENTAL_FUNDING_CASH/HELOC above.
+  rentalFundingMode: CONFIG.RENTAL_FUNDING_CASH,
+  rentalHelocAmount: 0,
+  rentalHelocRate: CONFIG.DEFAULT_RENTAL_HELOC_RATE,
+  // Auto-calculated (interest-only draw × rate ÷ 12) whenever the amount/rate
+  // change, UNLESS the user has typed their own figure — same "auto-fill,
+  // never locked" pattern as bridgeLoanAmount in setSaleMode(). 0 = not yet
+  // computed/entered.
+  rentalHelocPayment: 0,
+
+  // Collapsible card state — true = collapsed. Property and Down Payment
+  // start OPEN (the two fields nearly every first-time visitor edits first);
+  // everything else starts collapsed, including all four DTI/Affordability
+  // sub-groups — that whole card used to load fully expanded, which is what
+  // made the right-hand results column run far taller than the input and
+  // payment-breakdown columns next to it (dead space below them once the
+  // page scrolled past their shorter content). The Outlook Summary card now
+  // covers the at-a-glance need, so the detailed DTI groups can stay tucked
+  // away until someone drills in. Once a section is opened it stays open
+  // across reloads via the same localStorage blob as everything else. Keyed
+  // by each card's data-section-key attribute in index.html.
   collapsedSections: {
-    property: true,
+    property: false,
     sellHouse: true,
-    downPayment: true,
+    downPayment: false,
     extraPayments: true,
     ratesAndTaxes: true,
     insuranceAndFees: true,
-    burndownChart: true
+    burndownChart: true,
+    dtiGroupInputs: true,
+    dtiGroupCashflow: true,
+    dtiGroupRatios: true,
+    dtiGroupAfford: true,
+    sellAsIsCompare: true,
+    outlookSummary: true,
+    // The "Sell It" and "Keep as Rental" cards split off from the old single
+    // sell-house body (2026-09-03) — each independently collapsible, only
+    // one visible at a time depending on saleMode. Default collapsed like
+    // sellHouse always has been.
+    sellHouseSell: true,
+    sellHouseRental: true
   }
 };
 
@@ -325,6 +442,12 @@ export const INPUT_IDS = {
   pmiRate: 'pmiRate',
   grossAnnualIncome: 'grossAnnualIncome',
   otherMonthlyDebts: 'otherMonthlyDebts',
+  targetBackEndDTI: 'targetBackEndDTI',
+  creditScoreBand: 'creditScoreBand',
+  closingCostPercent: 'closingCostPercent',
+  reserveMonths: 'reserveMonths',
+  extraProjectCash: 'extraProjectCash',
+  cashAvailable: 'cashAvailable',
   btnIncomeBasisGross: 'btn-income-basis-gross',
   btnIncomeBasisNet: 'btn-income-basis-net',
   btnPayFreqBiweekly: 'btn-pay-freq-biweekly',
@@ -405,6 +528,24 @@ export const OUTPUT_IDS = {
   backendDtiProgressBar: 'backend-dti-progress-bar',
   backendDtiDescription: 'backend-dti-description',
   incomeBasisBreakdown: 'income-basis-breakdown',
+
+  // Max Affordability solver + Cash-to-Close tally
+  dtiSummaryAfford: 'dti-summary-afford',
+  creditScoreDtiNote: 'credit-score-dti-note',
+  maxAffordPhaseNote: 'max-afford-phase-note',
+  maxAffordPrice: 'max-afford-price',
+  maxAffordLoan: 'max-afford-loan',
+  maxAffordPiti: 'max-afford-piti',
+  maxAffordBackendDti: 'max-afford-backend-dti',
+  maxAffordFrontendDti: 'max-afford-frontend-dti',
+  maxAffordEmptyState: 'max-afford-empty-state',
+  maxAffordResultBox: 'max-afford-result-box',
+  cashToCloseDownPayment: 'cash-to-close-down-payment',
+  cashToCloseClosingCosts: 'cash-to-close-closing-costs',
+  cashToCloseReserves: 'cash-to-close-reserves',
+  cashToCloseReservesLabel: 'cash-to-close-reserves-label',
+  cashToCloseProject: 'cash-to-close-project',
+  cashToCloseTotal: 'cash-to-close-total',
 
   // MLS Preview
   mlsPreviewBox: 'mls-preview-box',

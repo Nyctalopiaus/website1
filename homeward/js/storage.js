@@ -5,6 +5,9 @@
 class StorageManager {
   constructor() {
     this.storageKey = 'homeward_active_tour_v1';
+    this.backupDeviceIdKey = 'homeward_device_backup_id';
+    this.lastBackupAtKey = 'homeward_last_backup_at';
+    this._autoBackupTimer = null;
   }
 
   saveTour(tourData) {
@@ -13,6 +16,78 @@ class StorageManager {
     } catch (e) {
       console.warn('LocalStorage save failed:', e);
     }
+    // Fire-and-forget: schedule a background copy to the server so a
+    // cleared browser / crashed profile / new machine isn't a total loss.
+    // Deliberately not awaited — never let a backup hiccup slow down or
+    // block the save the user is actually waiting on.
+    this._scheduleAutoBackup(tourData);
+  }
+
+  // A stable per-browser id, generated once and stored separately from the
+  // tour data itself (so it survives a "clear this site's data for the
+  // tour" action, though not a full localStorage.clear() — see
+  // js/sync.js's autoBackup/restoreAutoBackup and sync.php for the
+  // server-side half). Not a secret meant to be guessed-around: same trust
+  // model as the existing 6-char push/pull code, just longer and
+  // non-expiring since its job is different (safety net vs. deliberate
+  // handoff).
+  getOrCreateBackupDeviceId() {
+    try {
+      let id = localStorage.getItem(this.backupDeviceIdKey);
+      if (id && /^[a-f0-9]{16,64}$/.test(id)) return id;
+      id = (crypto && crypto.randomUUID) ? crypto.randomUUID().replace(/-/g, '') : this._fallbackRandomHex(32);
+      localStorage.setItem(this.backupDeviceIdKey, id);
+      return id;
+    } catch (e) {
+      // localStorage unavailable (private mode, quota, etc.) — auto-backup
+      // simply won't have anywhere to persist the id; caller treats a null
+      // return as "skip this backup attempt."
+      return null;
+    }
+  }
+
+  _fallbackRandomHex(byteLen) {
+    let hex = '';
+    for (let i = 0; i < byteLen; i++) {
+      hex += Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
+    }
+    return hex;
+  }
+
+  // Debounced so a burst of edits (typing in a note, dragging cards) only
+  // triggers one network call ~30s after things go quiet, not one per
+  // keystroke. Best-effort throughout: a failed backup is silently retried
+  // on the next save rather than surfaced as an error, since it's a
+  // background safety net, not an action the user explicitly took.
+  _scheduleAutoBackup(tourData) {
+    if (!window.syncManager || typeof window.syncManager.autoBackup !== 'function') return;
+    if (this._autoBackupTimer) clearTimeout(this._autoBackupTimer);
+    this._autoBackupTimer = setTimeout(() => {
+      const deviceId = this.getOrCreateBackupDeviceId();
+      if (!deviceId) return;
+      window.syncManager.autoBackup(tourData, deviceId)
+        .then(() => {
+          try { localStorage.setItem(this.lastBackupAtKey, String(Date.now())); } catch (e) {}
+        })
+        .catch(() => {
+          // Silent — the status indicator (getBackupStatus) reflects the
+          // last *successful* backup time, so a failure just means that
+          // timestamp doesn't advance. Next save tries again.
+        });
+    }, 30000);
+  }
+
+  // Read-only status for the UI (Cross-Device Sync modal). Returns
+  // { deviceId, lastBackupAt: number|null }.
+  getBackupStatus() {
+    let deviceId = null;
+    let lastBackupAt = null;
+    try {
+      deviceId = localStorage.getItem(this.backupDeviceIdKey);
+      const raw = localStorage.getItem(this.lastBackupAtKey);
+      lastBackupAt = raw ? parseInt(raw, 10) : null;
+    } catch (e) {}
+    return { deviceId, lastBackupAt: (lastBackupAt && !isNaN(lastBackupAt)) ? lastBackupAt : null };
   }
 
   // --- SITE DETAIL CACHE (LocalStorage only, per-browser) ---
@@ -45,6 +120,43 @@ class StorageManager {
     return record;
   }
 
+  // Turns a cached property record (from getCachedProperty /
+  // getCachedPropertySync, which both now include createdAt) into a
+  // freshness signal for the UI. The point: when Auto-Detect silently
+  // fails (Redfin changes something, scraping gets blocked again), a blank
+  // spec field today looks identical to "never checked" — this makes the
+  // three cases distinguishable:
+  //   'fresh'   — has a createdAt AND at least price or sqft came back.
+  //   'partial' — has a createdAt but price/sqft are still empty, i.e. a
+  //               fetch happened but likely didn't find real listing data.
+  //   'none'    — no createdAt at all — Auto-Detect was never run.
+  getFreshnessInfo(cachedProp) {
+    if (!cachedProp || !cachedProp.createdAt) {
+      return { state: 'none', label: 'Never auto-detected' };
+    }
+    const rel = this._formatRelativeTime(cachedProp.createdAt);
+    const hasCoreData = !!(cachedProp.price || cachedProp.sqft);
+    if (hasCoreData) {
+      return { state: 'fresh', label: `Auto-detected ${rel}` };
+    }
+    return { state: 'partial', label: `Auto-detected ${rel} — no price/sqft found` };
+  }
+
+  // Small "3m ago" / "2h ago" / "5d ago" formatter — kept local to this
+  // file (rather than imported from app.js, which has the same helper for
+  // the Auto-Backup status line) so storage.js has no load-order
+  // dependency on app.js.
+  _formatRelativeTime(timestampMs) {
+    const diffMs = Date.now() - timestampMs;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  }
+
   getCachedPropertySync(addressOrUrl) {
     if (!addressOrUrl) return null;
     const normKey = this._normalizeCacheKey(addressOrUrl);
@@ -54,7 +166,11 @@ class StorageManager {
       if (localItem) {
         const parsed = JSON.parse(localItem);
         if (parsed && parsed.data) {
-          return this._sanitizePropertyRecord(parsed.data);
+          const sanitized = this._sanitizePropertyRecord(parsed.data);
+          // createdAt lives alongside `data`, not inside it — surface it here
+          // too so callers (e.g. getFreshnessInfo) can tell how old this
+          // record is without a second read.
+          return { ...sanitized, createdAt: parsed.createdAt || null };
         }
       }
     } catch (e) {}
@@ -74,7 +190,7 @@ class StorageManager {
         // Permanent persistence: no expiration timeout so observations, media, and specs stay permanently cached
         if (parsed && parsed.data) {
           const sanitized = this._sanitizePropertyRecord(parsed.data);
-          return { ...sanitized, cachedSource: 'LocalStorage (0ms)' };
+          return { ...sanitized, cachedSource: 'LocalStorage (0ms)', createdAt: parsed.createdAt || null };
         }
       }
     } catch (e) {

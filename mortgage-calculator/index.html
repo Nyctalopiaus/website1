@@ -2,15 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-      <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self'; connect-src 'self'; base-uri 'self'; object-src 'none';" />
+      <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; base-uri 'self'; object-src 'none';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nycto's Housing Cost Calculator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=22" />
+  <link rel="stylesheet" href="styles.css?v=25" />
 </head>
 <body>
+  <div class="disclaimer-banner"><strong>Informational only</strong> — not financial or legal advice. Work with your realtor and a mortgage broker or lender to confirm actual terms before making decisions.</div>
   <!-- Icon sprite (inline, CSP-safe — no external icon font). Referenced via <svg class="icon"><use href="#icon-*"/></svg> -->
   <svg style="position:absolute; width:0; height:0; overflow:hidden;" aria-hidden="true">
     <defs>
@@ -88,6 +89,39 @@
       <symbol id="icon-clipboard" viewBox="0 0 24 24">
         <path fill-rule="evenodd" clip-rule="evenodd" d="M8 2a1.5 1.5 0 0 0-1.5 1.5V4H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-.5v-.5A1.5 1.5 0 0 0 16 2H8zm-.5 8h9v1.8h-9V10zm0 4h9v1.8h-9V14zm0 4h6v1.8h-6V18z" fill="url(#icon-gold-gradient)"/>
       </symbol>
+
+      <!-- "-mono" variants: identical path data to their gold-gradient
+           counterparts above, but fill/stroke="currentColor" instead of the
+           gradient URL, so external CSS `color` can actually recolor them —
+           an explicit fill/stroke attribute set directly on a <symbol>'s own
+           paths can't be overridden by CSS reaching into a <use> reference;
+           only currentColor inheritance crosses that boundary. Used only by
+           the Outlook Summary card's tone-coded icons so every other icon
+           usage site-wide keeps its original always-gold look untouched. -->
+      <symbol id="icon-home-mono" viewBox="0 0 24 24">
+        <path d="M12 2.5 2 10.5V21a1 1 0 0 0 1 1h6v-7h6v7h6a1 1 0 0 0 1-1V10.5z" fill="currentColor"/>
+      </symbol>
+      <symbol id="icon-cash-mono" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6zm10 2.3a3.7 3.7 0 1 0 0 7.4 3.7 3.7 0 0 0 0-7.4zM5.5 10a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm14.5 1.5a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0z" fill="currentColor"/>
+      </symbol>
+      <symbol id="icon-bar-chart-mono" viewBox="0 0 24 24">
+        <rect x="3" y="12" width="4.5" height="9" rx="1" fill="currentColor"/>
+        <rect x="9.75" y="7" width="4.5" height="14" rx="1" fill="currentColor"/>
+        <rect x="16.5" y="3" width="4.5" height="18" rx="1" fill="currentColor"/>
+      </symbol>
+      <symbol id="icon-trend-down-mono" viewBox="0 0 24 24">
+        <polyline points="3 7 10 14 14 10 21 17" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <polyline points="21 10 21 17 14 17" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="icon-info-mono" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.2 8.2h2.4v7h-2.4v-7zM12 5.7a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z" fill="currentColor"/>
+      </symbol>
+      <symbol id="icon-warning-mono" viewBox="0 0 24 24">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M10.9 3.36c.48-.83 1.72-.83 2.2 0l9.1 15.75c.48.84-.12 1.89-1.1 1.89H2.9c-.98 0-1.58-1.05-1.1-1.89l9.1-15.75zM10.9 9h2.2v6h-2.2V9zm1.1 8.7a1.3 1.3 0 1 0 0 2.6 1.3 1.3 0 0 0 0-2.6z" fill="currentColor"/>
+      </symbol>
+      <symbol id="icon-check-mono" viewBox="0 0 24 24">
+        <polyline points="20 6 9 17 4 12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
     </defs>
   </svg>
 
@@ -105,11 +139,14 @@
       <button type="button" id="btn-open-loan-comparison" class="btn-quickstart-mortgage" style="display: inline-flex; align-items: center; gap: 0.35rem;" title="View Loan Comparison Table Across Prices">
         <span><svg class="icon" aria-hidden="true"><use href="#icon-bar-chart"/></svg></span> <span>Loan Comparisons</span>
       </button>
-      <button type="button" id="btn-open-quickstart" class="btn-quickstart-mortgage" title="Show Quick Start Guide">
+      <button type="button" id="btn-open-quickstart" class="btn-quickstart-mortgage btn-nav-secondary" title="Show Quick Start Guide">
         <span><svg class="icon" aria-hidden="true"><use href="#icon-info"/></svg></span> <span>Quick Start</span>
       </button>
-      <button type="button" id="btn-open-features" class="btn-feature-mortgage" title="View Calculator Features">
+      <button type="button" id="btn-open-features" class="btn-feature-mortgage btn-nav-secondary" title="View Calculator Features">
         <span><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg></span> <span>Features</span>
+      </button>
+      <button type="button" id="btn-open-share-link" class="btn-quickstart-mortgage btn-nav-secondary" title="Get a shareable link to your current numbers — not just this page's URL">
+        <span><svg class="icon" aria-hidden="true"><use href="#icon-copy"/></svg></span> <span>Share Numbers</span>
       </button>
     </div>
   </header>
@@ -192,7 +229,7 @@
               </label>
               <div class="label-with-tooltip no-margin">
                 <label for="hasHouseToSell" class="sell-house-label"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg> Have a house to sell?</label>
-                <span class="tooltip-icon" data-tooltip="Estimate what you'll walk away with after selling your current home, then decide how much of that goes toward your new down payment.">?</span>
+                <span class="tooltip-icon" data-tooltip="Estimate what you'll walk away with after selling your current home, then decide how much of that goes toward your new down payment — or keep it as a rental instead.">?</span>
               </div>
             </div>
             <button type="button" class="collapsible-header" id="sell-house-toggle" data-section-key="sellHouse" aria-expanded="false" aria-controls="sell-house-body" aria-label="Toggle Have a house to sell? details">
@@ -247,12 +284,29 @@
                 <div class="input-group">
                   <div class="label-with-tooltip"><label for="sellMortgageSchedule">Current Payment Schedule</label><span class="tooltip-icon" data-tooltip="The payment frequency on your existing mortgage (Monthly 12x vs Bi-weekly 26x). Bi-weekly payments are automatically normalized to a true monthly equivalent for DTI calculations.">?</span></div>
                   <select id="sellMortgageSchedule">
-                    <option value="monthly" selected>Monthly (12x/yr)</option>
-                    <option value="biweekly">Bi-weekly (26x/yr)</option>
+                    <option value="monthly" selected>Monthly (12x)</option>
+                    <option value="biweekly">Bi-weekly (26x)</option>
                   </select>
                 </div>
               </div>
 
+              <div class="input-group">
+                <div class="label-with-tooltip"><label>What Are You Doing With This Home?</label><span class="tooltip-icon" data-tooltip="Sell It: walk through the sale economics below and how the proceeds (or a bridge loan against them) fund your new down payment. Keep as Rental: convert it to a rental instead — a documented rental income offsets its mortgage for DTI qualification, and the new down payment comes from cash or a HELOC against its equity, since there are no sale proceeds.">?</span></div>
+                <div class="frequency-toggle-group" id="home-action-switch">
+                  <button type="button" class="freq-btn active" id="btn-home-action-sell" data-home-action="sell"><svg class="icon" aria-hidden="true"><use href="#icon-cash"/></svg> Sell It</button>
+                  <button type="button" class="freq-btn" id="btn-home-action-rental" data-home-action="rental"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg> Keep as Rental</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-card collapsible hidden-init" id="sell-house-sell-card">
+          <button type="button" class="collapsible-header" id="sell-house-sell-toggle" data-section-key="sellHouseSell" aria-expanded="false" aria-controls="sell-house-sell-body">
+            <h2><svg class="icon" aria-hidden="true"><use href="#icon-cash"/></svg> Sell It</h2>
+            <span class="chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="collapsible-body sell-house-card" id="sell-house-sell-body" hidden>
               <div class="grid-2-col">
                 <div class="input-group">
                   <div class="label-with-tooltip"><label for="sellCommissionPercent">Agent Commission</label><span class="tooltip-icon" data-tooltip="Combined buyer's + seller's agent commission, typically negotiated as a percentage of the sale price.">?</span></div>
@@ -305,6 +359,44 @@
                 <div class="detail-row"><span>− Moving Costs</span><span id="sell-line-moving">$-.--</span></div>
                 <div class="detail-row sell-net-row"><span>Net Sale Proceeds</span><span id="sell-net-proceeds">$-.--</span></div>
                 <p id="sell-underwater-warning" class="sell-warning-text hidden-init"><svg class="icon" aria-hidden="true"><use href="#icon-warning"/></svg> You may owe money at closing instead of receiving proceeds.</p>
+              </div>
+
+              <div class="dti-accordion-group" id="sell-ais-compare-group">
+                <button type="button" class="collapsible-header dti-accordion-header" id="sell-ais-compare-toggle" data-section-key="sellAsIsCompare" aria-expanded="false" aria-controls="sell-ais-compare-body">
+                  <div class="dti-accordion-title-wrap">
+                    <span class="dti-accordion-title">Compare: Sell As-Is Instead?</span>
+                  </div>
+                  <span class="chevron" aria-hidden="true">▾</span>
+                </button>
+                <div class="collapsible-body dti-accordion-body" id="sell-ais-compare-body">
+                  <p class="help-text" style="margin-top: 0;">See whether skipping repairs and selling as-is nets you more once the extra carrying cost of waiting is factored in — useful if repairs can't happen until after you move (pets, tenants, access, etc.).</p>
+                  <div class="grid-2-col">
+                    <div class="input-group">
+                      <div class="label-with-tooltip"><label for="asIsSaleValue">As-Is Sale Value</label><span class="tooltip-icon" data-tooltip="What you could sell for right now, with no repairs done. Auto-suggested off your Estimated Home Value when you first open this section — always editable.">?</span></div>
+                      <div class="input-with-prefix">
+                        <span class="prefix">$</span>
+                        <input id="asIsSaleValue" type="number" min="0" max="20000000" step="1000" value="0" />
+                      </div>
+                    </div>
+                    <div class="input-group">
+                      <div class="label-with-tooltip"><label for="asIsMonthsSaved">Months Saved by Skipping Repairs</label><span class="tooltip-icon" data-tooltip="How many fewer months of carrying costs you'd pay by selling as-is now instead of waiting on repairs and a traditional listing.">?</span></div>
+                      <input id="asIsMonthsSaved" type="number" min="0" max="24" step="1" value="2" />
+                    </div>
+                  </div>
+                  <div id="sell-ais-compare-box" class="sell-proceeds-box">
+                    <div id="ais-compare-rows">
+                      <div class="detail-row ais-strategy-row" id="ais-row-traditional"><span>Traditional (Repair First)</span><span id="ais-line-traditional">$-.--</span></div>
+                      <div class="detail-row ais-strategy-row" id="ais-row-asis"><span>Sell As-Is</span><span id="ais-line-asis">$-.--</span></div>
+                      <div class="detail-row"><span>− Extra Carrying Cost (Traditional) <span class="tooltip-icon" data-tooltip="Months Saved by Skipping Repairs × your Current Monthly Mortgage Payment (PITI) above — the extra months of house payments a repair-first traditional sale would cost you versus closing on an as-is sale sooner.">?</span></span><span id="ais-line-carrying">$-.--</span></div>
+                      <div class="detail-row sell-net-row"><span class="ais-verdict-label-wrap"><svg class="icon ais-verdict-icon" aria-hidden="true"><use href="#icon-check"/></svg><span id="ais-line-verdict-label">As-Is Wins</span> by <span id="ais-line-verdict">$-.--</span></span></div>
+                    </div>
+                    <button id="btn-apply-asis-pricing" type="button" class="btn-apply-proceeds hidden-init"><svg class="icon" aria-hidden="true"><use href="#icon-arrow-down"/></svg> Apply As-Is Pricing to Sale</button>
+                    <div id="ais-applied-note" class="hidden-init">
+                      <p class="strat-best-of-both-note" style="margin: 0 0 0.6rem;"><svg class="icon" aria-hidden="true"><use href="#icon-check"/></svg> As-Is pricing applied to your sale inputs above.</p>
+                      <button id="btn-revert-asis-pricing" type="button" class="btn-revert-asis">↩ Revert to Repair-First Pricing</button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div class="input-group">
@@ -397,10 +489,11 @@
                 </div>
 
                 <div class="input-group">
-                  <div class="label-with-tooltip"><label>Sale Proceeds Strategy</label><span class="tooltip-icon" data-tooltip="Recast: your lender re-amortizes the remaining balance to lower your monthly payment for the rest of the term. Extra Payment: keep paying your original monthly amount to pay off the loan years earlier and save maximum interest.">?</span></div>
+                  <div class="label-with-tooltip"><label>Sale Proceeds Strategy</label><span class="tooltip-icon" data-tooltip="Recast: your lender re-amortizes the remaining balance to lower your monthly payment for the rest of the term. Extra Payment: keep paying your original monthly amount to pay off the loan years earlier and save maximum interest. Keep as Cash: don't apply it to the new loan at all — pocket it, with no change to your payment or payoff timeline.">?</span></div>
                   <div class="frequency-toggle-group" id="recast-strategy-switch">
                     <button type="button" class="freq-btn active" id="btn-recast-strat-recast" data-recast-strat="recast"><svg class="icon" aria-hidden="true"><use href="#icon-trend-down"/></svg> Recast (Lower Payment)</button>
                     <button type="button" class="freq-btn" id="btn-recast-strat-extra" data-recast-strat="extraPayment">🚀 Extra Payment (Pay Off Sooner)</button>
+                    <button type="button" class="freq-btn" id="btn-recast-strat-cash" data-recast-strat="keepCash">💰 Keep as Cash</button>
                   </div>
                 </div>
 
@@ -460,6 +553,30 @@
                         </div>
                       </div>
                     </div>
+
+                    <!-- Keep as Cash Column -->
+                    <div id="strat-card-cash" class="strat-card strat-card-cash">
+                      <div class="strat-card-header">
+                        <span class="strat-card-title strat-card-title-cash">💰 Keep Cash</span>
+                        <span id="strat-cash-active-tag" class="strat-active-tag strat-active-tag-purple hidden-init">Active</span>
+                      </div>
+                      <div class="strat-card-body">
+                        <div>
+                          <span class="eyebrow-label">Monthly P&amp;I</span>
+                          <span id="strat-cash-piti" class="strat-stat-value strat-stat-value-bright">$-.--</span>
+                          <span class="strat-stat-sub strat-stat-sub-muted-bold">Unchanged</span>
+                        </div>
+                        <div>
+                          <span class="eyebrow-label">Cash In Your Pocket</span>
+                          <span id="strat-cash-kept" class="strat-stat-value strat-stat-value-purple">$-.--</span>
+                        </div>
+                        <div>
+                          <span class="eyebrow-label">Remaining Term</span>
+                          <span id="strat-cash-term" class="strat-stat-value-sm">-- yrs</span>
+                          <span class="strat-stat-sub strat-stat-sub-muted">Full term</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <div id="strat-comp-summary-text" class="strat-summary-text">
@@ -502,10 +619,84 @@
                     <div class="detail-row sell-net-row" style="color: var(--accent-emerald);"><span>Time Saved to Payoff</span><span id="recast-extra-time-saved">--</span></div>
                     <div class="detail-row sell-net-row" style="color: var(--accent-emerald);"><span>Lifetime Interest Saved</span><span id="recast-extra-interest-saved">$-.--</span></div>
                   </div>
+                  <div id="recast-rows-cash-mode" class="hidden-init">
+                    <div class="detail-row"><span>Monthly P&I Payment (Unchanged)</span><span id="recast-cash-current-payment">$-.--</span></div>
+                    <div class="detail-row"><span>Payoff Timeline</span><span>Unchanged</span></div>
+                    <div class="detail-row sell-net-row" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-color); color: var(--accent-purple);"><span>Cash You Keep</span><span id="recast-cash-kept-amount">$-.--</span></div>
+                  </div>
                   <p id="recast-tradeoff-note" class="sell-warning-text" style="display: none; color: var(--text-muted);"></p>
                 </div>
               </div>
-            </div>
+          </div>
+        </div>
+
+        <div class="panel-card collapsible hidden-init" id="sell-house-rental-card">
+          <button type="button" class="collapsible-header" id="sell-house-rental-toggle" data-section-key="sellHouseRental" aria-expanded="false" aria-controls="sell-house-rental-body">
+            <h2><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg> Keep It As a Rental</h2>
+            <span class="chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="collapsible-body sell-house-card" id="sell-house-rental-body" hidden>
+                <p class="help-text" style="margin-top: 0;">No sale happens in this mode — a documented rental income offsets your current mortgage for DTI qualification instead. Since there are no sale proceeds, the new home's down payment has to come from cash or a HELOC against this home's equity — set that up below.</p>
+
+                <div class="grid-2-col">
+                  <div class="input-group">
+                    <div class="label-with-tooltip"><label for="rentalProjectedMonthlyRent">Projected Monthly Rent</label><span class="tooltip-icon" data-tooltip="From a signed lease or a market-rent estimate for your current home once you move out.">?</span></div>
+                    <div class="input-with-prefix">
+                      <span class="prefix">$</span>
+                      <input id="rentalProjectedMonthlyRent" type="number" min="0" max="50000" step="50" value="0" />
+                    </div>
+                  </div>
+                  <div class="input-group">
+                    <div class="label-with-tooltip"><label for="rentalOffsetPercent">Rental Income Offset</label><span class="tooltip-icon" data-tooltip="Standard conventional (Fannie Mae/Freddie Mac) underwriting counts 75% of gross rent toward qualifying, as a built-in vacancy/expense cushion. Some portfolio or local lenders use a different figure — always editable.">?</span></div>
+                    <div class="input-with-suffix">
+                      <input id="rentalOffsetPercent" type="number" min="0" max="100" step="1" value="75" />
+                      <span class="suffix">%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="rental-offset-box" class="sell-proceeds-box">
+                  <div class="detail-row"><span>Projected Rent × Offset</span><span id="rental-line-offset-rent">$-.--</span></div>
+                  <div class="detail-row"><span>− Current Mortgage Payment (PITI)</span><span id="rental-line-departure-payment">$-.--</span></div>
+                  <div class="detail-row sell-net-row"><span id="rental-line-verdict-label">Counted Against Your DTI</span><span id="rental-line-verdict">$-.--</span></div>
+                  <p id="rental-surplus-note" class="sell-warning-text hidden-init" style="color: var(--text-muted);"></p>
+                </div>
+
+                <div class="input-group">
+                  <div class="label-with-tooltip"><label>How Are You Funding the Down Payment?</label><span class="tooltip-icon" data-tooltip="No sale means no sale proceeds. Cash Only funds the down payment from savings or another source you enter below. HELOC borrows against this home's equity instead — unlike a Bridge Loan there's no sale to pay it off with, so its payment counts as a permanent monthly debt in your DTI, on top of (not instead of) the rental-offset math above.">?</span></div>
+                  <div class="frequency-toggle-group" id="rental-funding-switch">
+                    <button type="button" class="freq-btn active" id="btn-rental-funding-cash" data-rental-funding="cash"><svg class="icon" aria-hidden="true"><use href="#icon-cash"/></svg> Cash Only</button>
+                    <button type="button" class="freq-btn" id="btn-rental-funding-heloc" data-rental-funding="heloc">🏦 HELOC</button>
+                  </div>
+                </div>
+
+                <div id="rental-heloc-panel" class="hidden-init">
+                  <div class="grid-2-col">
+                    <div class="input-group">
+                      <div class="label-with-tooltip"><label for="rentalHelocAmount">HELOC Draw Amount</label><span class="tooltip-icon" data-tooltip="How much you're borrowing against this home's equity to cover the new down payment, since there are no sale proceeds in this mode.">?</span></div>
+                      <div class="input-with-prefix">
+                        <span class="prefix">$</span>
+                        <input id="rentalHelocAmount" type="number" min="0" max="20000000" step="1000" value="0" />
+                      </div>
+                    </div>
+                    <div class="input-group">
+                      <div class="label-with-tooltip"><label for="rentalHelocRate">HELOC Interest Rate</label><span class="tooltip-icon" data-tooltip="HELOCs typically carry a variable rate tied to prime. Used to pre-fill the interest-only payment below — still editable.">?</span></div>
+                      <div class="input-with-suffix">
+                        <input id="rentalHelocRate" type="number" min="0" max="20" step="0.1" value="7.3" />
+                        <span class="suffix">%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="input-group">
+                    <div class="label-with-tooltip"><label for="rentalHelocPayment">Monthly HELOC Payment</label><span class="tooltip-icon" data-tooltip="Pre-filled as an interest-only payment (draw × rate ÷ 12), the typical HELOC draw-period minimum — edit if your lender quotes a different figure.">?</span></div>
+                    <div class="input-with-prefix">
+                      <span class="prefix">$</span>
+                      <input id="rentalHelocPayment" type="number" min="0" max="50000" step="10" value="0" />
+                    </div>
+                  </div>
+                  <p class="sell-warning-text" style="color: var(--text-muted);">Unlike a Bridge Loan, a HELOC here has no future sale to pay it off — this payment sticks around permanently and counts fully against your new mortgage's DTI, on top of (not netted against) the rental-offset math above.</p>
+                </div>
           </div>
         </div>
 
@@ -878,6 +1069,30 @@
           </div>
         </div>
 
+        <!-- Outlook Summary: rule-based (no AI) synthesis of the currently
+             filled-out settings + feasibility, built entirely from values
+             already computed above (DTI status, PMI threshold, recast,
+             max-affordability, cash-to-close). Card outline glows green/
+             amber/red via the outlook-verdict-good/-moderate/-high class
+             updateOutlookSummaryUI() applies each calc pass. Collapsible
+             like every other card (data-section-key="outlookSummary") —
+             collapsed by default (see config.js DEFAULTS.collapsedSections)
+             and remembered across reloads via the same generic
+             setupCollapsibleCards()/applyCollapsedSectionsState() wiring
+             app.js already uses for every other card, so no JS changes
+             were needed to add this. The verdict badge stays visible in
+             the header whether collapsed or not, for an at-a-glance read. -->
+        <div class="panel-card outlook-summary-card" id="outlook-summary-card">
+          <button type="button" class="collapsible-header outlook-summary-header" id="outlook-summary-toggle" data-section-key="outlookSummary" aria-expanded="false" aria-controls="outlook-summary-lines">
+            <div class="outlook-summary-title-wrap">
+              <h2>Your Outlook</h2>
+              <span id="outlook-verdict-badge" class="badge-dti">Calculating...</span>
+            </div>
+            <span class="chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="collapsible-body outlook-summary-lines" id="outlook-summary-lines" hidden></div>
+        </div>
+
         <!-- Payment Breakdown & Affordability: side-by-side row -->
         <div class="analysis-row-grid">
 
@@ -928,6 +1143,49 @@
                 </div>
               </div>
             </div>
+
+            <!-- Pay It Off Early: 30-year only. Solves for the extra payment
+                 needed to hit a chosen payoff term, honoring whichever
+                 payment frequency (monthly/biweekly/accelerated) is active
+                 in the Extra Payments & Schedule panel. -->
+            <div class="payoff-accelerator hidden-init" id="payoff-accelerator">
+              <label class="payoff-toggle-row toggle-switch" for="payoff-accelerator-checkbox">
+                <input type="checkbox" id="payoff-accelerator-checkbox" aria-label="Pay it off early" />
+                <span class="toggle-slider" aria-hidden="true"></span>
+              </label>
+              <label for="payoff-accelerator-checkbox" class="payoff-toggle-text">
+                <svg class="icon" aria-hidden="true"><use href="#icon-bolt"/></svg> Pay It Off Early
+                <span class="tooltip-icon" data-tooltip="See how much extra you'd need to add to each payment to pay this 30-year loan off years sooner — and how much interest that saves.">?</span>
+              </label>
+
+              <div class="payoff-accelerator-body hidden-init" id="payoff-accelerator-body">
+                <div class="payoff-slider-row">
+                  <span class="payoff-slider-label">Payoff in <strong id="payoff-target-years">15</strong> years</span>
+                  <span class="payoff-slider-sublabel" id="payoff-years-off-label">15 years sooner</span>
+                </div>
+                <input type="range" id="payoff-years-off-slider" class="slider" min="1" max="25" step="1" value="15" aria-label="Years to shave off the loan term" />
+
+                <div class="payoff-result-grid">
+                  <div class="payoff-result-item">
+                    <span class="payoff-result-label" id="payoff-extra-label">Extra Per Month</span>
+                    <span class="payoff-result-value" id="payoff-extra-value">$-.--</span>
+                  </div>
+                  <div class="payoff-result-item">
+                    <span class="payoff-result-label" id="payoff-new-pi-label">New Monthly P&amp;I</span>
+                    <span class="payoff-result-value" id="payoff-new-pi-value">$-.--</span>
+                  </div>
+                  <div class="payoff-result-item highlight">
+                    <span class="payoff-result-label">Interest Saved</span>
+                    <span class="payoff-result-value" id="payoff-interest-saved-value">$-.--</span>
+                  </div>
+                </div>
+
+                <div class="payoff-already-met hidden-init" id="payoff-already-met-note">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-bolt"/></svg>
+                  Your current payment schedule already pays this off in <span id="payoff-already-met-years"></span>.
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Affordability Analysis -->
@@ -942,7 +1200,7 @@
               <div class="dti-accordion-group" id="dti-group-inputs">
                 <button type="button" class="collapsible-header dti-accordion-header" id="dti-header-inputs" data-section-key="dtiGroupInputs" aria-expanded="true" aria-controls="dti-body-inputs">
                   <div class="dti-accordion-title-wrap">
-                    <span class="dti-accordion-title">1. Income &amp; Monthly Debts</span>
+                    <span class="dti-accordion-title">Income &amp; Monthly Debts</span>
                     <span class="dti-summary-badge" id="dti-summary-inputs">--</span>
                   </div>
                   <span class="chevron" aria-hidden="true">▾</span>
@@ -1013,7 +1271,7 @@
               <div class="dti-accordion-group" id="dti-group-cashflow">
                 <button type="button" class="collapsible-header dti-accordion-header" id="dti-header-cashflow" data-section-key="dtiGroupCashflow" aria-expanded="false" aria-controls="dti-body-cashflow">
                   <div class="dti-accordion-title-wrap">
-                    <span class="dti-accordion-title">2. Monthly Cash Flow &amp; Take-Home</span>
+                    <span class="dti-accordion-title">Monthly Cash Flow &amp; Take-Home</span>
                     <span class="dti-summary-badge" id="dti-summary-cashflow">Net Mode Only</span>
                   </div>
                   <span class="chevron" aria-hidden="true">▾</span>
@@ -1068,7 +1326,7 @@
               <div class="dti-accordion-group" id="dti-group-ratios">
                 <button type="button" class="collapsible-header dti-accordion-header" id="dti-header-ratios" data-section-key="dtiGroupRatios" aria-expanded="true" aria-controls="dti-body-ratios">
                   <div class="dti-accordion-title-wrap">
-                    <span class="dti-accordion-title">3. DTI Ratios &amp; Benchmarks</span>
+                    <span class="dti-accordion-title">DTI Ratios &amp; Benchmarks</span>
                     <span class="dti-summary-badge" id="dti-summary-ratios">--% Back-End</span>
                   </div>
                   <span class="chevron" aria-hidden="true">▾</span>
@@ -1167,6 +1425,107 @@
 
                 </div>
               </div>
+
+              <!-- Group 4: Max Affordability & Cash to Close -->
+              <div class="dti-accordion-group" id="dti-group-afford">
+                <button type="button" class="collapsible-header dti-accordion-header" id="dti-header-afford" data-section-key="dtiGroupAfford" aria-expanded="false" aria-controls="dti-body-afford">
+                  <div class="dti-accordion-title-wrap">
+                    <span class="dti-accordion-title">Max Affordability &amp; Cash to Close</span>
+                    <span class="dti-summary-badge" id="dti-summary-afford">Set a target DTI</span>
+                  </div>
+                  <span class="chevron" aria-hidden="true">▾</span>
+                </button>
+                <div class="collapsible-body dti-accordion-body" id="dti-body-afford" hidden>
+
+                  <div class="input-group" style="margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px dashed var(--border-color);">
+                    <div class="label-with-tooltip"><label for="targetBackEndDTI">Target Back-End DTI</label><span class="tooltip-icon" data-tooltip="The back-end DTI ceiling to solve against — how far a lender might actually let you push it. 45% is this calculator's standard moderate cap; well-qualified borrowers with strong credit and reserves sometimes get pushed higher by automated underwriting. Fully editable — the credit score picker below only suggests a starting point.">?</span></div>
+                    <div class="input-with-suffix">
+                      <input id="targetBackEndDTI" type="number" min="1" max="65" step="0.5" value="45" />
+                      <span class="suffix">%</span>
+                    </div>
+
+                    <div class="frequency-toggle-group mt-06" id="target-dti-presets">
+                      <button type="button" class="freq-btn" data-target-dti="36">Conservative 36%</button>
+                      <button type="button" class="freq-btn" data-target-dti="45">Standard 45%</button>
+                      <button type="button" class="freq-btn" data-target-dti="50">Aggressive 50%</button>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.65rem;">
+                      <span id="target-dti-status-badge" class="badge-dti">--</span>
+                    </div>
+                    <p id="target-dti-status-desc" class="dti-desc hint-text-mt075"></p>
+
+                    <span class="help-text">Not sure what's realistic? Try a preset above, or pick your credit score below for a suggestion — the badge shows how your number compares to what lenders typically accept.</span>
+
+                    <div class="input-group no-mb" style="margin-top: 0.85rem;">
+                      <div class="label-with-tooltip no-margin"><label class="no-margin" for="creditScoreBand">Credit Score (optional, suggests a ceiling)</label><span class="tooltip-icon" data-tooltip="A rough industry rule-of-thumb — not a guarantee. Actual automated-underwriting DTI ceilings also depend on reserves, loan-to-value, and loan program (FHA/VA/jumbo differ from conventional). Picking a band just prefills Target Back-End DTI above; it stays fully editable afterward.">?</span></div>
+                      <select id="creditScoreBand" class="mt-06">
+                        <option value="">— Not specified —</option>
+                        <option value="below620">Below 620</option>
+                        <option value="620-679">620–679</option>
+                        <option value="680-719">680–719</option>
+                        <option value="720-759">720–759</option>
+                        <option value="760plus">760+</option>
+                      </select>
+                      <p id="credit-score-dti-note" class="sell-warning-text hidden-init" style="margin-top: 0.5rem;"></p>
+                      <p id="cash-cushion-dti-note" class="sell-warning-text hidden-init" style="margin-top: 0.5rem;"></p>
+                    </div>
+                  </div>
+
+                  <div id="max-afford-result-box" class="sell-proceeds-box hidden-init">
+                    <div class="sell-house-card-heading mb-06">Max Affordability</div>
+                    <p id="max-afford-phase-note" class="help-text" style="margin-top: 0; margin-bottom: 0.6rem;">Standard (new home only).</p>
+                    <div class="detail-row sell-net-row"><span>Max Purchase Price</span><span id="max-afford-price">$-.--</span></div>
+                    <div class="detail-row"><span>Max Loan Amount</span><span id="max-afford-loan">$-.--</span></div>
+                    <div class="detail-row"><span>Resulting PITI</span><span id="max-afford-piti">$-.--</span></div>
+                    <div class="detail-row"><span>Resulting Back-End DTI</span><span id="max-afford-backend-dti" class="badge-dti">--%</span></div>
+                    <span id="max-afford-frontend-dti" class="help-text">--% front-end</span>
+                  </div>
+                  <p id="max-afford-empty-state" class="sell-warning-text hidden-init">Your existing debts and obligations already use up all the room at this target DTI — try raising the target, lowering other debts, or increasing your down payment.</p>
+
+                  <div class="input-group mt-075" style="margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px dashed var(--border-color);">
+                    <div class="label-with-tooltip"><label for="closingCostPercent">Closing Cost %</label><span class="tooltip-icon" data-tooltip="Lender fees, title insurance, escrow, and transfer taxes on the PURCHASE side — typically 2-3% of price. Separate from the sale-side closing costs in the 'Have a house to sell?' panel.">?</span></div>
+                    <div class="input-with-suffix">
+                      <input id="closingCostPercent" type="number" min="0" max="10" step="0.1" value="2.5" />
+                      <span class="suffix">%</span>
+                    </div>
+                  </div>
+
+                  <div class="input-group" style="margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px dashed var(--border-color);">
+                    <div class="label-with-tooltip"><label for="reserveMonths">Post-Closing Reserves (months)</label><span class="tooltip-icon" data-tooltip="Months of housing payment lenders typically want sitting untouched in cash/investments after closing — more when carrying two homes. This must be real liquid cash; it cannot come from a HELOC or bridge loan draw.">?</span></div>
+                    <input id="reserveMonths" type="number" min="0" max="24" step="0.5" value="3" />
+                  </div>
+
+                  <div class="input-group no-mb">
+                    <div class="label-with-tooltip"><label for="extraProjectCash">Extra Project Cash (optional)</label><span class="tooltip-icon" data-tooltip="Any additional cash you're budgeting separately — repairs, paint/carpet, moving costs — on top of the down payment, closing costs, and reserves below.">?</span></div>
+                    <div class="input-with-prefix">
+                      <span class="prefix">$</span>
+                      <input id="extraProjectCash" type="number" min="0" max="500000" step="500" value="0" />
+                    </div>
+                  </div>
+
+                  <div class="input-group mt-075 no-mb">
+                    <div class="label-with-tooltip"><label for="cashAvailable">Cash Available (optional)</label><span class="tooltip-icon" data-tooltip="How much liquid cash you actually have on hand right now — savings, checking, or other funds you could put toward this purchase. Compared against the Total Liquid Cash Needed below to show a surplus or shortfall, and used as a rough reserves-based compensating-factor signal for the Target Back-End DTI above.">?</span></div>
+                    <div class="input-with-prefix">
+                      <span class="prefix">$</span>
+                      <input id="cashAvailable" type="number" min="0" max="5000000" step="500" value="0" />
+                    </div>
+                  </div>
+
+                  <div id="cash-to-close-box" class="sell-proceeds-box mt-075">
+                    <div class="sell-house-card-heading mb-06">Cash to Close (for the price entered above)</div>
+                    <div class="detail-row"><span>Down Payment Cash</span><span id="cash-to-close-down-payment">$-.--</span></div>
+                    <div class="detail-row"><span>+ Closing Costs</span><span id="cash-to-close-closing-costs">$-.--</span></div>
+                    <div class="detail-row" id="cash-to-close-reserves-row"><span id="cash-to-close-reserves-label">+ Post-Closing Reserves</span><span id="cash-to-close-reserves">$-.--</span></div>
+                    <div class="detail-row hidden-init" id="cash-to-close-project-row"><span>+ Extra Project Cash</span><span id="cash-to-close-project">$-.--</span></div>
+                    <div class="detail-row sell-net-row"><span>Total Liquid Cash Needed</span><span id="cash-to-close-total">$-.--</span></div>
+                    <div class="detail-row hidden-init" id="cash-to-close-available-row"><span>Cash Available</span><span id="cash-to-close-available">$-.--</span></div>
+                    <div class="detail-row sell-net-row hidden-init" id="cash-to-close-surplus-row"><span id="cash-to-close-surplus-label">Surplus</span><span id="cash-to-close-surplus" class="badge-dti">$-.--</span></div>
+                    <p class="sell-warning-text" style="color: var(--text-muted); margin-top: 0.75rem;">Closing costs and reserves must be actual liquid cash (or vested stocks/401k/IRA) — not satisfiable from a HELOC or bridge loan draw, which is tracked separately above.</p>
+                  </div>
+
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1231,6 +1590,59 @@
           All financial data and loan numbers remain strictly inside your browser sandbox.
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Features Modal -->
+  <div id="features-modal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="features-modal-title">
+      <button id="btn-close-features" class="modal-close-button" aria-label="Close Features overview">&times;</button>
+      <h2 id="features-modal-title" class="feature-modal-title"><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg> CALCULATOR FEATURES</h2>
+      <p class="feature-modal-intro">Everything this calculator can do, in one place.</p>
+      <ul class="feature-modal-list">
+        <li><strong>Smart Property Import</strong> — paste a Redfin, Zillow, Realtor.com, or Homes.com listing URL (or use the one-click browser bookmarklet) to auto-fill price, HOA, and tax data instead of typing it by hand.</li>
+        <li><strong>Full PITI Modeling</strong> — principal, interest, property taxes, home insurance, PMI, and HOA fees, with live 15-Year vs 30-Year Fixed comparison cards side by side.</li>
+        <li><strong>Extra Payments & Recast</strong> — simulate extra monthly principal payments or a lump-sum recast to see the exact time and interest saved over the life of the loan.</li>
+        <li><strong>Have a House to Sell?</strong> — estimate net proceeds from your current home, roll them into your new down payment, and model a bridge-loan recast for before/after the sale closes. Includes a "Keep as Rental" option that offsets your DTI with rental income instead of selling, and a "Sell As-Is vs. Repair-Then-Sell" net-proceeds comparison.</li>
+        <li><strong>Loan Comparisons Matrix</strong> — a dynamic table comparing payments across price points, loan terms, and down-payment modes, with an affordability banner and a "Max Budget Fit" indicator.</li>
+        <li><strong>Your Outlook Summary</strong> — a rule-based, at-a-glance feasibility readout (green/amber/red) that reacts to your current numbers.</li>
+        <li><strong>Affordability Analysis (DTI)</strong> — income &amp; monthly debts, cash flow &amp; take-home pay, DTI ratios against lender benchmarks, and a reverse-DTI Max Affordability solver with a cash-to-close/reserves tally and credit-score-based guidance.</li>
+        <li><strong>Cash Available Tracker</strong> — compare cash on hand against your total Cash to Close and see the surplus or shortfall called out as a DTI compensating factor.</li>
+        <li><strong>Amortization Burndown Chart</strong> — a month-by-month balance, equity, and interest curve, plus a dedicated deep-dive amortization page.</li>
+        <li><strong>Live Mortgage Rates</strong> — pull current market rates into the calculator with one click.</li>
+        <li><strong>Shareable Links</strong> — copy a link that reloads your exact inputs elsewhere — nothing is sent to a server, the numbers live entirely in the link.</li>
+      </ul>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon"><svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg></span>
+        <div>
+          <strong>100% PRIVATE CLIENT-SIDE CALCULATION</strong>
+          All financial data and loan numbers remain strictly inside your browser sandbox.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shareable Link Modal -->
+  <div id="share-link-modal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="share-link-modal-title">
+      <button id="btn-close-share-link" class="modal-close-button" aria-label="Close Shareable Link info">&times;</button>
+      <h2 id="share-link-modal-title" class="feature-modal-title"><svg class="icon" aria-hidden="true"><use href="#icon-copy"/></svg> SHARE YOUR NUMBERS</h2>
+      <p class="feature-modal-intro">Turn everything you've entered into one link — so you (or anyone you send it to) can open this calculator with your exact numbers already filled in.</p>
+      <ol class="quickstart-steps-list">
+        <li><strong>What It Does</strong> When you click the button below, it bundles up every number you've entered — home price, down payment, rate, term, extra payments, and more — into one special web address.</li>
+        <li><strong>How To Use It</strong> The link gets copied to your clipboard automatically. Paste it into a text message or email to a spouse, real estate agent, or lender — or just save it for yourself. Opening the link loads this calculator with everything already filled in, so nobody has to re-type a thing.</li>
+        <li><strong>Why It's Safe</strong> Your numbers aren't uploaded anywhere. They're stored directly inside the link itself — kind of like a zip file disguised as a web address. If you don't share the link with anyone, nobody sees your numbers.</li>
+      </ol>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon"><svg class="icon" aria-hidden="true"><use href="#icon-lock"/></svg></span>
+        <div>
+          <strong>100% PRIVATE — NOTHING TOUCHES A SERVER</strong>
+          The link is just your data written out as text. We never see it, store it, or track who opens it.
+        </div>
+      </div>
+      <button type="button" id="btn-copy-share-link" class="btn-copy-share-link-cta">
+        <svg class="icon" aria-hidden="true"><use href="#icon-copy"/></svg> Copy My Shareable Link
+      </button>
     </div>
   </div>
 
@@ -1443,6 +1855,6 @@
     </div>
   </div>
 
-  <script type="module" src="app.js?v=46"></script>
+  <script type="module" src="app.js?v=52"></script>
 </body>
 </html>

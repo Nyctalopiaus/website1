@@ -22,7 +22,7 @@ import {
   calculateBearing,
   geocode
 } from './geo-utils.js?v=30';
-import { initRouteStops } from './route-stops.js?v=26';
+import { initRouteStops } from './route-stops.js?v=27';
 import { initUnitCurrencyControls } from './unit-controls.js?v=26';
 import { runLogisticsSimulation, createFuelPriceService } from './trip-logistics.js?v=2';
 import { buildTripTimeline } from './milestone-cards.js?v=2';
@@ -50,10 +50,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const milestonesTimeline = document.getElementById('milestones-timeline');
   const stabilityLabel = document.getElementById('hud-stability-label');
   const btnPrint = document.getElementById('btn-print');
+  const btnCopyLink = document.getElementById('btn-copy-link');
 
   // Trigger native browser printing of the travel itinerary
   btnPrint.addEventListener('click', () => {
     window.print();
+  });
+
+  // Copy the current (post-scan) shareable link -- serializeStateToURL()
+  // already wrote it into the address bar via history.replaceState, so this
+  // just copies window.location.href as-is.
+  btnCopyLink.addEventListener('click', () => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      btnCopyLink.textContent = '✅ Link Copied!';
+      setTimeout(() => {
+        btnCopyLink.textContent = '🔗 Copy Link';
+      }, 2000);
+    }).catch(err => {
+      console.error('Clipboard copy failed: ', err);
+    });
   });
 
   // Dynamically update the HUD comfort title label based on selected profile & auto-fill garage parameters
@@ -62,15 +77,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const estimatedMpgInput = document.getElementById('estimated-mpg');
 
     if (vehicleProfile.value === 'motorcycle') {
-      stabilityLabel.textContent = 'Exposure & Fatigue Risk (Rider)';
+      stabilityLabel.textContent = 'Heat & Fatigue Risk (Rider)';
       if (fuelCapacityInput) fuelCapacityInput.value = '7.0';
       if (estimatedMpgInput) estimatedMpgInput.value = '40';
     } else if (vehicleProfile.value === 'jeep') {
-      stabilityLabel.textContent = 'Exposure & Fatigue Risk (Driver)';
+      stabilityLabel.textContent = 'Heat & Fatigue Risk (Driver)';
       if (fuelCapacityInput) fuelCapacityInput.value = '21.5';
       if (estimatedMpgInput) estimatedMpgInput.value = '17';
     } else {
-      stabilityLabel.textContent = 'Exposure & Fatigue Risk (Driver)';
+      stabilityLabel.textContent = 'Heat & Fatigue Risk (Driver)';
       if (fuelCapacityInput) fuelCapacityInput.value = '14.0';
       if (estimatedMpgInput) estimatedMpgInput.value = '30';
     }
@@ -202,6 +217,101 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log(`[${timestamp}] ${message}`);
   }
 
+  // Shareable URL state — encodes the settings form (everything except route
+  // stops, which are handled separately below) into the URL's query string so
+  // a plan can be bookmarked or shared as a link. Nothing is sent to or stored
+  // on a server; the URL itself is the only persistence.
+  const URL_STATE_FIELDS = [
+    { id: 'vehicle-profile', param: 'vehicle', type: 'value' },
+    { id: 'start-time', param: 'depart', type: 'value' },
+    { id: 'unit-toggle', param: 'units', type: 'value' },
+    { id: 'currency-toggle', param: 'currency', type: 'value' },
+    { id: 'scenic-route', param: 'scenic', type: 'checkbox' },
+    { id: 'avoid-tolls', param: 'tolls', type: 'checkbox' },
+    { id: 'avoid-ferries', param: 'ferries', type: 'checkbox' },
+    { id: 'avg-speed', param: 'speed', type: 'value' },
+    { id: 'fuel-capacity', param: 'fuelcap', type: 'value' },
+    { id: 'estimated-mpg', param: 'mpg', type: 'value' },
+    { id: 'fuel-grade', param: 'grade', type: 'value' },
+    { id: 'rest-interval', param: 'restint', type: 'value' },
+    { id: 'enable-rest', param: 'rest', type: 'checkbox' },
+    { id: 'top-off-rest', param: 'topoffrest', type: 'checkbox' },
+    { id: 'top-off-meals', param: 'topoffmeals', type: 'checkbox' },
+    { id: 'find-restaurants', param: 'restaurants', type: 'checkbox' },
+    { id: 'enable-breakfast', param: 'bfast', type: 'checkbox' },
+    { id: 'breakfast-time', param: 'bfasttime', type: 'value' },
+    { id: 'enable-lunch', param: 'lunch', type: 'checkbox' },
+    { id: 'lunch-time', param: 'lunchtime', type: 'value' },
+    { id: 'enable-dinner', param: 'dinner', type: 'checkbox' },
+    { id: 'dinner-time', param: 'dinnertime', type: 'value' },
+    { id: 'enforce-curfew', param: 'curfew', type: 'checkbox' },
+    { id: 'smart-layover', param: 'smartlayover', type: 'checkbox' },
+    { id: 'find-hotels', param: 'hotels', type: 'checkbox' },
+    { id: 'curfew-start', param: 'curfewstart', type: 'value' },
+    { id: 'curfew-end', param: 'curfewend', type: 'value' }
+  ];
+
+  function serializeStateToURL() {
+    const params = new URLSearchParams();
+    Array.from(document.querySelectorAll('.route-stop-input')).forEach(input => {
+      const val = input.value.trim();
+      if (val) params.append('stop', val);
+    });
+    URL_STATE_FIELDS.forEach(({ id, param, type }) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      params.set(param, type === 'checkbox' ? (el.checked ? '1' : '0') : el.value);
+    });
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  }
+
+  function restoreStateFromURL() {
+    if (!window.location.search) return;
+    const params = new URLSearchParams(window.location.search);
+
+    const stops = params.getAll('stop').filter(s => s.trim() !== '');
+    if (stops.length > 0) {
+      stops.forEach((stopVal, idx) => {
+        const inputs = document.querySelectorAll('.route-stop-input');
+        if (idx < inputs.length) {
+          inputs[idx].value = stopVal;
+        } else {
+          btnAddStop.click();
+          const updatedInputs = document.querySelectorAll('.route-stop-input');
+          updatedInputs[updatedInputs.length - 1].value = stopVal;
+        }
+      });
+      // Route stops require at least two rows, so any extra default rows
+      // beyond what the link specified are cleared rather than removed.
+      const currentInputs = document.querySelectorAll('.route-stop-input');
+      for (let i = stops.length; i < currentInputs.length; i++) {
+        currentInputs[i].value = '';
+      }
+    }
+
+    URL_STATE_FIELDS.forEach(({ id, param, type }) => {
+      if (!params.has(param)) return;
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (type === 'checkbox') {
+        el.checked = params.get(param) === '1';
+      } else {
+        el.value = params.get(param);
+      }
+    });
+
+    // Keep dependent UI (the "Top off at Rest Stops" enable/disable state) in
+    // sync with the restored checkboxes. Deliberately does NOT call
+    // updateComfortLabel() here -- that would overwrite the just-restored
+    // fuel-capacity/MPG values with the selected vehicle's defaults.
+    syncTopOffRestAvailability();
+
+    const hint = document.createElement('div');
+    hint.className = 'url-restore-hint';
+    hint.textContent = 'Settings loaded from a shared link — click Analyze Open Road Journey to see results.';
+    btnScan.parentNode.insertBefore(hint, btnScan);
+  }
+
   initRouteStops({
     routeStopsList,
     btnAddStop,
@@ -209,14 +319,20 @@ document.addEventListener('DOMContentLoaded', () => {
     log
   });
 
+  restoreStateFromURL();
+
   // Main Action Trigger
   btnScan.addEventListener('click', async () => {
     if (isScanning) return;
     isScanning = true;
     btnScan.disabled = true;
     btnPrint.disabled = true;
+    btnCopyLink.disabled = true;
     document.getElementById('btn-export-gpx').disabled = true;
     document.getElementById('btn-copy-itinerary').disabled = true;
+
+    const existingRestoreHint = document.querySelector('.url-restore-hint');
+    if (existingRestoreHint) existingRestoreHint.remove();
 
     const isMetric = document.getElementById('unit-toggle').value === 'metric';
     const distLabel = isMetric ? 'km' : 'mi';
@@ -244,9 +360,18 @@ document.addEventListener('DOMContentLoaded', () => {
     loadingDiv.classList.add('timeline-loading');
     const pulseSpan = document.createElement('span');
     pulseSpan.classList.add('pulse-indicator');
+    const loadingTextNode = document.createTextNode(' Getting started...');
     loadingDiv.appendChild(pulseSpan);
-    loadingDiv.appendChild(document.createTextNode(' Calculating open road milestones and downloading forecast data...'));
+    loadingDiv.appendChild(loadingTextNode);
     milestonesTimeline.appendChild(loadingDiv);
+
+    // Updates the visible loading line so a scan isn't a silent black box —
+    // multiple sequential API calls (geocoding, routing, weather, optional
+    // restaurant/hotel search, elevation) can take a while, especially with
+    // Find Nearby Restaurants/Lodging enabled.
+    function setScanStage(text) {
+      loadingTextNode.textContent = ` ${text}`;
+    }
 
     // Clear previous Map overlays
     if (routePolyline) {
@@ -278,6 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const departureTimeUnix = Math.floor(new Date(startTimeInput.value).getTime() / 1000);
 
       // 1. Geocode locations in linear order
+      setScanStage('Geocoding your stops...');
       const geocodedStops = [];
       for (let i = 0; i < allStopsText.length; i++) {
         const stopText = allStopsText[i];
@@ -327,6 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // way. Any ORS failure (no key configured, ORS down/rate-limited, etc.)
       // silently falls back to the standard OSRM route rather than breaking
       // the scan.
+      setScanStage('Calculating route...');
       const coordsQuery = geocodedStops.map(s => `${s.lon},${s.lat}`).join(';');
       const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsQuery}?overview=full&geometries=geojson`;
 
@@ -427,6 +554,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       log(`[GIS] Resolved ${sampledWaypoints.length} timeline waypoints.`);
+
+      setScanStage('Building elevation profile...');
 
       // 3.6 Dense Elevation Profile (optional, via OpenRouteService) — samples
       // the already-drawn route polyline far more tightly than the ~25-mile
@@ -538,6 +667,11 @@ document.addEventListener('DOMContentLoaded', () => {
         meals.push({ name: 'Dinner Stop (1 hr)', hour: h, min: m });
       }
 
+      setScanStage(
+        findRestaurantsEnabled || findHotelsEnabled
+          ? 'Finding restaurants and hotels near your stops...'
+          : 'Working out fuel, rest, and meal stops...'
+      );
       const finalWaypoints = await runLogisticsSimulation({
         sampledWaypoints,
         departureTimeUnix,
@@ -568,6 +702,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // quote there) -- the cache is also consulted again afterward by the
       // Fuel Budgeting step for its fallback price-per-gallon.
       const { fetchFuelPrice, cache: fuelPriceCache } = createFuelPriceService(log);
+
+      setScanStage('Checking weather along the way...');
 
       // 4-5. Weather enrichment + milestone card/timeline rendering, plus map
       // markers -- see milestone-cards.js.
@@ -801,6 +937,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       log('[SYS] ATMOSPHERIC DECODING COMPLETED.');
       btnPrint.disabled = false;
+      serializeStateToURL();
+      btnCopyLink.disabled = false;
 
     } catch (err) {
       log(`[ERROR] SCAN TRIGGER EXCEPTION: ${err.message}`);

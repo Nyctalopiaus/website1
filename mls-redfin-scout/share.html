@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realtor Collaboration Portal - MLS Scout</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=2.0">
+    <style>
+        .realtor-container {
+            max-width: 1100px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        .realtor-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            display: flex;
+            gap: 1.5rem;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+        .realtor-card:hover {
+            border-color: var(--border-hover);
+        }
+        .realtor-img {
+            width: 260px;
+            height: 170px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+        }
+        .realtor-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .realtor-notes-box {
+            margin-top: 0.75rem;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="navbar">
+        <div class="brand">
+            <span class="brand-icon">🤝</span>
+            <div>
+                <div class="brand-title">Realtor Collaboration Portal</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Curated Home Scout List</div>
+            </div>
+        </div>
+        <div class="nav-actions">
+            <button class="btn btn-secondary" id="btn-realtor-theme" onclick="toggleRealtorTheme()">🌙 Theme</button>
+            <a href="index.html" class="btn btn-secondary">🏠 Back to Main Scout</a>
+            <button class="btn btn-primary" onclick="window.print()">🖨️ Print Summary</button>
+        </div>
+    </header>
+
+    <main class="realtor-container">
+        <div style="margin-bottom: 2rem; background: var(--bg-card); padding: 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+            <h2>📋 Curated Property Portfolio</h2>
+            <p style="color: var(--text-muted); margin-top: 0.25rem;">
+                Here are the selected properties being considered, complete with notes, questions, ratings, and Redfin scores.
+            </p>
+        </div>
+
+        <div id="realtor-list-container">
+            <!-- Dynamically loaded properties -->
+        </div>
+    </main>
+
+    <script>
+        const API_URL = 'backend/api.php';
+
+        function loadRealtorProperties() {
+            fetch(API_URL + '?action=list')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) return;
+                    // Filter properties that are shared with realtor or favorited
+                    const list = data.properties.filter(p => p.shared_with_realtor || p.favorite);
+                    renderRealtorList(list);
+                })
+                .catch(err => console.error('Error loading realtor portal data:', err));
+        }
+
+        function cleanDisplayAddress(address, mlsId) {
+            if (!address) return 'Address Unavailable';
+            let clean = String(address).trim();
+            if (mlsId) {
+                clean = clean.replace(new RegExp('^' + mlsId + '[\\s\\-:,\n]+', 'i'), '');
+                clean = clean.replace(new RegExp('^' + mlsId, 'i'), '');
+            }
+            clean = clean.replace(/^\d{6,9}\s+/i, '');
+            clean = clean.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
+            return clean || 'Address Unavailable';
+        }
+
+        function renderRealtorList(properties) {
+            const container = document.getElementById('realtor-list-container');
+            if (!properties.length) {
+                container.innerHTML = `
+                    <div style="text-align:center; padding: 4rem; color: var(--text-muted); background: var(--bg-card); border-radius: 12px;">
+                        <h3>No Properties Shared Yet</h3>
+                        <p style="margin-top: 0.5rem;">Mark properties as "Shared with Realtor" or "Favorite" on the main dashboard to display them here.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = properties.map(p => `
+                <div class="realtor-card">
+                    <img src="${p.main_image_url || 'https://via.placeholder.com/300x200?text=No+Photo'}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://via.placeholder.com/300x200?text=No+Photo';" class="realtor-img" alt="Property Image">
+                    <div class="realtor-info">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div>
+                                <h2 style="color: var(--accent-gold);">$${p.price.toLocaleString()}</h2>
+                                <h3 style="margin-top:2px;">${cleanDisplayAddress(p.address, p.mls_id)}</h3>
+                                <div style="color: var(--text-muted); font-size:0.85rem;">${p.city}, ${p.state} ${p.zip} | MLS #${p.mls_id}</div>
+                            </div>
+                            <span class="score-badge" style="background:var(--accent-blue); color:#fff; padding:6px 12px; font-weight:700;">
+                                ⭐ ${p.rating || 0}/5 Rating
+                            </span>
+                        </div>
+
+                        <div style="display:flex; gap:1.5rem; margin-top:0.5rem; font-size:0.9rem;">
+                            <span><strong>${p.beds}</strong> Beds</span>
+                            <span><strong>${p.baths}</strong> Baths</span>
+                            <span><strong>${p.sqft_finished.toLocaleString()}</strong> SqFt</span>
+                            <span><strong>${p.year_built}</strong> Built</span>
+                            <span><strong>${p.walk_score ? p.walk_score + '/100' : 'N/A'}</strong> WalkScore</span>
+                            <span><strong>$${p.hoa_fee ? p.hoa_fee + '/yr' : 'No'}</strong> HOA</span>
+                        </div>
+
+                        ${p.user_notes ? `
+                            <div class="realtor-notes-box">
+                                <strong style="color: var(--accent-gold);">Buyer Notes & Questions:</strong>
+                                <p style="margin-top:4px; font-size:0.9rem;">${p.user_notes}</p>
+                            </div>
+                        ` : ''}
+
+                        <div class="realtor-notes-box" style="margin-top: 0.5rem;">
+                            <strong style="color: var(--accent-blue);">Realtor Feedback / Agent Notes:</strong>
+                            <textarea class="input-text" style="margin-top:4px; min-height:60px;" placeholder="Add agent commentary, comps feedback, or showing availability..." data-mls="${p.mls_id}">${p.realtor_notes || ''}</textarea>
+                            <button class="btn btn-primary" style="margin-top:6px; font-size:0.75rem;" onclick="saveRealtorNote('${p.mls_id}', this)">Save Agent Note</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function saveRealtorNote(mlsId, btn) {
+            const textarea = btn.previousElementSibling;
+            const noteText = textarea.value;
+
+            fetch(API_URL + '?action=update_user_data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mls_id: mlsId, realtor_notes: noteText })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    btn.innerText = 'Saved!';
+                    setTimeout(() => { btn.innerText = 'Save Agent Note'; }, 2000);
+                }
+            });
+        }
+
+        function toggleRealtorTheme() {
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('scout_theme', next);
+            const btn = document.getElementById('btn-realtor-theme');
+            if (btn) btn.innerText = next === 'light' ? '☀️ Theme' : '🌙 Theme';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('scout_theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', saved);
+            const btn = document.getElementById('btn-realtor-theme');
+            if (btn) btn.innerText = saved === 'light' ? '☀️ Theme' : '🌙 Theme';
+            loadRealtorProperties();
+        });
+    </script>
+</body>
+</html>

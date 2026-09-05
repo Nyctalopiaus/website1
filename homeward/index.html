@@ -481,8 +481,11 @@
 
         <!-- Section 3: Property Specs & Attributes (Clean 3-Column Grid) -->
         <div class="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-3">
-          <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">📐 Key Property Specifications</h3>
-          
+          <div class="flex items-center justify-between flex-wrap gap-1.5">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">📐 Key Property Specifications</h3>
+            <span id="notebook-freshness-badge" class="hidden text-[10px] px-2 py-0.5 rounded-full font-semibold border"></span>
+          </div>
+
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
             <div>
               <label class="block text-slate-400 mb-1">Est. Listing Price</label>
@@ -716,6 +719,46 @@
         <p class="text-[11px] text-slate-500 mt-1.5">Replaces current stops with the exact tour imported from the sync code.</p>
         <p id="sync-pull-error" class="hidden text-[11px] text-rose-400 mt-1.5"></p>
         <p id="sync-pull-success" class="hidden text-[11px] text-emerald-400 mt-1.5"></p>
+      </div>
+
+      <!-- Auto-Backup Section -->
+      <div class="p-3.5 rounded-xl bg-slate-950 border border-slate-800 mt-3">
+        <span class="text-xs font-bold text-slate-200 block mb-1">🛟 Auto-Backup</span>
+        <p class="text-[11px] text-slate-500 mb-2 leading-relaxed">This browser silently backs up every save, no action needed. Write down the ID below once — if this browser's data is ever cleared, paste it back in to restore automatically.</p>
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <span class="text-[11px] text-slate-400">This device's ID:</span>
+          <div class="flex items-center gap-1.5">
+            <span id="autobackup-device-id" class="text-[11px] font-mono text-sky-300 bg-slate-900 border border-slate-800 rounded px-2 py-1">—</span>
+            <button id="btn-autobackup-copy-id" type="button" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold border border-slate-700 transition-colors flex-shrink-0">Copy</button>
+          </div>
+        </div>
+        <p id="autobackup-status" class="text-[11px] text-slate-500 mb-2">Status: —</p>
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <input id="autobackup-restore-id-input" type="text" placeholder="Paste a device ID to restore" class="flex-1 px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-100 font-mono text-xs focus:outline-none focus:border-sky-500 transition-colors">
+          <button id="btn-autobackup-restore" type="button" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 transition-colors flex-shrink-0 whitespace-nowrap">
+            Restore
+          </button>
+        </div>
+        <p id="autobackup-restore-error" class="hidden text-[11px] text-rose-400 mt-1.5"></p>
+        <p id="autobackup-restore-success" class="hidden text-[11px] text-emerald-400 mt-1.5"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Property Comparison View -->
+  <div id="compare-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop" onclick="if(event.target === this) window.homewardApp.closeCompareModal();">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-5 border-b border-slate-800 flex items-center justify-between flex-shrink-0">
+        <h3 class="text-sm font-bold text-slate-100">📊 Compare Properties</h3>
+        <div class="flex items-center gap-2">
+          <button onclick="window.homewardApp.clearCompareSelection()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-colors">
+            Clear Selection
+          </button>
+          <button onclick="window.homewardApp.closeCompareModal()" class="text-slate-400 hover:text-slate-200 text-lg font-bold p-1 rounded-lg hover:bg-slate-800 transition-colors">✕</button>
+        </div>
+      </div>
+      <div id="compare-modal-body" class="p-5 overflow-auto flex-1">
+        <!-- Rendered by HomewardApp.openCompareModal() -->
       </div>
     </div>
   </div>

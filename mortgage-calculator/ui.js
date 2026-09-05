@@ -4,8 +4,8 @@
  */
 
 import { CONFIG, OUTPUT_IDS } from './config.js';
-import { formatCurrency, formatSignedCurrency, formatTimeSaved, linearInterpolateYear, setElementText, getElement, daysSince } from './utils.js';
-import { getDTIStatus, getBackEndDTIStatus, generateLoanComparisonMatrix } from './calculator.js';
+import { formatCurrency, formatSignedCurrency, formatTimeSaved, linearInterpolateYear, setElementText, getElement, daysSince, setVisible, clamp } from './utils.js';
+import { getDTIStatus, getBackEndDTIStatus, generateLoanComparisonMatrix, calcExtraForTargetPayoff } from './calculator.js';
 
 /**
  * Creates references to all DOM elements needed for calculations
@@ -35,6 +35,17 @@ export function createDOMReferences() {
     pmiRateInput: getEl('pmiRate'),
     grossAnnualIncomeInput: getEl('grossAnnualIncome'),
     otherMonthlyDebtsInput: getEl('otherMonthlyDebts'),
+
+    // Max Affordability solver + Cash-to-Close tally inputs
+    targetBackEndDTIInput: getEl('targetBackEndDTI'),
+    targetDtiPresetButtons: Array.from(document.querySelectorAll('#target-dti-presets [data-target-dti]')),
+    targetDtiStatusBadgeEl: getEl('target-dti-status-badge'),
+    targetDtiStatusDescEl: getEl('target-dti-status-desc'),
+    creditScoreBandInput: getEl('creditScoreBand'),
+    closingCostPercentInput: getEl('closingCostPercent'),
+    reserveMonthsInput: getEl('reserveMonths'),
+    extraProjectCashInput: getEl('extraProjectCash'),
+    cashAvailableInput: getEl('cashAvailable'),
     btnIncomeBasisGross: getEl('btn-income-basis-gross'),
     btnIncomeBasisNet: getEl('btn-income-basis-net'),
     incomeBasisAdjustWrap: getEl('income-basis-adjust-wrap'),
@@ -80,11 +91,56 @@ export function createDOMReferences() {
     sellMovingCostsInput: getEl('sellMovingCosts'),
     sellProceedsPercentSliderInput: getEl('sellProceedsPercentSlider'),
 
-    // Bridge Loan mode inputs
+    // "Compare: Sell As-Is Instead?" inputs + outputs
+    sellAisCompareToggle: getEl('sell-ais-compare-toggle'),
+    asIsSaleValueInput: getEl('asIsSaleValue'),
+    asIsMonthsSavedInput: getEl('asIsMonthsSaved'),
+    aisRowTraditionalEl: getEl('ais-row-traditional'),
+    aisRowAsIsEl: getEl('ais-row-asis'),
+    aisLineTraditionalEl: getEl('ais-line-traditional'),
+    aisLineAsIsEl: getEl('ais-line-asis'),
+    aisLineCarryingEl: getEl('ais-line-carrying'),
+    aisLineVerdictLabelEl: getEl('ais-line-verdict-label'),
+    aisLineVerdictEl: getEl('ais-line-verdict'),
+    aisCompareRowsEl: getEl('ais-compare-rows'),
+    aisApplyBtn: getEl('btn-apply-asis-pricing'),
+    aisAppliedNoteEl: getEl('ais-applied-note'),
+    aisRevertBtn: getEl('btn-revert-asis-pricing'),
+
+    // "What Are You Doing With This Home?" — Sell vs. Keep as Rental (Card 1),
+    // and the two new sibling cards that split off from the old single
+    // sell-house body (2026-09-03).
+    homeActionSwitch: getEl('home-action-switch'),
+    btnHomeActionSell: getEl('btn-home-action-sell'),
+    btnHomeActionRental: getEl('btn-home-action-rental'),
+    sellHouseSellCard: getEl('sell-house-sell-card'),
+    sellHouseRentalCard: getEl('sell-house-rental-card'),
+
+    // Bridge Loan mode inputs (inside the "Sell It" card)
     saleModeSellFirstPanel: getEl('sale-mode-sell-first-panel'),
     saleModeBridgePanel: getEl('sale-mode-bridge-panel'),
     btnSaleModeSellFirst: getEl('btn-sale-mode-sell-first'),
     btnSaleModeBridge: getEl('btn-sale-mode-bridge'),
+
+    // Keep as Rental mode inputs + outputs (inside the "Keep It As a Rental" card)
+    rentalProjectedMonthlyRentInput: getEl('rentalProjectedMonthlyRent'),
+    rentalOffsetPercentInput: getEl('rentalOffsetPercent'),
+    rentalLineOffsetRentEl: getEl('rental-line-offset-rent'),
+    rentalLineDeparturePaymentEl: getEl('rental-line-departure-payment'),
+    rentalLineVerdictLabelEl: getEl('rental-line-verdict-label'),
+    rentalLineVerdictEl: getEl('rental-line-verdict'),
+    rentalSurplusNoteEl: getEl('rental-surplus-note'),
+
+    // Rental down-payment funding sub-choice: Cash Only vs. HELOC against the
+    // departure home's equity (no Bridge Loan option here — see
+    // RENTAL_FUNDING_CASH/HELOC in config.js for why).
+    rentalFundingSwitch: getEl('rental-funding-switch'),
+    btnRentalFundingCash: getEl('btn-rental-funding-cash'),
+    btnRentalFundingHeloc: getEl('btn-rental-funding-heloc'),
+    rentalHelocPanel: getEl('rental-heloc-panel'),
+    rentalHelocAmountInput: getEl('rentalHelocAmount'),
+    rentalHelocRateInput: getEl('rentalHelocRate'),
+    rentalHelocPaymentInput: getEl('rentalHelocPayment'),
     btnFinancingTypeBridge: getEl('btn-financing-type-bridge'),
     btnFinancingTypeHeloc: getEl('btn-financing-type-heloc'),
     bridgeLoanAmountInput: getEl('bridgeLoanAmount'),
@@ -104,13 +160,16 @@ export function createDOMReferences() {
     recastStrategySwitch: getEl('recast-strategy-switch'),
     btnRecastStratRecast: getEl('btn-recast-strat-recast'),
     btnRecastStratExtra: getEl('btn-recast-strat-extra'),
+    btnRecastStratCash: getEl('btn-recast-strat-cash'),
     recastFeeGroup: getEl('recast-fee-group'),
     recastStrategyComparisonBox: getEl('recast-strategy-comparison-box'),
     stratCompLumpSumBadge: getEl('strat-comp-lump-sum-badge'),
     stratCardRecast: getEl('strat-card-recast'),
     stratCardExtra: getEl('strat-card-extra'),
+    stratCardCash: getEl('strat-card-cash'),
     stratRecastActiveTag: getEl('strat-recast-active-tag'),
     stratExtraActiveTag: getEl('strat-extra-active-tag'),
+    stratCashActiveTag: getEl('strat-cash-active-tag'),
     stratRecastPiti: getEl('strat-recast-piti'),
     stratRecastSavings: getEl('strat-recast-savings'),
     stratRecastTerm: getEl('strat-recast-term'),
@@ -120,6 +179,9 @@ export function createDOMReferences() {
     stratExtraTimeSaved: getEl('strat-extra-time-saved'),
     stratExtraInterest: getEl('strat-extra-interest'),
     stratExtraInterestSaved: getEl('strat-extra-interest-saved'),
+    stratCashPiti: getEl('strat-cash-piti'),
+    stratCashKept: getEl('strat-cash-kept'),
+    stratCashTerm: getEl('strat-cash-term'),
     stratCompSummaryText: getEl('strat-comp-summary-text'),
     stratCompBestOfBothNote: getEl('strat-comp-best-of-both-note'),
 
@@ -187,6 +249,7 @@ export function createDOMReferences() {
     paymentLabel30El: getEl('payment-label-30'),
     recastReadout30El: getEl('recast-readout-30'),
     recastTransition30El: getEl('recast-transition-30'),
+    recastToggle30El: getEl('recast-toggle-30'),
     btnRecastPhasePost30El: getEl('btn-recast-phase-post-30'),
     btnRecastPhasePre30El: getEl('btn-recast-phase-pre-30'),
     savedRecastRow30El: getEl('saved-recast-row-30'),
@@ -208,6 +271,7 @@ export function createDOMReferences() {
     paymentLabel15El: getEl('payment-label-15'),
     recastReadout15El: getEl('recast-readout-15'),
     recastTransition15El: getEl('recast-transition-15'),
+    recastToggle15El: getEl('recast-toggle-15'),
     btnRecastPhasePost15El: getEl('btn-recast-phase-post-15'),
     btnRecastPhasePre15El: getEl('btn-recast-phase-pre-15'),
     savedRecastRow15El: getEl('saved-recast-row-15'),
@@ -225,14 +289,34 @@ export function createDOMReferences() {
     legendHoaEl: getEl('legend-hoa'),
     pmiLegendItem: document.querySelector('.id-pmi-item'),
     hoaLegendItem: document.querySelector('.id-hoa-item'),
-    
+
+    // Pay It Off Early accelerator (30-year only)
+    payoffAcceleratorEl: getEl('payoff-accelerator'),
+    payoffAcceleratorCheckbox: getEl('payoff-accelerator-checkbox'),
+    payoffAcceleratorBodyEl: getEl('payoff-accelerator-body'),
+    payoffYearsOffSlider: getEl('payoff-years-off-slider'),
+    payoffTargetYearsEl: getEl('payoff-target-years'),
+    payoffYearsOffLabelEl: getEl('payoff-years-off-label'),
+    payoffExtraLabelEl: getEl('payoff-extra-label'),
+    payoffExtraValueEl: getEl('payoff-extra-value'),
+    payoffNewPiLabelEl: getEl('payoff-new-pi-label'),
+    payoffNewPiValueEl: getEl('payoff-new-pi-value'),
+    payoffInterestSavedValueEl: getEl('payoff-interest-saved-value'),
+    payoffAlreadyMetNoteEl: getEl('payoff-already-met-note'),
+    payoffAlreadyMetYearsEl: getEl('payoff-already-met-years'),
+
     // Donut segments
     segmentPi: document.querySelector('.donut-segment.pi'),
     segmentTax: document.querySelector('.donut-segment.tax'),
     segmentIns: document.querySelector('.donut-segment.ins'),
     segmentPmi: document.querySelector('.donut-segment.pmi'),
     segmentHoa: document.querySelector('.donut-segment.hoa'),
-    
+
+    // Outlook Summary
+    outlookSummaryCard: getEl('outlook-summary-card'),
+    outlookVerdictBadge: getEl('outlook-verdict-badge'),
+    outlookSummaryLines: getEl('outlook-summary-lines'),
+
     // Affordability
     residualCashFlowBanner: getEl('residual-cash-flow-banner'),
     residualCashFlowStandardBox: getEl('residual-cash-flow-standard-box'),
@@ -354,6 +438,7 @@ export function createDOMReferences() {
     recastResultHeadingEl: getEl('recast-result-heading'),
     recastRowsRecastMode: getEl('recast-rows-recast-mode'),
     recastRowsExtraMode: getEl('recast-rows-extra-mode'),
+    recastRowsCashMode: getEl('recast-rows-cash-mode'),
     recastCurrentPaymentEl: getEl('recast-current-payment'),
     recastNewPaymentEl: getEl('recast-new-payment'),
     recastMonthlySavingsEl: getEl('recast-monthly-savings'),
@@ -361,14 +446,41 @@ export function createDOMReferences() {
     recastExtraCurrentPaymentEl: getEl('recast-extra-current-payment'),
     recastExtraTimeSavedEl: getEl('recast-extra-time-saved'),
     recastExtraInterestSavedEl: getEl('recast-extra-interest-saved'),
+    recastCashCurrentPaymentEl: getEl('recast-cash-current-payment'),
+    recastCashKeptAmountEl: getEl('recast-cash-kept-amount'),
     recastTradeoffNoteEl: getEl('recast-tradeoff-note'),
 
     // DTI Sub-Accordion Summaries & Controls
     dtiSummaryInputs: getEl('dti-summary-inputs'),
     dtiSummaryCashflow: getEl('dti-summary-cashflow'),
     dtiSummaryRatios: getEl('dti-summary-ratios'),
+    dtiSummaryAfford: getEl('dti-summary-afford'),
     dtiHeaderCashflow: getEl('dti-header-cashflow'),
-    dtiBodyCashflow: getEl('dti-body-cashflow')
+    dtiBodyCashflow: getEl('dti-body-cashflow'),
+
+    // Max Affordability solver + Cash-to-Close tally outputs
+    creditScoreDtiNoteEl: getEl('credit-score-dti-note'),
+    cashCushionDtiNoteEl: getEl('cash-cushion-dti-note'),
+    maxAffordPhaseNoteEl: getEl('max-afford-phase-note'),
+    maxAffordEmptyStateEl: getEl('max-afford-empty-state'),
+    maxAffordResultBoxEl: getEl('max-afford-result-box'),
+    maxAffordPriceEl: getEl('max-afford-price'),
+    maxAffordLoanEl: getEl('max-afford-loan'),
+    maxAffordPitiEl: getEl('max-afford-piti'),
+    maxAffordBackendDtiEl: getEl('max-afford-backend-dti'),
+    maxAffordFrontendDtiEl: getEl('max-afford-frontend-dti'),
+    cashToCloseDownPaymentEl: getEl('cash-to-close-down-payment'),
+    cashToCloseClosingCostsEl: getEl('cash-to-close-closing-costs'),
+    cashToCloseReservesEl: getEl('cash-to-close-reserves'),
+    cashToCloseReservesLabelEl: getEl('cash-to-close-reserves-label'),
+    cashToCloseProjectRowEl: getEl('cash-to-close-project-row'),
+    cashToCloseProjectEl: getEl('cash-to-close-project'),
+    cashToCloseTotalEl: getEl('cash-to-close-total'),
+    cashToCloseAvailableRowEl: getEl('cash-to-close-available-row'),
+    cashToCloseAvailableEl: getEl('cash-to-close-available'),
+    cashToCloseSurplusRowEl: getEl('cash-to-close-surplus-row'),
+    cashToCloseSurplusLabelEl: getEl('cash-to-close-surplus-label'),
+    cashToCloseSurplusEl: getEl('cash-to-close-surplus')
   };
 }
 
@@ -416,7 +528,8 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
   // 30-Year Outputs
   const isRecastActive30 = isRecastActive && recast30 && recast30.appliedLumpSum > 0;
   if (isRecastActive30) {
-    if (domRefs.recastReadout30El) domRefs.recastReadout30El.style.display = 'flex';
+    if (domRefs.recastReadout30El) setVisible(domRefs.recastReadout30El, true, 'flex');
+    if (domRefs.recastToggle30El) setVisible(domRefs.recastToggle30El, !isExtraStrat, 'flex');
     if (domRefs.btnRecastPhasePost30El) domRefs.btnRecastPhasePost30El.classList.toggle('active', cardPhase30 === 'post');
     if (domRefs.btnRecastPhasePre30El) domRefs.btnRecastPhasePre30El.classList.toggle('active', cardPhase30 === 'pre');
 
@@ -440,7 +553,7 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
       }
 
       if (domRefs.savedRecastRow30El) {
-        domRefs.savedRecastRow30El.style.display = 'flex';
+        setVisible(domRefs.savedRecastRow30El, true, 'flex');
         if (domRefs.savedRecastLabel30El) domRefs.savedRecastLabel30El.textContent = '↳ Saved via House Sale Recast';
         if (domRefs.savedRecastTooltip30El) domRefs.savedRecastTooltip30El.setAttribute('data-tooltip', 'Monthly payment drop and lifetime interest saved after applying house sale proceeds to recast your balance.');
         if (domRefs.savedRecastVal30El) domRefs.savedRecastVal30El.textContent = `-${formatCurrency(monthlySavings30)}/mo`;
@@ -454,15 +567,15 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
       if (domRefs.paymentLabel30El) domRefs.paymentLabel30El.textContent = 'Estimated Monthly';
 
       if (domRefs.savedRecastRow30El) {
-        domRefs.savedRecastRow30El.style.display = 'flex';
+        setVisible(domRefs.savedRecastRow30El, true, 'flex');
         if (domRefs.savedRecastLabel30El) domRefs.savedRecastLabel30El.textContent = '↳ Extra Saved via House Sale Lump Sum';
         if (domRefs.savedRecastTooltip30El) domRefs.savedRecastTooltip30El.setAttribute('data-tooltip', 'Lifetime interest avoided by applying house sale proceeds directly to loan principal.');
         if (domRefs.savedRecastVal30El) domRefs.savedRecastVal30El.textContent = formatCurrency(recast30.extraLifetimeInterestFromRecasting);
       }
     }
   } else {
-    if (domRefs.recastReadout30El) domRefs.recastReadout30El.style.display = 'none';
-    if (domRefs.savedRecastRow30El) domRefs.savedRecastRow30El.style.display = 'none';
+    if (domRefs.recastReadout30El) setVisible(domRefs.recastReadout30El, false);
+    if (domRefs.savedRecastRow30El) setVisible(domRefs.savedRecastRow30El, false);
     if (domRefs.paymentLabel30El) domRefs.paymentLabel30El.textContent = 'Estimated Monthly';
     domRefs.totalPayment30El.textContent = formatCurrency(totalMonthly30);
     domRefs.piPayment30El.textContent = formatCurrency(amort30.regularPi);
@@ -484,9 +597,9 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
   if (totalSaved30 > 0.01 || isRecastActive30) {
     if (totalSaved30 > 0.01) {
       domRefs.interestSavings30El.textContent = `Total Saved ${formatCurrency(totalSaved30)}`;
-      domRefs.interestSavings30El.style.display = 'block';
+      setVisible(domRefs.interestSavings30El, true);
     } else {
-      domRefs.interestSavings30El.style.display = 'none';
+      setVisible(domRefs.interestSavings30El, false);
     }
     const advSavings = getElement('advanced-savings-30');
     if (advSavings) {
@@ -495,10 +608,10 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
       getElement('saved-lump-val-30').textContent = formatCurrency(lumpSumSaved30);
       
       if (biweeklySaved30 > 0.01 && domRefs.savedBiweeklyRow30El) {
-        domRefs.savedBiweeklyRow30El.style.display = 'flex';
+        setVisible(domRefs.savedBiweeklyRow30El, true, 'flex');
         domRefs.savedBiweeklyVal30El.textContent = formatCurrency(biweeklySaved30);
       } else if (domRefs.savedBiweeklyRow30El) {
-        domRefs.savedBiweeklyRow30El.style.display = 'none';
+        setVisible(domRefs.savedBiweeklyRow30El, false);
       }
 
       getElement('total-injected-30').textContent = formatCurrency(
@@ -506,7 +619,7 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
       );
     }
   } else {
-    domRefs.interestSavings30El.style.display = 'none';
+    setVisible(domRefs.interestSavings30El, false);
     const advSavings = getElement('advanced-savings-30');
     if (advSavings) advSavings.style.display = 'none';
   }
@@ -516,15 +629,16 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
     : amort30.monthsSaved;
   if (effectiveMonthsSaved30 > 0) {
     domRefs.timeSaved30El.textContent = formatTimeSaved(effectiveMonthsSaved30);
-    domRefs.timeSavedRow30El.style.display = 'flex';
+    setVisible(domRefs.timeSavedRow30El, true, 'flex');
   } else {
-    domRefs.timeSavedRow30El.style.display = 'none';
+    setVisible(domRefs.timeSavedRow30El, false);
   }
 
   // 15-Year Outputs
   const isRecastActive15 = isRecastActive && recast15 && recast15.appliedLumpSum > 0;
   if (isRecastActive15) {
-    if (domRefs.recastReadout15El) domRefs.recastReadout15El.style.display = 'flex';
+    if (domRefs.recastReadout15El) setVisible(domRefs.recastReadout15El, true, 'flex');
+    if (domRefs.recastToggle15El) setVisible(domRefs.recastToggle15El, !isExtraStrat, 'flex');
     if (domRefs.btnRecastPhasePost15El) domRefs.btnRecastPhasePost15El.classList.toggle('active', cardPhase15 === 'post');
     if (domRefs.btnRecastPhasePre15El) domRefs.btnRecastPhasePre15El.classList.toggle('active', cardPhase15 === 'pre');
 
@@ -548,7 +662,7 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
       }
 
       if (domRefs.savedRecastRow15El) {
-        domRefs.savedRecastRow15El.style.display = 'flex';
+        setVisible(domRefs.savedRecastRow15El, true, 'flex');
         if (domRefs.savedRecastLabel15El) domRefs.savedRecastLabel15El.textContent = '↳ Saved via House Sale Recast';
         if (domRefs.savedRecastTooltip15El) domRefs.savedRecastTooltip15El.setAttribute('data-tooltip', 'Monthly payment drop and lifetime interest saved after applying house sale proceeds to recast your balance.');
         if (domRefs.savedRecastVal15El) domRefs.savedRecastVal15El.textContent = `-${formatCurrency(monthlySavings15)}/mo`;
@@ -562,15 +676,15 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
       if (domRefs.paymentLabel15El) domRefs.paymentLabel15El.textContent = 'Estimated Monthly';
 
       if (domRefs.savedRecastRow15El) {
-        domRefs.savedRecastRow15El.style.display = 'flex';
+        setVisible(domRefs.savedRecastRow15El, true, 'flex');
         if (domRefs.savedRecastLabel15El) domRefs.savedRecastLabel15El.textContent = '↳ Extra Saved via House Sale Lump Sum';
         if (domRefs.savedRecastTooltip15El) domRefs.savedRecastTooltip15El.setAttribute('data-tooltip', 'Lifetime interest avoided by applying house sale proceeds directly to loan principal.');
         if (domRefs.savedRecastVal15El) domRefs.savedRecastVal15El.textContent = formatCurrency(recast15.extraLifetimeInterestFromRecasting);
       }
     }
   } else {
-    if (domRefs.recastReadout15El) domRefs.recastReadout15El.style.display = 'none';
-    if (domRefs.savedRecastRow15El) domRefs.savedRecastRow15El.style.display = 'none';
+    if (domRefs.recastReadout15El) setVisible(domRefs.recastReadout15El, false);
+    if (domRefs.savedRecastRow15El) setVisible(domRefs.savedRecastRow15El, false);
     if (domRefs.paymentLabel15El) domRefs.paymentLabel15El.textContent = 'Estimated Monthly';
     domRefs.totalPayment15El.textContent = formatCurrency(totalMonthly15);
     domRefs.piPayment15El.textContent = formatCurrency(amort15.regularPi);
@@ -592,9 +706,9 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
   if (totalSaved15 > 0.01 || isRecastActive15) {
     if (totalSaved15 > 0.01) {
       domRefs.interestSavings15El.textContent = `Total Saved ${formatCurrency(totalSaved15)}`;
-      domRefs.interestSavings15El.style.display = 'block';
+      setVisible(domRefs.interestSavings15El, true);
     } else {
-      domRefs.interestSavings15El.style.display = 'none';
+      setVisible(domRefs.interestSavings15El, false);
     }
     const advSavings = getElement('advanced-savings-15');
     if (advSavings) {
@@ -603,10 +717,10 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
       getElement('saved-lump-val-15').textContent = formatCurrency(lumpSumSaved15);
       
       if (biweeklySaved15 > 0.01 && domRefs.savedBiweeklyRow15El) {
-        domRefs.savedBiweeklyRow15El.style.display = 'flex';
+        setVisible(domRefs.savedBiweeklyRow15El, true, 'flex');
         domRefs.savedBiweeklyVal15El.textContent = formatCurrency(biweeklySaved15);
       } else if (domRefs.savedBiweeklyRow15El) {
-        domRefs.savedBiweeklyRow15El.style.display = 'none';
+        setVisible(domRefs.savedBiweeklyRow15El, false);
       }
 
       getElement('total-injected-15').textContent = formatCurrency(
@@ -614,7 +728,7 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
       );
     }
   } else {
-    domRefs.interestSavings15El.style.display = 'none';
+    setVisible(domRefs.interestSavings15El, false);
     const advSavings = getElement('advanced-savings-15');
     if (advSavings) advSavings.style.display = 'none';
   }
@@ -624,9 +738,9 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
     : amort15.monthsSaved;
   if (effectiveMonthsSaved15 > 0) {
     domRefs.timeSaved15El.textContent = formatTimeSaved(effectiveMonthsSaved15);
-    domRefs.timeSavedRow15El.style.display = 'flex';
+    setVisible(domRefs.timeSavedRow15El, true, 'flex');
   } else {
-    domRefs.timeSavedRow15El.style.display = 'none';
+    setVisible(domRefs.timeSavedRow15El, false);
   }
 
   // Active term display
@@ -655,7 +769,8 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
 
   // Draw charts
   drawDonutChart(activePI, monthlyTax, monthlyInsurance, monthlyPmi, results.hoaFees, activeTotal, domRefs);
-  
+  updatePayoffAccelerator(results, activeTerm, domRefs);
+
   const activeBankTotal = activeTerm === 30 ? results.bankMonthlyTotal30 : results.bankMonthlyTotal15;
   const activeEffectiveTotal = activeTerm === 30 ? results.effectiveMonthlyTotal30 : results.effectiveMonthlyTotal15;
   const activeExtraOutlay = activeTerm === 30 ? results.extraMonthlyOutlay30 : results.extraMonthlyOutlay15;
@@ -675,6 +790,66 @@ export function updateAllOutputs(results, activeTerm, domRefs) {
   // Draw amortization charts
   drawBurndownChart('burndown-svg-30', amort30, results.baseline30, results.homePrice);
   drawBurndownChart('burndown-svg-15', amort15, results.baseline15, results.homePrice);
+}
+
+/**
+ * Updates the "Pay It Off Early" accelerator inside the Payment Breakdown
+ * card — visible only for the 30-year term. The slider picks how many years
+ * to shave off the loan; this solves for the extra payment (honoring
+ * whichever payment frequency is active in the Extra Payments & Schedule
+ * panel) needed to hit that target, plus the interest it saves.
+ * @param {Object} results - Results from performCalculations()
+ * @param {number} activeTerm - 30 or 15
+ * @param {Object} domRefs - DOM element references
+ */
+export function updatePayoffAccelerator(results, activeTerm, domRefs) {
+  const el = domRefs.payoffAcceleratorEl;
+  if (!el) return;
+
+  if (activeTerm !== 30) {
+    setVisible(el, false);
+    return;
+  }
+  setVisible(el, true, 'flex');
+
+  const isChecked = !!domRefs.payoffAcceleratorCheckbox?.checked;
+  setVisible(domRefs.payoffAcceleratorBodyEl, isChecked);
+  if (!isChecked) return;
+
+  const paymentFrequency = results.paymentFrequency || 'monthly';
+  const isMonthly = paymentFrequency === 'monthly';
+
+  const yearsOff = clamp(parseInt(domRefs.payoffYearsOffSlider?.value, 10) || 15, 1, 25);
+  const targetYears = Math.max(1, CONFIG.LOAN_TERM_30 - yearsOff);
+
+  if (domRefs.payoffTargetYearsEl) domRefs.payoffTargetYearsEl.textContent = targetYears;
+  if (domRefs.payoffYearsOffLabelEl) {
+    domRefs.payoffYearsOffLabelEl.textContent = `${yearsOff} year${yearsOff === 1 ? '' : 's'} sooner`;
+  }
+  if (domRefs.payoffExtraLabelEl) {
+    domRefs.payoffExtraLabelEl.textContent = isMonthly ? 'Extra Per Month' : 'Extra Per Payment';
+  }
+  if (domRefs.payoffNewPiLabelEl) {
+    domRefs.payoffNewPiLabelEl.textContent = isMonthly ? 'New Monthly P&I' : 'New Biweekly P&I';
+  }
+
+  const solved = calcExtraForTargetPayoff(
+    results.loanAmount,
+    results.interest30,
+    CONFIG.LOAN_TERM_30,
+    targetYears,
+    paymentFrequency
+  );
+  const basePayment = isMonthly ? results.amort30.regularPi : results.amort30.biweeklyPi;
+
+  if (domRefs.payoffExtraValueEl) domRefs.payoffExtraValueEl.textContent = formatCurrency(solved.extraPerPayment);
+  if (domRefs.payoffNewPiValueEl) domRefs.payoffNewPiValueEl.textContent = formatCurrency(basePayment + solved.extraPerPayment);
+  if (domRefs.payoffInterestSavedValueEl) domRefs.payoffInterestSavedValueEl.textContent = formatCurrency(solved.interestSaved);
+
+  setVisible(domRefs.payoffAlreadyMetNoteEl, solved.alreadyMet);
+  if (solved.alreadyMet && domRefs.payoffAlreadyMetYearsEl) {
+    domRefs.payoffAlreadyMetYearsEl.textContent = formatTimeSaved(solved.monthsToPayoff) || `${targetYears} years`;
+  }
 }
 
 /**
@@ -794,7 +969,7 @@ function netIncomeCaveat(isNetIncome) {
 export function setIncomeBasisToggleUI(isNetIncome, domRefs) {
   if (domRefs.btnIncomeBasisGross) domRefs.btnIncomeBasisGross.classList.toggle('active', !isNetIncome);
   if (domRefs.btnIncomeBasisNet) domRefs.btnIncomeBasisNet.classList.toggle('active', isNetIncome);
-  if (domRefs.incomeBasisAdjustWrap) domRefs.incomeBasisAdjustWrap.style.display = isNetIncome ? 'block' : 'none';
+  if (domRefs.incomeBasisAdjustWrap) setVisible(domRefs.incomeBasisAdjustWrap, isNetIncome);
 
   const cashFlowGroup = document.getElementById('dti-group-cashflow');
   if (cashFlowGroup) {
@@ -884,7 +1059,7 @@ export function updateIncomeBasisBreakdownUI(isNetIncome, netEstimate, domRefs, 
   if (!domRefs.incomeBasisBreakdownEl) return;
 
   if (!isNetIncome || !netEstimate) {
-    domRefs.incomeBasisBreakdownEl.style.display = 'none';
+    setVisible(domRefs.incomeBasisBreakdownEl, false);
     return;
   }
 
@@ -894,7 +1069,7 @@ export function updateIncomeBasisBreakdownUI(isNetIncome, netEstimate, domRefs, 
     ? ', based on the paycheck figure you entered'
     : ', a national-average estimate — fine-tune it below to match your real paycheck';
 
-  domRefs.incomeBasisBreakdownEl.style.display = 'block';
+  setVisible(domRefs.incomeBasisBreakdownEl, true);
   domRefs.incomeBasisBreakdownEl.textContent =
     `Est. take-home: ${formatCurrency(netMonthly)}/mo (−${formatCurrency(deductionsMonthly)}/mo est. federal tax, FICA & state tax — ~${netEstimate.effectiveDeductionRate.toFixed(1)}% of gross${sourceNote}. Not tax advice — the pills below now reflect this figure instead of gross income.)`;
 }
@@ -1112,11 +1287,11 @@ export function updateResidualCashFlowUI(netMonthlyIncome, monthlyHousingCost, o
   if (!domRefs.residualCashFlowBanner) return;
 
   if (!isNetIncome || netMonthlyIncome <= 0) {
-    domRefs.residualCashFlowBanner.style.display = 'none';
+    setVisible(domRefs.residualCashFlowBanner, false);
     return;
   }
 
-  domRefs.residualCashFlowBanner.style.display = 'block';
+  setVisible(domRefs.residualCashFlowBanner, true);
 
   const isBridgeActive = bridgeData && bridgeData.isBridge;
 
@@ -1424,11 +1599,116 @@ export function updateSellProceedsUI(proceeds, sellProceedsPercent, domRefs) {
     domRefs.sellProceedsBoxEl.classList.toggle('underwater', proceeds.isUnderwater);
   }
   if (domRefs.sellUnderwaterWarningEl) {
-    domRefs.sellUnderwaterWarningEl.style.display = proceeds.isUnderwater ? 'block' : 'none';
+    setVisible(domRefs.sellUnderwaterWarningEl, proceeds.isUnderwater);
   }
 
   setText(domRefs.sellProceedsPercentValueEl, `${Math.round(sellProceedsPercent)}%`);
   setText(domRefs.sellProceedsDollarValueEl, formatCurrency(proceeds.amountToDownPayment));
+}
+
+/**
+ * Renders the "Compare: Sell As-Is Instead?" box from compareSaleStrategies()'s
+ * output. Pass null (as-is value not yet set) to leave the box at its dashed
+ * placeholder state instead of showing a misleading $0 comparison.
+ * @param {{ traditional: Object, asIs: Object, extraCarryingCost: number, netAdvantage: number }|null} comparison
+ * @param {Object} domRefs
+ */
+export function updateAsIsCompareUI(comparison, domRefs) {
+  const setText = (el, text) => { if (el) el.textContent = text; };
+  // Highlights whichever strategy row the verdict favors (green + bold) and
+  // dims the other, so the winner is visible at a glance without having to
+  // read and sign-interpret the dollar figures. `asIsWins === null` (no
+  // comparison yet) clears both.
+  const setWinner = (asIsWins) => {
+    if (domRefs.aisRowTraditionalEl) {
+      domRefs.aisRowTraditionalEl.classList.toggle('ais-winner', asIsWins === false);
+      domRefs.aisRowTraditionalEl.classList.toggle('ais-loser', asIsWins === true);
+    }
+    if (domRefs.aisRowAsIsEl) {
+      domRefs.aisRowAsIsEl.classList.toggle('ais-winner', asIsWins === true);
+      domRefs.aisRowAsIsEl.classList.toggle('ais-loser', asIsWins === false);
+    }
+  };
+
+  if (!comparison) {
+    setText(domRefs.aisLineTraditionalEl, '$-.--');
+    setText(domRefs.aisLineAsIsEl, '$-.--');
+    setText(domRefs.aisLineCarryingEl, '$-.--');
+    setText(domRefs.aisLineVerdictLabelEl, 'As-Is Wins');
+    setText(domRefs.aisLineVerdictEl, '$-.--');
+    setWinner(null);
+    return;
+  }
+
+  const { traditional, asIs, extraCarryingCost, netAdvantage } = comparison;
+  setText(domRefs.aisLineTraditionalEl, formatSignedCurrency(traditional.netProceeds));
+  setText(domRefs.aisLineAsIsEl, formatSignedCurrency(asIs.netProceeds));
+  setText(domRefs.aisLineCarryingEl, formatSignedCurrency(-extraCarryingCost));
+
+  const asIsWins = netAdvantage >= 0;
+  // "X Wins by $Y" reads unambiguously on its own — no need to decode a
+  // static accent color to tell whether the number is good or bad. The
+  // " by " connector lives in the HTML (static text between the label and
+  // value spans) so this only ever sets the two words that change.
+  setText(domRefs.aisLineVerdictLabelEl, asIsWins ? 'As-Is Wins' : 'Traditional Wins');
+  setText(domRefs.aisLineVerdictEl, formatCurrency(Math.abs(netAdvantage)));
+  setWinner(asIsWins);
+}
+
+/**
+ * Shows/hides the "Apply As-Is Pricing to Sale" button and its "Revert"
+ * counterpart on the As-Is compare box, based on whether a comparison is
+ * currently showing and whether the user has already applied it. Once
+ * applied, the traditional/as-is/carrying-cost/verdict rows are hidden too
+ * — with asIsSaleValue reset back to 0 (see handleApplyAsIsPricing()) they'd
+ * otherwise just sit there showing stale "$-.--" placeholders next to the
+ * confirmation note, which reads as broken rather than applied.
+ * @param {boolean} hasComparison - true when compareSaleStrategies() has a value to show (asIsSaleValue > 0)
+ * @param {boolean} isApplied - true once the user has clicked Apply and it hasn't been reverted since
+ * @param {Object} domRefs
+ */
+export function updateAsIsApplyButtonUI(hasComparison, isApplied, domRefs) {
+  setVisible(domRefs.aisCompareRowsEl, !isApplied, 'block');
+  setVisible(domRefs.aisApplyBtn, hasComparison && !isApplied, 'block');
+  setVisible(domRefs.aisAppliedNoteEl, isApplied, 'block');
+}
+
+/**
+ * Renders the "Keep as Rental" DTI-offset box from calculateRentalOffset()'s
+ * output. Pass null (mode not active) to leave the box at its dashed
+ * placeholder state.
+ * @param {{ offsetRent: number, departureMortgagePayment: number, netPosition: number,
+ *   qualifyingHousingObligation: number, surplusIncome: number }|null} rentalOffset
+ * @param {Object} domRefs
+ */
+export function updateRentalOffsetUI(rentalOffset, domRefs) {
+  const setText = (el, text) => { if (el) el.textContent = text; };
+
+  if (!rentalOffset) {
+    setText(domRefs.rentalLineOffsetRentEl, '$-.--');
+    setText(domRefs.rentalLineDeparturePaymentEl, '$-.--');
+    setText(domRefs.rentalLineVerdictLabelEl, 'Counted Against Your DTI');
+    setText(domRefs.rentalLineVerdictEl, '$-.--');
+    if (domRefs.rentalSurplusNoteEl) setVisible(domRefs.rentalSurplusNoteEl, false);
+    return;
+  }
+
+  const { offsetRent, departureMortgagePayment, netPosition, qualifyingHousingObligation, surplusIncome } = rentalOffset;
+  setText(domRefs.rentalLineOffsetRentEl, formatCurrency(offsetRent));
+  setText(domRefs.rentalLineDeparturePaymentEl, formatSignedCurrency(-departureMortgagePayment));
+
+  const covered = netPosition >= 0;
+  setText(domRefs.rentalLineVerdictLabelEl, covered ? 'Excluded From Your DTI' : 'Counted Against Your DTI');
+  setText(domRefs.rentalLineVerdictEl, covered ? '$0.00' : formatCurrency(qualifyingHousingObligation));
+
+  if (domRefs.rentalSurplusNoteEl) {
+    if (covered && surplusIncome > 0) {
+      domRefs.rentalSurplusNoteEl.textContent = `Rent covers the payment with about ${formatCurrency(surplusIncome)}/mo to spare — not counted as extra qualifying income by default, since not every lender allows that.`;
+      setVisible(domRefs.rentalSurplusNoteEl, true);
+    } else {
+      setVisible(domRefs.rentalSurplusNoteEl, false);
+    }
+  }
 }
 
 /**
@@ -1463,13 +1743,17 @@ export function updateStaleValueWarning(updatedAtMs, domRefs) {
  * @param {number} totalAmount
  * @param {number} percent
  * @param {Object} domRefs
- * @param {'sellFirst'|'bridgeLoan'} [mode='sellFirst']
- * @param {'bridge'|'heloc'} [financingType='bridge'] - Only relevant when mode is 'bridgeLoan'
+ * @param {'sellFirst'|'bridgeLoan'|'rental'} [mode='sellFirst']
+ * @param {'bridge'|'heloc'} [financingType='bridge'] - Financing sub-type: Bridge Loan mode's own Bridge/HELOC choice, or (when mode is 'rental') the rental funding sub-choice — 'heloc' means a HELOC draw, anything else means Cash Only (which never gets here since otherAmount is 0 and the box just hides).
  */
 export function updateDownPaymentBreakdownUI(cash, otherAmount, totalAmount, percent, domRefs, mode = 'sellFirst', financingType = 'bridge') {
   const formatCurrencyLocal = (val) => '$' + Math.round(val).toLocaleString();
   const isBridge = mode === 'bridgeLoan';
-  const isHeloc = isBridge && financingType === CONFIG.FINANCING_TYPE_HELOC;
+  const isRental = mode === 'rental';
+  const isHeloc = (isBridge || isRental) && financingType === CONFIG.FINANCING_TYPE_HELOC;
+  // A rental HELOC gets the same "borrowed debt" styling as a Bridge Loan's
+  // HELOC sub-choice (amber), distinct from actual sale proceeds (cyan).
+  const isLoanStyled = isBridge || (isRental && isHeloc);
   const pillLabel = isHeloc ? '🏦 HELOC' : isBridge ? '🌉 Bridge' : '🏡 House';
 
   if (domRefs.dpBreakdownHouse) {
@@ -1513,9 +1797,9 @@ export function updateDownPaymentBreakdownUI(cash, otherAmount, totalAmount, per
         : "Net sale proceeds from your current home applied to this down payment (calculated in the 'Have a house to sell?' panel above)."
     );
   }
-  const otherColor = isBridge ? 'var(--color-moderate)' : 'var(--accent-cyan)';
-  const otherBg = isBridge ? 'rgba(245, 158, 11, 0.05)' : 'rgba(6, 182, 212, 0.05)';
-  const otherBorder = isBridge ? 'rgba(245, 158, 11, 0.25)' : 'rgba(6, 182, 212, 0.25)';
+  const otherColor = isLoanStyled ? 'var(--color-moderate)' : 'var(--accent-cyan)';
+  const otherBg = isLoanStyled ? 'rgba(245, 158, 11, 0.05)' : 'rgba(6, 182, 212, 0.05)';
+  const otherBorder = isLoanStyled ? 'rgba(245, 158, 11, 0.25)' : 'rgba(6, 182, 212, 0.25)';
   if (domRefs.houseSaleDownPaymentPrefixEl) domRefs.houseSaleDownPaymentPrefixEl.style.color = otherColor;
   if (domRefs.houseSaleDownPaymentInput) domRefs.houseSaleDownPaymentInput.style.color = otherColor;
   if (domRefs.houseSaleDownPaymentBoxEl) {
@@ -1538,7 +1822,7 @@ export function updateBridgeHoldingCostUI(bridgeCosts, newMortgagePayment, domRe
   const combined = depMonthly + bridgeCosts.monthlyInterestOnlyPayment + newMortgagePayment;
 
   if (domRefs?.bridgeRowDepartureMortgageEl) {
-    domRefs.bridgeRowDepartureMortgageEl.style.display = depMonthly > 0 ? 'flex' : 'none';
+    setVisible(domRefs.bridgeRowDepartureMortgageEl, depMonthly > 0, 'flex');
   }
   setText(domRefs?.bridgeDepartureMortgagePaymentEl, formatCurrency(depMonthly));
   setText(domRefs?.bridgeMonthlyInterestEl, formatCurrency(bridgeCosts.monthlyInterestOnlyPayment));
@@ -1720,7 +2004,7 @@ export function updateBridgeHoldingBackEndDtiUI(combinedMonthlyCost, otherMonthl
 export function updateBridgeCltvWarning(bridgeLoanAmount, maxTypicalBridge, domRefs, maxCltvPercent = 80, isHeloc = false) {
   if (!domRefs.bridgeCltvWarningEl) return;
   const exceeds = bridgeLoanAmount > 0 && maxTypicalBridge >= 0 && bridgeLoanAmount > maxTypicalBridge;
-  domRefs.bridgeCltvWarningEl.style.display = exceeds ? 'block' : 'none';
+  setVisible(domRefs.bridgeCltvWarningEl, exceeds);
   if (exceeds) {
     const label = isHeloc ? 'HELOC' : 'bridge loan';
     domRefs.bridgeCltvWarningEl.textContent =
@@ -1866,14 +2150,23 @@ export function getCollapsedSectionsState() {
 /**
  * Applies a saved (or default) collapsed/expanded state to every
  * collapsible card on load. A section key missing from `collapsedMap`
- * (e.g. loading a save from before this field existed) defaults to
- * collapsed, matching every card's fresh-page-load state.
+ * (e.g. loading a save from before this field existed) falls back to
+ * OPEN_BY_DEFAULT below — kept in sync with config.js's DEFAULTS.collapsedSections
+ * so a returning visitor's older saved blob (missing a newer key, like the
+ * DTI sub-groups added after their save) still gets the same default a
+ * fresh visitor would.
  * @param {Object<string, boolean>} collapsedMap - true = collapsed, per section key
  */
+// 'affordability' is the outer DTI card, not one of its four inner
+// sub-groups (dtiGroupInputs/dtiGroupCashflow/dtiGroupRatios/dtiGroupAfford)
+// — left open so its live summary badges stay glanceable without a click,
+// while the detail-heavy sub-groups inside it stay collapsed.
+const OPEN_BY_DEFAULT_SECTION_KEYS = new Set(['property', 'downPayment', 'affordability']);
+
 export function applyCollapsedSectionsState(collapsedMap) {
   document.querySelectorAll('.collapsible-header[data-section-key]').forEach(header => {
     const key = header.dataset.sectionKey;
-    const defaultCollapsed = (key === 'extraPayments' || key === 'burndownChart' || key === 'dtiGroupCashflow');
+    const defaultCollapsed = !OPEN_BY_DEFAULT_SECTION_KEYS.has(key);
     const isCollapsed = collapsedMap && Object.prototype.hasOwnProperty.call(collapsedMap, key)
       ? !!collapsedMap[key]
       : defaultCollapsed;
@@ -1933,6 +2226,203 @@ export function updateDtiAccordionSummaries(results, domRefs) {
     const backBadge = domRefs.backendDtiBadgeEl ? domRefs.backendDtiBadgeEl.textContent : '';
     domRefs.dtiSummaryRatios.textContent = `${frontText} Front • ${backText} Back${backBadge ? ' (' + backBadge + ')' : ''}`;
   }
+
+  // Group 4: Max Affordability & Cash to Close Summary — reads the already-
+  // rendered output text (same pattern Group 2 uses for residual cash flow)
+  // rather than needing maxAfford/cashToClose threaded through `results`.
+  if (domRefs.dtiSummaryAfford) {
+    const priceText = domRefs.maxAffordPriceEl ? domRefs.maxAffordPriceEl.textContent : '';
+    const totalText = domRefs.cashToCloseTotalEl ? domRefs.cashToCloseTotalEl.textContent : '';
+    if (priceText && priceText !== '$-.--') {
+      domRefs.dtiSummaryAfford.textContent = `${priceText} Max${totalText ? ' • ' + totalText + ' Cash' : ''}`;
+    } else {
+      domRefs.dtiSummaryAfford.textContent = 'Set a target DTI';
+    }
+  }
+}
+
+/**
+ * Renders the Outlook Summary card: a handful of plain-language read lines
+ * plus one overall verdict badge, from generateOutlookSummary()'s output in
+ * calculator.js. The card's outline glows green/amber/red via the
+ * outlook-verdict-good/-moderate/-high class this applies to the card
+ * itself, matching the same tone as the verdict badge.
+ * @param {{ verdict: 'good'|'moderate'|'high', verdictLabel: string, verdictClass: string,
+ *   lines: Array<{tone: string, icon: string, text: string}> }} summary
+ * @param {Object} domRefs
+ */
+export function updateOutlookSummaryUI(summary, domRefs) {
+  if (!domRefs?.outlookSummaryCard || !domRefs.outlookSummaryLines || !summary) return;
+
+  domRefs.outlookSummaryCard.classList.remove('outlook-verdict-good', 'outlook-verdict-moderate', 'outlook-verdict-high');
+  domRefs.outlookSummaryCard.classList.add(`outlook-verdict-${summary.verdict}`);
+
+  if (domRefs.outlookVerdictBadge) {
+    domRefs.outlookVerdictBadge.textContent = summary.verdictLabel;
+    domRefs.outlookVerdictBadge.className = `badge-dti ${summary.verdictClass}`;
+  }
+
+  const toneClass = {
+    good: 'outlook-line-good',
+    moderate: 'outlook-line-moderate',
+    high: 'outlook-line-high',
+    neutral: 'outlook-line-neutral'
+  };
+
+  domRefs.outlookSummaryLines.innerHTML = (summary.lines || []).map(line => `
+    <div class="outlook-summary-line ${toneClass[line.tone] || 'outlook-line-neutral'}">
+      <svg class="icon" aria-hidden="true"><use href="#${line.icon}-mono"/></svg>
+      <span>${line.text}</span>
+    </div>
+  `).join('');
+}
+
+/**
+ * Renders the credit-score band's disclaimer note next to the Target DTI
+ * field — informational only, never implies the suggested ceiling is
+ * guaranteed. See creditScoreToSuggestedDTI() in calculator.js.
+ * @param {{ suggestedDTI: number|null, label: string, note: string }} suggestion
+ * @param {Object} domRefs
+ */
+export function updateCreditScoreDtiNoteUI(suggestion, domRefs) {
+  if (!domRefs?.creditScoreDtiNoteEl) return;
+  if (!suggestion || !suggestion.note) {
+    domRefs.creditScoreDtiNoteEl.textContent = '';
+    setVisible(domRefs.creditScoreDtiNoteEl, false);
+    return;
+  }
+  const prefix = suggestion.suggestedDTI !== null ? `Suggests ~${suggestion.suggestedDTI}% back-end DTI. ` : '';
+  domRefs.creditScoreDtiNoteEl.textContent = `${prefix}${suggestion.note}`;
+  setVisible(domRefs.creditScoreDtiNoteEl, true);
+}
+
+/**
+ * Renders live guidance on the Target Back-End DTI field itself — most
+ * people typing a number in here have no idea what's realistic to a bank.
+ * Reuses the exact same healthy/moderate/high-risk logic and copy already
+ * used for a computed back-end DTI (getBackEndDTIStatus), just applied to
+ * the TARGET number instead of an actual result — "at 50%, your total
+ * monthly debt load exceeds the 45% threshold most lenders use..." reads
+ * naturally either way. Always evaluated against gross/lender bands
+ * (isNetIncome=false) regardless of the Gross/Net toggle elsewhere, since
+ * this is specifically about bank acceptability, not personal budget comfort.
+ * @param {number} targetDTI
+ * @param {Object} domRefs
+ */
+export function updateTargetDtiGuidanceUI(targetDTI, domRefs) {
+  if (!domRefs?.targetDtiStatusBadgeEl) return;
+  const status = getBackEndDTIStatus(Math.max(0, targetDTI || 0), false);
+  domRefs.targetDtiStatusBadgeEl.textContent = status.label;
+  domRefs.targetDtiStatusBadgeEl.className = 'badge-dti';
+  domRefs.targetDtiStatusBadgeEl.classList.add(status.className);
+  if (domRefs.targetDtiStatusDescEl) {
+    domRefs.targetDtiStatusDescEl.textContent = status.description;
+  }
+}
+
+/**
+ * Renders the Max Affordability solver output: the maximum purchase price
+ * and loan amount that hit the target back-end DTI given current inputs.
+ * General-purpose — works for a plain purchase and for the bridge/HELOC
+ * holding period alike (isHoldingPhase just swaps the caption).
+ * @param {Object|null} maxAfford - solveMaxAffordablePrice() result, or null if there's no room
+ * @param {boolean} isHoldingPhase - true while actively carrying both homes (bridge/HELOC)
+ * @param {Object} domRefs
+ */
+export function updateMaxAffordabilityUI(maxAfford, isHoldingPhase, domRefs) {
+  if (!domRefs) return;
+
+  if (domRefs.maxAffordPhaseNoteEl) {
+    domRefs.maxAffordPhaseNoteEl.textContent = isHoldingPhase
+      ? 'While carrying both homes — includes your departure mortgage + bridge/HELOC interest-only payment as existing debt.'
+      : 'Standard (new home only).';
+  }
+
+  const hasResult = !!maxAfford;
+  setVisible(domRefs.maxAffordResultBoxEl, hasResult);
+  setVisible(domRefs.maxAffordEmptyStateEl, !hasResult);
+
+  if (!hasResult) {
+    if (domRefs.maxAffordPriceEl) domRefs.maxAffordPriceEl.textContent = '$-.--';
+    return;
+  }
+
+  if (domRefs.maxAffordPriceEl) domRefs.maxAffordPriceEl.textContent = formatCurrency(maxAfford.maxPurchasePrice);
+  if (domRefs.maxAffordLoanEl) domRefs.maxAffordLoanEl.textContent = formatCurrency(maxAfford.maxLoanAmount);
+  if (domRefs.maxAffordPitiEl) domRefs.maxAffordPitiEl.textContent = `${formatCurrency(maxAfford.piti)}/mo`;
+
+  const status = getBackEndDTIStatus(maxAfford.backEndDTI, false);
+  if (domRefs.maxAffordBackendDtiEl) {
+    domRefs.maxAffordBackendDtiEl.textContent = `${maxAfford.backEndDTI.toFixed(1)}%`;
+    domRefs.maxAffordBackendDtiEl.className = 'badge-dti';
+    domRefs.maxAffordBackendDtiEl.classList.add(status.className);
+  }
+  if (domRefs.maxAffordFrontendDtiEl) {
+    domRefs.maxAffordFrontendDtiEl.textContent = `${maxAfford.frontEndDTI.toFixed(1)}% front-end`;
+  }
+}
+
+/**
+ * Renders the Cash-to-Close tally: down payment cash + closing costs +
+ * post-closing reserves + any extra project cash, kept deliberately
+ * separate from any HELOC/bridge draw (see calculateCashToClose() in
+ * calculator.js). Reflects the actual price/down payment entered elsewhere
+ * in the calculator, not the Max Affordability solver's hypothetical ceiling.
+ * When cashAvailable is entered (> 0), also renders it alongside a
+ * surplus/shortfall row driven by evaluateCashCushion()'s result.
+ * @param {Object} cashToClose - calculateCashToClose() result
+ * @param {Object} domRefs
+ * @param {number} [cashAvailable=0] - liquid cash the user reports having on hand
+ * @param {{ surplus: number }|null} [cushion=null] - evaluateCashCushion() result
+ */
+export function updateCashToCloseUI(cashToClose, domRefs, cashAvailable = 0, cushion = null) {
+  if (!domRefs || !cashToClose) return;
+
+  if (domRefs.cashToCloseDownPaymentEl) domRefs.cashToCloseDownPaymentEl.textContent = formatCurrency(cashToClose.downPaymentCash);
+  if (domRefs.cashToCloseClosingCostsEl) domRefs.cashToCloseClosingCostsEl.textContent = formatCurrency(cashToClose.closingCostsDollars);
+  if (domRefs.cashToCloseReservesEl) domRefs.cashToCloseReservesEl.textContent = formatCurrency(cashToClose.reserveDollars);
+
+  const hasProject = cashToClose.extraProjectCash > 0;
+  setVisible(domRefs.cashToCloseProjectRowEl, hasProject);
+  if (hasProject && domRefs.cashToCloseProjectEl) {
+    domRefs.cashToCloseProjectEl.textContent = formatCurrency(cashToClose.extraProjectCash);
+  }
+
+  if (domRefs.cashToCloseTotalEl) domRefs.cashToCloseTotalEl.textContent = formatCurrency(cashToClose.totalCashNeeded);
+
+  const hasCashAvailable = cashAvailable > 0;
+  setVisible(domRefs.cashToCloseAvailableRowEl, hasCashAvailable);
+  setVisible(domRefs.cashToCloseSurplusRowEl, hasCashAvailable);
+  if (hasCashAvailable && cushion) {
+    if (domRefs.cashToCloseAvailableEl) domRefs.cashToCloseAvailableEl.textContent = formatCurrency(cashAvailable);
+    const isShortfall = cushion.surplus < 0;
+    if (domRefs.cashToCloseSurplusLabelEl) domRefs.cashToCloseSurplusLabelEl.textContent = isShortfall ? 'Shortfall' : 'Surplus';
+    if (domRefs.cashToCloseSurplusEl) {
+      domRefs.cashToCloseSurplusEl.textContent = formatCurrency(Math.abs(cushion.surplus));
+      domRefs.cashToCloseSurplusEl.className = 'badge-dti';
+      domRefs.cashToCloseSurplusEl.classList.add(isShortfall ? 'bg-high' : 'bg-healthy');
+    }
+  }
+}
+
+/**
+ * Renders a note under the Credit Score picker when cash on hand comfortably
+ * clears the Cash-to-Close total by a few extra months of reserves — a real
+ * lender "compensating factor" concept, informational only. Never writes to
+ * the Target DTI field itself. See evaluateCashCushion() in calculator.js.
+ * @param {{ surplus: number, extraReserveMonths: number, suggestedDTIBonus: number }|null} cushion
+ * @param {number} cashAvailable
+ * @param {Object} domRefs
+ */
+export function updateCashCushionNoteUI(cushion, cashAvailable, domRefs) {
+  if (!domRefs?.cashCushionDtiNoteEl) return;
+  if (!cushion || !(cashAvailable > 0) || cushion.suggestedDTIBonus <= 0) {
+    domRefs.cashCushionDtiNoteEl.textContent = '';
+    setVisible(domRefs.cashCushionDtiNoteEl, false);
+    return;
+  }
+  domRefs.cashCushionDtiNoteEl.textContent = `Your cash on hand covers closing with about ${cushion.extraReserveMonths.toFixed(1)} extra months of reserves to spare — some lenders weigh strong reserves like this as a compensating factor, worth roughly +${cushion.suggestedDTIBonus}pp on the DTI ceiling above. Not a guarantee.`;
+  setVisible(domRefs.cashCushionDtiNoteEl, true);
 }
 
 /**
@@ -1947,15 +2437,19 @@ export function expandDtiCashFlowGroup(domRefs) {
 }
 
 /**
- * Toggles active styling on the Sale Proceeds Strategy switch (Recast vs Extra Payment)
- * @param {'recast'|'extraPayment'} strategy
+ * Toggles active styling on the Sale Proceeds Strategy switch (Recast vs Extra Payment vs Keep as Cash)
+ * @param {'recast'|'extraPayment'|'keepCash'} strategy
  * @param {Object} domRefs
  */
 export function setRecastStrategyUI(strategy, domRefs) {
   const isExtra = strategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT;
-  if (domRefs.btnRecastStratRecast) domRefs.btnRecastStratRecast.classList.toggle('active', !isExtra);
+  const isCash = strategy === CONFIG.SALE_PAYOFF_STRATEGY_KEEP_CASH;
+  const isRecast = !isExtra && !isCash;
+  if (domRefs.btnRecastStratRecast) domRefs.btnRecastStratRecast.classList.toggle('active', isRecast);
   if (domRefs.btnRecastStratExtra) domRefs.btnRecastStratExtra.classList.toggle('active', isExtra);
-  if (domRefs.recastFeeGroup) domRefs.recastFeeGroup.style.display = isExtra ? 'none' : 'block';
+  if (domRefs.btnRecastStratCash) domRefs.btnRecastStratCash.classList.toggle('active', isCash);
+  // No lender recast fee applies unless the money is actually being recast.
+  if (domRefs.recastFeeGroup) domRefs.recastFeeGroup.style.display = isRecast ? 'block' : 'none';
 }
 
 /**
@@ -1967,39 +2461,53 @@ export function setRecastStrategyUI(strategy, domRefs) {
  * @param {Object} recast - Result of calculateRecast()
  * @param {Object} domRefs
  * @param {number} [newMortgagePaymentPiti=0]
- * @param {'recast'|'extraPayment'} [recastStrategy='recast']
+ * @param {'recast'|'extraPayment'|'keepCash'} [recastStrategy='recast']
  */
 export function updateRecastSummaryUI(proceeds, bridgeLoanAmount, recastFee, recast, domRefs, newMortgagePaymentPiti = 0, recastStrategy = CONFIG.SALE_PAYOFF_STRATEGY_RECAST) {
   const setText = (el, text) => { if (el) el.textContent = text; };
   const availableAfterBridge = proceeds.netProceeds - bridgeLoanAmount;
   const isExtra = recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT;
+  const isCash = recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_KEEP_CASH;
+  const isRecast = !isExtra && !isCash;
+  // Keep as Cash never touches the loan, so nothing is ever "applied" —
+  // the caller already fed calculateRecast() a $0 lump sum for this
+  // strategy, so recast.appliedLumpSum/monthlySavings/etc. all come back
+  // as their unchanged/no-op values. The full leftover amount is shown
+  // separately below as "Cash Kept".
+  const cashKeptAmount = Math.max(0, availableAfterBridge);
 
   setText(domRefs.recastLineNetProceedsEl, formatSignedCurrency(proceeds.netProceeds));
   setText(domRefs.recastLineBridgePayoffEl, formatSignedCurrency(-bridgeLoanAmount));
   setText(domRefs.recastAvailableEl, formatSignedCurrency(availableAfterBridge));
 
-  if (domRefs.recastFeeRowEl) domRefs.recastFeeRowEl.style.display = isExtra ? 'none' : 'flex';
-  setText(domRefs.recastLineFeeEl, formatSignedCurrency(isExtra ? 0 : -recastFee));
+  // No lender recast fee applies unless the money is actually being recast.
+  if (domRefs.recastFeeRowEl) domRefs.recastFeeRowEl.style.display = isRecast ? 'flex' : 'none';
+  setText(domRefs.recastLineFeeEl, formatSignedCurrency(isRecast ? -recastFee : 0));
 
-  const appliedLumpSum = isExtra ? Math.max(0, availableAfterBridge) : recast.appliedLumpSum;
-  setText(domRefs.recastLumpSumEl, formatCurrency(appliedLumpSum));
-  setText(domRefs.recastLumpSumLabelEl, isExtra ? 'Extra Principal Lump Sum Applied' : 'Recast Lump Sum Applied to Principal');
+  const appliedLumpSum = isCash ? 0 : (isExtra ? Math.max(0, availableAfterBridge) : recast.appliedLumpSum);
+  setText(domRefs.recastLumpSumEl, formatCurrency(isCash ? cashKeptAmount : appliedLumpSum));
+  setText(domRefs.recastLumpSumLabelEl, isCash
+    ? 'Cash Kept (Not Applied to Loan)'
+    : (isExtra ? 'Extra Principal Lump Sum Applied' : 'Recast Lump Sum Applied to Principal'));
 
   if (domRefs.recastMinLumpWarningEl) {
-    const tooSmall = !isExtra && appliedLumpSum > 0 && appliedLumpSum < CONFIG.RECAST_TYPICAL_MIN_LUMP_SUM;
-    domRefs.recastMinLumpWarningEl.style.display = tooSmall ? 'block' : 'none';
+    const tooSmall = isRecast && appliedLumpSum > 0 && appliedLumpSum < CONFIG.RECAST_TYPICAL_MIN_LUMP_SUM;
+    setVisible(domRefs.recastMinLumpWarningEl, tooSmall);
     if (tooSmall) {
       domRefs.recastMinLumpWarningEl.textContent =
         `⚠ Most lenders want at least ${formatCurrencyLocalNoDecimals(CONFIG.RECAST_TYPICAL_MIN_LUMP_SUM)} applied to recast a loan — this amount may not qualify.`;
     }
   }
 
-  setText(domRefs.recastResultHeadingEl, isExtra ? 'Payoff Acceleration After House Sale' : 'Monthly Payment After Recast');
+  setText(domRefs.recastResultHeadingEl, isCash
+    ? 'No Change to Your Loan — Cash Kept'
+    : (isExtra ? 'Payoff Acceleration After House Sale' : 'Monthly Payment After Recast'));
 
-  if (domRefs.recastRowsRecastMode) domRefs.recastRowsRecastMode.style.display = isExtra ? 'none' : 'block';
-  if (domRefs.recastRowsExtraMode) domRefs.recastRowsExtraMode.style.display = isExtra ? 'block' : 'none';
+  if (domRefs.recastRowsRecastMode) domRefs.recastRowsRecastMode.style.display = isRecast ? 'block' : 'none';
+  if (domRefs.recastRowsExtraMode) setVisible(domRefs.recastRowsExtraMode, isExtra);
+  if (domRefs.recastRowsCashMode) setVisible(domRefs.recastRowsCashMode, isCash);
 
-  if (!isExtra) {
+  if (isRecast) {
     setText(domRefs.recastCurrentPaymentEl, formatCurrency(recast.currentMonthlyPI));
     setText(domRefs.recastNewPaymentEl, formatCurrency(recast.newMonthlyPI));
     setText(domRefs.recastMonthlySavingsEl, formatCurrency(recast.monthlySavings));
@@ -2008,15 +2516,26 @@ export function updateRecastSummaryUI(proceeds, bridgeLoanAmount, recastFee, rec
       const newTotalPiti = Math.max(0, newMortgagePaymentPiti - recast.monthlySavings);
       setText(domRefs.recastNewPitiEl, formatCurrency(newTotalPiti));
     }
-  } else {
+  } else if (isExtra) {
     setText(domRefs.recastExtraCurrentPaymentEl, formatCurrency(recast.currentMonthlyPI));
     const monthsSaved = Math.round(recast.monthsLaterPayoffFromRecasting);
     setText(domRefs.recastExtraTimeSavedEl, formatTimeSaved(monthsSaved));
     setText(domRefs.recastExtraInterestSavedEl, formatCurrency(recast.extraLifetimeInterestFromRecasting));
+  } else {
+    setText(domRefs.recastCashCurrentPaymentEl, formatCurrency(recast.currentMonthlyPI));
+    setText(domRefs.recastCashKeptAmountEl, formatCurrency(cashKeptAmount));
   }
 
   if (domRefs.recastTradeoffNoteEl) {
-    if (appliedLumpSum > 0 && recast.monthsLaterPayoffFromRecasting > 0.5) {
+    if (isCash) {
+      if (cashKeptAmount > 0) {
+        domRefs.recastTradeoffNoteEl.style.display = 'block';
+        domRefs.recastTradeoffNoteEl.textContent =
+          `Heads up: applying this ${formatCurrency(cashKeptAmount)} to the new loan instead — either recasting to lower your required payment, or as an extra principal payment to pay it off sooner — would put it to work reducing debt. Keeping it as cash trades either benefit for money in hand.`;
+      } else {
+        domRefs.recastTradeoffNoteEl.style.display = 'none';
+      }
+    } else if (appliedLumpSum > 0 && recast.monthsLaterPayoffFromRecasting > 0.5) {
       domRefs.recastTradeoffNoteEl.style.display = 'block';
       if (!isExtra) {
         domRefs.recastTradeoffNoteEl.textContent =
@@ -2039,7 +2558,7 @@ export function updateRecastSummaryUI(proceeds, bridgeLoanAmount, recastFee, rec
  * @param {Object} recast - Result of calculateRecast()
  * @param {Object} proceeds - Result of calculateSaleProceeds()
  * @param {number} bridgeLoanAmount
- * @param {'recast'|'extraPayment'} recastStrategy
+ * @param {'recast'|'extraPayment'|'keepCash'} recastStrategy
  * @param {Object} domRefs
  */
 export function updateStrategyComparisonUI(recast, proceeds, bridgeLoanAmount, recastStrategy, domRefs) {
@@ -2048,6 +2567,8 @@ export function updateStrategyComparisonUI(recast, proceeds, bridgeLoanAmount, r
   const setText = (el, text) => { if (el) el.textContent = text; };
   const availableAfterBridge = Math.max(0, proceeds.netProceeds - bridgeLoanAmount);
   const isExtra = recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_EXTRA_PAYMENT;
+  const isCash = recastStrategy === CONFIG.SALE_PAYOFF_STRATEGY_KEEP_CASH;
+  const isRecast = !isExtra && !isCash;
 
   const formatDuration = (totalMonths) => {
     const m = Math.max(0, Math.round(totalMonths));
@@ -2058,21 +2579,29 @@ export function updateStrategyComparisonUI(recast, proceeds, bridgeLoanAmount, r
     return `${mos} mos`;
   };
 
-  // Header badge showing applied net proceeds
-  setText(domRefs.stratCompLumpSumBadge, `Applied proceeds: ${formatCurrency(availableAfterBridge)}`);
+  // Header badge — note this always reads as the full leftover amount (what
+  // Recast/Extra Payment WOULD apply), not what's actually applied under the
+  // currently-selected strategy, so the three columns below stay directly
+  // comparable no matter which one is active.
+  setText(domRefs.stratCompLumpSumBadge, `Leftover proceeds: ${formatCurrency(availableAfterBridge)}`);
 
   // Active tags & Column Highlights
   if (domRefs.stratCardRecast) {
-    domRefs.stratCardRecast.style.borderColor = !isExtra ? 'rgba(16, 185, 129, 0.6)' : 'rgba(16, 185, 129, 0.15)';
-    domRefs.stratCardRecast.style.background = !isExtra ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.03)';
+    domRefs.stratCardRecast.style.borderColor = isRecast ? 'rgba(16, 185, 129, 0.6)' : 'rgba(16, 185, 129, 0.15)';
+    domRefs.stratCardRecast.style.background = isRecast ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.03)';
   }
   if (domRefs.stratCardExtra) {
     domRefs.stratCardExtra.style.borderColor = isExtra ? 'rgba(6, 182, 212, 0.6)' : 'rgba(6, 182, 212, 0.15)';
     domRefs.stratCardExtra.style.background = isExtra ? 'rgba(6, 182, 212, 0.12)' : 'rgba(6, 182, 212, 0.03)';
   }
+  if (domRefs.stratCardCash) {
+    domRefs.stratCardCash.style.borderColor = isCash ? 'rgba(168, 85, 247, 0.6)' : 'rgba(168, 85, 247, 0.15)';
+    domRefs.stratCardCash.style.background = isCash ? 'rgba(168, 85, 247, 0.12)' : 'rgba(168, 85, 247, 0.03)';
+  }
 
-  if (domRefs.stratRecastActiveTag) domRefs.stratRecastActiveTag.style.display = !isExtra ? 'inline-block' : 'none';
-  if (domRefs.stratExtraActiveTag) domRefs.stratExtraActiveTag.style.display = isExtra ? 'inline-block' : 'none';
+  if (domRefs.stratRecastActiveTag) domRefs.stratRecastActiveTag.style.display = isRecast ? 'inline-block' : 'none';
+  if (domRefs.stratExtraActiveTag) setVisible(domRefs.stratExtraActiveTag, isExtra, 'inline-block');
+  if (domRefs.stratCashActiveTag) setVisible(domRefs.stratCashActiveTag, isCash, 'inline-block');
 
   // Recast Column
   setText(domRefs.stratRecastPiti, formatCurrency(recast.newMonthlyPI));
@@ -2088,13 +2617,23 @@ export function updateStrategyComparisonUI(recast, proceeds, bridgeLoanAmount, r
   setText(domRefs.stratExtraInterest, formatCurrency(recast.interestNoRecast));
   setText(domRefs.stratExtraInterestSaved, `Saved ${formatCurrency(recast.extraLifetimeInterestFromRecasting)}!`);
 
+  // Keep as Cash Column — nothing is applied, so payment and term are
+  // whatever they already are today; the only number this column adds is
+  // the amount you get to keep instead.
+  setText(domRefs.stratCashPiti, formatCurrency(recast.currentMonthlyPI));
+  setText(domRefs.stratCashKept, formatCurrency(availableAfterBridge));
+  setText(domRefs.stratCashTerm, formatDuration(recast.remainingMonths));
+
   // Tradeoff Summary Line
   if (domRefs.stratCompSummaryText) {
     if (availableAfterBridge <= 0) {
-      domRefs.stratCompSummaryText.textContent = `ℹ Enter house sale details to compare real numbers between recasting and applying an extra payment.`;
+      domRefs.stratCompSummaryText.textContent = `ℹ Enter house sale details to compare real numbers between recasting, an extra payment, and keeping the cash.`;
+    } else if (isCash) {
+      domRefs.stratCompSummaryText.innerHTML =
+        `💰 You're keeping <strong style="color:var(--accent-purple);">${formatCurrency(availableAfterBridge)}</strong> as cash instead. For comparison, <strong>Recast</strong> would lower your payment by <strong style="color:var(--accent-emerald);">${formatCurrency(recast.monthlySavings)}/mo</strong>, or <strong>Extra Payment</strong> would pay off <strong style="color:var(--accent-cyan);">${formatDuration(monthsSaved)} sooner</strong> and save <strong style="color:var(--accent-cyan);">${formatCurrency(recast.extraLifetimeInterestFromRecasting)}</strong> in interest.`;
     } else if (recast.monthlySavings > 0) {
       domRefs.stratCompSummaryText.innerHTML =
-        `💡 <strong>Recast</strong> lowers your payment by <strong style="color:var(--accent-emerald);">${formatCurrency(recast.monthlySavings)}/mo</strong>. <strong>Extra Payment</strong> pays off <strong style="color:var(--accent-cyan);">${formatDuration(monthsSaved)} sooner</strong> and saves <strong style="color:var(--accent-cyan);">${formatCurrency(recast.extraLifetimeInterestFromRecasting)}</strong> in interest.`;
+        `💡 <strong>Recast</strong> lowers your payment by <strong style="color:var(--accent-emerald);">${formatCurrency(recast.monthlySavings)}/mo</strong>. <strong>Extra Payment</strong> pays off <strong style="color:var(--accent-cyan);">${formatDuration(monthsSaved)} sooner</strong> and saves <strong style="color:var(--accent-cyan);">${formatCurrency(recast.extraLifetimeInterestFromRecasting)}</strong> in interest. Or skip both and <strong style="color:var(--accent-purple);">keep the cash</strong>.`;
     } else {
       domRefs.stratCompSummaryText.textContent = `Both options produce identical results with zero remaining loan balance after applying proceeds.`;
     }
@@ -2103,7 +2642,7 @@ export function updateStrategyComparisonUI(recast, proceeds, bridgeLoanAmount, r
   // "Best of Both Worlds" Strategy Note
   if (domRefs.stratCompBestOfBothNote) {
     if (availableAfterBridge > 0 && recast.monthlySavings > 5 && monthsSaved > 0) {
-      domRefs.stratCompBestOfBothNote.style.display = 'block';
+      setVisible(domRefs.stratCompBestOfBothNote, true);
       domRefs.stratCompBestOfBothNote.innerHTML =
         `💡 <strong>The "Best of Both Worlds" Strategy:</strong><br/>` +
         `If you want interest savings without locking yourself into a higher mandatory bill:<br/>` +
@@ -2111,7 +2650,7 @@ export function updateStrategyComparisonUI(recast, proceeds, bridgeLoanAmount, r
         `2. <strong>Voluntarily Overpay:</strong> Pay your original <strong style="color:var(--text-bright);">${formatCurrency(recast.currentMonthlyPI)}/mo</strong> (adding an extra <strong>${formatCurrency(recast.monthlySavings)}/mo</strong> to principal).<br/>` +
         `<em>Delivers the exact same <strong style="color:var(--accent-cyan);">${formatDuration(monthsSaved)} shaved off</strong> and <strong style="color:var(--accent-cyan);">${formatCurrency(recast.extraLifetimeInterestFromRecasting)} interest savings</strong>, while leaving you free to drop back to ${formatCurrency(recast.newMonthlyPI)}/mo anytime cash flow tightens.</em>`;
     } else {
-      domRefs.stratCompBestOfBothNote.style.display = 'none';
+      setVisible(domRefs.stratCompBestOfBothNote, false);
     }
   }
 }
