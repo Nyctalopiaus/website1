@@ -55,6 +55,7 @@
                     <div class="dropdown-menu" id="admin-dropdown-menu">
                         <button class="dropdown-item" id="btn-user-mgmt">👥 User Management</button>
                         <button class="dropdown-item" id="btn-view-logs">📋 View Logs</button>
+                        <button class="dropdown-item" id="btn-admin-cleanup">🧹 Property & Media Cleanup</button>
                     </div>
                 </div>
                 <button class="btn btn-secondary btn-logout-trigger" id="btn-logout" title="Log Out" style="display: none;">🚪 Logout</button>
@@ -997,6 +998,134 @@
             <div class="compare-dock-actions">
                 <button class="btn btn-gold" id="btn-open-compare-matrix">📊 Compare Side-by-Side</button>
                 <button class="btn btn-secondary btn-compact" id="btn-clear-compare">✕ Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Property & Media Cleanup Modal -->
+    <div class="modal-overlay" id="modal-admin-cleanup">
+        <div class="modal-content modal-lg" style="max-width: 1000px; width: 95vw;">
+            <div class="modal-header">
+                <div>
+                    <h2 class="font-serif" style="font-size: 1.5rem; margin-bottom: 0.2rem;">🧹 Off-Market Listing & Media Cleanup</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Audit and clean up listings and cached photos for sold, closed, pending, or off-market homes.</p>
+                </div>
+                <button class="modal-close" id="modal-admin-cleanup-close">✕</button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem;">
+                <!-- Cleanup Overview Stats Bar -->
+                <div class="cleanup-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div class="kpi-card" style="padding: 1rem;">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label">Off-Market Listings</span>
+                            <span class="kpi-card-icon">🏷️</span>
+                        </div>
+                        <div class="kpi-value" id="cleanup-stat-props">0</div>
+                        <div class="kpi-sub" id="cleanup-stat-props-sub">Sold, Closed, Pending, etc.</div>
+                    </div>
+                    <div class="kpi-card" style="padding: 1rem;">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label">Cached Listing Photos</span>
+                            <span class="kpi-card-icon">🖼️</span>
+                        </div>
+                        <div class="kpi-value" id="cleanup-stat-photos">0</div>
+                        <div class="kpi-sub" id="cleanup-stat-photos-bytes">0 MB on disk</div>
+                    </div>
+                    <div class="kpi-card" style="padding: 1rem;">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label">Orphan Media Files</span>
+                            <span class="kpi-card-icon">🗑️</span>
+                        </div>
+                        <div class="kpi-value" id="cleanup-stat-orphans">0</div>
+                        <div class="kpi-sub" id="cleanup-stat-orphans-bytes">0 MB on disk</div>
+                    </div>
+                    <div class="kpi-card" style="padding: 1rem; border-color: rgba(16, 185, 129, 0.3);">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label">Reclaimable Space</span>
+                            <span class="kpi-card-icon">⚡</span>
+                        </div>
+                        <div class="kpi-value" id="cleanup-stat-reclaimable" style="color: var(--accent-emerald);">0 MB</div>
+                        <div class="kpi-sub">Total recoverable disk space</div>
+                    </div>
+                </div>
+
+                <!-- Control Bar -->
+                <div style="background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;">
+                        <div>
+                            <label class="filter-label" style="font-size: 0.75rem; display: block; margin-bottom: 0.2rem;">Status Filter</label>
+                            <select id="cleanup-filter-status" class="select-input filter-select-pill" style="padding: 0.35rem 0.75rem; font-size: 0.82rem;">
+                                <option value="all" selected>All Non-Active Statuses</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="filter-label" style="font-size: 0.75rem; display: block; margin-bottom: 0.2rem;">Cleanup Mode</label>
+                            <select id="cleanup-mode-select" class="select-input filter-select-pill" style="padding: 0.35rem 0.75rem; font-size: 0.82rem;">
+                                <option value="full_delete" selected>🗑️ Delete Properties & Photos</option>
+                                <option value="media_only">🖼️ Delete Photos Only (Keep Text Data)</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.2rem;">
+                            <input type="checkbox" id="cleanup-protect-favorites" checked style="accent-color: var(--accent-emerald); cursor: pointer;">
+                            <label for="cleanup-protect-favorites" style="font-size: 0.82rem; cursor: pointer; user-select: none;">
+                                🛡️ Protect Favorites & Notes
+                            </label>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button class="btn btn-secondary btn-compact" id="btn-cleanup-select-unprotected" type="button">Select Candidate Homes</button>
+                        <button class="btn btn-secondary btn-compact" id="btn-cleanup-clear-selection" type="button">Deselect All</button>
+                        <button class="btn btn-secondary btn-compact" id="btn-cleanup-refresh" type="button" title="Refresh Audit Data">🔄 Refresh</button>
+                    </div>
+                </div>
+
+                <!-- Candidate Properties Table -->
+                <div style="max-height: 340px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); margin-bottom: 1rem;">
+                    <table class="matrix-table" style="width: 100%; font-size: 0.82rem;">
+                        <thead>
+                            <tr>
+                                <th style="width: 36px; text-align: center;">
+                                    <input type="checkbox" id="cleanup-select-all" style="accent-color: var(--accent-emerald); cursor: pointer;">
+                                </th>
+                                <th>Listing</th>
+                                <th>Status</th>
+                                <th>Price</th>
+                                <th>Saved / Notes</th>
+                                <th>Cached Photos</th>
+                                <th>Media Space</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cleanup-properties-tbody">
+                            <!-- Dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Orphan Files Section -->
+                <div style="background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.75rem 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox" id="cleanup-include-orphans" style="accent-color: var(--accent-emerald); cursor: pointer;">
+                            <label for="cleanup-include-orphans" style="font-size: 0.85rem; font-weight: 600; cursor: pointer;">
+                                🗑️ Include Orphaned Media Files (<span id="cleanup-orphan-summary-text">0 files, 0 MB</span>)
+                            </label>
+                        </div>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">Photos on disk for listings no longer in database</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Action Bar -->
+            <div class="modal-footer" style="padding: 1rem 1.5rem; background: var(--bg-panel); border-top: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                <div id="cleanup-selection-summary" style="font-size: 0.85rem; color: var(--text-muted);">
+                    Select properties to begin cleanup preview
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                    <button class="btn btn-secondary" id="btn-admin-cleanup-cancel">Cancel</button>
+                    <button class="btn btn-gold" id="btn-admin-cleanup-submit" disabled style="background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff; border: none;">
+                        🔥 Clean Up Selected Items
+                    </button>
+                </div>
             </div>
         </div>
     </div>

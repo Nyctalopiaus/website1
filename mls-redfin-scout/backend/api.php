@@ -88,6 +88,17 @@ switch ($action) {
         handleDeleteProperty($pdo);
         break;
 
+    case 'admin_cleanup_preview':
+        requireAdmin();
+        handleAdminCleanupPreview($pdo);
+        break;
+
+    case 'admin_cleanup_execute':
+        requireAdmin();
+        requireCsrf();
+        handleAdminCleanupExecute($pdo);
+        break;
+
     default:
         http_response_code(400);
         echo json_encode(['error' => 'Invalid action']);

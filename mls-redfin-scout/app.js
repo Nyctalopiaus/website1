@@ -26,6 +26,11 @@ import {
     selectRecommendNone, rankRecommendSelection, backToRecommendSelection, copyRecommendResults
 } from './js/recommend.js';
 import { openCompareMatrix, closeCompareMatrix, clearCompare } from './js/compare.js';
+import {
+    openAdminCleanupModal, closeAdminCleanupModal, fetchAdminCleanupPreview,
+    renderAdminCleanupTable, selectCandidateHomes, clearSelection, toggleSelectAll,
+    handleAdminCleanupExecute, updateCleanupSelectionSummary
+} from './js/adminCleanup.js';
 // detailModal.js has no named exports - it's imported purely so its window.openDetailModal /
 // window.toggleFavorite / etc. side-effect assignments run (they're called from onclick="..."
 // attributes in dynamically-rendered HTML, so they must exist on window before any card renders).
@@ -276,6 +281,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.modalEventLogClose) elements.modalEventLogClose.addEventListener('click', () => elements.modalEventLog.classList.remove('active'));
         if (elements.btnRefreshEventLog) elements.btnRefreshEventLog.addEventListener('click', fetchEventLogs);
         if (elements.eventLogSourceFilter) elements.eventLogSourceFilter.addEventListener('change', fetchEventLogs);
+
+        // Admin Property & Media Cleanup Modal & Actions
+        if (elements.btnAdminCleanup) elements.btnAdminCleanup.addEventListener('click', openAdminCleanupModal);
+        if (elements.modalAdminCleanupClose) elements.modalAdminCleanupClose.addEventListener('click', closeAdminCleanupModal);
+        if (elements.btnAdminCleanupCancel) elements.btnAdminCleanupCancel.addEventListener('click', closeAdminCleanupModal);
+        if (elements.btnCleanupRefresh) elements.btnCleanupRefresh.addEventListener('click', fetchAdminCleanupPreview);
+        if (elements.cleanupFilterStatus) elements.cleanupFilterStatus.addEventListener('change', renderAdminCleanupTable);
+        if (elements.cleanupModeSelect) elements.cleanupModeSelect.addEventListener('change', updateCleanupSelectionSummary);
+        if (elements.cleanupProtectFavorites) elements.cleanupProtectFavorites.addEventListener('change', renderAdminCleanupTable);
+        if (elements.btnCleanupSelectUnprotected) elements.btnCleanupSelectUnprotected.addEventListener('click', selectCandidateHomes);
+        if (elements.btnCleanupClearSelection) elements.btnCleanupClearSelection.addEventListener('click', clearSelection);
+        if (elements.cleanupSelectAll) elements.cleanupSelectAll.addEventListener('change', toggleSelectAll);
+        if (elements.cleanupIncludeOrphans) elements.cleanupIncludeOrphans.addEventListener('change', updateCleanupSelectionSummary);
+        if (elements.btnAdminCleanupSubmit) elements.btnAdminCleanupSubmit.addEventListener('click', handleAdminCleanupExecute);
 
         // Export Actions
         elements.btnExportCsv.addEventListener('click', exportCSV);

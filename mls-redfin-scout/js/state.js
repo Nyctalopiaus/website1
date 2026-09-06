@@ -155,5 +155,30 @@
         modalEventLogClose: document.getElementById('modal-event-log-close'),
         eventLogSourceFilter: document.getElementById('event-log-source-filter'),
         btnRefreshEventLog: document.getElementById('btn-refresh-event-log'),
-        eventLogTableBody: document.getElementById('event-log-table-body')
+        eventLogTableBody: document.getElementById('event-log-table-body'),
+
+        // Admin Property & Media Cleanup Modal
+        btnAdminCleanup: document.getElementById('btn-admin-cleanup'),
+        modalAdminCleanup: document.getElementById('modal-admin-cleanup'),
+        modalAdminCleanupClose: document.getElementById('modal-admin-cleanup-close'),
+        cleanupStatProps: document.getElementById('cleanup-stat-props'),
+        cleanupStatPropsSub: document.getElementById('cleanup-stat-props-sub'),
+        cleanupStatPhotos: document.getElementById('cleanup-stat-photos'),
+        cleanupStatPhotosBytes: document.getElementById('cleanup-stat-photos-bytes'),
+        cleanupStatOrphans: document.getElementById('cleanup-stat-orphans'),
+        cleanupStatOrphansBytes: document.getElementById('cleanup-stat-orphans-bytes'),
+        cleanupStatReclaimable: document.getElementById('cleanup-stat-reclaimable'),
+        cleanupFilterStatus: document.getElementById('cleanup-filter-status'),
+        cleanupModeSelect: document.getElementById('cleanup-mode-select'),
+        cleanupProtectFavorites: document.getElementById('cleanup-protect-favorites'),
+        btnCleanupSelectUnprotected: document.getElementById('btn-cleanup-select-unprotected'),
+        btnCleanupClearSelection: document.getElementById('btn-cleanup-clear-selection'),
+        btnCleanupRefresh: document.getElementById('btn-cleanup-refresh'),
+        cleanupSelectAll: document.getElementById('cleanup-select-all'),
+        cleanupPropertiesTbody: document.getElementById('cleanup-properties-tbody'),
+        cleanupIncludeOrphans: document.getElementById('cleanup-include-orphans'),
+        cleanupOrphanSummaryText: document.getElementById('cleanup-orphan-summary-text'),
+        cleanupSelectionSummary: document.getElementById('cleanup-selection-summary'),
+        btnAdminCleanupCancel: document.getElementById('btn-admin-cleanup-cancel'),
+        btnAdminCleanupSubmit: document.getElementById('btn-admin-cleanup-submit')
     };

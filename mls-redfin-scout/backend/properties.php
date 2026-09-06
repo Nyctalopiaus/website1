@@ -683,3 +683,299 @@ function handleUpdateCoordinates(PDO $pdo) {
 
     echo json_encode(['success' => true, 'mls_id' => trim($data['mls_id'])]);
 }
+
+/**
+ * Preview property and media cleanup candidates for Admin.
+ * Returns non-Active listings, media file counts/sizes on disk, orphan media files, and DB status summary.
+ */
+function handleAdminCleanupPreview(PDO $pdo) {
+    requireAdmin();
+    try {
+        // Status counts for overview
+        $statusStmt = $pdo->query("SELECT status, COUNT(*) as cnt FROM properties GROUP BY status ORDER BY cnt DESC");
+        $statusCounts = [];
+        while ($row = $statusStmt->fetch()) {
+            $st = $row['status'] ?: 'Unknown';
+            $statusCounts[$st] = (int)$row['cnt'];
+        }
+
+        // Fetch all DB MLS IDs to cross-reference against media files
+        $allMlsIds = $pdo->query("SELECT mls_id FROM properties")->fetchAll(PDO::FETCH_COLUMN);
+        $safeToMlsMap = [];
+        foreach ($allMlsIds as $mid) {
+            $sId = preg_replace('/[^A-Za-z0-9_-]/', '', (string)$mid);
+            if ($sId !== '') {
+                $safeToMlsMap[$sId] = (string)$mid;
+            }
+        }
+
+        // Fetch off-market / non-Active properties
+        $stmt = $pdo->query("
+            SELECT
+                p.mls_id, p.address, p.city, p.state, p.zip, p.price, p.status,
+                p.main_image_url, p.gallery_images, p.photo_count, p.updated_at,
+                COALESCE(u.favorite, 0) as favorite,
+                COALESCE(u.rating, 0) as rating,
+                COALESCE(u.user_notes, '') as user_notes,
+                COALESCE(u.realtor_notes, '') as realtor_notes
+            FROM properties p
+            LEFT JOIN user_metadata u ON p.mls_id = u.mls_id
+            WHERE LOWER(p.status) != 'active' OR p.status IS NULL
+            ORDER BY p.status ASC, p.updated_at DESC
+        ");
+        $offMarketRows = $stmt->fetchAll();
+
+        // Index off-market properties by mls_id for media stats enrichment
+        $propertiesMap = [];
+        foreach ($offMarketRows as $row) {
+            $mId = (string)$row['mls_id'];
+            $propertiesMap[$mId] = [
+                'mls_id' => $mId,
+                'address' => $row['address'] ?? '',
+                'city' => $row['city'] ?? '',
+                'state' => $row['state'] ?? 'CO',
+                'zip' => $row['zip'] ?? '',
+                'price' => (float)($row['price'] ?? 0),
+                'status' => $row['status'] ?? 'Unknown',
+                'main_image_url' => $row['main_image_url'] ?? '',
+                'favorite' => (int)$row['favorite'],
+                'rating' => (int)$row['rating'],
+                'user_notes' => $row['user_notes'] ?? '',
+                'realtor_notes' => $row['realtor_notes'] ?? '',
+                'has_notes' => (!empty($row['user_notes']) || !empty($row['realtor_notes'])),
+                'is_protected' => ((int)$row['favorite'] === 1 || !empty($row['user_notes']) || !empty($row['realtor_notes'])),
+                'photo_count_db' => (int)($row['photo_count'] ?? 0),
+                'media_files_count' => 0,
+                'media_bytes' => 0,
+                'updated_at' => $row['updated_at'] ?? ''
+            ];
+        }
+
+        // Scan media directory
+        $mediaFilesCountTotal = 0;
+        $mediaBytesTotal = 0;
+        $activePhotosCount = 0;
+        $activePhotosBytes = 0;
+        $orphansBySafeId = [];
+
+        if (is_dir(MEDIA_DIR)) {
+            $dirFiles = scandir(MEDIA_DIR);
+            foreach ($dirFiles as $file) {
+                if ($file === '.' || $file === '..') continue;
+                $filePath = MEDIA_DIR . '/' . $file;
+                if (!is_file($filePath)) continue;
+
+                $size = (int)filesize($filePath);
+                $mediaFilesCountTotal++;
+                $mediaBytesTotal += $size;
+
+                // Extract base MLS ID (e.g. "1654482" from "1654482_10.jpg" or "1654482.jpg")
+                $baseName = pathinfo($file, PATHINFO_FILENAME);
+                $fileSafeId = explode('_', $baseName)[0];
+
+                if ($fileSafeId !== '' && isset($safeToMlsMap[$fileSafeId])) {
+                    $realMlsId = $safeToMlsMap[$fileSafeId];
+                    if (isset($propertiesMap[$realMlsId])) {
+                        $propertiesMap[$realMlsId]['media_files_count']++;
+                        $propertiesMap[$realMlsId]['media_bytes'] += $size;
+                    } else {
+                        // Belongs to an Active listing in database (not an orphan)
+                        $activePhotosCount++;
+                        $activePhotosBytes += $size;
+                    }
+                } else {
+                    // True orphan media file (MLS ID not in properties table at all)
+                    $orphanKey = $fileSafeId ?: $file;
+                    if (!isset($orphansBySafeId[$orphanKey])) {
+                        $orphansBySafeId[$orphanKey] = [
+                            'safe_id' => $orphanKey,
+                            'file_count' => 0,
+                            'total_bytes' => 0,
+                            'sample_file' => $file
+                        ];
+                    }
+                    $orphansBySafeId[$orphanKey]['file_count']++;
+                    $orphansBySafeId[$orphanKey]['total_bytes'] += $size;
+                }
+            }
+        }
+
+        $propertiesList = array_values($propertiesMap);
+        $orphansList = array_values($orphansBySafeId);
+
+        $offMarketPhotosCount = 0;
+        $offMarketPhotosBytes = 0;
+        foreach ($propertiesList as $p) {
+            $offMarketPhotosCount += $p['media_files_count'];
+            $offMarketPhotosBytes += $p['media_bytes'];
+        }
+
+        $orphanFilesCount = 0;
+        $orphanBytes = 0;
+        foreach ($orphansList as $o) {
+            $orphanFilesCount += $o['file_count'];
+            $orphanBytes += $o['total_bytes'];
+        }
+
+        echo json_encode([
+            'success' => true,
+            'summary' => [
+                'total_properties_in_db' => count($allMlsIds),
+                'off_market_count' => count($propertiesList),
+                'off_market_photos_count' => $offMarketPhotosCount,
+                'off_market_photos_bytes' => $offMarketPhotosBytes,
+                'active_photos_count' => $activePhotosCount,
+                'active_photos_bytes' => $activePhotosBytes,
+                'orphan_files_count' => $orphanFilesCount,
+                'orphan_bytes' => $orphanBytes,
+                'total_media_files' => $mediaFilesCountTotal,
+                'total_media_bytes' => $mediaBytesTotal,
+                'status_counts' => $statusCounts
+            ],
+            'properties' => $propertiesList,
+            'orphans' => $orphansList
+        ]);
+    } catch (Throwable $t) {
+        http_response_code(500);
+        logEvent($pdo, 'system', 'error', 'handleAdminCleanupPreview failed: ' . $t->getMessage());
+        echo json_encode(['success' => false, 'error' => $t->getMessage()]);
+    }
+}
+
+/**
+ * Executes property and/or media cleanup action for Admin.
+ * Deletes files from media/ and removes DB rows or clears image fields.
+ */
+function handleAdminCleanupExecute(PDO $pdo) {
+    requireAdmin();
+    requireCsrf();
+
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $targetMlsIds = is_array($input['target_mls_ids'] ?? null) ? $input['target_mls_ids'] : [];
+    $cleanupMode = in_array($input['cleanup_mode'] ?? '', ['full_delete', 'media_only'], true) ? $input['cleanup_mode'] : 'full_delete';
+    $cleanOrphans = !empty($input['clean_orphans']);
+
+    if (empty($targetMlsIds) && !$cleanOrphans) {
+        http_response_code(400);
+        echo json_encode(['error' => 'No target properties or orphan cleanup specified.']);
+        return;
+    }
+
+    $deletedPropsCount = 0;
+    $deletedFilesCount = 0;
+    $freedBytes = 0;
+
+    try {
+        $realMediaDir = realpath(MEDIA_DIR);
+
+        // 1. Process target MLS IDs
+        if (!empty($targetMlsIds)) {
+            $stmtDelProp = $pdo->prepare("DELETE FROM properties WHERE mls_id = :mls_id");
+            $stmtDelRedfin = $pdo->prepare("DELETE FROM redfin_data WHERE mls_id = :mls_id");
+            $stmtDelUserMeta = $pdo->prepare("DELETE FROM user_metadata WHERE mls_id = :mls_id");
+            $stmtClearMedia = $pdo->prepare("UPDATE properties SET main_image_url = '', gallery_images = '[]', photo_count = 0, updated_at = CURRENT_TIMESTAMP WHERE mls_id = :mls_id");
+
+            foreach ($targetMlsIds as $mlsId) {
+                $mlsId = trim((string)$mlsId);
+                $safeId = preg_replace('/[^A-Za-z0-9_-]/', '', $mlsId);
+                if ($safeId === '') continue;
+
+                // Remove files from disk
+                if ($realMediaDir && is_dir($realMediaDir)) {
+                    $patterns = [
+                        $realMediaDir . '/' . $safeId . '.*',
+                        $realMediaDir . '/' . $safeId . '_*.*'
+                    ];
+                    foreach ($patterns as $pat) {
+                        foreach (glob($pat) as $filePath) {
+                            if (is_file($filePath) && strpos(realpath($filePath), $realMediaDir) === 0) {
+                                $sz = (int)filesize($filePath);
+                                if (@unlink($filePath)) {
+                                    $deletedFilesCount++;
+                                    $freedBytes += $sz;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Process DB updates
+                if ($cleanupMode === 'full_delete') {
+                    $stmtDelProp->execute([':mls_id' => $mlsId]);
+                    $stmtDelRedfin->execute([':mls_id' => $mlsId]);
+                    $stmtDelUserMeta->execute([':mls_id' => $mlsId]);
+                    $deletedPropsCount++;
+                } else if ($cleanupMode === 'media_only') {
+                    $stmtClearMedia->execute([':mls_id' => $mlsId]);
+                    $deletedPropsCount++;
+                }
+            }
+        }
+
+        // 2. Clean orphans if requested
+        if ($cleanOrphans && $realMediaDir && is_dir($realMediaDir)) {
+            $allMlsIds = $pdo->query("SELECT mls_id FROM properties")->fetchAll(PDO::FETCH_COLUMN);
+            $knownSafeMap = [];
+            foreach ($allMlsIds as $mid) {
+                $sId = preg_replace('/[^A-Za-z0-9_-]/', '', (string)$mid);
+                if ($sId !== '') $knownSafeMap[$sId] = true;
+            }
+
+            $dirFiles = scandir($realMediaDir);
+            foreach ($dirFiles as $file) {
+                if ($file === '.' || $file === '..') continue;
+                $filePath = $realMediaDir . '/' . $file;
+                if (!is_file($filePath)) continue;
+
+                $baseName = pathinfo($file, PATHINFO_FILENAME);
+                $fileSafeId = explode('_', $baseName)[0];
+
+                if ($fileSafeId === '' || !isset($knownSafeMap[$fileSafeId])) {
+                    if (strpos(realpath($filePath), $realMediaDir) === 0) {
+                        $sz = (int)filesize($filePath);
+                        if (@unlink($filePath)) {
+                            $deletedFilesCount++;
+                            $freedBytes += $sz;
+                        }
+                    }
+                }
+            }
+        }
+
+        $logMsg = sprintf(
+            "Admin cleanup executed: %d properties processed (%s), %d files deleted, %s freed",
+            $deletedPropsCount,
+            $cleanupMode,
+            $deletedFilesCount,
+            formatBytesForLog($freedBytes)
+        );
+        logEvent($pdo, 'system', 'info', $logMsg, null, [
+            'mode' => $cleanupMode,
+            'clean_orphans' => $cleanOrphans,
+            'target_count' => count($targetMlsIds),
+            'deleted_files' => $deletedFilesCount,
+            'freed_bytes' => $freedBytes
+        ]);
+
+        echo json_encode([
+            'success' => true,
+            'deleted_properties_count' => $deletedPropsCount,
+            'deleted_files_count' => $deletedFilesCount,
+            'freed_bytes' => $freedBytes
+        ]);
+    } catch (Throwable $t) {
+        http_response_code(500);
+        logEvent($pdo, 'system', 'error', 'handleAdminCleanupExecute failed: ' . $t->getMessage());
+        echo json_encode(['success' => false, 'error' => $t->getMessage()]);
+    }
+}
+
+function formatBytesForLog(int $bytes): string {
+    if ($bytes >= 1048576) {
+        return number_format($bytes / 1048576, 2) . ' MB';
+    } elseif ($bytes >= 1024) {
+        return number_format($bytes / 1024, 1) . ' KB';
+    }
+    return $bytes . ' B';
+}
+
