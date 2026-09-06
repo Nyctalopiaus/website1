@@ -2340,10 +2340,67 @@ async function initializeApp() {
     syncDownPaymentFields('house');
     calculateAll();
 
-    // Check URL query parameters (e.g. ?url=https://www.redfin.com/...)
+    // Check URL query parameters (e.g. ?url=https://www.redfin.com/... or ?price=665000&taxRate=1.00&hoaFees=150)
     const urlParams = new URLSearchParams(window.location.search);
+    const directPrice = urlParams.get('price');
+    const directTax = urlParams.get('taxRate');
+    const directHoa = urlParams.get('hoaFees');
+    const directAddress = urlParams.get('address');
     const paramUrl = urlParams.get('url') || urlParams.get('mls');
-    if (paramUrl) {
+
+    if (directPrice || directTax || directHoa || directAddress) {
+      if (directPrice && !isNaN(parseFloat(directPrice))) {
+        const priceNum = parseFloat(directPrice);
+        if (domRefs.homePriceInput) {
+          domRefs.homePriceInput.value = priceNum;
+          if (domRefs.homePriceSlider) {
+            domRefs.homePriceSlider.value = Math.min(Math.max(priceNum, CONFIG.MIN_HOME_PRICE), CONFIG.MAX_HOME_PRICE);
+          }
+          const badge = getElement('badge-redfin-price');
+          if (badge) {
+            badge.textContent = '✓ Direct Ingest';
+            setVisible(badge, true, 'inline-block');
+          }
+        }
+      }
+      if (directTax && !isNaN(parseFloat(directTax))) {
+        if (domRefs.taxRateInput) {
+          domRefs.taxRateInput.value = parseFloat(directTax).toFixed(2);
+          const badge = getElement('badge-redfin-tax');
+          if (badge) {
+            badge.textContent = '✓ Direct Ingest';
+            setVisible(badge, true, 'inline-block');
+          }
+        }
+      }
+      if (directHoa !== null && directHoa !== undefined && !isNaN(parseFloat(directHoa))) {
+        if (domRefs.hoaFeesInput) {
+          domRefs.hoaFeesInput.value = parseFloat(directHoa);
+          const badge = getElement('badge-redfin-hoa');
+          if (badge) {
+            badge.textContent = '✓ Direct Ingest';
+            setVisible(badge, true, 'inline-block');
+          }
+        }
+      }
+
+      // Render property preview confirmation box
+      if (domRefs.mlsPreviewBox && domRefs.mlsPreviewAddress && domRefs.mlsPreviewDetails) {
+        const displayAddr = directAddress || 'Property Ingested from Scout';
+        const displayPrice = directPrice ? parseFloat(directPrice).toLocaleString() : (domRefs.homePriceInput ? parseFloat(domRefs.homePriceInput.value).toLocaleString() : 0);
+        const displayHoa = directHoa !== null && directHoa !== undefined ? parseFloat(directHoa) : (domRefs.hoaFeesInput ? domRefs.hoaFeesInput.value : 0);
+        domRefs.mlsPreviewAddress.textContent = `📍 ${displayAddr}`;
+        domRefs.mlsPreviewDetails.textContent = `Home Price: $${displayPrice} | HOA: $${displayHoa}/mo`;
+        domRefs.mlsPreviewBox.style.display = 'block';
+      }
+
+      if (paramUrl && domRefs.mlsNumberInput) {
+        domRefs.mlsNumberInput.value = paramUrl;
+      }
+
+      syncDownPaymentFields('house');
+      calculateAll();
+    } else if (paramUrl) {
       domRefs.mlsNumberInput.value = paramUrl;
       handleSearchMls();
     } else {

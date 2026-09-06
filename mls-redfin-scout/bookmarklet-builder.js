@@ -30,7 +30,8 @@ function getEngineCode() {
         AUTO_POPUP_REDFIN: true
     };
 
-    function notify(msg, isError = false) {
+    let toastTimeout = null;
+    function notify(msg, isError = false, persistent = false) {
         let toast = document.getElementById('scout-toast-popup');
         if (!toast) {
             toast = document.createElement('div');
@@ -41,12 +42,17 @@ function getEngineCode() {
                 color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 14px; font-weight: 600; border-radius: 8px;
                 box-shadow: 0 10px 25px rgba(0,0,0,0.3); transition: all 0.3s ease;
+                max-width: 450px; word-break: break-word; line-height: 1.4;
             \`;
             document.body.appendChild(toast);
         }
         toast.innerText = msg;
+        toast.style.background = isError ? '#ef4444' : '#10b981';
         toast.style.opacity = '1';
-        setTimeout(() => { toast.style.opacity = '0'; }, 4000);
+        if (toastTimeout) { clearTimeout(toastTimeout); toastTimeout = null; }
+        if (!persistent) {
+            toastTimeout = setTimeout(() => { toast.style.opacity = '0'; }, 6000);
+        }
     }
 
     // Fire-and-forget beacon to backend/api.php's action=client_log, since the bookmarklet has
@@ -167,19 +173,11 @@ function getEngineCode() {
             });
         }
 
-        // 7. Multiline search for (Me) comments, quoted strings, and inline JSON scripts
+        // 7. Multiline search for (Me) comments and inline JSON scripts
         const pageText = (block || document.body).innerText || '';
         const meBlockMatches = pageText.match(/(?:Me|\(Me\))[\s\r\n]*(?:\d{2}\/\d{2}\/\d{4})?[\s\r\n]*["“]?([^"”\r\n]{3,1000})["”]?/ig);
         if (meBlockMatches) {
             meBlockMatches.forEach(m => candidateTexts.push(m));
-        }
-
-        const quoteMatches = pageText.match(/["“]([^"”\r\n]{3,1000})["”]/g);
-        if (quoteMatches) {
-            quoteMatches.forEach(q => {
-                const cleanQ = q.replace(/^["“]|["”]$/g, '').trim();
-                if (cleanQ && cleanQ.length > 3) candidateTexts.push(cleanQ);
-            });
         }
 
         const scripts = Array.from(document.querySelectorAll('script'));
@@ -254,8 +252,7 @@ function getEngineCode() {
         const rows = Array.from(scope.querySelectorAll('.mtx-listingNotesWidget-noteRow'));
 
         if (rows.length === 0) {
-            const text = extractMatrixNotes(block, mlsId);
-            return { text, rowCount: 0, multiAuthor: false, authors: [] };
+            return { text: '', rowCount: 0, multiAuthor: false, authors: [] };
         }
 
         const entries = [];
@@ -373,13 +370,7 @@ function getEngineCode() {
             const m = el.textContent.match(/(\d+)\s*\/\s*(\d+)/);
             return m ? { cur: parseInt(m[1], 10), total: parseInt(m[2], 10) } : null;
         };
-        const waitUntil = async (predicate, timeoutMs) => {
-            for (let waited = 0; waited < timeoutMs; waited += pollMs) {
-                if (predicate()) return true;
-                await new Promise(r => setTimeout(r, pollMs));
-            }
-            return predicate();
-        };
+
 
         let counter = getCounter();
         const navRight = document.querySelector('button.nav.right');
@@ -717,7 +708,36 @@ function getEngineCode() {
             });
     }
 
-    function delay(ms) {
+        const waitUntil = async (predicate, timeoutMs, pollMs = 150) => {
+        for (let waited = 0; waited < timeoutMs; waited += pollMs) {
+            if (predicate()) return true;
+            await delay(pollMs);
+        }
+        return predicate();
+    };
+
+    function findFirstDetailLinkOnPage() {
+        const blocks = findListingBlocks();
+        for (const b of blocks) {
+            const addrElem = b.querySelector('.d-displayAddress, .portal-address, [id*="Address"], [class*="Address"]');
+            if (addrElem && addrElem.tagName === 'A') return addrElem;
+            const linkInAddr = addrElem ? addrElem.querySelector('a') : null;
+            if (linkInAddr) return linkInAddr;
+
+            const links = Array.from(b.querySelectorAll('a'));
+            const addrLink = links.find(a => {
+                const t = a.innerText.trim();
+                return t && /^\d+\s+[A-Za-z]/.test(t);
+            });
+            if (addrLink) return addrLink;
+
+            const postBackLink = links.find(a => a.href && (a.href.includes('__doPostBack') || a.href.includes('DisplayCore') || a.href.includes('javascript:')));
+            if (postBackLink) return postBackLink;
+        }
+        return null;
+    }
+
+function delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
@@ -770,11 +790,24 @@ function getEngineCode() {
         logToServer('info', 'Deep scrape started', null, { url: window.location.href });
 
         scrapeMatrixPortal(async () => {
-            const hasNav = !!document.querySelector('a.glyphicon-chevron-right') || !!getCounterInfo();
+            let hasNav = !!document.querySelector('a.glyphicon-chevron-right') || !!getCounterInfo();
             if (!hasNav) {
-                notify('⚠️ Deep scrape needs a single listing open in full detail view (with prev/next arrows) — open one listing, then run Deep Scrape again.', true);
-                logToServer('warn', 'Deep scrape aborted — no listing open in detail view', null, { url: window.location.href });
-                return;
+                const firstLink = findFirstDetailLinkOnPage();
+                if (firstLink) {
+                    notify('🔄 Opening first listing from search page...', false, true);
+                    firstLink.click();
+                    const loaded = await waitUntil(() => !!document.querySelector('a.glyphicon-chevron-right') || !!getCounterInfo(), 10000);
+                    if (!loaded) {
+                        notify('⚠️ Clicked first listing but detail view did not load. Try opening one listing manually.', true, true);
+                        logToServer('warn', 'Deep scrape auto-open failed — detail view did not load in 10s', null, { url: window.location.href });
+                        return;
+                    }
+                    hasNav = true;
+                } else {
+                    notify('⚠️ Deep scrape needs a listing detail view or search page with clickable listings.', true, true);
+                    logToServer('warn', 'Deep scrape aborted — no listing link found on list page', null, { url: window.location.href });
+                    return;
+                }
             }
 
             let completedSet = new Set();
@@ -834,7 +867,8 @@ function getEngineCode() {
 
                 processedCount++;
                 const posLabel = counter ? \`\${counter.cur} of \${counter.total}\` : \`#\${processedCount}\`;
-                notify(\`📋 \${posLabel} — \${alreadyFullyScraped ? 'notes only' : 'full scrape' + photoNote}\`);
+                const addrLabel = listing.address ? \` — \${listing.address}\` : '';
+                notify(\`Ingesting address \${posLabel}\${addrLabel} (\${alreadyFullyScraped ? 'notes re-checked' : 'full scrape' + photoNote})\`, false, true);
 
                 const syncResult = await new Promise(resolve => syncToBackend([listing], resolve));
                 if (!syncResult || !syncResult.success) {
@@ -900,14 +934,24 @@ function getEngineCode() {
     return raw.replace(/\\`/g, '`').replace(/\\\$\{/g, '${');
 }
 
+function cleanJsForBookmarklet(jsCode) {
+    return jsCode
+        .split(/[\r\n]+/)
+        .map(line => line.replace(/^\s*\/\/.*$/, '').replace(/\s+\/\/.*/, ''))
+        .filter(Boolean)
+        .join(' ');
+}
+
 function getBookmarkletCode(apiUrl) {
-    const wrapper = `(function(){ window.SCOUT_API_URL='` + apiUrl + `'; window.SCOUT_MODE='quick'; ` + getEngineCode() + `})();`;
-    return 'javascript:' + encodeURIComponent(wrapper);
+    const cleanEngine = cleanJsForBookmarklet(getEngineCode());
+    const wrapper = `(function(){ window.SCOUT_API_URL='` + apiUrl + `'; window.SCOUT_MODE='quick'; ` + cleanEngine + `})();`;
+    return 'javascript:' + wrapper;
 }
 
 function getDeepScrapeBookmarkletCode(apiUrl) {
-    const wrapper = `(function(){ window.SCOUT_API_URL='` + apiUrl + `'; window.SCOUT_MODE='deep'; ` + getEngineCode() + `})();`;
-    return 'javascript:' + encodeURIComponent(wrapper);
+    const cleanEngine = cleanJsForBookmarklet(getEngineCode());
+    const wrapper = `(function(){ window.SCOUT_API_URL='` + apiUrl + `'; window.SCOUT_MODE='deep'; ` + cleanEngine + `})();`;
+    return 'javascript:' + wrapper;
 }
 
 function getConsoleSnippetCode(apiUrl) {

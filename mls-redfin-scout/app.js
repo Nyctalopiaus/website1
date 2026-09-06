@@ -20,11 +20,12 @@ import { switchView, renderActiveView } from './js/views.js';
 import {
     openCommandPalette, closeCommandPalette, handleCmdPaletteSearch
 } from './js/commandPalette.js';
-import { exportCSV, exportJSON } from './js/export.js';
+import { exportCSV, exportJSON, exportFavoritesToHomeward } from './js/export.js';
 import {
     openRecommendModal, closeRecommendModal, selectRecommendFavorites, selectRecommendAddPossibilities,
     selectRecommendNone, rankRecommendSelection, backToRecommendSelection, copyRecommendResults
 } from './js/recommend.js';
+import { openCompareMatrix, closeCompareMatrix, clearCompare } from './js/compare.js';
 // detailModal.js has no named exports - it's imported purely so its window.openDetailModal /
 // window.toggleFavorite / etc. side-effect assignments run (they're called from onclick="..."
 // attributes in dynamically-rendered HTML, so they must exist on window before any card renders).
@@ -122,7 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(state.filters.realtorSharedOnly ? 'Filtering Realtor Shared Only' : 'Showing All Properties', 'info');
             });
         }
-
         // Filter Inputs (Guarded)
         if (elements.filterSearch) elements.filterSearch.addEventListener('input', e => { state.filters.search = e.target.value.toLowerCase(); applyFiltersAndRender(); });
         if (elements.filterPriceMin) elements.filterPriceMin.addEventListener('input', e => { state.filters.priceMin = parseFloat(e.target.value) || null; applyFiltersAndRender(); });
@@ -230,6 +230,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (elements.btnExportModal) elements.btnExportModal.addEventListener('click', () => elements.modalExport.classList.add('active'));
         if (elements.modalExportClose) elements.modalExportClose.addEventListener('click', () => elements.modalExport.classList.remove('active'));
+        if (elements.btnExportHomeward) elements.btnExportHomeward.addEventListener('click', exportFavoritesToHomeward);
+        if (elements.btnExportModalHomeward) elements.btnExportModalHomeward.addEventListener('click', () => {
+            elements.modalExport.classList.remove('active');
+            exportFavoritesToHomeward();
+        });
 
         // Top Picks Recommendation Modal
         if (elements.btnRecommend) elements.btnRecommend.addEventListener('click', openRecommendModal);
@@ -247,10 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const banner = document.querySelector('.bookmarklet-banner');
             if (banner) banner.style.display = 'none';
         });
-
-        // Auth & Login Actions
-        if (elements.formLogin) elements.formLogin.addEventListener('submit', handleLoginSubmit);
-        if (elements.btnLogout) elements.btnLogout.addEventListener('click', handleLogout);
 
         // Admin Dropdown (houses User Management, View Logs, and future admin actions)
         if (elements.btnAdminMenu) {
@@ -280,6 +281,11 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.btnExportCsv.addEventListener('click', exportCSV);
         elements.btnExportJson.addEventListener('click', exportJSON);
         elements.btnPrintPdf.addEventListener('click', () => window.print());
+
+        // Side-by-Side Property Comparison Matrix & Dock
+        document.getElementById('btn-open-compare-matrix')?.addEventListener('click', openCompareMatrix);
+        document.getElementById('btn-close-compare-matrix')?.addEventListener('click', closeCompareMatrix);
+        document.getElementById('btn-clear-compare')?.addEventListener('click', clearCompare);
     }
 
 

@@ -4,15 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MLS & Redfin Property Scout - Luxury Aggregator</title>
-    <!-- Google Fonts -->
+    <!-- Google Fonts: Plus Jakarta Sans & Playfair Display -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Preconnect & DNS-Prefetch for Leaflet Map Tile CDNs -->
-    <link rel="preconnect" href="https://a.basemaps.cartocdn.com" crossorigin>
-    <link rel="preconnect" href="https://b.basemaps.cartocdn.com" crossorigin>
-    <link rel="preconnect" href="https://c.basemaps.cartocdn.com" crossorigin>
-    <link rel="preconnect" href="https://d.basemaps.cartocdn.com" crossorigin>
+    <link rel="preconnect" href="https://tile.openstreetmap.org" crossorigin>
+    <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
     <!-- Leaflet CSS for Interactive Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="styles.css?v=2.1">
@@ -21,6 +19,13 @@
     <script src="bookmarklet-builder.js?v=2.0"></script>
 </head>
 <body>
+    <!-- Ambient Luxury Architectural Background Overlay -->
+    <div class="ambient-bg-glow" aria-hidden="true">
+        <div class="ambient-spot ambient-gold"></div>
+        <div class="ambient-spot ambient-blue"></div>
+        <div class="ambient-architectural-mesh"></div>
+    </div>
+
     <!-- Toast Notification Container -->
     <div id="toast-container" class="toast-container"></div>
 
@@ -38,78 +43,97 @@
                 <span>🔍 Search...</span>
                 <kbd class="kbd-badge">Ctrl K</kbd>
             </button>
-            <button class="btn btn-secondary" id="btn-theme-toggle" title="Toggle Light/Dark Theme">
-                <span id="theme-icon">🌙</span> <span id="theme-label">Dark</span>
-            </button>
-            <button class="btn btn-gold" id="btn-bookmarklet-guide">🔖 Bookmarklet Setup</button>
+            <button class="btn btn-secondary btn-ghost" id="btn-bookmarklet-guide" title="Bookmarklet Setup">🔖 Setup</button>
             <a href="share.html" class="btn btn-secondary" target="_blank">🤝 Realtor Portal</a>
             <button class="btn btn-gold" id="btn-recommend">✨ Top Picks</button>
+            <button class="btn btn-emerald" id="btn-export-homeward" title="Plot & view tour route of favorites in Homeward">🗺️ Map in Homeward</button>
             <button class="btn btn-primary" id="btn-export-modal">📥 Export / Share</button>
-            <div id="user-badge" style="display: flex; align-items: center; gap: 0.5rem; margin-left: 0.5rem;">
-                <span id="user-display-name" style="font-weight: 600; font-size: 0.85rem; color: var(--text-muted);">👤 Guest</span>
+            <div id="user-badge" class="user-profile-badge">
+                <span id="user-display-name" class="user-display-name">👤 Guest</span>
                 <div class="admin-dropdown" id="admin-dropdown" style="display: none;">
-                    <button class="btn btn-secondary" id="btn-admin-menu" title="Admin Functions" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">⚙️ Admin <span style="font-size:0.65rem;">▾</span></button>
+                    <button class="btn btn-secondary btn-admin-trigger" id="btn-admin-menu" title="Admin Functions">⚙️ Admin <span style="font-size:0.65rem;">▾</span></button>
                     <div class="dropdown-menu" id="admin-dropdown-menu">
                         <button class="dropdown-item" id="btn-user-mgmt">👥 User Management</button>
                         <button class="dropdown-item" id="btn-view-logs">📋 View Logs</button>
                     </div>
                 </div>
-                <button class="btn btn-secondary" id="btn-logout" title="Log Out" style="display: none; padding: 0.4rem 0.75rem; font-size: 0.85rem;">🚪 Logout</button>
+                <button class="btn btn-secondary btn-logout-trigger" id="btn-logout" title="Log Out" style="display: none;">🚪 Logout</button>
             </div>
         </div>
     </header>
 
-    <!-- Bookmarklet Banner -->
-    <div class="bookmarklet-banner">
-        <div class="bookmarklet-info">
-            <span><strong>Quick Start:</strong> Drag this button to your browser toolbar to scrape Matrix MLS & Redfin:</span>
-            <a id="drag-bookmarklet-btn" href="#" class="bookmarklet-btn">📍 Scrape to Scout</a>
-        </div>
-        <button class="btn-icon" id="btn-hide-banner" title="Dismiss Banner">✕</button>
-    </div>
-
-    <!-- KPI Summary Bar -->
+    <!-- KPI Summary Grid (Modern High-Contrast Stat Cards) -->
     <section class="stats-bar">
         <div class="kpi-card">
-            <span class="kpi-label">Total Properties</span>
-            <span class="kpi-value" id="kpi-total">0</span>
-            <span class="kpi-sub" id="kpi-total-sub">0 Active</span>
+            <div class="kpi-card-header">
+                <span class="kpi-label">Properties</span>
+                <span class="kpi-card-icon">🏠</span>
+            </div>
+            <div class="kpi-value" id="kpi-total">0</div>
+            <div class="kpi-sub" id="kpi-total-sub">0 Active</div>
         </div>
         <div class="kpi-card">
-            <span class="kpi-label">Favorites</span>
-            <span class="kpi-value" id="kpi-favorites">0</span>
-            <span class="kpi-sub">⭐ Saved Properties</span>
+            <div class="kpi-card-header">
+                <span class="kpi-label">Favorites</span>
+                <span class="kpi-card-icon">⭐</span>
+            </div>
+            <div class="kpi-value" id="kpi-favorites">0</div>
+            <div class="kpi-sub">Saved Items</div>
         </div>
         <div class="kpi-card">
-            <span class="kpi-label">Avg List Price</span>
-            <span class="kpi-value" id="kpi-avg-price">$0</span>
-            <span class="kpi-sub" id="kpi-avg-sqft-price">$0 / SqFt</span>
+            <div class="kpi-card-header">
+                <span class="kpi-label">Avg List Price</span>
+                <span class="kpi-card-icon">💵</span>
+            </div>
+            <div class="kpi-value" id="kpi-avg-price">$0</div>
+            <div class="kpi-sub" id="kpi-avg-sqft-price">$0 / SqFt</div>
         </div>
         <div class="kpi-card">
-            <span class="kpi-label">Avg Finished SqFt</span>
-            <span class="kpi-value" id="kpi-avg-sqft">0</span>
-            <span class="kpi-sub">SqFt Finished</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-label">Shared with Realtor</span>
-            <span class="kpi-value" id="kpi-shared">0</span>
-            <span class="kpi-sub">🤝 Active Shared</span>
+            <div class="kpi-card-header">
+                <span class="kpi-label">Avg SqFt</span>
+                <span class="kpi-card-icon">📐</span>
+            </div>
+            <div class="kpi-value" id="kpi-avg-sqft">0</div>
+            <div class="kpi-sub">Finished Living Area</div>
         </div>
     </section>
 
-    <!-- Top Horizontal Filter Bar -->
+    <!-- Unified Control Bar (Search, Filters, Presets, View Switcher & Sorting) -->
     <section class="top-filter-container">
         <div class="top-filter-bar">
-            <!-- Row 1: Search Box & Actions Group -->
-            <div class="top-filter-row top-filter-row-primary">
+            <div class="top-filter-row top-filter-row-unified">
+                <!-- Search Box -->
                 <div class="filter-search-box">
                     <span class="search-icon">🔍</span>
                     <input type="text" id="filter-search" class="input-text" placeholder="Search address, city, keywords, MLS ID...">
                 </div>
 
+                <!-- Quick Specs Dropdowns -->
+                <div class="filter-field-group">
+                    <span class="filter-field-label">MLS Status</span>
+                    <select id="filter-status" class="select-input filter-select-pill">
+                        <option value="all" selected>All MLS Statuses</option>
+                        <option value="Active">Active Only</option>
+                        <option value="Pending">Pending Only</option>
+                        <option value="Closed">Closed Only</option>
+                    </select>
+                </div>
+
+                <div class="filter-field-group">
+                    <span class="filter-field-label">Review Status</span>
+                    <select id="filter-matrix-status-top" class="select-input filter-select-pill">
+                        <option value="all" selected>All Review Statuses</option>
+                        <option value="favorite">⭐ Liked / Favorites</option>
+                        <option value="possibility">🤔 Possibilities</option>
+                        <option value="dislike">🚫 Disliked / Hidden</option>
+                        <option value="none">📋 Unreviewed Only</option>
+                    </select>
+                </div>
+
+                <!-- Filter Actions Group -->
                 <div class="filter-actions-group">
                     <button class="btn btn-gold" id="btn-open-filter-console" type="button">
-                        🎛️ Filter Console <span id="filter-console-badge" class="badge-filter-count" style="display:none;">0</span>
+                        🎛️ Filters <span id="filter-console-badge" class="badge-filter-count" style="display:none;">0</span>
                     </button>
 
                     <!-- Saved Presets Dropdown -->
@@ -124,60 +148,38 @@
                 </div>
             </div>
 
-            <!-- Row 2: Quick Specs & Review Status Dropdowns -->
-            <div class="top-filter-row top-filter-row-secondary">
-                <div class="filter-field-group">
-                    <span class="filter-field-label">Price ($)</span>
-                    <div class="filter-range-pill">
-                        <input type="number" id="filter-price-min" class="filter-range-input" placeholder="Min">
-                        <span class="range-sep">-</span>
-                        <input type="number" id="filter-price-max" class="filter-range-input" placeholder="Max">
-                    </div>
+            <!-- Second Integrated Row: View Switcher & Sorting Controls -->
+            <div class="top-control-subrow">
+                <div class="view-segmented-control">
+                    <button class="view-btn active" data-view="grid">🎴 Card Grid</button>
+                    <button class="view-btn" data-view="map">🗺️ Map View</button>
+                    <button class="view-btn" data-view="table">📊 Table View</button>
+                    <button class="view-btn" data-view="matrix">⚖️ Compare Matrix</button>
                 </div>
 
-                <div class="filter-field-group">
-                    <span class="filter-field-label">Beds</span>
-                    <select id="filter-beds" class="select-input filter-select-pill">
-                        <option value="0">Any Beds</option>
-                        <option value="1">1+ Beds</option>
-                        <option value="2">2+ Beds</option>
-                        <option value="3">3+ Beds</option>
-                        <option value="4">4+ Beds</option>
-                        <option value="5">5+ Beds</option>
-                    </select>
-                </div>
-
-                <div class="filter-field-group">
-                    <span class="filter-field-label">MLS Listing Status</span>
-                    <select id="filter-status" class="select-input filter-select-pill">
-                        <option value="all" selected>All MLS Statuses</option>
-                        <option value="Active">Active Only</option>
-                        <option value="Pending">Pending Only</option>
-                        <option value="Closed">Closed Only</option>
-                    </select>
-                </div>
-
-                <div class="filter-field-group">
-                    <span class="filter-field-label">My Review Status</span>
-                    <select id="filter-matrix-status-top" class="select-input filter-select-pill">
-                        <option value="all" selected>All Review Statuses</option>
-                        <option value="favorite">⭐ Liked / Favorites</option>
-                        <option value="possibility">🤔 Possibilities</option>
-                        <option value="dislike">🚫 Disliked / Hidden</option>
-                        <option value="none">📋 Unreviewed Only</option>
+                <div class="sort-control-group">
+                    <label for="sort-select" class="sort-label">Sort By:</label>
+                    <select id="sort-select" class="select-input sort-select-input">
+                        <option value="date-desc">Newest Listed</option>
+                        <option value="price-asc">Price: Low to High</option>
+                        <option value="price-desc">Price: High to Low</option>
+                        <option value="sqft-desc">SqFt: High to Low</option>
+                        <option value="ppsqft-asc">Price/SqFt: Low to High</option>
+                        <option value="walkscore-desc">WalkScore: High to Low</option>
+                        <option value="rating-desc">My Rating: Highest</option>
                     </select>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Slide-Over Filter Console Drawer Modal -->
+    <!-- Slide-Over Filter Drawer Modal -->
     <div class="filter-drawer-overlay" id="modal-filter-console">
         <div class="filter-drawer-content">
             <!-- Header -->
             <div class="drawer-header">
                 <div>
-                    <h2 style="font-size:1.3rem; margin-bottom:2px;">🎛️ Comprehensive Filter Console</h2>
+                    <h2 style="font-size:1.3rem; margin-bottom:2px;">🎛️ Property Filters</h2>
                     <p style="font-size:0.8rem; color:var(--text-muted);">Filter properties across 32 detailed specs, financials, location scores, and notes</p>
                 </div>
                 <button class="modal-close" id="btn-close-filter-console" style="position:static; font-size:1.4rem;">✕</button>
@@ -727,36 +729,20 @@
             <!-- Active Filter Chips Bar -->
             <div id="active-filters-bar" class="active-filters-bar" style="display: none;"></div>
 
-            <!-- Toolbar -->
-            <div class="toolbar">
-                <div class="view-options">
-                    <button class="view-btn active" data-view="grid">🎴 Card Grid</button>
-                    <button class="view-btn" data-view="map">🗺️ Map View</button>
-                    <button class="view-btn" data-view="table">📊 Table View</button>
-                    <button class="view-btn" data-view="matrix">⚖️ Compare Matrix</button>
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <label style="font-size: 0.85rem; color: var(--text-muted);">Sort By:</label>
-                    <select id="sort-select" class="select-input" style="width: auto;">
-                        <option value="date-desc">Newest Listed</option>
-                        <option value="price-asc">Price: Low to High</option>
-                        <option value="price-desc">Price: High to Low</option>
-                        <option value="sqft-desc">SqFt: High to Low</option>
-                        <option value="ppsqft-asc">Price/SqFt: Low to High</option>
-                        <option value="walkscore-desc">WalkScore: High to Low</option>
-                        <option value="rating-desc">My Rating: Highest</option>
-                    </select>
-                </div>
-            </div>
-
             <!-- View Containers -->
             <div id="view-grid-container" class="property-grid">
                 <!-- Dynamically populated card grid -->
             </div>
 
-            <div id="view-map-container" class="map-view-wrapper" style="display: none;">
-                <div id="map-element" style="width: 100%; height: 600px; border-radius: var(--radius-md); border: 1px solid var(--border-color); z-index: 1;"></div>
+            <div id="view-map-container" class="map-view-split-wrapper" style="display: none;">
+                <div class="map-split-left">
+                    <div id="map-element" class="map-sticky-element"></div>
+                </div>
+                <div class="map-split-right">
+                    <div id="map-cards-container" class="property-grid map-property-grid">
+                        <!-- Dynamically populated card grid alongside map -->
+                    </div>
+                </div>
             </div>
 
             <div id="view-table-container" class="table-container" style="display: none;">
@@ -807,7 +793,7 @@
                 Our bookmarklet allows you to extract Matrix MLS property data and automatically enrich it with Redfin WalkScores and estimates straight from your browser without getting auto-blocked.
             </p>
             <div style="background: var(--bg-input); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; margin-bottom: 1.5rem;">
-                <a id="modal-drag-bm-btn" href="#" class="bookmarklet-btn" style="font-size: 1.1rem; padding: 0.6rem 1.5rem; display: inline-block;">📍 Scrape to Scout</a>
+                <a id="modal-drag-bm-btn" href="javascript:void(0)" class="bookmarklet-btn" style="font-size: 1.1rem; padding: 0.6rem 1.5rem; display: inline-block;">📍 Scrape to Scout</a>
                 <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">← Drag this button up to your browser bookmarks bar</p>
                 <div style="display:flex; justify-content:center; gap: 0.5rem; flex-wrap:wrap; margin-top:0.75rem;">
                     <button type="button" class="btn btn-gold" id="btn-copy-bm-code" style="font-size:0.85rem;">📋 Copy Bookmarklet Code</button>
@@ -830,7 +816,7 @@
                 Walks every listing in your current search into its full detail view, one at a time. Every listing gets its notes re-checked on every run (in case your agent has replied), while the full photo gallery is only downloaded the first time a listing is fully captured — much slower on the first pass, fast on repeat runs.
             </p>
             <div style="background: var(--bg-input); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; margin-bottom: 1.5rem;">
-                <a id="modal-drag-deep-bm-btn" href="#" class="bookmarklet-btn" style="font-size: 1.1rem; padding: 0.6rem 1.5rem; display: inline-block;">🔬 Deep Scrape to Scout</a>
+                <a id="modal-drag-deep-bm-btn" href="javascript:void(0)" class="bookmarklet-btn" style="font-size: 1.1rem; padding: 0.6rem 1.5rem; display: inline-block;">🔬 Deep Scrape to Scout</a>
                 <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">← Drag this button up to your browser bookmarks bar</p>
                 <div style="display:flex; justify-content:center; gap: 0.5rem; flex-wrap:wrap; margin-top:0.75rem;">
                     <button type="button" class="btn btn-gold" id="btn-copy-deep-bm-code" style="font-size:0.85rem;">📋 Copy Deep Scrape Code</button>
@@ -850,7 +836,7 @@
 
     <!-- Top Picks Recommendation Modal -->
     <div class="modal-overlay" id="modal-recommend">
-        <div class="modal-content" style="max-width: 820px;">
+        <div class="modal-content" style="max-width: 920px;">
             <button class="modal-close" id="modal-recommend-close">✕</button>
             <h2>✨ Top Picks</h2>
             <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">
@@ -889,6 +875,7 @@
             <h2>📥 Export & Share Options</h2>
             <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Export filtered listings or generate reports for your realtor.</p>
             <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
+                <button class="btn btn-emerald" id="btn-export-modal-homeward">🗺️ Export Favorites to Homeward Route Planner</button>
                 <button class="btn btn-primary" id="btn-export-csv">📄 Export CSV / Spreadsheet</button>
                 <button class="btn btn-gold" id="btn-export-json">💾 Export Raw JSON Backup</button>
                 <button class="btn btn-secondary" id="btn-print-pdf">🖨️ Print / Save as PDF Report</button>
@@ -986,7 +973,7 @@
             <h2 style="margin-bottom: 0.25rem;">Scout Dashboard Login</h2>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">Enter your credentials to access MLS & Redfin analytics</p>
             <div id="login-error" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem; text-align: left;"></div>
-            <form id="form-login" onsubmit="if(window.handleLoginSubmit) window.handleLoginSubmit(event); return false;" style="display: flex; flex-direction: column; gap: 1rem; text-align: left;">
+            <form id="form-login" style="display: flex; flex-direction: column; gap: 1rem; text-align: left;">
                 <div>
                     <label class="filter-label" for="login-username">Username</label>
                     <input type="text" id="login-username" class="input-text" placeholder="Enter username" required autocomplete="username" style="width: 100%;">
@@ -997,6 +984,36 @@
                 </div>
                 <button type="submit" class="btn btn-primary" id="btn-submit-login" style="margin-top: 0.5rem; width: 100%; padding: 0.75rem; font-size: 1rem; font-weight: 700;">Sign In 🚀</button>
             </form>
+        </div>
+    </div>
+    <!-- Floating Property Compare Dock -->
+    <div id="compare-dock" class="compare-dock" style="display: none;">
+        <div class="compare-dock-inner">
+            <div class="compare-dock-info">
+                <span class="compare-dock-title">⚖️ Property Comparison Dock</span>
+                <span id="compare-count-badge" class="badge-gold">0 / 4 Selected</span>
+            </div>
+            <div id="compare-thumbnails" class="compare-thumbnails"></div>
+            <div class="compare-dock-actions">
+                <button class="btn btn-gold" id="btn-open-compare-matrix">📊 Compare Side-by-Side</button>
+                <button class="btn btn-secondary btn-compact" id="btn-clear-compare">✕ Clear</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Side-by-Side Property Comparison Matrix Modal -->
+    <div class="modal-overlay" id="modal-compare-matrix">
+        <div class="modal-content modal-lg compare-matrix-modal">
+            <div class="modal-header">
+                <div>
+                    <h2 class="font-serif" style="font-size: 1.5rem; margin-bottom: 0.2rem;">⚖️ Side-by-Side Luxury Property Comparison</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Compare specs, valuation metrics, location scores, and financial highlights side-by-side</p>
+                </div>
+                <button class="modal-close" id="btn-close-compare-matrix">✕</button>
+            </div>
+            <div class="modal-body" id="compare-matrix-body" style="padding: 1.5rem; overflow-x: auto;">
+                <!-- Dynamically rendered side-by-side comparison table -->
+            </div>
         </div>
     </div>
 

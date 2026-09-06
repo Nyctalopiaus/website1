@@ -7,23 +7,39 @@
 import { elements } from './state.js';
 
 
-    export function setupBookmarkletLink() {
-        const apiUrl = window.location.href.replace(/\/index\.html.*$/, '') + '/backend/api.php';
-        const code = typeof getBookmarkletCode === 'function' 
-            ? getBookmarkletCode(apiUrl) 
-            : 'javascript:alert("Bookmarklet Engine Loading...");';
+export function setupBookmarkletLink() {
+    const getApiUrl = () => {
+        let base = window.location.origin + window.location.pathname.replace(/\/index\.html$/, '').replace(/\/$/, '');
+        return base + '/backend/api.php';
+    };
 
-        if (elements.dragBookmarkletBtn) {
-            elements.dragBookmarkletBtn.href = code;
-            elements.dragBookmarkletBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                elements.modalBookmarklet.classList.add('active');
-            });
+    const updateHrefs = () => {
+        const apiUrl = getApiUrl();
+        if (typeof getBookmarkletCode === 'function') {
+            const code = getBookmarkletCode(apiUrl);
+            if (elements.dragBookmarkletBtn) elements.dragBookmarkletBtn.setAttribute('href', code);
+            if (elements.modalDragBmBtn) elements.modalDragBmBtn.setAttribute('href', code);
         }
-        if (elements.modalDragBmBtn) elements.modalDragBmBtn.href = code;
+        if (typeof getDeepScrapeBookmarkletCode === 'function') {
+            const deepCode = getDeepScrapeBookmarkletCode(apiUrl);
+            if (elements.modalDragDeepBmBtn) elements.modalDragDeepBmBtn.setAttribute('href', deepCode);
+        }
+    };
 
-        const deepCode = typeof getDeepScrapeBookmarkletCode === 'function'
-            ? getDeepScrapeBookmarkletCode(apiUrl)
-            : 'javascript:alert("Deep Scrape Engine Loading...");';
-        if (elements.modalDragDeepBmBtn) elements.modalDragDeepBmBtn.href = deepCode;
+    updateHrefs();
+
+    // Re-sync on hover or drag start
+    const targets = [elements.dragBookmarkletBtn, elements.modalDragBmBtn, elements.modalDragDeepBmBtn].filter(Boolean);
+    targets.forEach(btn => {
+        ['mouseenter', 'focus', 'mousedown', 'dragstart'].forEach(evt => {
+            btn.addEventListener(evt, updateHrefs);
+        });
+    });
+
+    if (elements.dragBookmarkletBtn) {
+        elements.dragBookmarkletBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            elements.modalBookmarklet?.classList.add('active');
+        });
     }
+}

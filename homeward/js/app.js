@@ -53,6 +53,52 @@ class HomewardApp {
     this.bindEvents();
     this.initMapClickPinDropper();
     window.notesManager.initStarRatingEvents();
+
+    // 4. Check for pending import from MLS Redfin Scout
+    this.checkPendingScoutImport();
+  }
+
+  async checkPendingScoutImport() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isImport = urlParams.get('import') === 'scout';
+    const rawData = localStorage.getItem('homeward_pending_import_scout');
+
+    if (!rawData && !isImport) return;
+
+    try {
+      if (rawData) {
+        const payload = JSON.parse(rawData);
+        // Clean up localStorage immediately so it's not re-triggered on refresh
+        localStorage.removeItem('homeward_pending_import_scout');
+
+        if (payload && Array.isArray(payload.stops) && payload.stops.length > 0) {
+          // Verify freshness (within 1 hour)
+          const ageMs = Date.now() - (payload.timestamp || 0);
+          if (ageMs < 60 * 60 * 1000) {
+            this.currentTour = {
+              tourName: 'MLS Scout Favorites Viewing Tour',
+              startAddress: (this.currentTour && this.currentTour.startAddress) || '100 Congress Ave, Austin, TX 78701',
+              loopBack: true,
+              stayDurationMins: 20,
+              stops: payload.stops
+            };
+            window.storageManager.saveTour(this.currentTour);
+            this.populateUIFromState();
+            await this.runOptimizationAndRender();
+            if (window.propertyLinks && typeof window.propertyLinks._showToast === 'function') {
+              window.propertyLinks._showToast(`⭐ Loaded ${payload.stops.length} favorites from MLS Scout!`);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error importing Scout favorites:', e);
+    } finally {
+      if (isImport && window.history && window.history.replaceState) {
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+      }
+    }
   }
 
   initAutocomplete() {

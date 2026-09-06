@@ -3,8 +3,9 @@
  */
 import { state, elements } from './state.js';
 import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml } from './properties.js';
-import { renderMap } from './map.js';
+import { renderMap, highlightMapMarker, unhighlightMapMarker } from './map.js';
 import { showToast } from './toast.js';
+import { updateCompareButtons } from './compare.js';
 
 
     export function updateKPIs() {
@@ -20,13 +21,13 @@ import { showToast } from './toast.js';
         const avgSqft = filtered.length ? Math.round(totalSqft / filtered.length) : 0;
         const avgPpsqft = totalSqft ? Math.round(totalPrice / totalSqft) : 0;
 
-        elements.kpiTotal.innerText = filtered.length;
-        elements.kpiTotalSub.innerText = `${activeCount} Active`;
-        elements.kpiFavorites.innerText = favCount;
-        elements.kpiShared.innerText = sharedCount;
-        elements.kpiAvgPrice.innerText = `$${avgPrice.toLocaleString()}`;
-        elements.kpiAvgSqftPrice.innerText = `$${avgPpsqft} / SqFt`;
-        elements.kpiAvgSqft.innerText = `${avgSqft.toLocaleString()}`;
+        if (elements.kpiTotal) elements.kpiTotal.innerText = filtered.length;
+        if (elements.kpiTotalSub) elements.kpiTotalSub.innerText = `${activeCount} Active`;
+        if (elements.kpiFavorites) elements.kpiFavorites.innerText = favCount;
+        if (elements.kpiShared) elements.kpiShared.innerText = sharedCount;
+        if (elements.kpiAvgPrice) elements.kpiAvgPrice.innerText = `$${avgPrice.toLocaleString()}`;
+        if (elements.kpiAvgSqftPrice) elements.kpiAvgSqftPrice.innerText = `$${avgPpsqft} / SqFt`;
+        if (elements.kpiAvgSqft) elements.kpiAvgSqft.innerText = `${avgSqft.toLocaleString()}`;
     }
     export function renderActiveView() {
         elements.gridContainer.style.display = 'none';
@@ -36,10 +37,13 @@ import { showToast } from './toast.js';
 
         if (state.activeView === 'grid') {
             elements.gridContainer.style.display = 'grid';
-            renderGrid();
+            renderGrid(elements.gridContainer, false);
         } else if (state.activeView === 'map') {
-            if (elements.mapContainer) elements.mapContainer.style.display = 'block';
+            if (elements.mapContainer) elements.mapContainer.style.display = 'flex';
             renderMap();
+            if (elements.mapCardsContainer) {
+                renderGrid(elements.mapCardsContainer, true);
+            }
         } else if (state.activeView === 'table') {
             elements.tableContainer.style.display = 'block';
             renderTable();
@@ -56,10 +60,83 @@ import { showToast } from './toast.js';
         renderActiveView();
         showToast(`Switched view to ${viewName.toUpperCase()}`, 'info');
     }
-    export function renderGrid() {
+
+    export function buildPropertyCardHtml(p) {
+        const ppsqft = p.sqft_finished ? Math.round(p.price / p.sqft_finished) : 0;
+        const rfDelta = p.redfin_estimate ? Math.round(((p.price - p.redfin_estimate) / p.redfin_estimate) * 100) : null;
+        let rfBadge = '';
+        if (rfDelta !== null) {
+            const isAbove = rfDelta > 0;
+            rfBadge = `<span class="card-rf-delta ${isAbove ? 'delta-above' : 'delta-below'}">${isAbove ? '+' : ''}${rfDelta}% vs Redfin</span>`;
+        }
+
+        const matrixRev = getPropertyReviewStatus(p);
+        let matrixBadge = '';
+        if (matrixRev === 'favorite') matrixBadge = `<span class="badge-matrix-review badge-matrix-fav">⭐ Matrix Favorite</span>`;
+        else if (matrixRev === 'possibility') matrixBadge = `<span class="badge-matrix-review badge-matrix-possibility">🤔 Matrix Possibility</span>`;
+        else if (matrixRev === 'dislike') matrixBadge = `<span class="badge-matrix-review badge-matrix-dislike">🚫 Matrix Disliked</span>`;
+
+        const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
+        const imgUrl = p.main_image_url || 'https://via.placeholder.com/400x250?text=No+Listing+Photo';
+
+        let photoCount = 0;
+        if (p.photo_count) {
+            photoCount = p.photo_count;
+        } else if (Array.isArray(p.gallery_images)) {
+            photoCount = p.gallery_images.length;
+        } else if (typeof p.gallery_images === 'string') {
+            try { photoCount = JSON.parse(p.gallery_images).length; } catch(e) {}
+        }
+        const photoBadge = photoCount > 1 ? `<span class="card-photo-count-badge">📷 ${photoCount}</span>` : '';
+
+        const isComparing = state.compareList && state.compareList.includes(String(p.mls_id));
+
+        return `
+            <div class="property-card" data-mls="${p.mls_id}" onclick="openDetailModal('${p.mls_id}')">
+                <div class="card-media">
+                    <img src="${imgUrl}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://via.placeholder.com/400x250?text=No+Photo+Available';" class="card-img" alt="Property">
+                    <span class="card-status-badge badge-${(p.status || 'Active').toLowerCase()}">${p.status}</span>
+                    ${photoBadge}
+                    <button class="card-fav-btn ${p.favorite ? 'is-fav' : ''}" onclick="toggleFavorite('${p.mls_id}', event)">
+                        ${p.favorite ? '★' : '☆'}
+                    </button>
+                    <button class="card-compare-btn ${isComparing ? 'is-comparing' : ''}" data-mls="${p.mls_id}" onclick="window.handleToggleCompare('${p.mls_id}', event)">
+                        ${isComparing ? '✓ Comparing' : '+ Compare'}
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="card-price-row">
+                        <span class="card-price font-serif">$${p.price.toLocaleString()}</span>
+                        ${rfBadge}
+                    </div>
+                    <div>
+                        <div class="card-address">${escapeHtml(displayAddr)}</div>
+                        <div class="card-city">${p.city}, ${p.state} ${p.zip}</div>
+                    </div>
+                    <div class="card-stats">
+                        <div class="stat-item"><span class="stat-val">${p.beds}</span><span class="stat-lbl">Beds</span></div>
+                        <div class="stat-item"><span class="stat-val">${p.baths}</span><span class="stat-lbl">Baths</span></div>
+                        <div class="stat-item"><span class="stat-val">${p.sqft_finished ? p.sqft_finished.toLocaleString() : 'N/A'}</span><span class="stat-lbl">Fin SqFt</span></div>
+                        <div class="stat-item"><span class="stat-val">$${ppsqft}</span><span class="stat-lbl">$/SqFt</span></div>
+                    </div>
+                    <div class="card-scores">
+                        <span class="score-badge">Yr: ${p.year_built || 'N/A'}</span>
+                        <span class="score-badge">Lot: ${p.lot_acres ? p.lot_acres + ' ac' : (p.lot_sqft ? p.lot_sqft + ' sqft' : 'N/A')}</span>
+                        ${p.walk_score ? `<span class="score-badge" style="background:#059669; color:#fff;">🚶 ${p.walk_score}/100</span>` : ''}
+                        ${p.hoa_fee ? `<span class="score-badge" style="background:#d97706; color:#fff;">HOA: $${p.hoa_fee}</span>` : '<span class="score-badge">No HOA</span>'}
+                        ${matrixBadge}
+                    </div>
+                    ${p.user_notes ? `<div class="card-notes-preview">📝 ${escapeHtml(p.user_notes)}</div>` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    export function renderGrid(containerEl = elements.gridContainer, attachMapHoverEvents = false) {
+        if (!containerEl) return;
         const props = state.filteredProperties;
         if (!props.length) {
-            elements.gridContainer.innerHTML = `
+            containerEl.innerHTML = `
                 <div style="grid-column: 1/-1; text-align:center; padding: 4rem; color: var(--text-muted); background: var(--bg-card); border-radius: 12px;">
                     <h3>No matching properties found</h3>
                     <p style="margin-top: 0.5rem;">Try adjusting your search criteria or resetting filters.</p>
@@ -68,60 +145,17 @@ import { showToast } from './toast.js';
             return;
         }
 
-        elements.gridContainer.innerHTML = props.map(p => {
-            const ppsqft = p.sqft_finished ? Math.round(p.price / p.sqft_finished) : 0;
-            const rfDelta = p.redfin_estimate ? Math.round(((p.price - p.redfin_estimate) / p.redfin_estimate) * 100) : null;
-            let rfBadge = '';
-            if (rfDelta !== null) {
-                const isAbove = rfDelta > 0;
-                rfBadge = `<span class="card-rf-delta ${isAbove ? 'delta-above' : 'delta-below'}">${isAbove ? '+' : ''}${rfDelta}% vs Redfin</span>`;
-            }
+        containerEl.innerHTML = props.map(buildPropertyCardHtml).join('');
+        updateCompareButtons();
 
-            const matrixRev = getPropertyReviewStatus(p);
-            let matrixBadge = '';
-            if (matrixRev === 'favorite') matrixBadge = `<span class="badge-matrix-review badge-matrix-fav">⭐ Matrix Favorite</span>`;
-            else if (matrixRev === 'possibility') matrixBadge = `<span class="badge-matrix-review badge-matrix-possibility">🤔 Matrix Possibility</span>`;
-            else if (matrixRev === 'dislike') matrixBadge = `<span class="badge-matrix-review badge-matrix-dislike">🚫 Matrix Disliked</span>`;
-
-            const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
-            const imgUrl = p.main_image_url || 'https://via.placeholder.com/400x250?text=No+Listing+Photo';
-
-            return `
-                <div class="property-card" data-mls="${p.mls_id}" onclick="openDetailModal('${p.mls_id}')">
-                    <div class="card-media">
-                        <img src="${imgUrl}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://via.placeholder.com/400x250?text=No+Photo+Available';" class="card-img" alt="Property">
-                        <span class="card-status-badge badge-${(p.status || 'Active').toLowerCase()}">${p.status}</span>
-                        <button class="card-fav-btn ${p.favorite ? 'is-fav' : ''}" onclick="toggleFavorite('${p.mls_id}', event)">
-                            ${p.favorite ? '★' : '☆'}
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="card-price-row">
-                            <span class="card-price">$${p.price.toLocaleString()}</span>
-                            ${rfBadge}
-                        </div>
-                        <div>
-                            <div class="card-address">${escapeHtml(displayAddr)}</div>
-                            <div class="card-city">${p.city}, ${p.state} ${p.zip}</div>
-                        </div>
-                        <div class="card-stats">
-                            <div class="stat-item"><span class="stat-val">${p.beds}</span><span class="stat-lbl">Beds</span></div>
-                            <div class="stat-item"><span class="stat-val">${p.baths}</span><span class="stat-lbl">Baths</span></div>
-                            <div class="stat-item"><span class="stat-val">${p.sqft_finished ? p.sqft_finished.toLocaleString() : 'N/A'}</span><span class="stat-lbl">Fin SqFt</span></div>
-                            <div class="stat-item"><span class="stat-val">$${ppsqft}</span><span class="stat-lbl">$/SqFt</span></div>
-                        </div>
-                        <div class="card-scores">
-                            <span class="score-badge">Yr: ${p.year_built || 'N/A'}</span>
-                            <span class="score-badge">Lot: ${p.lot_acres ? p.lot_acres + ' ac' : (p.lot_sqft ? p.lot_sqft + ' sqft' : 'N/A')}</span>
-                            ${p.walk_score ? `<span class="score-badge" style="background:#059669; color:#fff;">🚶 ${p.walk_score}/100</span>` : ''}
-                            ${p.hoa_fee ? `<span class="score-badge" style="background:#d97706; color:#fff;">HOA: $${p.hoa_fee}</span>` : '<span class="score-badge">No HOA</span>'}
-                            ${matrixBadge}
-                        </div>
-                        ${p.user_notes ? `<div class="card-notes-preview">📝 ${escapeHtml(p.user_notes)}</div>` : ''}
-                    </div>
-                </div>
-            `;
-        }).join('');
+        if (attachMapHoverEvents) {
+            containerEl.querySelectorAll('.property-card').forEach(card => {
+                const mls = card.dataset.mls;
+                if (!mls) return;
+                card.addEventListener('mouseenter', () => highlightMapMarker(mls));
+                card.addEventListener('mouseleave', () => unhighlightMapMarker(mls));
+            });
+        }
     }
     export function renderTable() {
         const props = state.filteredProperties;

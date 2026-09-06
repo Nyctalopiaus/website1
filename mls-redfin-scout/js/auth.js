@@ -66,21 +66,32 @@ import { fetchProperties } from './properties.js';
             elements.modalLogin.classList.add('active');
         }
     }
+    let isLoggingIn = false;
+
     export function handleLoginSubmit(e) {
         if (e) e.preventDefault();
-        const username = elements.loginUsername ? elements.loginUsername.value.trim() : '';
-        const password = elements.loginPassword ? elements.loginPassword.value : '';
+        if (isLoggingIn) return;
+
+        const loginErrEl = elements.loginError || document.getElementById('login-error');
+        const loginUserEl = elements.loginUsername || document.getElementById('login-username');
+        const loginPassEl = elements.loginPassword || document.getElementById('login-password');
+        const btnSubmit = elements.btnSubmitLogin || document.getElementById('btn-submit-login');
+
+        const username = loginUserEl ? loginUserEl.value.trim() : '';
+        const password = loginPassEl ? loginPassEl.value : '';
+
         if (!username || !password) {
-            if (elements.loginError) {
-                elements.loginError.innerText = 'Please enter both username and password.';
-                elements.loginError.style.display = 'block';
+            if (loginErrEl) {
+                loginErrEl.innerText = 'Please enter both username and password.';
+                loginErrEl.style.display = 'block';
             }
             return;
         }
 
-        if (elements.btnSubmitLogin) {
-            elements.btnSubmitLogin.disabled = true;
-            elements.btnSubmitLogin.innerText = 'Signing In... ⏳';
+        isLoggingIn = true;
+        if (btnSubmit) {
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = 'Signing In... ⏳';
         }
 
         fetch(CONFIG.API_URL + '?action=login', {
@@ -96,35 +107,39 @@ import { fetchProperties } from './properties.js';
                 state.authenticated = true;
                 state.user = data.username;
                 state.csrfToken = data.csrf_token;
-                if (elements.loginError) elements.loginError.style.display = 'none';
-                if (elements.modalLogin) {
-                    elements.modalLogin.classList.remove('active');
-                    elements.modalLogin.style.display = 'none';
+                if (loginErrEl) loginErrEl.style.display = 'none';
+                const modalLoginEl = elements.modalLogin || document.getElementById('modal-login');
+                if (modalLoginEl) {
+                    modalLoginEl.classList.remove('active');
+                    modalLoginEl.style.display = 'none';
                 }
-                if (elements.userDisplayName) elements.userDisplayName.innerText = '👤 ' + data.username;
-                if (elements.btnLogout) elements.btnLogout.style.display = 'inline-flex';
-                if (elements.loginPassword) elements.loginPassword.value = '';
+                const userDisplayEl = elements.userDisplayName || document.getElementById('user-display-name');
+                if (userDisplayEl) userDisplayEl.innerText = '👤 ' + data.username;
+                const logoutEl = elements.btnLogout || document.getElementById('btn-logout');
+                if (logoutEl) logoutEl.style.display = 'inline-flex';
+                if (loginPassEl) loginPassEl.value = '';
                 updateAdminUI();
                 showToast(`Welcome back, ${data.username}! 🚀`, 'success');
                 fetchProperties();
             } else {
-                if (elements.loginError) {
-                    elements.loginError.innerText = data.error || 'Invalid credentials';
-                    elements.loginError.style.display = 'block';
+                if (loginErrEl) {
+                    loginErrEl.innerText = data.error || 'Invalid credentials';
+                    loginErrEl.style.display = 'block';
                 }
             }
         })
         .catch(err => {
             console.error('Login error:', err);
-            if (elements.loginError) {
-                elements.loginError.innerText = 'Login request failed: ' + (err.message || 'Server error.');
-                elements.loginError.style.display = 'block';
+            if (loginErrEl) {
+                loginErrEl.innerText = 'Login request failed: ' + (err.message || 'Server error.');
+                loginErrEl.style.display = 'block';
             }
         })
         .finally(() => {
-            if (elements.btnSubmitLogin) {
-                elements.btnSubmitLogin.disabled = false;
-                elements.btnSubmitLogin.innerText = 'Sign In 🚀';
+            isLoggingIn = false;
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = 'Sign In 🚀';
             }
         });
     }

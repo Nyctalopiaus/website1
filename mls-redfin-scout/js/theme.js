@@ -7,19 +7,11 @@ import { showToast } from './toast.js';
 
 
     export function initTheme() {
-        const savedTheme = localStorage.getItem('scout_theme') || 'dark';
-        setTheme(savedTheme);
+        document.documentElement.setAttribute('data-theme', 'dark');
     }
     export function setTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('scout_theme', theme);
-        if (elements.themeIcon) elements.themeIcon.innerText = theme === 'light' ? '☀️' : '🌙';
-        if (elements.themeLabel) elements.themeLabel.innerText = theme === 'light' ? 'Light' : 'Dark';
-        if (mapState.leafletMap) updateMapTileLayer();
+        document.documentElement.setAttribute('data-theme', 'dark');
     }
     export function toggleTheme() {
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        setTheme(newTheme);
-        showToast(`Switched to ${newTheme === 'light' ? 'Light' : 'Dark'} Theme`, 'info');
+        // Theme is locked onto signature Obsidian Luxury theme
     }

@@ -31,12 +31,31 @@ class DoorScoutApp {
     this.map = L.map('map', { zoomControl: false }).setView([initialTarget.lat, initialTarget.lng], 14);
     L.control.zoom({ position: 'topright' }).addTo(this.map);
 
-    // CartoDB Voyager tile layer
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 19
-    }).addTo(this.map);
+    // Base tile layers (Zero watermarks, 100% clean & public)
+    const osmStandard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      crossOrigin: true
+    });
+
+    const esriStreets = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
+    });
+
+    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    });
+
+    osmStandard.addTo(this.map);
+
+    const baseMaps = {
+      "🗺️ OpenStreetMap Clean": osmStandard,
+      "🛣️ Esri Street Map": esriStreets,
+      "🛰️ Esri Satellite": esriSatellite
+    };
+    L.control.layers(baseMaps, null, { position: 'topright' }).addTo(this.map);
 
     this.notesManager = new InspirationNotesManager(this.map, (updatedNotes) => {
       this.session.notes = updatedNotes;

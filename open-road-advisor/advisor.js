@@ -156,23 +156,31 @@ document.addEventListener('DOMContentLoaded', () => {
         attributionControl: false
       }).setView([45.505, -122.676], 6); // Default centered on Pacific Northwest
 
-      // CartoDB Dark Matter layer (softer dark tile layer) with OSM fallback
-      const primaryTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      // Base tile layers (Zero watermarks, 100% clean & public)
+      const osmStandard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
-        subdomains: 'abcd'
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        crossOrigin: true
       });
 
-      primaryTiles.on('tileerror', function() {
-        console.warn('CartoDB basemap tiles failed to load, swapping to OpenStreetMap tiles.');
-        if (map && map.hasLayer(primaryTiles)) {
-          map.removeLayer(primaryTiles);
-        }
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19
-        }).addTo(map);
+      const esriStreets = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
       });
 
-      primaryTiles.addTo(map);
+      const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+      });
+
+      osmStandard.addTo(map);
+
+      const baseMaps = {
+        "🗺️ OpenStreetMap Clean": osmStandard,
+        "🛣️ Esri Street Map": esriStreets,
+        "🛰️ Esri Satellite": esriSatellite
+      };
+      L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
       if (typeof ResizeObserver !== 'undefined') {
         let resizeTimer = null;

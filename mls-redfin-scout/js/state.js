@@ -18,6 +18,7 @@
         authenticated: false,
         user: null,
         csrfToken: '',
+        compareList: [],
         filters: {
             search: '',
             priceMin: null, priceMax: null,
@@ -36,13 +37,15 @@
     export const mapState = {
         leafletMap: null,
         currentTileLayer: null,
-        mapMarkers: []
+        mapMarkers: [],
+        markerMap: {}
     };
 
     // DOM Elements
     export const elements = {
         gridContainer: document.getElementById('view-grid-container'),
         mapContainer: document.getElementById('view-map-container'),
+        mapCardsContainer: document.getElementById('map-cards-container'),
         mapElement: document.getElementById('map-element'),
         tableContainer: document.getElementById('view-table-container'),
         matrixContainer: document.getElementById('view-matrix-container'),
@@ -103,6 +106,8 @@
         modalExport: document.getElementById('modal-export'),
         modalExportClose: document.getElementById('modal-export-close'),
         btnExportModal: document.getElementById('btn-export-modal'),
+        btnExportHomeward: document.getElementById('btn-export-homeward'),
+        btnExportModalHomeward: document.getElementById('btn-export-modal-homeward'),
         btnExportCsv: document.getElementById('btn-export-csv'),
         btnExportJson: document.getElementById('btn-export-json'),
         btnPrintPdf: document.getElementById('btn-print-pdf'),

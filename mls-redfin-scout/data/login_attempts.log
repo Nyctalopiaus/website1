@@ -8,3 +8,9 @@
 [2026-09-05 18:22:34] [FAILURE] User: 'admin' | IP: 127.0.0.1 | Reason: Password mismatch | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
 [2026-09-05 18:22:39] [SUCCESS] User: 'admin' | IP: 127.0.0.1 | Reason: Authentication successful | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
 [2026-09-05 18:22:39] [SUCCESS] User: 'admin' | IP: 127.0.0.1 | Reason: Authentication successful | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+[2026-09-06 00:00:16] [SUCCESS] User: 'admin' | IP: 127.0.0.1 | Reason: Authentication successful | UA: Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.9168
+[2026-09-06 00:00:21] [SUCCESS] User: 'admin' | IP: 127.0.0.1 | Reason: Authentication successful | UA: Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.9168
+[2026-09-06 00:00:35] [SUCCESS] User: 'admin' | IP: 127.0.0.1 | Reason: Authentication successful | UA: Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.9168
+[2026-09-06 00:04:38] [FAILURE] User: '(empty)' | IP: 127.0.0.1 | Reason: Missing username or password fields | UA: curl/8.21.0
+[2026-09-06 00:04:42] [SUCCESS] User: 'admin' | IP: 127.0.0.1 | Reason: Authentication successful | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.136.1 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36
+[2026-09-06 00:05:26] [SUCCESS] User: 'admin' | IP: 127.0.0.1 | Reason: Authentication successful | UA: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Code/1.136.1 Chrome/148.0.7778.280 Electron/42.10.0 Safari/537.36

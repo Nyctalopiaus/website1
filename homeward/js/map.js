@@ -10,6 +10,8 @@ class MapManager {
     this.routePolyline = null;
     this.defaultCenter = [39.5501, -104.7801]; // Default Colorado Springs / Denver Region
     this.defaultZoom = 10;
+    this.currentTileLayer = null;
+    this.mapLayerControl = null;
   }
 
   initMap() {
@@ -22,17 +24,36 @@ class MapManager {
       preferCanvas: true
     }).setView(this.defaultCenter, this.defaultZoom);
 
-    // CartoDB Dark Matter Map Tiles (Optimized Sharding)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>',
-      subdomains: 'abcd',
+    // Base tile layers (Zero watermarks, 100% clean & public)
+    const osmStandard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      maxNativeZoom: 19,
-      crossOrigin: true,
-      updateWhenIdle: false,
-      updateWhenZooming: false,
-      keepBuffer: 6
-    }).addTo(this.map);
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      crossOrigin: true
+    });
+
+    const esriStreets = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom, 2012'
+    });
+
+    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    });
+
+    if (!this.currentTileLayer) {
+      this.currentTileLayer = osmStandard;
+      this.currentTileLayer.addTo(this.map);
+    }
+
+    if (!this.mapLayerControl) {
+      const baseMaps = {
+        "🗺️ OpenStreetMap Clean": osmStandard,
+        "🛣️ Esri Street Map": esriStreets,
+        "🛰️ Esri Satellite": esriSatellite
+      };
+      this.mapLayerControl = L.control.layers(baseMaps, null, { position: 'topright' }).addTo(this.map);
+    }
 
     // Zoom control at top right
     L.control.zoom({ position: 'topright' }).addTo(this.map);

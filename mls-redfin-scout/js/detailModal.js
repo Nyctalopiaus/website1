@@ -13,8 +13,19 @@ import { applyFiltersAndRender } from './filters.js';
 import { showToast } from './toast.js';
 
 
+    // Detail Modal Multi-Photo State
+    let currentGalleryImages = [];
+    let currentGalleryIndex = 0;
+
     // Detail Modal Handlers
     window.openDetailModal = function(mlsId) {
+        if (elements.modalRecommend && elements.modalRecommend.classList.contains('active')) {
+            if (typeof window.closeRecommendModal === 'function') {
+                window.closeRecommendModal();
+            } else {
+                elements.modalRecommend.classList.remove('active');
+            }
+        }
         const p = state.allProperties.find(item => item.mls_id === mlsId);
         if (!p) return;
 
@@ -44,7 +55,27 @@ import { showToast } from './toast.js';
         }
 
         const displayAddrModal = cleanDisplayAddress(p.address, p.mls_id);
-        const modalImgUrl = p.main_image_url || 'https://via.placeholder.com/800x450?text=No+Photo+Available';
+        
+        // Prepare multi-photo gallery array
+        let gallery = [];
+        if (Array.isArray(p.gallery_images) && p.gallery_images.length > 0) {
+            gallery = p.gallery_images;
+        } else if (typeof p.gallery_images === 'string') {
+            try { gallery = JSON.parse(p.gallery_images); } catch(e) {}
+        }
+        if (!Array.isArray(gallery) || gallery.length === 0) {
+            gallery = p.main_image_url ? [p.main_image_url] : ['https://via.placeholder.com/800x450?text=No+Photo+Available'];
+        }
+        currentGalleryImages = gallery;
+        currentGalleryIndex = 0;
+
+        const calcParams = new URLSearchParams();
+        if (p.price) calcParams.set('price', p.price);
+        if (p.annual_tax && p.price) calcParams.set('taxRate', ((p.annual_tax / p.price) * 100).toFixed(2));
+        if (p.hoa_fee) calcParams.set('hoaFees', Math.round(p.hoa_fee / 12));
+        if (displayAddrModal) calcParams.set('address', displayAddrModal);
+        if (p.redfin_url) calcParams.set('url', p.redfin_url);
+        const calcUrl = `/mortgage-calculator/?${calcParams.toString()}`;
 
         elements.modalDetailBody.innerHTML = `
             <div style="display:flex; flex-direction:column; gap:1.5rem;">
@@ -71,21 +102,37 @@ import { showToast } from './toast.js';
                         <a href="${redfinUrl}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
                             🔴 View on Redfin
                         </a>
+                        <a href="${calcUrl}" target="_blank" class="btn btn-secondary" style="text-decoration:none; background:rgba(99,102,241,0.2); color:#818cf8; border:1px solid #6366f1;">
+                            🧮 Mortgage Calculator
+                        </a>
                         <button class="btn ${p.favorite ? 'btn-gold' : 'btn-secondary'}" onclick="toggleFavoriteModal('${p.mls_id}')">
                             ${p.favorite ? '⭐ Favorited' : '☆ Save Favorite'}
-                        </button>
-                        <button class="btn ${p.shared_with_realtor ? 'btn-primary' : 'btn-secondary'}" onclick="toggleShareModal('${p.mls_id}')">
-                            ${p.shared_with_realtor ? '🤝 Shared with Realtor' : '🤝 Share with Realtor'}
                         </button>
                     </div>
                 </div>
 
-                <!-- Main Photo -->
-                <div style="width:100%; max-height:400px; border-radius:12px; overflow:hidden; background:#000; position:relative; box-shadow:var(--shadow-md);">
-                    <img src="${modalImgUrl}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://via.placeholder.com/800x450?text=No+Photo+Available';" style="width:100%; height:100%; object-fit:cover;" alt="Property Main Image">
-                    <a href="${p.main_image_url || '#'}" target="_blank" style="position:absolute; bottom:12px; right:12px; background:rgba(15,23,42,0.85); color:#fff; padding:6px 14px; border-radius:20px; font-size:0.8rem; text-decoration:none; font-weight:600; backdrop-filter:blur(4px);">
-                        🖼️ View Full Image
-                    </a>
+                <!-- Multi-Photo Gallery Viewer -->
+                <div class="modal-gallery-container">
+                    <div class="gallery-main-viewport">
+                        <span class="gallery-count-badge" id="modal-gallery-count">Photo 1 of ${currentGalleryImages.length}</span>
+                        ${currentGalleryImages.length > 1 ? `
+                            <button type="button" class="gallery-nav-btn prev" onclick="prevModalPhoto()" title="Previous Photo (Left Arrow)">❮</button>
+                            <button type="button" class="gallery-nav-btn next" onclick="nextModalPhoto()" title="Next Photo (Right Arrow)">❯</button>
+                        ` : ''}
+                        <img id="modal-gallery-main-img" src="${currentGalleryImages[0]}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://via.placeholder.com/800x450?text=No+Photo+Available';" class="gallery-main-img" alt="Property Image 1">
+                        <a id="modal-gallery-full-link" href="${currentGalleryImages[0]}" target="_blank" class="gallery-full-link">
+                            🖼️ View Full Image
+                        </a>
+                    </div>
+                    ${currentGalleryImages.length > 1 ? `
+                        <div class="gallery-thumb-strip" id="modal-gallery-thumb-strip">
+                            ${currentGalleryImages.map((url, idx) => `
+                                <div class="gallery-thumb-item ${idx === 0 ? 'active' : ''}" onclick="switchModalPhoto(${idx})" id="gallery-thumb-${idx}">
+                                    <img src="${url}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://via.placeholder.com/100x60?text=No+Photo';" alt="Thumbnail ${idx + 1}">
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
                 </div>
 
                 <!-- Public Remarks & Property Description -->
@@ -283,23 +330,6 @@ import { showToast } from './toast.js';
         openDetailModal(mlsId);
     };
 
-    window.toggleShareModal = function(mlsId) {
-        const p = state.allProperties.find(item => item.mls_id === mlsId);
-        if (!p) return;
-
-        const newShare = p.shared_with_realtor ? 0 : 1;
-        p.shared_with_realtor = newShare;
-
-        apiFetch(CONFIG.API_URL + '?action=update_user_data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mls_id: mlsId, shared_with_realtor: newShare })
-        }).then(() => {
-            openDetailModal(mlsId);
-            showToast(newShare ? 'Shared with Realtor 🤝' : 'Unshared with Realtor', 'success');
-        });
-    };
-
     window.saveModalNotes = function(mlsId) {
         const userNotes = document.getElementById('modal-user-notes').value;
         const realtorNotes = document.getElementById('modal-realtor-notes').value;
@@ -335,3 +365,62 @@ import { showToast } from './toast.js';
             showToast('Property Hidden 👁️', 'warning');
         });
     };
+
+    // Gallery Photo Switchers & Keyboard Controls
+    window.switchModalPhoto = function(index) {
+        if (!currentGalleryImages || currentGalleryImages.length === 0) return;
+        if (index < 0) index = currentGalleryImages.length - 1;
+        if (index >= currentGalleryImages.length) index = 0;
+
+        currentGalleryIndex = index;
+        const url = currentGalleryImages[currentGalleryIndex];
+
+        const mainImg = document.getElementById('modal-gallery-main-img');
+        const countBadge = document.getElementById('modal-gallery-count');
+        const fullLink = document.getElementById('modal-gallery-full-link');
+
+        if (mainImg) {
+            mainImg.style.opacity = '0.3';
+            mainImg.src = url;
+            setTimeout(() => { mainImg.style.opacity = '1'; }, 100);
+        }
+        if (countBadge) {
+            countBadge.innerText = `Photo ${currentGalleryIndex + 1} of ${currentGalleryImages.length}`;
+        }
+        if (fullLink) {
+            fullLink.href = url;
+        }
+
+        document.querySelectorAll('.gallery-thumb-item').forEach((item, idx) => {
+            if (idx === currentGalleryIndex) {
+                item.classList.add('active');
+                item.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            } else {
+                item.classList.remove('active');
+            }
+        });
+    };
+
+    window.prevModalPhoto = function() {
+        window.switchModalPhoto(currentGalleryIndex - 1);
+    };
+
+    window.nextModalPhoto = function() {
+        window.switchModalPhoto(currentGalleryIndex + 1);
+    };
+
+    // Keyboard Arrow Navigation for Photo Gallery
+    document.addEventListener('keydown', function(e) {
+        const modal = document.getElementById('modal-detail') || (elements && elements.modalDetail);
+        if (!modal || !modal.classList.contains('active')) return;
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            window.prevModalPhoto();
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            window.nextModalPhoto();
+        }
+    });
+

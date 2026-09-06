@@ -69,6 +69,7 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml } from './properties.js';
         // Clear previous markers
         mapState.mapMarkers.forEach(m => mapState.leafletMap.removeLayer(m));
         mapState.mapMarkers = [];
+        mapState.markerMap = {};
 
         const props = state.filteredProperties;
         if (!props.length) return;
@@ -150,6 +151,7 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml } from './properties.js';
                 icon: customIcon,
                 zIndexOffset: p.favorite ? 500 : 0
             }).addTo(mapState.leafletMap);
+            marker._favorite = !!p.favorite;
             const imgUrl = p.main_image_url || 'https://via.placeholder.com/200x110?text=No+Photo';
             
             const popupContent = `
@@ -163,7 +165,18 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml } from './properties.js';
             `;
 
             marker.bindPopup(popupContent);
+
+            marker.on('mouseover', () => {
+                highlightCardInGrid(p.mls_id);
+            });
+            marker.on('mouseout', () => {
+                unhighlightCardInGrid(p.mls_id);
+            });
+
             mapState.mapMarkers.push(marker);
+            if (p.mls_id) {
+                mapState.markerMap[String(p.mls_id)] = marker;
+            }
         });
 
         // Add "Fit All Houses" button control if not present
@@ -192,6 +205,40 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml } from './properties.js';
         if (bounds.length > 0 && (forceFit || (autoFit && !mapState.leafletMap._userHasInteracted))) {
             mapState.leafletMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
         }
+    }
+
+    export function highlightMapMarker(mlsId) {
+        if (!mlsId) return;
+        const marker = mapState.markerMap[String(mlsId)];
+        if (!marker) return;
+        const el = marker.getElement();
+        if (el) {
+            const pin = el.querySelector('.leaflet-price-pin');
+            if (pin) pin.classList.add('pin-highlight');
+        }
+        marker.setZIndexOffset(2000);
+    }
+
+    export function unhighlightMapMarker(mlsId) {
+        if (!mlsId) return;
+        const marker = mapState.markerMap[String(mlsId)];
+        if (!marker) return;
+        const el = marker.getElement();
+        if (el) {
+            const pin = el.querySelector('.leaflet-price-pin');
+            if (pin) pin.classList.remove('pin-highlight');
+        }
+        marker.setZIndexOffset(marker._favorite ? 500 : 0);
+    }
+
+    function highlightCardInGrid(mlsId) {
+        const cards = document.querySelectorAll(`.property-card[data-mls="${mlsId}"]`);
+        cards.forEach(card => card.classList.add('is-map-hovered'));
+    }
+
+    function unhighlightCardInGrid(mlsId) {
+        const cards = document.querySelectorAll(`.property-card[data-mls="${mlsId}"]`);
+        cards.forEach(card => card.classList.remove('is-map-hovered'));
     }
 
     // Command Palette Logic
