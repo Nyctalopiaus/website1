@@ -30,7 +30,7 @@ function formatPrice(val) {
 }
 
 export function openAdminCleanupModal() {
-    if (!state.authenticated || state.user !== 'admin') {
+    if (!state.authenticated || !state.isAdmin) {
         return showToast('Admin privileges required', 'error');
     }
     closeAdminMenu();
@@ -54,7 +54,7 @@ export function fetchAdminCleanupPreview() {
     elements.cleanupPropertiesTbody.innerHTML = `
         <tr>
             <td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">
-                Auditing off-market listings & cached photo files... ⏳
+                Auditing off-market listings & cached photo files...
             </td>
         </tr>
     `;
@@ -103,6 +103,7 @@ function updateCleanupStats(summary, properties, orphans) {
 
     const totalReclaimable = (summary.off_market_photos_bytes || 0) + (summary.orphan_bytes || 0);
     if (elements.cleanupStatReclaimable) elements.cleanupStatReclaimable.innerText = formatBytes(totalReclaimable);
+    if (elements.cleanupStatImageIssues) elements.cleanupStatImageIssues.innerText = summary.invalid_primary_preview_count || 0;
 
     if (elements.cleanupOrphanSummaryText) {
         elements.cleanupOrphanSummaryText.innerText = `${summary.orphan_files_count || 0} files, ${formatBytes(summary.orphan_bytes)}`;
@@ -143,7 +144,7 @@ export function renderAdminCleanupTable() {
         elements.cleanupPropertiesTbody.innerHTML = `
             <tr>
                 <td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">
-                    No candidate off-market properties match the current status filter. 🎉
+                    No candidate off-market properties match the current status filter.
                 </td>
             </tr>
         `;
@@ -162,12 +163,12 @@ export function renderAdminCleanupTable() {
 
         const thumb = p.main_image_url
             ? `<img src="${escapeHtml(p.main_image_url)}" style="width:40px; height:30px; object-fit:cover; border-radius:4px;" alt="thumb">`
-            : `<div style="width:40px; height:30px; background:var(--bg-card); border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.8rem;">🏠</div>`;
+            : `<div style="width:40px; height:30px; background:var(--bg-card); border-radius:4px; display:flex; align-items:center; justify-content:center;"><i data-lucide="home" style="width:0.9em; height:0.9em;"></i></div>`;
 
         let savedBadges = [];
-        if (p.favorite) savedBadges.push(`<span title="Favorited by user">⭐ Favorite</span>`);
-        if (p.user_notes) savedBadges.push(`<span title="User Notes: ${escapeHtml(p.user_notes)}">📝 Notes</span>`);
-        if (p.realtor_notes) savedBadges.push(`<span title="Realtor Notes">🤝 Agent Notes</span>`);
+        if (p.favorite) savedBadges.push(`<span title="Favorited by user"><i data-lucide="star"></i> Favorite</span>`);
+        if (p.user_notes) savedBadges.push(`<span title="User Notes: ${escapeHtml(p.user_notes)}"><i data-lucide="file-text"></i> Notes</span>`);
+        if (p.realtor_notes) savedBadges.push(`<span title="Realtor Notes"><i data-lucide="handshake"></i> Agent Notes</span>`);
         const savedHtml = savedBadges.length ? savedBadges.join(' ') : `<span style="color:var(--text-muted); font-size:0.75rem;">None</span>`;
 
         return `
@@ -197,6 +198,7 @@ export function renderAdminCleanupTable() {
             </tr>
         `;
     }).join('');
+    if (window.lucide) window.lucide.createIcons();
 
     // Attach row checkbox event listeners
     elements.cleanupPropertiesTbody.querySelectorAll('.cleanup-item-checkbox').forEach(cb => {
@@ -274,6 +276,28 @@ export function clearSelection() {
     renderAdminCleanupTable();
 }
 
+export async function markSelectedForImageRetry() {
+    if (!selectedMlsIds.size) {
+        showToast('Select at least one listing first', 'warning');
+        return;
+    }
+    try {
+        const res = await apiFetch(CONFIG.API_URL + '?action=admin_retry_listing_images', {
+            method: 'POST',
+            body: JSON.stringify({ mls_ids: [...selectedMlsIds] })
+        });
+        if (res?.success) {
+            showToast(`${res.marked_count} listing(s) marked for image re-scrape`, 'success');
+            selectedMlsIds.clear();
+            fetchAdminCleanupPreview();
+        } else {
+            showToast(res?.error || 'Failed to mark listings for image re-scrape', 'error');
+        }
+    } catch (e) {
+        showToast('Failed to mark listings for image re-scrape', 'error');
+    }
+}
+
 export function toggleSelectAll(e) {
     const isChecked = e.target.checked;
     const protectFavorites = elements.cleanupProtectFavorites ? elements.cleanupProtectFavorites.checked : true;
@@ -304,7 +328,7 @@ export function handleAdminCleanupExecute() {
         ? 'PERMANENTLY DELETE selected property records and their photo files'
         : 'DELETE local photo files for selected properties while preserving listing text data';
 
-    let confirmMsg = `⚠️ Are you sure you want to execute property cleanup?\n\n`
+    let confirmMsg = `Are you sure you want to execute property cleanup?\n\n`
         + `• Mode: ${modeDescription}\n`
         + `• Target Properties: ${targetMlsIds.length}\n`
         + `• Include Orphan Media Files: ${includeOrphans ? 'Yes' : 'No'}\n\n`
@@ -316,7 +340,7 @@ export function handleAdminCleanupExecute() {
 
     if (elements.btnAdminCleanupSubmit) {
         elements.btnAdminCleanupSubmit.disabled = true;
-        elements.btnAdminCleanupSubmit.innerText = 'Cleaning Up... ⏳';
+        elements.btnAdminCleanupSubmit.innerText = 'Cleaning Up...';
     }
 
     apiFetch(CONFIG.API_URL + '?action=admin_cleanup_execute', {
@@ -331,7 +355,7 @@ export function handleAdminCleanupExecute() {
     .then(data => {
         if (data && data.success) {
             const freedText = formatBytes(data.freed_bytes || 0);
-            showToast(`Cleanup complete! Removed ${data.deleted_properties_count} items and freed ${freedText} 🧹`, 'success');
+            showToast(`Cleanup complete! Removed ${data.deleted_properties_count} items and freed ${freedText}`, 'success');
             selectedMlsIds.clear();
             if (elements.cleanupSelectAll) elements.cleanupSelectAll.checked = false;
             fetchProperties(); // Refresh main dashboard list
@@ -347,7 +371,8 @@ export function handleAdminCleanupExecute() {
     .finally(() => {
         if (elements.btnAdminCleanupSubmit) {
             elements.btnAdminCleanupSubmit.disabled = false;
-            elements.btnAdminCleanupSubmit.innerText = '🔥 Clean Up Selected Items';
+            elements.btnAdminCleanupSubmit.innerHTML = '<i data-lucide="flame"></i> Clean Up Selected Items';
+            if (window.lucide) window.lucide.createIcons();
         }
     });
 }

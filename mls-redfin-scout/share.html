@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <title>Realtor Collaboration Portal - MLS Scout</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=2.2">
+    <!-- Lucide Icons (replaces emoji glyphs throughout this page) -->
+    <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js"></script>
     <style>
         .realtor-container {
             max-width: 1320px;
@@ -269,6 +272,141 @@
             font-weight: 600;
             margin-right: 4px;
             margin-top: 4px;
+        }
+
+        /* Auto-Rotating Top Banner Hero Carousel */
+        .hero-banner-wrap {
+            position: relative;
+            background: #0b0f19;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg, 0 10px 25px rgba(0,0,0,0.4));
+        }
+        .hero-banner-backdrop {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-size: cover;
+            background-position: center;
+            filter: blur(4px) brightness(0.3);
+            transition: background-image 0.6s ease-in-out;
+            transform: scale(1.05);
+        }
+        .hero-banner-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(15, 23, 42, 0.78) 50%, rgba(15, 23, 42, 0.95) 100%);
+        }
+        .hero-banner-content {
+            position: relative;
+            z-index: 2;
+            padding: 1.5rem 1.75rem;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        @media (max-width: 860px) {
+            .hero-banner-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        .hero-banner-media {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+        }
+        .hero-banner-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+        .hero-banner-wrap:hover .hero-banner-img {
+            transform: scale(1.04);
+        }
+        .hero-banner-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .hero-banner-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .hero-realtor-badge {
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--accent-gold);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(217, 119, 6, 0.15);
+            padding: 3px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+        }
+        .hero-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .hero-control-btn {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .hero-control-btn:hover {
+            background: var(--accent-gold);
+            color: #0f172a;
+            border-color: var(--accent-gold);
+        }
+        .hero-dots {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .hero-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .hero-dot.active {
+            background: var(--accent-gold);
+            width: 22px;
+            border-radius: 10px;
+        }
+        .hero-pause-indicator {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(0,0,0,0.4);
+            padding: 2px 8px;
+            border-radius: 10px;
         }
 
         /* Screen-specific print helper classes */
@@ -538,19 +676,19 @@
 
     <header class="navbar">
         <div class="brand">
-            <span class="brand-icon">🤝</span>
+            <span class="brand-icon"><i data-lucide="handshake"></i></span>
             <div>
                 <div class="brand-title">Realtor Collaboration Portal</div>
                 <div style="font-size: 0.75rem; color: var(--text-muted);">Curated Home Scout List & Buyer Feedback</div>
             </div>
         </div>
         <div class="nav-actions">
-            <a href="index.html" class="btn btn-secondary">🏠 Back to Main Scout</a>
+            <a href="index.html" class="btn btn-secondary"><i data-lucide="home"></i> Back to Main Scout</a>
             <label class="print-option-toggle" style="font-size: 0.82rem; color: var(--text-muted); cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.65rem; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm); user-select: none;">
                 <input type="checkbox" id="toggle-print-no-images" onchange="document.body.classList.toggle('print-no-images', this.checked)">
-                <span>🚫 Hide Photos in Print</span>
+                <span><i data-lucide="ban"></i> Hide Photos in Print</span>
             </label>
-            <button class="btn btn-primary" onclick="window.print()">🖨️ Print Summary</button>
+            <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Summary</button>
         </div>
     </header>
 
@@ -569,17 +707,19 @@
             </div>
         </div>
 
-        <!-- Banner Intro -->
-        <div class="realtor-intro-banner" style="margin-bottom: 1.5rem; background: var(--bg-card); padding: 1.25rem 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
-            <div>
-                <h2 style="font-size:1.3rem;">📋 Curated Property Portfolio</h2>
-                <p style="color: var(--text-muted); font-size:0.88rem; margin-top: 0.2rem;">
-                    Live view of saved homes, buyer review statuses, ratings, notes, and Redfin scores.
-                </p>
+        <!-- Auto-Rotating Top Hero Banner Carousel Container -->
+        <div id="client-hero-banner-container">
+            <div class="realtor-intro-banner" style="margin-bottom: 1.5rem; background: var(--bg-card); padding: 1.25rem 1.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                <div>
+                    <h2 style="font-size:1.3rem;"><i data-lucide="clipboard-list"></i> Curated Property Portfolio</h2>
+                    <p style="color: var(--text-muted); font-size:0.88rem; margin-top: 0.2rem;">
+                        Live view of saved homes, buyer review statuses, ratings, notes, and Redfin scores.
+                    </p>
+                </div>
+                <span style="font-size:0.8rem; background:rgba(16, 185, 129, 0.15); color:var(--accent-green); padding:4px 10px; border-radius:20px; font-weight:700;">
+                    <i data-lucide="zap"></i> Auto-Synced Live
+                </span>
             </div>
-            <span style="font-size:0.8rem; background:rgba(16, 185, 129, 0.15); color:var(--accent-green); padding:4px 10px; border-radius:20px; font-weight:700;">
-                ⚡ Auto-Synced Live
-            </span>
         </div>
 
         <!-- Top KPI Stats Bar -->
@@ -590,17 +730,17 @@
                 <span class="realtor-kpi-sub" id="kpi-realtor-active">0 Active</span>
             </div>
             <div class="realtor-kpi-card">
-                <span class="realtor-kpi-label">⭐ Liked / Favorites</span>
+                <span class="realtor-kpi-label"><i data-lucide="star"></i> Liked / Favorites</span>
                 <span class="realtor-kpi-val" id="kpi-realtor-fav">0</span>
                 <span class="realtor-kpi-sub">Top Buyer Picks</span>
             </div>
             <div class="realtor-kpi-card">
-                <span class="realtor-kpi-label">🤔 Possibilities</span>
+                <span class="realtor-kpi-label"><i data-lucide="circle-help"></i> Possibilities</span>
                 <span class="realtor-kpi-val" id="kpi-realtor-poss">0</span>
                 <span class="realtor-kpi-sub">Under Consideration</span>
             </div>
             <div class="realtor-kpi-card">
-                <span class="realtor-kpi-label">🚫 Disliked / Hidden</span>
+                <span class="realtor-kpi-label"><i data-lucide="ban"></i> Disliked / Hidden</span>
                 <span class="realtor-kpi-val" id="kpi-realtor-dislike">0</span>
                 <span class="realtor-kpi-sub">Filtered Out</span>
             </div>
@@ -616,7 +756,7 @@
             <div class="realtor-filter-row">
                 <!-- Search Box -->
                 <div class="realtor-search-box">
-                    <span class="search-icon">🔍</span>
+                    <span class="search-icon"><i data-lucide="search"></i></span>
                     <input type="text" id="realtor-search" placeholder="Search address, city, buyer notes, MLS ID..." oninput="applyRealtorFiltersAndRender()">
                 </div>
 
@@ -633,17 +773,27 @@
                     </select>
                 </div>
 
-                <!-- MY REVIEW STATUS Dropdown -->
+                <!-- CLIENT REVIEW STATUS Dropdown -->
                 <div style="display:flex; align-items:center; gap:0.5rem;">
                     <span style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); white-space:nowrap;">
-                        MY REVIEW STATUS
+                        CLIENT REVIEW STATUS
                     </span>
                     <select id="realtor-matrix-status-top" class="realtor-select-pill" onchange="applyRealtorFiltersAndRender()">
-                        <option value="all" selected>All Review Statuses</option>
+                        <option value="all" selected>All Client Reviews</option>
                         <option value="favorite">⭐ Liked / Favorites</option>
                         <option value="possibility">🤔 Possibilities</option>
                         <option value="dislike">🚫 Disliked / Hidden</option>
                         <option value="none">📋 Unreviewed Only</option>
+                    </select>
+                </div>
+
+                <!-- SAVED PRESETS Dropdown -->
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <span style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); white-space:nowrap;">
+                        CLIENT PRESETS
+                    </span>
+                    <select id="realtor-saved-presets-select" class="realtor-select-pill">
+                        <option value="">💾 Client Presets...</option>
                     </select>
                 </div>
 
@@ -667,14 +817,14 @@
             <div class="realtor-filter-row" style="justify-content:space-between;">
                 <div class="pill-btn-group" id="quick-filter-pills">
                     <button type="button" class="pill-btn active" onclick="setQuickReviewFilter('all', this)">All</button>
-                    <button type="button" class="pill-btn" onclick="setQuickReviewFilter('favorite', this)">⭐ Favorites</button>
-                    <button type="button" class="pill-btn" onclick="setQuickReviewFilter('possibility', this)">🤔 Possibilities</button>
-                    <button type="button" class="pill-btn" onclick="setQuickReviewFilter('dislike', this)">🚫 Disliked</button>
-                    <button type="button" class="pill-btn" onclick="setQuickReviewFilter('none', this)">📋 Unreviewed</button>
+                    <button type="button" class="pill-btn" onclick="setQuickReviewFilter('favorite', this)"><i data-lucide="star"></i> Favorites</button>
+                    <button type="button" class="pill-btn" onclick="setQuickReviewFilter('possibility', this)"><i data-lucide="circle-help"></i> Possibilities</button>
+                    <button type="button" class="pill-btn" onclick="setQuickReviewFilter('dislike', this)"><i data-lucide="ban"></i> Disliked</button>
+                    <button type="button" class="pill-btn" onclick="setQuickReviewFilter('none', this)"><i data-lucide="clipboard-list"></i> Unreviewed</button>
                 </div>
 
                 <button type="button" class="btn btn-secondary" style="padding:0.4rem 0.75rem; font-size:0.8rem;" onclick="resetRealtorFilters()">
-                    🔄 Reset Filters
+                    <i data-lucide="refresh-cw"></i> Reset Filters
                 </button>
             </div>
         </div>
@@ -682,13 +832,14 @@
         <!-- 2-Column Property List Container -->
         <div id="realtor-list-container" class="realtor-grid-container">
             <div style="grid-column: 1/-1; text-align:center; padding: 4rem; color: var(--text-muted); background: var(--bg-card); border-radius: 12px;">
-                <h3>Loading properties... ⏳</h3>
+                <h3>Loading properties... <i data-lucide="hourglass"></i></h3>
             </div>
         </div>
     </main>
 
     <script>
         const API_URL = 'backend/api.php';
+        const NO_PHOTO_IMG = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250"><rect width="400" height="250" fill="#F0EAE0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#B0A48F" font-family="sans-serif" font-size="18">No Photo Available</text></svg>');
         let allProperties = [];
         let filteredProperties = [];
 
@@ -727,7 +878,280 @@
             );
         }
 
+        function getRedfinUrl(p) {
+            if (!p) return 'https://www.redfin.com';
+            if (p.redfin_url && typeof p.redfin_url === 'string' && p.redfin_url.startsWith('http') && !p.redfin_url.includes('stingray/do/')) {
+                return p.redfin_url;
+            }
+            const cleanAddr = cleanDisplayAddress(p.address, p.mls_id);
+            const parts = [
+                cleanAddr !== 'Address Unavailable' ? cleanAddr : '',
+                p.city,
+                p.state || 'CO',
+                p.zip
+            ].filter(Boolean);
+
+            const query = parts.join(' ');
+            if (!query) return 'https://www.redfin.com';
+
+            return `https://www.redfin.com/stingray/do/query-location?location=${encodeURIComponent(query)}`;
+        }
+
+        let heroBannerState = {
+            currentIndex: 0,
+            intervalId: null,
+            isPaused: false,
+            collection: null,
+            properties: []
+        };
+
+        function initHeroBannerCarousel(col, props) {
+            heroBannerState.collection = col;
+            heroBannerState.properties = props || [];
+            heroBannerState.currentIndex = 0;
+            heroBannerState.isPaused = false;
+
+            if (heroBannerState.intervalId) clearInterval(heroBannerState.intervalId);
+
+            renderHeroBannerSlide();
+
+            if (props && props.length > 1) {
+                heroBannerState.intervalId = setInterval(() => {
+                    if (!heroBannerState.isPaused) {
+                        heroBannerState.currentIndex = (heroBannerState.currentIndex + 1) % heroBannerState.properties.length;
+                        renderHeroBannerSlide();
+                    }
+                }, 4000);
+            }
+        }
+
+        function rotateHeroBannerSlide(step) {
+            if (!heroBannerState.properties.length) return;
+            let nextIdx = (heroBannerState.currentIndex + step) % heroBannerState.properties.length;
+            if (nextIdx < 0) nextIdx = heroBannerState.properties.length - 1;
+            heroBannerState.currentIndex = nextIdx;
+            renderHeroBannerSlide();
+        }
+
+        function setHeroBannerSlide(idx) {
+            if (idx < 0 || idx >= heroBannerState.properties.length) return;
+            heroBannerState.currentIndex = idx;
+            renderHeroBannerSlide();
+        }
+
+        function toggleHeroBannerPause() {
+            heroBannerState.isPaused = !heroBannerState.isPaused;
+            renderHeroBannerSlide();
+        }
+
+        function updateHeroPauseIndicator(paused) {
+            const tag = document.getElementById('hero-pause-tag');
+            if (tag) tag.style.display = paused ? 'inline-flex' : 'none';
+        }
+
+        function renderHeroBannerSlide() {
+            const container = document.getElementById('client-hero-banner-container');
+            if (!container) return;
+
+            const col = heroBannerState.collection || { title: 'Curated Property Portfolio', realtor_name: 'Realtor' };
+            const props = heroBannerState.properties || [];
+
+            if (!props.length) {
+                renderCollectionHeaderBanner(col);
+                return;
+            }
+
+            const p = props[heroBannerState.currentIndex];
+            const total = props.length;
+            const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
+            const ppsqft = p.sqft_finished ? Math.round(p.price / p.sqft_finished) : 0;
+            const mainImg = p.main_image_url || NO_PHOTO_IMG;
+            const realtorLabel = col.realtor_name ? `SHARED BY REALTOR: ${escapeHtml(col.realtor_name).toUpperCase()}` : 'CURATED REALTOR PORTFOLIO';
+
+            const dotsHtml = props.map((_, i) => 
+                `<span class="hero-dot ${i === heroBannerState.currentIndex ? 'active' : ''}" onclick="setHeroBannerSlide(${i})" title="Go to home ${i + 1}"></span>`
+            ).join('');
+
+            container.innerHTML = `
+                <div class="hero-banner-wrap" 
+                     onmouseenter="heroBannerState.isPaused = true; updateHeroPauseIndicator(true);" 
+                     onmouseleave="heroBannerState.isPaused = false; updateHeroPauseIndicator(false);">
+                    
+                    <div class="hero-banner-backdrop" style="background-image: url('${mainImg}');"></div>
+                    <div class="hero-banner-overlay"></div>
+
+                    <div class="hero-banner-content">
+                        <div class="hero-banner-media">
+                            <img src="${mainImg}" class="hero-banner-img" alt="${escapeHtml(displayAddr)}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';">
+                            <span style="position:absolute; bottom:8px; right:8px; background:rgba(0,0,0,0.75); color:#fff; font-size:0.72rem; padding:2px 8px; border-radius:10px; font-weight:700;">
+                                Home ${heroBannerState.currentIndex + 1} of ${total}
+                            </span>
+                        </div>
+
+                        <div class="hero-banner-info">
+                            <div class="hero-banner-top-bar">
+                                <span class="hero-realtor-badge">
+                                    <i data-lucide="handshake"></i> ${realtorLabel} • ${escapeHtml(col.title || 'Playlist')}
+                                </span>
+                                
+                                <div class="hero-controls">
+                                    <span id="hero-pause-tag" class="hero-pause-indicator" style="${heroBannerState.isPaused ? '' : 'display:none;'}">
+                                        <i data-lucide="pause"></i> Paused on hover
+                                    </span>
+                                    <button type="button" class="hero-control-btn" onclick="toggleHeroBannerPause()" title="${heroBannerState.isPaused ? 'Resume slideshow' : 'Pause slideshow'}">
+                                        <i data-lucide="${heroBannerState.isPaused ? 'play' : 'pause'}"></i>
+                                    </button>
+                                    <button type="button" class="hero-control-btn" onclick="rotateHeroBannerSlide(-1)" title="Previous Home">
+                                        <i data-lucide="chevron-left"></i>
+                                    </button>
+                                    <button type="button" class="hero-control-btn" onclick="rotateHeroBannerSlide(1)" title="Next Home">
+                                        <i data-lucide="chevron-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:0.5rem; margin-top:0.25rem;">
+                                <div>
+                                    <div style="font-size:1.8rem; font-weight:800; color:var(--accent-gold); line-height:1.1;">
+                                        $${(p.price || 0).toLocaleString()}
+                                        ${ppsqft ? `<span style="font-size:0.85rem; font-weight:600; color:rgba(255,255,255,0.7); margin-left:0.4rem;">($${ppsqft}/sqft)</span>` : ''}
+                                    </div>
+                                    <h3 style="font-size:1.25rem; font-weight:700; color:#ffffff; margin:4px 0 2px 0;">
+                                        ${escapeHtml(displayAddr)}
+                                    </h3>
+                                    <div style="color:rgba(255,255,255,0.75); font-size:0.88rem;">
+                                        ${p.city || ''}, ${p.state || 'CO'} ${p.zip || ''} | <strong>${p.beds || 0} Beds • ${p.baths || 0} Baths • ${(p.sqft_finished || 0).toLocaleString()} SqFt</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            ${(p.realtor_notes || col.description) ? `
+                                <div style="margin-top:0.4rem; background:rgba(255,255,255,0.08); border-left:3px solid var(--accent-gold); padding:0.5rem 0.75rem; border-radius:4px; font-size:0.85rem; color:#ffffff;">
+                                    <strong style="color:var(--accent-gold);"><i data-lucide="message-square"></i> Agent Commentary:</strong>
+                                    "${escapeHtml(p.realtor_notes || col.description)}"
+                                </div>
+                            ` : ''}
+
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem; flex-wrap:wrap; gap:0.5rem;">
+                                <div class="hero-dots">
+                                    ${dotsHtml}
+                                </div>
+                                <a href="#card-img-${p.mls_id}" class="btn btn-gold" style="padding:0.4rem 0.9rem; font-size:0.82rem; font-weight:700; text-decoration:none;">
+                                    <i data-lucide="eye"></i> Jump to Listing Cards
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        function renderCollectionHeaderBanner(col) {
+            const banner = document.querySelector('.realtor-intro-banner');
+            if (!banner) return;
+            const realtorStr = col.realtor_name ? `From Agent: ${escapeHtml(col.realtor_name)}` : 'Curated Realtor Collection';
+            banner.innerHTML = `
+                <div style="width: 100%;">
+                    <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--accent-gold); font-weight:800; margin-bottom:0.25rem;">
+                        <i data-lucide="folder-heart"></i> ${escapeHtml(realtorStr)}
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                        <h2 style="font-size:1.5rem; font-weight:800; color:var(--text-primary); margin:0;">${escapeHtml(col.title)}</h2>
+                        <span style="font-size:0.85rem; background:rgba(217, 119, 6, 0.2); color:var(--accent-gold); padding:4px 12px; border-radius:20px; font-weight:800; border:1px solid rgba(251, 191, 36, 0.3);">
+                            <i data-lucide="list"></i> ${col.item_count} Curated Homes
+                        </span>
+                    </div>
+                    ${col.description ? `
+                        <p style="margin-top:0.75rem; color:var(--text-primary); font-size:0.95rem; line-height:1.5; background:rgba(255,255,255,0.04); padding:0.85rem 1rem; border-left:3px solid var(--accent-gold); border-radius:4px;">
+                            "${escapeHtml(col.description)}"
+                        </p>
+                    ` : ''}
+                </div>
+            `;
+            if (window.lucide) window.lucide.createIcons();
+        }
+
+        function renderCollectionError(msg) {
+            const container = document.getElementById('realtor-list-container');
+            if (container) {
+                container.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align:center; padding: 4rem; color: var(--accent-red); background: var(--bg-card); border-radius: 12px; border:1px solid var(--border-color);">
+                        <h3><i data-lucide="alert-triangle"></i> ${escapeHtml(msg)}</h3>
+                        <p style="margin-top: 0.5rem; color:var(--text-muted);">Please verify the share link or contact your real estate agent.</p>
+                        <a href="share.html" class="btn btn-secondary" style="margin-top:1rem; display:inline-block;"><i data-lucide="arrow-left"></i> View General Realtor Portal</a>
+                    </div>
+                `;
+                if (window.lucide) window.lucide.createIcons();
+            }
+        }
+
+        .card-photo-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            opacity: 0.85;
+            transition: all 0.2s ease;
+        }
+        .card-photo-nav:hover {
+            opacity: 1;
+            background: var(--accent-gold);
+            color: #000;
+        }
+        .card-photo-nav.prev { left: 10px; }
+        .card-photo-nav.next { right: 10px; }
+        .card-photo-count-badge {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.75);
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    ...
         function loadRealtorProperties() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const token = urlParams.get('token');
+
+            if (token) {
+                fetch(API_URL + '?action=get_collection&token=' + encodeURIComponent(token), { credentials: 'include' })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data && data.success && data.collection) {
+                            allProperties = data.collection.items || data.collection.properties || [];
+                            data.collection.item_count = data.collection.item_count ?? allProperties.length;
+                            initHeroBannerCarousel(data.collection, allProperties);
+                            updateKPIs(allProperties);
+                            applyRealtorFiltersAndRender();
+                        } else {
+                            renderCollectionError(data.error || 'Playlist collection not found');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error loading shared collection:', err);
+                        renderCollectionError('Failed to load shared playlist.');
+                    });
+                return;
+            }
+
             fetch(API_URL + '?action=list', { credentials: 'include' })
                 .then(r => r.json())
                 .then(data => {
@@ -735,15 +1159,18 @@
                         const container = document.getElementById('realtor-list-container');
                         container.innerHTML = `
                             <div style="grid-column: 1/-1; text-align:center; padding: 4rem; color: var(--text-muted); background: var(--bg-card); border-radius: 12px; border:1px solid var(--border-color);">
-                                <h3>🔒 Authentication Required</h3>
+                                <h3><i data-lucide="lock"></i> Authentication Required</h3>
                                 <p style="margin-top: 0.5rem; margin-bottom:1rem;">Please sign in on the main dashboard to view the curated property list.</p>
-                                <a href="index.html" class="btn btn-gold">🏠 Open Scout Dashboard</a>
+                                <a href="index.html" class="btn btn-gold"><i data-lucide="home"></i> Open Scout Dashboard</a>
                             </div>
                         `;
+                        if (window.lucide) window.lucide.createIcons();
                         return;
                     }
                     allProperties = data.properties || [];
+                    initHeroBannerCarousel({ title: 'Curated Property Portfolio', realtor_name: 'Agent' }, allProperties);
                     updateKPIs(allProperties);
+                    loadRealtorSavedPresets();
                     applyRealtorFiltersAndRender();
                 })
                 .catch(err => {
@@ -756,6 +1183,42 @@
                         </div>
                     `;
                 });
+        }
+
+        let realtorPresets = [];
+
+        function loadRealtorSavedPresets() {
+            const select = document.getElementById('realtor-saved-presets-select');
+            if (!select) return;
+
+            fetch(API_URL + '?action=get_saved_filters', { credentials: 'include' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.success && Array.isArray(data.filters)) {
+                        realtorPresets = data.filters;
+                        select.innerHTML = `<option value="">💾 Client Presets (${data.filters.length})...</option>` +
+                            data.filters.map(f => `<option value="${f.id}">${escapeHtml(f.display_name || f.name)}</option>`).join('');
+                    }
+                })
+                .catch(() => {});
+
+            select.addEventListener('change', (e) => {
+                const target = realtorPresets.find(f => String(f.id) === String(e.target.value));
+                if (!target) return;
+                let filterData = target.filter_json;
+                if (typeof filterData === 'string') {
+                    try { filterData = JSON.parse(filterData); } catch (err) {}
+                }
+                if (filterData && filterData.search) {
+                    const searchInput = document.getElementById('realtor-search');
+                    if (searchInput) searchInput.value = filterData.search;
+                }
+                if (filterData && filterData.matrixStatus) {
+                    const matrixSelect = document.getElementById('realtor-matrix-status-top');
+                    if (matrixSelect) matrixSelect.value = filterData.matrixStatus;
+                }
+                applyRealtorFiltersAndRender();
+            });
         }
 
         function updateKPIs(props) {
@@ -845,6 +1308,36 @@
             renderRealtorList(filteredProperties);
         }
 
+        window.cardPhotoIndices = {};
+
+        function rotateCardPhoto(mlsId, step, evt) {
+            if (evt) evt.stopPropagation();
+            const prop = allProperties.find(p => String(p.mls_id) === String(mlsId));
+            if (!prop) return;
+
+            let gallery = [];
+            if (Array.isArray(prop.gallery_images) && prop.gallery_images.length > 0) {
+                gallery = prop.gallery_images;
+            } else if (typeof prop.gallery_images === 'string') {
+                try { gallery = JSON.parse(prop.gallery_images); } catch(e) {}
+            }
+            if (!Array.isArray(gallery) || gallery.length === 0) {
+                gallery = prop.main_image_url ? [prop.main_image_url] : [];
+            }
+            if (gallery.length <= 1) return;
+
+            const currIdx = window.cardPhotoIndices[mlsId] || 0;
+            let nextIdx = (currIdx + step) % gallery.length;
+            if (nextIdx < 0) nextIdx = gallery.length - 1;
+
+            window.cardPhotoIndices[mlsId] = nextIdx;
+
+            const imgEl = document.getElementById(`card-img-${mlsId}`);
+            const counterEl = document.getElementById(`photo-count-${mlsId}`);
+            if (imgEl) imgEl.src = gallery[nextIdx];
+            if (counterEl) counterEl.textContent = `${nextIdx + 1} / ${gallery.length}`;
+        }
+
         function renderRealtorList(properties) {
             const container = document.getElementById('realtor-list-container');
             if (!properties.length) {
@@ -868,19 +1361,28 @@
 
                 const revStatus = getPropertyReviewStatus(p);
                 let revBadgeHtml = '';
-                if (revStatus === 'favorite') revBadgeHtml = `<span class="badge-matrix-review badge-matrix-fav">⭐ Liked</span>`;
-                else if (revStatus === 'possibility') revBadgeHtml = `<span class="badge-matrix-review badge-matrix-possibility">🤔 Possibility</span>`;
-                else if (revStatus === 'dislike') revBadgeHtml = `<span class="badge-matrix-review badge-matrix-dislike">🚫 Disliked</span>`;
-                else revBadgeHtml = `<span class="badge-matrix-review badge-matrix-unreviewed">📋 Unreviewed</span>`;
+                if (revStatus === 'favorite') revBadgeHtml = `<span class="badge-matrix-review badge-matrix-fav"><i data-lucide="star"></i> Liked</span>`;
+                else if (revStatus === 'possibility') revBadgeHtml = `<span class="badge-matrix-review badge-matrix-possibility"><i data-lucide="circle-help"></i> Possibility</span>`;
+                else if (revStatus === 'dislike') revBadgeHtml = `<span class="badge-matrix-review badge-matrix-dislike"><i data-lucide="ban"></i> Disliked</span>`;
+                else revBadgeHtml = `<span class="badge-matrix-review badge-matrix-unreviewed"><i data-lucide="clipboard-list"></i> Unreviewed</span>`;
 
                 const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
                 const mlsUrl = p.mls_url || `https://matrix.recolorado.com/Matrix/Public/Portal.aspx`;
-                const redfinUrl = p.redfin_url || `https://www.redfin.com/stingray/do/location-autocomplete?location=${encodeURIComponent(displayAddr + ' ' + (p.city || ''))}`;
+                const redfinUrl = getRedfinUrl(p);
 
                 let tagsArray = [];
                 if (Array.isArray(p.tags_json)) tagsArray = p.tags_json;
                 else if (typeof p.tags_json === 'string') {
                     try { tagsArray = JSON.parse(p.tags_json); } catch(e) {}
+                }
+
+                let gallery = [];
+                if (Array.isArray(p.gallery_images) && p.gallery_images.length > 0) gallery = p.gallery_images;
+                else if (typeof p.gallery_images === 'string') {
+                    try { gallery = JSON.parse(p.gallery_images); } catch(e) {}
+                }
+                if (!Array.isArray(gallery) || gallery.length === 0) {
+                    gallery = p.main_image_url ? [p.main_image_url] : [];
                 }
 
                 const hasBuyerNotes = Boolean(p.user_notes || (tagsArray && tagsArray.length > 0));
@@ -890,13 +1392,18 @@
                     <div class="realtor-card">
                         <!-- Media Container (Full Hero on Screen, Small Compact Thumbnail in Print) -->
                         <div class="realtor-media">
-                            <img src="${p.main_image_url || 'https://via.placeholder.com/500x300?text=No+Photo'}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://via.placeholder.com/500x300?text=No+Photo';" class="realtor-img" alt="Property Thumbnail">
+                            <img id="card-img-${p.mls_id}" src="${p.main_image_url || NO_PHOTO_IMG}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="realtor-img" alt="Property Thumbnail">
+                            ${gallery.length > 1 ? `
+                                <button type="button" class="card-photo-nav prev" onclick="rotateCardPhoto('${p.mls_id}', -1, event)" title="Previous photo"><i data-lucide="chevron-left"></i></button>
+                                <button type="button" class="card-photo-nav next" onclick="rotateCardPhoto('${p.mls_id}', 1, event)" title="Next photo"><i data-lucide="chevron-right"></i></button>
+                                <span class="card-photo-count-badge" id="photo-count-${p.mls_id}">1 / ${gallery.length}</span>
+                            ` : ''}
                             <div class="realtor-card-badges-overlay">
                                 <span class="card-status-badge badge-${(p.status || 'Active').toLowerCase()}">${p.status || 'Active'}</span>
                                 ${revBadgeHtml}
                             </div>
                             <div class="realtor-card-rating-overlay">
-                                ★ ${p.rating || 0}/5 Rating
+                                <i data-lucide="star"></i> ${p.rating || 0}/5 Rating
                             </div>
                         </div>
 
@@ -918,7 +1425,7 @@
                                     <div class="realtor-header-badges">
                                         <span class="card-status-badge badge-${(p.status || 'Active').toLowerCase()}">${p.status || 'Active'}</span>
                                         ${revBadgeHtml}
-                                        <span style="font-size:0.8rem; font-weight:800; color:var(--accent-gold); white-space:nowrap;">★ ${p.rating || 0}/5</span>
+                                        <span style="font-size:0.8rem; font-weight:800; color:var(--accent-gold); white-space:nowrap;"><i data-lucide="star"></i> ${p.rating || 0}/5</span>
                                     </div>
                                 </div>
                             </div>
@@ -930,13 +1437,13 @@
                                 <span><strong>${(p.sqft_finished || 0).toLocaleString()}</strong> SqFt</span>
                                 <span><strong>${p.lot_acres ? p.lot_acres + ' ac' : (p.lot_sqft ? (p.lot_sqft).toLocaleString() + ' sqft' : 'N/A')}</strong> Lot</span>
                                 <span><strong>${p.year_built || 'N/A'}</strong> Built</span>
-                                ${p.walk_score ? `<span><strong>🚶 ${p.walk_score}/100</strong></span>` : ''}
+                                ${p.walk_score ? `<span><strong><i data-lucide="footprints"></i> ${p.walk_score}/100</strong></span>` : ''}
                                 <span><strong>${p.hoa_fee ? '$' + p.hoa_fee + '/yr HOA' : 'No HOA'}</strong></span>
                             </div>
 
                             <!-- Buyer Notes & Questions Box -->
                             <div class="realtor-notes-box buyer-box ${hasBuyerNotes ? '' : 'realtor-empty-notes'}">
-                                <strong style="color: var(--accent-gold); font-size:0.82rem;">📝 Buyer Notes & Interests:</strong>
+                                <strong style="color: var(--accent-gold); font-size:0.82rem;"><i data-lucide="pencil"></i> Buyer Notes & Interests:</strong>
                                 ${p.user_notes ? `<p style="margin-top:4px; font-size:0.88rem; white-space:pre-wrap; color:var(--text-primary);">${escapeHtml(p.user_notes)}</p>` : ''}
                                 ${(tagsArray && tagsArray.length > 0) ? `
                                     <div style="margin-top:6px;">
@@ -948,22 +1455,22 @@
 
                             <!-- Realtor Agent Notes & Action Bar -->
                             <div class="realtor-notes-box agent-box ${hasAgentNotes ? 'has-agent-notes' : 'realtor-empty-agent-notes'}" style="margin-top:auto;">
-                                <strong style="color: var(--accent-blue); font-size:0.82rem;">💬 Agent Feedback / Showing Notes:</strong>
+                                <strong style="color: var(--accent-blue); font-size:0.82rem;"><i data-lucide="message-square"></i> Agent Feedback / Showing Notes:</strong>
                                 <textarea class="input-text realtor-agent-textarea" style="margin-top:6px; width:100%; min-height:55px; font-size:0.85rem;" placeholder="Add agent commentary, showing feedback, or comps notes..." data-mls="${p.mls_id}">${escapeHtml(p.realtor_notes || '')}</textarea>
                                 
                                 <div class="realtor-agent-notes-print">${escapeHtml(p.realtor_notes || '')}</div>
 
                                 <div class="realtor-card-actions" style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; flex-wrap:wrap; gap:0.5rem;">
                                     <button class="btn btn-primary" style="font-size:0.78rem; padding:0.4rem 0.85rem;" onclick="saveRealtorNote('${p.mls_id}', this)">
-                                        💾 Save Agent Note
+                                        <i data-lucide="save"></i> Save Agent Note
                                     </button>
 
                                     <div style="display:flex; gap:0.4rem;">
                                         <a href="${mlsUrl}" target="_blank" class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.6rem; text-decoration:none;">
-                                            🔗 Matrix
+                                            <i data-lucide="link"></i> Matrix
                                         </a>
                                         <a href="${redfinUrl}" target="_blank" class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.6rem; text-decoration:none;">
-                                            🔴 Redfin
+                                            <i data-lucide="circle"></i> Redfin
                                         </a>
                                     </div>
                                 </div>
@@ -972,6 +1479,7 @@
                     </div>
                 `;
             }).join('');
+            if (window.lucide) window.lucide.createIcons();
         }
 
         function saveRealtorNote(mlsId, btn) {
@@ -979,7 +1487,8 @@
             const noteText = textarea ? textarea.value : '';
 
             btn.disabled = true;
-            btn.innerText = 'Saving... ⏳';
+            btn.innerHTML = 'Saving... <i data-lucide="hourglass"></i>';
+            if (window.lucide) window.lucide.createIcons();
 
             fetch(API_URL + '?action=update_user_data', {
                 method: 'POST',
@@ -991,12 +1500,14 @@
             .then(data => {
                 btn.disabled = false;
                 if (data.success) {
-                    btn.innerText = 'Saved! ✓';
-                    btn.style.backgroundColor = 'var(--accent-green)';
+                    btn.innerHTML = 'Saved! <i data-lucide="check"></i>';
+                    if (window.lucide) window.lucide.createIcons();
+                    btn.style.backgroundColor = 'var(--accent-emerald)';
                     const prop = allProperties.find(item => String(item.mls_id) === String(mlsId));
                     if (prop) prop.realtor_notes = noteText;
                     setTimeout(() => {
-                        btn.innerText = '💾 Save Agent Note';
+                        btn.innerHTML = '<i data-lucide="save"></i> Save Agent Note';
+                        if (window.lucide) window.lucide.createIcons();
                         btn.style.backgroundColor = '';
                     }, 2000);
                 } else {
@@ -1013,6 +1524,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             document.documentElement.setAttribute('data-theme', 'dark');
+            if (window.lucide) window.lucide.createIcons();
             const dateStampEl = document.getElementById('print-date-stamp');
             if (dateStampEl) {
                 dateStampEl.innerText = 'Printed on ' + new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });

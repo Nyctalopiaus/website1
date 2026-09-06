@@ -23,6 +23,7 @@ Disallow: /db/
 Disallow: /backend/
 Disallow: /*.db$
 Disallow: /*.json$
+Disallow: /mls-redfin-scout/
 Allow: /
 
 Sitemap: https://nycto.ninja/sitemap.xml

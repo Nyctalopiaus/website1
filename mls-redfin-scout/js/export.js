@@ -4,6 +4,7 @@
 import { state } from './state.js';
 import { showToast } from './toast.js';
 import { getPropertyReviewStatus } from './properties.js';
+import { getActiveRealtorClient, getActiveClientFavorites } from './realtorView.js';
 
 export function exportCSV() {
     const props = state.filteredProperties;
@@ -22,7 +23,7 @@ export function exportCSV() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast('CSV Spreadsheet Exported 📄', 'success');
+    showToast('CSV Spreadsheet Exported', 'success');
 }
 
 export function exportJSON() {
@@ -33,18 +34,11 @@ export function exportJSON() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast('JSON Database Backup Exported 💾', 'success');
+    showToast('JSON Database Backup Exported', 'success');
 }
 
-export function exportFavoritesToHomeward() {
-    const all = state.allProperties || [];
-    const favorites = all.filter(p => p.favorite || getPropertyReviewStatus(p) === 'favorite');
-
-    if (!favorites.length) {
-        return showToast('No favorited properties found to export to Homeward.', 'warning');
-    }
-
-    const stops = favorites.map((p, idx) => {
+function buildHomewardStops(properties) {
+    return properties.map((p, idx) => {
         const addressParts = [p.address, p.city, p.state, p.zip].filter(Boolean);
         const fullAddress = addressParts.join(', ') || p.address || 'Property';
         const photo = p.photo_url || (Array.isArray(p.photos) && p.photos.length > 0 ? p.photos[0] : (p.image_url || ''));
@@ -65,6 +59,20 @@ export function exportFavoritesToHomeward() {
             visited: false
         };
     });
+}
+
+// Shared helper: takes a list of properties, builds the Homeward payload, and opens
+// the Homeward route planner. Used both for a logged-in user's own favorites and for
+// a realtor's client-scoped property lists (favorites, tour itinerary).
+export function sendPropertiesToHomeward(properties, options = {}) {
+    const { emptyMessage = 'No favorited properties found to export to Homeward.' } = options;
+    const props = properties || [];
+
+    if (!props.length) {
+        return showToast(emptyMessage, 'warning');
+    }
+
+    const stops = buildHomewardStops(props);
 
     try {
         const payload = {
@@ -73,7 +81,7 @@ export function exportFavoritesToHomeward() {
             stops: stops
         };
         localStorage.setItem('homeward_pending_import_scout', JSON.stringify(payload));
-        showToast(`Exporting ${stops.length} favorites to Homeward... 🗺️`, 'success');
+        showToast(`Exporting ${stops.length} ${stops.length === 1 ? 'property' : 'properties'} to Homeward...`, 'success');
         setTimeout(() => {
             window.open('../homeward/?import=scout', '_blank');
         }, 400);
@@ -81,5 +89,24 @@ export function exportFavoritesToHomeward() {
         console.error('Failed to export to Homeward:', e);
         showToast('Error preparing Homeward export', 'error');
     }
+}
+
+export function exportFavoritesToHomeward() {
+    // Realtor Command Center: with a client selected, "Map in Homeward" should export
+    // that client's favorites, not the logged-in realtor's own — those are two entirely
+    // separate datasets (see js/realtorView.js's client matrix vs. state.allProperties).
+    if (state.activeView === 'realtor') {
+        const client = getActiveRealtorClient();
+        if (client) {
+            const clientFavorites = getActiveClientFavorites();
+            return sendPropertiesToHomeward(clientFavorites, {
+                emptyMessage: `${client.full_name || client.username} has no favorited properties yet.`
+            });
+        }
+    }
+
+    const all = state.allProperties || [];
+    const favorites = all.filter(p => p.favorite || getPropertyReviewStatus(p) === 'favorite');
+    sendPropertiesToHomeward(favorites);
 }
 

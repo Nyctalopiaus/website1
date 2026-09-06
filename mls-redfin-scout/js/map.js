@@ -5,7 +5,7 @@
  * since other modules (theme.js, the entry app.js) need to read/reset them too.
  */
 import { mapState, state } from './state.js';
-import { isValidCoord, cleanDisplayAddress, escapeHtml } from './properties.js';
+import { isValidCoord, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './properties.js';
 
 
     let mapLayerControl = null;
@@ -36,11 +36,12 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml } from './properties.js';
 
         if (!mapLayerControl) {
             const baseMaps = {
-                "🗺️ OpenStreetMap Clean": osmStandard,
-                "🛣️ Esri Street Map": esriStreets,
-                "🛰️ Esri Satellite": esriSatellite
+                '<i data-lucide="map"></i> OpenStreetMap Clean': osmStandard,
+                '<i data-lucide="route"></i> Esri Street Map': esriStreets,
+                '<i data-lucide="satellite"></i> Esri Satellite': esriSatellite
             };
             mapLayerControl = L.control.layers(baseMaps, null, { position: 'topright' }).addTo(mapState.leafletMap);
+            if (window.lucide) window.lucide.createIcons();
         }
     }
     let fitBoundsControl = null;
@@ -61,6 +62,12 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml } from './properties.js';
 
             mapState.leafletMap.on('zoomstart dragstart', () => {
                 mapState.leafletMap._userHasInteracted = true;
+            });
+
+            // Popup content includes icon markup that only enters the DOM once Leaflet
+            // opens the popup, so icons there can't be initialized at render time.
+            mapState.leafletMap.on('popupopen', () => {
+                if (window.lucide) window.lucide.createIcons();
             });
         }
 
@@ -138,8 +145,11 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml } from './properties.js';
                 ? `$${(p.price / 1000000).toFixed(2)}M` 
                 : `$${Math.round(p.price / 1000)}k`;
 
-            const statusClass = (p.status || 'Active').toLowerCase();
-            const iconHtml = `<div class="leaflet-price-pin status-${statusClass} ${p.favorite ? 'fav-pin' : ''}">${p.favorite ? '⭐ ' : ''}${priceStr}</div>`;
+            // Sanitized to a safe CSS-class token (not just escaped) since this is scraper-controlled
+            // data landing directly in a class="..." attribute — anything outside [a-z0-9-] is
+            // stripped rather than encoded, so a status value can't break out of the attribute.
+            const statusClass = (p.status || 'Active').toLowerCase().replace(/[^a-z0-9-]/g, '');
+            const iconHtml = `<div class="leaflet-price-pin status-${statusClass} ${p.favorite ? 'fav-pin' : ''}">${p.favorite ? '<i data-lucide="star" style="fill:currentColor;"></i> ' : ''}${priceStr}</div>`;
             const customIcon = L.divIcon({
                 html: iconHtml,
                 className: 'custom-pin-container',
@@ -152,15 +162,15 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml } from './properties.js';
                 zIndexOffset: p.favorite ? 500 : 0
             }).addTo(mapState.leafletMap);
             marker._favorite = !!p.favorite;
-            const imgUrl = p.main_image_url || 'https://via.placeholder.com/200x110?text=No+Photo';
-            
+            const imgUrl = escapeHtml(p.main_image_url || NO_PHOTO_IMG);
+
             const popupContent = `
                 <div class="map-popup-card">
-                    <img src="${imgUrl}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://via.placeholder.com/200x110?text=No+Photo';" class="map-popup-img">
+                    <img src="${imgUrl}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="map-popup-img" alt="${escapeHtml(cleanDisplayAddress(p.address, p.mls_id) || 'Property photo')}">
                     <strong style="color:var(--accent-gold); font-size:1.1rem;">$${p.price.toLocaleString()}</strong>
                     <div style="font-weight:600; font-size:0.85rem;">${escapeHtml(cleanDisplayAddress(p.address, p.mls_id))}</div>
                     <div style="font-size:0.75rem; color:var(--text-muted);">${p.beds} Beds | ${p.baths} Baths | ${p.sqft_finished ? p.sqft_finished.toLocaleString() + ' SqFt' : 'N/A'}</div>
-                    <button class="btn btn-primary" style="margin-top:4px; padding:4px 10px; font-size:0.75rem;" onclick="openDetailModal('${p.mls_id}')">✨ View Details</button>
+                    <button class="btn btn-primary" style="margin-top:4px; padding:4px 10px; font-size:0.75rem;" onclick="openDetailModal('${p.mls_id}')"><i data-lucide="sparkles"></i> View Details</button>
                 </div>
             `;
 
@@ -178,6 +188,7 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml } from './properties.js';
                 mapState.markerMap[String(p.mls_id)] = marker;
             }
         });
+        if (window.lucide) window.lucide.createIcons();
 
         // Add "Fit All Houses" button control if not present
         if (!fitBoundsControl && mapState.leafletMap) {
@@ -185,9 +196,9 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml } from './properties.js';
                 options: { position: 'topleft' },
                 onAdd: function() {
                     const btn = L.DomUtil.create('button', 'leaflet-bar btn-fit-bounds');
-                    btn.innerHTML = '🎯 Fit All';
+                    btn.innerHTML = '<i data-lucide="crosshair"></i> Fit All';
                     btn.title = 'Zoom map to show all mapped houses';
-                    btn.style.cssText = 'background:#1e293b; color:#fbbf24; border:1px solid rgba(255,255,255,0.2); font-weight:700; font-size:12px; padding:5px 10px; border-radius:6px; cursor:pointer; margin-top:5px; box-shadow:0 2px 6px rgba(0,0,0,0.3);';
+                    btn.style.cssText = 'display:flex; align-items:center; gap:4px; background:#2F4B3C; color:#FFFFFF; border:1px solid rgba(58,52,42,0.15); font-weight:700; font-size:12px; padding:5px 10px; border-radius:6px; cursor:pointer; margin-top:5px; box-shadow:0 2px 6px rgba(58,52,42,0.25);';
                     L.DomEvent.disableClickPropagation(btn);
                     btn.onclick = () => {
                         if (mapState.leafletMap) {
@@ -200,6 +211,7 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml } from './properties.js';
             });
             fitBoundsControl = new FitControl();
             mapState.leafletMap.addControl(fitBoundsControl);
+            if (window.lucide) window.lucide.createIcons();
         }
 
         if (bounds.length > 0 && (forceFit || (autoFit && !mapState.leafletMap._userHasInteracted))) {

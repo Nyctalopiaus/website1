@@ -2,10 +2,11 @@
  * MLS & Redfin Property Scout - View Switching & Renderers (grid/table/matrix)
  */
 import { state, elements } from './state.js';
-import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml } from './properties.js';
+import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './properties.js';
 import { renderMap, highlightMapMarker, unhighlightMapMarker } from './map.js';
 import { showToast } from './toast.js';
 import { updateCompareButtons } from './compare.js';
+import { renderAdminView } from './adminView.js';
 
 
     export function updateKPIs() {
@@ -29,37 +30,79 @@ import { updateCompareButtons } from './compare.js';
         if (elements.kpiAvgSqftPrice) elements.kpiAvgSqftPrice.innerText = `$${avgPpsqft} / SqFt`;
         if (elements.kpiAvgSqft) elements.kpiAvgSqft.innerText = `${avgSqft.toLocaleString()}`;
     }
+
     export function renderActiveView() {
+        if (state.activeView === 'admin' && !state.isAdmin) {
+            state.activeView = 'grid';
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', '#grid');
+            }
+        }
         elements.gridContainer.style.display = 'none';
         if (elements.mapContainer) elements.mapContainer.style.display = 'none';
         elements.tableContainer.style.display = 'none';
         elements.matrixContainer.style.display = 'none';
+        const realtorContainer = document.getElementById('view-realtor-container');
+        if (realtorContainer) realtorContainer.style.display = 'none';
+        const adminContainer = document.getElementById('view-admin-container');
+        if (adminContainer) adminContainer.style.display = 'none';
 
-        if (state.activeView === 'grid') {
-            elements.gridContainer.style.display = 'grid';
-            renderGrid(elements.gridContainer, false);
-        } else if (state.activeView === 'map') {
-            if (elements.mapContainer) elements.mapContainer.style.display = 'flex';
-            renderMap();
-            if (elements.mapCardsContainer) {
-                renderGrid(elements.mapCardsContainer, true);
+        const statsBar = document.querySelector('.stats-bar');
+        const topFilterContainer = document.querySelector('.top-filter-container');
+
+        if (state.activeView === 'realtor') {
+            if (statsBar) statsBar.style.display = 'none';
+            if (topFilterContainer) topFilterContainer.style.display = 'none';
+            if (realtorContainer) {
+                realtorContainer.style.display = 'block';
+                if (window.renderRealtorView) window.renderRealtorView();
             }
-        } else if (state.activeView === 'table') {
-            elements.tableContainer.style.display = 'block';
-            renderTable();
-        } else if (state.activeView === 'matrix') {
-            elements.matrixContainer.style.display = 'grid';
-            renderMatrix();
+        } else if (state.activeView === 'admin') {
+            if (statsBar) statsBar.style.display = 'none';
+            if (topFilterContainer) topFilterContainer.style.display = 'none';
+            if (adminContainer) {
+                adminContainer.style.display = 'block';
+                renderAdminView();
+            }
+        } else {
+            if (statsBar) statsBar.style.display = 'grid';
+            if (topFilterContainer) topFilterContainer.style.display = 'block';
+
+            if (state.activeView === 'grid') {
+                elements.gridContainer.style.display = 'grid';
+                renderGrid(elements.gridContainer, false);
+            } else if (state.activeView === 'map') {
+                if (elements.mapContainer) elements.mapContainer.style.display = 'flex';
+                renderMap();
+                if (elements.mapCardsContainer) {
+                    renderGrid(elements.mapCardsContainer, true);
+                }
+            } else if (state.activeView === 'table') {
+                elements.tableContainer.style.display = 'block';
+                renderTable();
+            } else if (state.activeView === 'matrix') {
+                elements.matrixContainer.style.display = 'grid';
+                renderMatrix();
+            }
         }
     }
-    export function switchView(viewName) {
-        document.querySelectorAll('.view-btn').forEach(b => {
-            b.classList.toggle('active', b.dataset.view === viewName);
-        });
-        state.activeView = viewName;
-        renderActiveView();
-        showToast(`Switched view to ${viewName.toUpperCase()}`, 'info');
+import { savePreferencesToServer } from './api.js';
+
+export function switchView(viewName) {
+    document.querySelectorAll('.view-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.view === viewName);
+    });
+    state.activeView = viewName;
+    localStorage.setItem('scout_active_view', viewName);
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', '#' + viewName);
+    } else {
+        window.location.hash = viewName;
     }
+    renderActiveView();
+    savePreferencesToServer();
+    showToast(`Switched view to ${viewName.toUpperCase()}`, 'info');
+}
 
     export function buildPropertyCardHtml(p) {
         const ppsqft = p.sqft_finished ? Math.round(p.price / p.sqft_finished) : 0;
@@ -72,12 +115,12 @@ import { updateCompareButtons } from './compare.js';
 
         const matrixRev = getPropertyReviewStatus(p);
         let matrixBadge = '';
-        if (matrixRev === 'favorite') matrixBadge = `<span class="badge-matrix-review badge-matrix-fav">⭐ Matrix Favorite</span>`;
-        else if (matrixRev === 'possibility') matrixBadge = `<span class="badge-matrix-review badge-matrix-possibility">🤔 Matrix Possibility</span>`;
-        else if (matrixRev === 'dislike') matrixBadge = `<span class="badge-matrix-review badge-matrix-dislike">🚫 Matrix Disliked</span>`;
+        if (matrixRev === 'favorite') matrixBadge = `<span class="badge-matrix-review badge-matrix-fav"><i data-lucide="star"></i> Matrix Favorite</span>`;
+        else if (matrixRev === 'possibility') matrixBadge = `<span class="badge-matrix-review badge-matrix-possibility"><i data-lucide="circle-help"></i> Matrix Possibility</span>`;
+        else if (matrixRev === 'dislike') matrixBadge = `<span class="badge-matrix-review badge-matrix-dislike"><i data-lucide="ban"></i> Matrix Disliked</span>`;
 
         const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
-        const imgUrl = p.main_image_url || 'https://via.placeholder.com/400x250?text=No+Listing+Photo';
+        const imgUrl = p.main_image_url || NO_PHOTO_IMG;
 
         let photoCount = 0;
         if (p.photo_count) {
@@ -87,21 +130,18 @@ import { updateCompareButtons } from './compare.js';
         } else if (typeof p.gallery_images === 'string') {
             try { photoCount = JSON.parse(p.gallery_images).length; } catch(e) {}
         }
-        const photoBadge = photoCount > 1 ? `<span class="card-photo-count-badge">📷 ${photoCount}</span>` : '';
+        const photoBadge = photoCount > 1 ? `<span class="card-photo-count-badge"><i data-lucide="images"></i> ${photoCount}</span>` : '';
 
         const isComparing = state.compareList && state.compareList.includes(String(p.mls_id));
 
         return `
             <div class="property-card" data-mls="${p.mls_id}" onclick="openDetailModal('${p.mls_id}')">
                 <div class="card-media">
-                    <img src="${imgUrl}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://via.placeholder.com/400x250?text=No+Photo+Available';" class="card-img" alt="Property">
-                    <span class="card-status-badge badge-${(p.status || 'Active').toLowerCase()}">${p.status}</span>
+                    <img src="${escapeHtml(imgUrl)}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="card-img" alt="${escapeHtml(p.address || 'Property photo')}">
+                    <span class="card-status-badge badge-${(p.status || 'Active').toLowerCase().replace(/[^a-z0-9-]/g, '')}">${escapeHtml(p.status || '')}</span>
                     ${photoBadge}
-                    <button class="card-fav-btn ${p.favorite ? 'is-fav' : ''}" onclick="toggleFavorite('${p.mls_id}', event)">
-                        ${p.favorite ? '★' : '☆'}
-                    </button>
-                    <button class="card-compare-btn ${isComparing ? 'is-comparing' : ''}" data-mls="${p.mls_id}" onclick="window.handleToggleCompare('${p.mls_id}', event)">
-                        ${isComparing ? '✓ Comparing' : '+ Compare'}
+                    <button class="card-fav-btn ${p.favorite ? 'is-fav' : ''}" onclick="toggleFavorite('${p.mls_id}', event)" aria-label="${p.favorite ? 'Remove from favorites' : 'Add to favorites'}" aria-pressed="${p.favorite ? 'true' : 'false'}" title="${p.favorite ? 'Remove from favorites' : 'Add to favorites'}">
+                        <svg class="fav-star-icon" viewBox="0 0 24 24" fill="${p.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 2.5l2.98 6.04 6.67.97-4.83 4.7 1.14 6.65L12 17.77l-5.96 3.13 1.14-6.65-4.83-4.7 6.67-.97L12 2.5z"/></svg>
                     </button>
                 </div>
                 <div class="card-body">
@@ -111,22 +151,28 @@ import { updateCompareButtons } from './compare.js';
                     </div>
                     <div>
                         <div class="card-address">${escapeHtml(displayAddr)}</div>
-                        <div class="card-city">${p.city}, ${p.state} ${p.zip}</div>
+                        <div class="card-city">${escapeHtml(p.city || '')}, ${escapeHtml(p.state || '')} ${escapeHtml(p.zip || '')}</div>
                     </div>
                     <div class="card-stats">
                         <div class="stat-item"><span class="stat-val">${p.beds}</span><span class="stat-lbl">Beds</span></div>
                         <div class="stat-item"><span class="stat-val">${p.baths}</span><span class="stat-lbl">Baths</span></div>
-                        <div class="stat-item"><span class="stat-val">${p.sqft_finished ? p.sqft_finished.toLocaleString() : 'N/A'}</span><span class="stat-lbl">Fin SqFt</span></div>
+                        <div class="stat-item"><span class="stat-val">${p.sqft_finished ? p.sqft_finished.toLocaleString() : 'N/A'}</span><span class="stat-lbl">Finished SqFt</span></div>
                         <div class="stat-item"><span class="stat-val">$${ppsqft}</span><span class="stat-lbl">$/SqFt</span></div>
                     </div>
                     <div class="card-scores">
-                        <span class="score-badge">Yr: ${p.year_built || 'N/A'}</span>
-                        <span class="score-badge">Lot: ${p.lot_acres ? p.lot_acres + ' ac' : (p.lot_sqft ? p.lot_sqft + ' sqft' : 'N/A')}</span>
-                        ${p.walk_score ? `<span class="score-badge" style="background:#059669; color:#fff;">🚶 ${p.walk_score}/100</span>` : ''}
-                        ${p.hoa_fee ? `<span class="score-badge" style="background:#d97706; color:#fff;">HOA: $${p.hoa_fee}</span>` : '<span class="score-badge">No HOA</span>'}
+                        <span class="score-badge">Built: ${p.year_built || 'N/A'}</span>
+                        <span class="score-badge">Lot: ${p.lot_acres ? p.lot_acres + ' acres' : (p.lot_sqft ? p.lot_sqft.toLocaleString() + ' sqft' : 'N/A')}</span>
+                        ${p.walk_score ? `<span class="score-badge" style="background:#4F7A46; color:#fff;"><i data-lucide="footprints"></i> ${p.walk_score}/100</span>` : ''}
+                        ${p.hoa_fee ? `<span class="score-badge" style="background:#B87A2A; color:#fff;">HOA: $${p.hoa_fee}</span>` : '<span class="score-badge">No HOA</span>'}
                         ${matrixBadge}
                     </div>
-                    ${p.user_notes ? `<div class="card-notes-preview">📝 ${escapeHtml(p.user_notes)}</div>` : ''}
+                    ${p.user_notes ? `<div class="card-notes-preview"><i data-lucide="file-text"></i> ${escapeHtml(p.user_notes)}</div>` : ''}
+                    <div class="card-footer-row">
+                        <label class="card-compare-checkbox-label ${isComparing ? 'is-checked' : ''}" onclick="event.stopPropagation();" title="Select to include in Compare Matrix (up to 4)">
+                            <input type="checkbox" class="card-compare-checkbox" data-mls="${p.mls_id}" ${isComparing ? 'checked' : ''} onchange="window.handleToggleCompare('${p.mls_id}', event)">
+                            <span class="checkbox-text">${isComparing ? '✓ Comparing' : 'Compare'}</span>
+                        </label>
+                    </div>
                 </div>
             </div>
         `;
@@ -146,6 +192,7 @@ import { updateCompareButtons } from './compare.js';
         }
 
         containerEl.innerHTML = props.map(buildPropertyCardHtml).join('');
+        if (window.lucide) window.lucide.createIcons();
         updateCompareButtons();
 
         if (attachMapHoverEvents) {
@@ -183,15 +230,15 @@ import { updateCompareButtons } from './compare.js';
                     ${props.map(p => {
                         const matrixRev = getPropertyReviewStatus(p);
                         let matrixBadge = '-';
-                        if (matrixRev === 'favorite') matrixBadge = `<span class="badge-matrix-review badge-matrix-fav">⭐ Favorite</span>`;
-                        else if (matrixRev === 'possibility') matrixBadge = `<span class="badge-matrix-review badge-matrix-possibility">🤔 Possibility</span>`;
-                        else if (matrixRev === 'dislike') matrixBadge = `<span class="badge-matrix-review badge-matrix-dislike">🚫 Disliked</span>`;
+                        if (matrixRev === 'favorite') matrixBadge = `<span class="badge-matrix-review badge-matrix-fav"><i data-lucide="star"></i> Favorite</span>`;
+                        else if (matrixRev === 'possibility') matrixBadge = `<span class="badge-matrix-review badge-matrix-possibility"><i data-lucide="circle-help"></i> Possibility</span>`;
+                        else if (matrixRev === 'dislike') matrixBadge = `<span class="badge-matrix-review badge-matrix-dislike"><i data-lucide="ban"></i> Disliked</span>`;
 
                         return `
                             <tr onclick="openDetailModal('${p.mls_id}')" style="cursor:pointer;">
-                                <td><span class="card-status-badge badge-${(p.status || 'Active').toLowerCase()}">${p.status}</span></td>
+                                <td><span class="card-status-badge badge-${escapeHtml((p.status || 'Active').toLowerCase())}">${escapeHtml(p.status || '')}</span></td>
                                 <td>${matrixBadge}</td>
-                                <td><strong>${escapeHtml(cleanDisplayAddress(p.address, p.mls_id))}</strong><br><small style="color:var(--text-muted);">${p.city}, ${p.zip}</small></td>
+                                <td><strong>${escapeHtml(cleanDisplayAddress(p.address, p.mls_id))}</strong><br><small style="color:var(--text-muted);">${escapeHtml(p.city || '')}, ${escapeHtml(p.zip || '')}</small></td>
                                 <td style="font-weight:700; color:var(--accent-gold);">$${p.price.toLocaleString()}</td>
                                 <td>${p.beds}</td>
                                 <td>${p.baths}</td>
@@ -211,11 +258,37 @@ import { updateCompareButtons } from './compare.js';
                 </tbody>
             </table>
         `;
+        if (window.lucide) window.lucide.createIcons();
     }
     export function renderMatrix() {
-        const props = state.filteredProperties.slice(0, 4); // Compare top 4
+        let props = [];
+        let isCustomSelection = false;
+
+        // 1. Prioritize user's explicitly selected compare dock items
+        if (state.compareList && state.compareList.length > 0) {
+            props = state.compareList.map(mls => 
+                state.allProperties.find(p => String(p.mls_id) === String(mls))
+            ).filter(Boolean);
+            isCustomSelection = true;
+        }
+
+        // 2. If no custom selection, fallback to top 4 of filtered search results
         if (!props.length) {
-            elements.matrixContainer.innerHTML = '<div style="padding:2rem; color:var(--text-muted);">Select or filter properties to compare side-by-side.</div>';
+            props = state.filteredProperties.slice(0, 4);
+        }
+
+        if (!props.length) {
+            elements.matrixContainer.innerHTML = `
+                <div class="matrix-info-banner" style="grid-column: 1/-1;">
+                    <div class="matrix-info-header">
+                        <div class="matrix-info-title"><i data-lucide="scale"></i> Compare Matrix</div>
+                    </div>
+                    <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.3rem;">
+                        No properties match your active search filters. Try resetting filters, or click <code>+ Compare</code> on property cards to pick custom homes for side-by-side comparison.
+                    </p>
+                </div>
+            `;
+            if (window.lucide) window.lucide.createIcons();
             return;
         }
 
@@ -227,15 +300,64 @@ import { updateCompareButtons } from './compare.js';
         const bestYearBuilt = Math.max(...props.map(p => p.year_built || 0));
         const bestHoaFee = Math.min(...props.map(p => (p.hoa_fee !== null && p.hoa_fee !== undefined) ? p.hoa_fee : 0));
 
+        const selectionBadgeText = isCustomSelection 
+            ? `${props.length} Custom Selected Property(ies)` 
+            : `Top ${props.length} of ${state.filteredProperties.length} Filtered Listings`;
+
+        const selectionExplanation = isCustomSelection
+            ? `Showing <strong>${props.length} hand-picked property(ies)</strong> from your compare list. Use the column dropdowns below to swap properties!`
+            : `Showing top <strong>${props.length}</strong> listings based on current search & sort order. Use the column dropdowns below or click <strong>+ Compare</strong> on cards to pick exact properties!`;
+
+        const bannerHtml = `
+            <div class="matrix-info-banner" style="grid-column: 1/-1;">
+                <div class="matrix-info-header">
+                    <div class="matrix-info-title">
+                        <span><i data-lucide="scale"></i> Side-by-Side Property Matrix</span>
+                    </div>
+                    <span class="badge-gold">${selectionBadgeText}</span>
+                </div>
+                <div class="matrix-info-grid">
+                    <div class="matrix-info-item">
+                        <span><i data-lucide="target"></i></span>
+                        <div>${selectionExplanation}</div>
+                    </div>
+                    <div class="matrix-info-item">
+                        <span><i data-lucide="trophy"></i></span>
+                        <div>
+                            <strong>Winner Highlights:</strong> Green highlighted boxes indicate best-in-class values (Lowest Price, Lowest $/SqFt, Largest Area, Newest Year, Lowest HOA, & Highest WalkScore).
+                        </div>
+                    </div>
+                    <div class="matrix-info-item">
+                        <span><i data-lucide="lightbulb"></i></span>
+                        <div>
+                            <strong>Swap Column Homes:</strong> Click any column header dropdown below to change which home is displayed in that column!
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Available properties for selection dropdowns (Favorites / Filtered first, then all)
+        const availableProps = state.filteredProperties.length ? state.filteredProperties : state.allProperties;
+
         const rows = [
-            { label: 'Property Photo', fn: p => `<img src="${p.main_image_url || 'https://via.placeholder.com/200x120?text=No+Photo'}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://via.placeholder.com/200x120?text=No+Photo';" style="width:100%; height:120px; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="openDetailModal('${p.mls_id}')">` },
-            { label: 'Address', fn: p => `<strong style="cursor:pointer; color:var(--accent-blue);" onclick="openDetailModal('${p.mls_id}')">${escapeHtml(cleanDisplayAddress(p.address, p.mls_id))}</strong><br>${p.city}, ${p.zip}` },
+            { label: 'Column Selection', fn: (p, idx) => `
+                <select class="matrix-col-select input-text" data-col-idx="${idx}" style="font-size:0.75rem; padding:0.25rem 0.4rem; width:100%; font-weight:600; background:var(--bg-input); border-color:var(--border-color); color:var(--accent-gold);">
+                    ${availableProps.map(ap => `
+                        <option value="${ap.mls_id}" ${String(ap.mls_id) === String(p.mls_id) ? 'selected' : ''}>
+                            ${ap.favorite ? '⭐ ' : ''}${escapeHtml(cleanDisplayAddress(ap.address, ap.mls_id))} ($${ap.price.toLocaleString()})
+                        </option>
+                    `).join('')}
+                </select>
+            ` },
+            { label: 'Property Photo', fn: p => `<img src="${escapeHtml(p.main_image_url || NO_PHOTO_IMG)}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" style="width:100%; height:120px; object-fit:cover; border-radius:6px; cursor:pointer;" onclick="openDetailModal('${p.mls_id}')" alt="${escapeHtml(p.address || 'Property photo')}">` },
+            { label: 'Address', fn: p => `<strong style="cursor:pointer; color:var(--accent-blue);" onclick="openDetailModal('${p.mls_id}')">${escapeHtml(cleanDisplayAddress(p.address, p.mls_id))}</strong><br>${escapeHtml(p.city || '')}, ${escapeHtml(p.zip || '')}` },
             { label: 'MLS Review', fn: p => {
                 const matrixRev = getPropertyReviewStatus(p);
-                if (matrixRev === 'favorite') return `<span class="badge-matrix-review badge-matrix-fav">⭐ Favorite</span>`;
-                if (matrixRev === 'possibility') return `<span class="badge-matrix-review badge-matrix-possibility">🤔 Possibility</span>`;
-                if (matrixRev === 'dislike') return `<span class="badge-matrix-review badge-matrix-dislike">🚫 Disliked</span>`;
-                return '<span style="color:var(--text-muted);">📋 Unreviewed</span>';
+                if (matrixRev === 'favorite') return `<span class="badge-matrix-review badge-matrix-fav"><i data-lucide="star"></i> Favorite</span>`;
+                if (matrixRev === 'possibility') return `<span class="badge-matrix-review badge-matrix-possibility"><i data-lucide="circle-help"></i> Possibility</span>`;
+                if (matrixRev === 'dislike') return `<span class="badge-matrix-review badge-matrix-dislike"><i data-lucide="ban"></i> Disliked</span>`;
+                return '<span style="color:var(--text-muted);"><i data-lucide="clipboard-list"></i> Unreviewed</span>';
             }},
             { label: 'List Price', fn: p => `<strong style="font-size:1.1rem; color:var(--accent-gold);">$${p.price.toLocaleString()}</strong>`, isWinner: p => p.price === bestPrice },
             { label: 'Redfin Estimate', fn: p => p.redfin_estimate ? `$${p.redfin_estimate.toLocaleString()}` : 'N/A' },
@@ -247,18 +369,40 @@ import { updateCompareButtons } from './compare.js';
             { label: 'HOA Fee', fn: p => p.hoa_fee ? `$${p.hoa_fee}/yr` : 'No HOA', isWinner: p => (p.hoa_fee || 0) === bestHoaFee },
             { label: 'Annual Tax', fn: p => p.annual_tax ? `$${p.annual_tax}` : 'N/A' },
             { label: 'WalkScore', fn: p => p.walk_score ? `${p.walk_score} / 100` : 'N/A', isWinner: p => p.walk_score === bestWalkScore && bestWalkScore > 0 },
-            { label: 'School District', fn: p => p.school_district || 'N/A' }
+            { label: 'School District', fn: p => escapeHtml(p.school_district || 'N/A') }
         ];
 
-        let html = '';
+        let html = bannerHtml;
         rows.forEach(r => {
             html += `<div class="matrix-row-header">${r.label}</div>`;
-            props.forEach(p => {
+            props.forEach((p, idx) => {
                 const isWin = r.isWinner && r.isWinner(p);
-                html += `<div class="matrix-cell ${isWin ? 'matrix-cell-winner' : ''}">${r.fn(p)}</div>`;
+                html += `<div class="matrix-cell ${isWin ? 'matrix-cell-winner' : ''}">${r.fn(p, idx)}</div>`;
             });
         });
 
         elements.matrixContainer.innerHTML = html;
         elements.matrixContainer.style.gridTemplateColumns = `180px repeat(${props.length}, 1fr)`;
+        if (window.lucide) window.lucide.createIcons();
+
+        // Attach event listeners for column dropdown selection swaps
+        elements.matrixContainer.querySelectorAll('.matrix-col-select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const colIdx = parseInt(e.target.dataset.colIdx, 10);
+                const newMlsId = String(e.target.value);
+
+                // Build or update state.compareList
+                if (!state.compareList || state.compareList.length === 0) {
+                    state.compareList = props.map(p => String(p.mls_id));
+                }
+                state.compareList[colIdx] = newMlsId;
+                
+                // Re-render Matrix immediately
+                renderMatrix();
+            });
+        });
     }
+
+window.switchView = switchView;
+window.renderActiveView = renderActiveView;
+window.updateKPIs = updateKPIs;

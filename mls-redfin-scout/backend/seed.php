@@ -1,7 +1,17 @@
 <?php
 /**
  * Fixture Data Seeder for MLS & Redfin Property Scout
+ *
+ * CLI-only by design: this has no auth of its own and upserts fixture rows straight into
+ * properties.db. It's meant for `php backend/seed.php` during local setup, never for a web
+ * request. (Found reachable in production over plain HTTP on 2026-09-06 — this guard is the
+ * fix; see claude/security-hardening-plan.md.)
  */
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    exit('Forbidden');
+}
+
 $dbDir = __DIR__ . '/../data';
 if (!is_dir($dbDir)) mkdir($dbDir, 0755, true);
 

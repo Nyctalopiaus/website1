@@ -4,10 +4,19 @@
  * used across nearly every other module.
  */
 import { apiFetch } from './api.js';
-import { CONFIG, state } from './state.js';
-import { syncTopBarFromState, applyFiltersAndRender } from './filters.js';
-import { renderMap } from './map.js';
+import { CONFIG, elements, state } from './state.js';
+import { applyFiltersAndRender, syncTopBarFromState } from './filters.js';
+import { renderClientNextSteps } from './clientNextSteps.js';
 
+// Local, network-independent fallback for listings with no cached photo. A former external
+// placeholder dependency could stop resolving, leaving listings with broken image boxes, so a
+// friendly placeholder. An inline SVG data URI has no network dependency, so it always renders.
+export const NO_PHOTO_IMG = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250">' +
+    '<rect width="400" height="250" fill="#F0EAE0"/>' +
+    '<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#B0A48F" font-family="sans-serif" font-size="18">No Photo Available</text>' +
+    '</svg>'
+);
 
     export function populateLocationDropdowns(properties) {
         if (!Array.isArray(properties) || !properties.length) return;
@@ -40,19 +49,40 @@ import { renderMap } from './map.js';
         updateSelectOptions('filter-zip', 'All Zip Codes', zips);
         updateSelectOptions('filter-school-district', 'All School Districts', districts);
     }
+    function showPropertyLoadError(error) {
+        if (!elements.gridContainer) return;
+        elements.gridContainer.style.display = 'grid';
+        elements.gridContainer.innerHTML = `
+            <div style="grid-column:1/-1; text-align:center; padding:4rem; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md);">
+                <h3>Unable to load properties</h3>
+                <p style="margin-top:0.5rem; color:var(--text-muted);">${escapeHtml(error.message || 'Please try again.')}</p>
+                <button type="button" class="btn btn-gold" style="margin-top:1rem;" onclick="window.location.reload()"><i data-lucide="rotate-ccw"></i> Retry</button>
+            </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+    }
+
     export function fetchProperties() {
         apiFetch(CONFIG.API_URL + '?action=list')
             .then(data => {
-                if (data.success) {
-                    state.allProperties = data.properties || [];
-                    populateLocationDropdowns(state.allProperties);
-                    ensureGeocodedProperties();
-                    syncTopBarFromState();
-                    applyFiltersAndRender();
+                if (!data?.success) {
+                    throw new Error(data?.error || 'The property service did not return a valid response.');
+                }
+                state.allProperties = data.properties || [];
+                populateLocationDropdowns(state.allProperties);
+                ensureGeocodedProperties();
+                syncTopBarFromState();
+                applyFiltersAndRender();
+                renderClientNextSteps();
+                if (window.inlineCarouselState && window.inlineCarouselState.token && (!window.inlineCarouselState.properties || !window.inlineCarouselState.properties.length)) {
+                    if (typeof window.initInlinePlaylistCarousel === 'function') {
+                        window.initInlinePlaylistCarousel(window.inlineCarouselState.token);
+                    }
                 }
             })
             .catch(err => {
                 console.error('Failed to load property database:', err);
+                showPropertyLoadError(err);
             });
     }
     export function isValidCoord(lat, lng) {
@@ -118,18 +148,9 @@ import { renderMap } from './map.js';
         });
     }
     export function getPropertyReviewStatus(p) {
-        const rawStatus = (p.raw_mls_json && p.raw_mls_json.matrix_review_status);
-        if (rawStatus && rawStatus !== 'none') {
-            return rawStatus;
-        }
-        if (rawStatus === 'none') {
-            if (p.hidden) return 'dislike';
-            if (p.rating === 3) return 'possibility';
-            return 'none';
-        }
         if (p.hidden) return 'dislike';
-        if (p.rating === 3) return 'possibility';
         if (p.favorite) return 'favorite';
+        if (p.rating === 3) return 'possibility';
         return 'none';
     }
     export function cleanDisplayAddress(address, mlsId) {
@@ -145,7 +166,36 @@ import { renderMap } from './map.js';
         return clean || 'Address Unavailable';
     }
     export function escapeHtml(str) {
-        return str.replace(/[&<>'"]/g, 
+        return str.replace(/[&<>'"]/g,
             tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
         );
     }
+    /**
+     * Guards a scraper-controlled URL before it's ever used as a clickable href (e.g. the detail
+     * modal's "View Full Image" link). Image/gallery URLs come from an unauthenticated sync
+     * payload (see backend/properties.php's SSRF note), so without this a crafted `javascript:`
+     * URL could execute in an authenticated session when clicked. Not needed for <img src> —
+     * browsers don't execute javascript: URLs there, they just fail to load — only for href.
+     */
+    export function isSafeMediaUrl(url) {
+        return typeof url === 'string' && /^https?:\/\//i.test(url);
+    }
+    export function getRedfinUrl(p) {
+        if (!p) return 'https://www.redfin.com';
+        if (p.redfin_url && typeof p.redfin_url === 'string' && p.redfin_url.startsWith('http') && !p.redfin_url.includes('stingray/do/')) {
+            return p.redfin_url;
+        }
+        const cleanAddr = cleanDisplayAddress(p.address, p.mls_id);
+        const parts = [
+            cleanAddr !== 'Address Unavailable' ? cleanAddr : '',
+            p.city,
+            p.state || 'CO',
+            p.zip
+        ].filter(Boolean);
+
+        const query = parts.join(' ');
+        if (!query) return 'https://www.redfin.com';
+
+        return `https://www.redfin.com/stingray/do/query-location?location=${encodeURIComponent(query)}`;
+    }
+

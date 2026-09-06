@@ -10,13 +10,14 @@ import { escapeHtml } from './properties.js';
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
         
-        let icon = 'ℹ️';
-        if (type === 'success') icon = '✅';
-        if (type === 'warning') icon = '⚠️';
-        if (type === 'error') icon = '❌';
+        let icon = 'info';
+        if (type === 'success') icon = 'circle-check';
+        if (type === 'warning') icon = 'triangle-alert';
+        if (type === 'error') icon = 'circle-x';
 
-        toast.innerHTML = `<span>${icon}</span> <span>${escapeHtml(message)}</span>`;
+        toast.innerHTML = `<span><i data-lucide="${icon}"></i></span> <span>${escapeHtml(message)}</span>`;
         elements.toastContainer.appendChild(toast);
+        if (window.lucide) window.lucide.createIcons();
 
         setTimeout(() => {
             toast.style.opacity = '0';

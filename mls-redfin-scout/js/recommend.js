@@ -10,32 +10,37 @@
  * group benchmarks, balanced pros/cons, situational badges, and side-by-side comparison matrix.
  */
 import { state, elements } from './state.js';
-import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml } from './properties.js';
+import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './properties.js';
 import { showToast } from './toast.js';
 
 export const WEIGHT_PROFILES = {
     balanced: {
-        label: '⚖️ Balanced Default',
+        label: 'Balanced Default',
         desc: 'Balanced mix: Price/SqFt (35%), Lot size (20%), Days on Market (20%), HOA (15%), Redfin Est (10%)',
         weights: { ppsqft: 0.35, lotAcres: 0.20, domDays: 0.20, hoaFee: 0.15, redfinDeltaPct: 0.10 }
     },
+    negotiation: {
+        label: '🔥 High Leverage Negotiation',
+        desc: 'Identifies listings with longest Days on Market for aggressive price negotiation',
+        weights: { domDays: 0.60, ppsqft: 0.25, redfinDeltaPct: 0.15, hoaFee: 0.00, lotAcres: 0.00 }
+    },
+    appraisal: {
+        label: '⚖️ Low Appraisal Risk',
+        desc: 'Prioritizes properties priced farthest under Redfin valuation estimate',
+        weights: { redfinDeltaPct: 0.55, ppsqft: 0.30, domDays: 0.15, hoaFee: 0.00, lotAcres: 0.00 }
+    },
     value: {
-        label: '💰 Value Hunter',
+        label: 'Value Hunter',
         desc: 'Focuses heavily on price per sqft and discount relative to Redfin valuation estimate',
         weights: { ppsqft: 0.50, redfinDeltaPct: 0.25, domDays: 0.15, hoaFee: 0.10, lotAcres: 0.00 }
     },
     overhead: {
-        label: '📉 Low Overhead',
+        label: 'Low Overhead',
         desc: 'Prioritizes properties with minimal monthly HOA fees and efficient price per sqft',
         weights: { hoaFee: 0.45, ppsqft: 0.35, redfinDeltaPct: 0.20, lotAcres: 0.00, domDays: 0.00 }
     },
-    negotiation: {
-        label: '🤝 High Leverage',
-        desc: 'Favors listings that have been on the market longest for seller price negotiation',
-        weights: { domDays: 0.50, ppsqft: 0.30, redfinDeltaPct: 0.20, hoaFee: 0.00, lotAcres: 0.00 }
-    },
     land: {
-        label: '🌳 Max Land & Space',
+        label: 'Max Land & Space',
         desc: 'Focuses primarily on lot size in acres and finished living space',
         weights: { lotAcres: 0.50, ppsqft: 0.30, domDays: 0.20, hoaFee: 0.00, redfinDeltaPct: 0.00 }
     }
@@ -109,6 +114,17 @@ function eligibleProperties() {
 }
 
 function defaultSelectionIds() {
+    if (state.activeView === 'realtor' && window.getRealtorActiveClientData) {
+        const clientData = window.getRealtorActiveClientData();
+        if (clientData && clientData.matrix) {
+            const loved = clientData.matrix.loved || [];
+            const shortlisted = clientData.matrix.shortlisted || [];
+            const combined = [...loved, ...shortlisted];
+            if (combined.length > 0) {
+                return combined.map(p => p.mls_id);
+            }
+        }
+    }
     return eligibleProperties()
         .filter(p => getPropertyReviewStatus(p) === 'favorite')
         .map(p => p.mls_id);
@@ -213,20 +229,20 @@ function buildProsAndCons(metrics, percentiles, ranges) {
 
 /** Determines situational badge for property based on standouts */
 function getSituationalBadge(entry, rankNum) {
-    if (rankNum === 1) return { icon: '👑', label: '#1 Top Pick', class: 'situational-badge-top' };
+    if (rankNum === 1) return { icon: '<i data-lucide="crown"></i>', label: '#1 Top Pick', class: 'situational-badge-top' };
 
     const { percentiles } = entry;
     if (percentiles.ppsqft >= GOOD_THRESHOLD || percentiles.redfinDeltaPct >= GOOD_THRESHOLD) {
-        return { icon: '🏷️', label: 'Best Value', class: '' };
+        return { icon: '<i data-lucide="tag"></i>', label: 'Best Value', class: '' };
     }
     if (percentiles.domDays >= GOOD_THRESHOLD) {
-        return { icon: '🤝', label: 'Negotiation Target', class: '' };
+        return { icon: '<i data-lucide="handshake"></i>', label: 'Negotiation Target', class: '' };
     }
     if (percentiles.hoaFee >= BEST_THRESHOLD) {
-        return { icon: '📉', label: 'Lowest Overhead', class: '' };
+        return { icon: '<i data-lucide="trending-down"></i>', label: 'Lowest Overhead', class: '' };
     }
     if (percentiles.lotAcres >= GOOD_THRESHOLD) {
-        return { icon: '🌳', label: 'Max Acreage', class: '' };
+        return { icon: '<i data-lucide="trees"></i>', label: 'Max Acreage', class: '' };
     }
     return null;
 }
@@ -313,6 +329,37 @@ function computeRanking(properties, profileKey = 'balanced') {
 
 // --- Selection Panel ---
 
+let activePreset = null; // 'favorites' | 'possibilities' | 'none' | null
+
+function updatePresetButtonUI() {
+    const btnFav = elements.btnRecommendSelectFavorites;
+    const btnPoss = elements.btnRecommendSelectPossibilities;
+    const btnNone = elements.btnRecommendSelectNone;
+    const isRealtor = state.activeView === 'realtor';
+
+    const favCount = eligibleProperties().filter(p => getPropertyReviewStatus(p) === 'favorite').length;
+    const possCount = eligibleProperties().filter(p => getPropertyReviewStatus(p) === 'possibility').length;
+
+    if (btnFav) {
+        const favLabel = isRealtor ? `❤️ Loved (${favCount})` : `⭐ Favorites (${favCount})`;
+        btnFav.innerHTML = activePreset === 'favorites' ? `<i data-lucide="check-circle-2"></i> ${favLabel}` : `<i data-lucide="star"></i> ${favLabel}`;
+        btnFav.classList.toggle('btn-preset-active', activePreset === 'favorites');
+    }
+
+    if (btnPoss) {
+        const possLabel = isRealtor ? `+ ⭐ Shortlisted (+${possCount})` : `+ ❓ Possibilities (+${possCount})`;
+        btnPoss.innerHTML = (activePreset === 'possibilities') ? `<i data-lucide="check-circle-2"></i> ${possLabel}` : `<i data-lucide="circle-help"></i> ${possLabel}`;
+        btnPoss.classList.toggle('btn-preset-active', activePreset === 'possibilities');
+    }
+
+    if (btnNone) {
+        btnNone.innerHTML = `<i data-lucide="trash-2"></i> Clear (${selectedIds.size})`;
+        btnNone.classList.toggle('btn-preset-active', activePreset === 'none');
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+}
+
 function renderSelectionPanel() {
     if (!elements.recommendPickList) return;
     const props = eligibleProperties().sort((a, b) => (b.favorite - a.favorite) || (a.price - b.price));
@@ -321,21 +368,23 @@ function renderSelectionPanel() {
         elements.recommendPickList.innerHTML = `<div style="padding:1.5rem; text-align:center; color:var(--text-muted);">No properties in your database yet.</div>`;
     } else {
         elements.recommendPickList.innerHTML = props.map(p => {
-            const checked = selectedIds.has(p.mls_id) ? 'checked' : '';
+            const checked = selectedIds.has(p.mls_id);
             const rev = getPropertyReviewStatus(p);
-            const badge = rev === 'favorite' ? '⭐ ' : rev === 'possibility' ? '🤔 ' : '';
-            const thumb = p.main_image_url || 'https://via.placeholder.com/80x60?text=No+Photo';
+            const badge = rev === 'favorite' ? '<i data-lucide="heart" style="color:var(--accent-red)"></i> ' : rev === 'possibility' ? '<i data-lucide="star" style="color:var(--accent-gold)"></i> ' : '';
+            const thumb = escapeHtml(p.main_image_url || NO_PHOTO_IMG);
             return `
-            <label class="pick-row">
-                <input type="checkbox" data-mls="${p.mls_id}" ${checked} onchange="toggleRecommendPick('${p.mls_id}', this.checked)">
-                <img src="${thumb}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='https://via.placeholder.com/80x60?text=No+Photo';" class="pick-row-thumb">
+            <label class="pick-row ${checked ? 'pick-row-checked' : ''}">
+                <input type="checkbox" data-mls="${p.mls_id}" ${checked ? 'checked' : ''} onchange="toggleRecommendPick('${p.mls_id}', this.checked)">
+                <img src="${thumb}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="pick-row-thumb" alt="${escapeHtml(cleanDisplayAddress(p.address, p.mls_id) || 'Property photo')}">
                 <div class="pick-row-info">
                     <div class="pick-row-addr">${badge}${escapeHtml(cleanDisplayAddress(p.address, p.mls_id))}</div>
                     <div class="pick-row-sub">${escapeHtml(p.city || '')}, ${escapeHtml(p.state || 'CO')} &middot; $${p.price.toLocaleString()} &middot; ${p.beds || 0}bd/${p.baths || 0}ba</div>
                 </div>
             </label>`;
         }).join('');
+        if (window.lucide) window.lucide.createIcons();
     }
+    updatePresetButtonUI();
     updateSelectHint();
 }
 
@@ -351,22 +400,36 @@ function updateSelectHint() {
 
 window.toggleRecommendPick = function(mlsId, checked) {
     if (checked) selectedIds.add(mlsId); else selectedIds.delete(mlsId);
+    activePreset = null;
+    const row = document.querySelector(`input[data-mls="${mlsId}"]`)?.closest('.pick-row');
+    if (row) row.classList.toggle('pick-row-checked', checked);
+    updatePresetButtonUI();
     updateSelectHint();
 };
 
 export function selectRecommendFavorites() {
-    selectedIds = new Set(eligibleProperties().filter(p => getPropertyReviewStatus(p) === 'favorite').map(p => p.mls_id));
+    const favs = eligibleProperties().filter(p => getPropertyReviewStatus(p) === 'favorite').map(p => p.mls_id);
+    selectedIds = new Set(favs);
+    activePreset = 'favorites';
     renderSelectionPanel();
+    const label = state.activeView === 'realtor' ? 'Loved' : 'Favorite';
+    showToast(`✓ Selected ${favs.length} ${label} properties`, 'info');
 }
 
 export function selectRecommendAddPossibilities() {
-    eligibleProperties().filter(p => getPropertyReviewStatus(p) === 'possibility').forEach(p => selectedIds.add(p.mls_id));
+    const poss = eligibleProperties().filter(p => getPropertyReviewStatus(p) === 'possibility').map(p => p.mls_id);
+    poss.forEach(id => selectedIds.add(id));
+    activePreset = 'possibilities';
     renderSelectionPanel();
+    const label = state.activeView === 'realtor' ? 'Shortlisted' : 'Possibility';
+    showToast(`✓ Included ${poss.length} ${label} properties (Total: ${selectedIds.size})`, 'info');
 }
 
 export function selectRecommendNone() {
     selectedIds = new Set();
+    activePreset = 'none';
     renderSelectionPanel();
+    showToast('Cleared property selection', 'info');
 }
 
 // --- Results Panel ---
@@ -405,6 +468,14 @@ function renderGroupBenchmarkBar(benchmarks) {
     </div>`;
 }
 
+const PROFILE_ICONS = {
+    balanced: 'scale',
+    value: 'dollar-sign',
+    overhead: 'trending-down',
+    negotiation: 'handshake',
+    land: 'trees'
+};
+
 function renderControlsRow() {
     return `
     <div class="recommend-controls-row">
@@ -412,13 +483,13 @@ function renderControlsRow() {
             <span class="preset-label">Scoring Profile:</span>
             ${Object.entries(WEIGHT_PROFILES).map(([key, prof]) => `
                 <button type="button" class="preset-pill ${key === currentProfileKey ? 'active' : ''}" onclick="switchRecommendProfile('${key}')" title="${escapeHtml(prof.desc)}">
-                    ${prof.label}
+                    <i data-lucide="${PROFILE_ICONS[key] || 'circle'}"></i> ${prof.label}
                 </button>
             `).join('')}
         </div>
         <div class="recommend-view-toggle">
-            <button type="button" class="view-pill ${currentViewMode === 'cards' ? 'active' : ''}" onclick="switchRecommendViewMode('cards')">🃏 Cards</button>
-            <button type="button" class="view-pill ${currentViewMode === 'table' ? 'active' : ''}" onclick="switchRecommendViewMode('table')">📊 Matrix</button>
+            <button type="button" class="view-pill ${currentViewMode === 'cards' ? 'active' : ''}" onclick="switchRecommendViewMode('cards')"><i data-lucide="layout-grid"></i> Cards</button>
+            <button type="button" class="view-pill ${currentViewMode === 'table' ? 'active' : ''}" onclick="switchRecommendViewMode('table')"><i data-lucide="table"></i> Matrix</button>
         </div>
     </div>`;
 }
@@ -427,7 +498,7 @@ function renderCardView(ranking) {
     return ranking.scored.map((entry, idx) => {
         const p = entry.property;
         const rankNum = idx + 1;
-        const crown = rankNum === 1 ? '👑 ' : '';
+        const crown = rankNum === 1 ? '<i data-lucide="crown"></i> ' : '';
         const sqft = p.sqft_finished || p.sqft_total || 0;
         const badge = getSituationalBadge(entry, rankNum);
         const scoreInt = Math.round(entry.score * 100);
@@ -436,12 +507,12 @@ function renderCardView(ranking) {
         const dataNote = entry.availableMetricsCount < 5 ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Scored on ${entry.availableMetricsCount} of 5 metrics</div>` : '';
 
         const strengthsHtml = entry.strengths.length ? `
-            <div class="rank-strengths-title">🟢 Top Strengths</div>
+            <div class="rank-strengths-title"><i data-lucide="circle" style="fill:currentColor;color:var(--badge-active)"></i> Top Strengths</div>
             <ul class="rank-why rank-bullets-green">${entry.strengths.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
         ` : '';
 
         const drawbacksHtml = entry.drawbacks.length ? `
-            <div class="rank-drawbacks-title">🔴 Watch Out Items</div>
+            <div class="rank-drawbacks-title"><i data-lucide="circle" style="fill:currentColor;color:var(--accent-red)"></i> Watch Out Items</div>
             <ul class="rank-why rank-bullets-red">${entry.drawbacks.map(d => `<li>${escapeHtml(d)}</li>`).join('')}</ul>
         ` : '';
 
@@ -471,7 +542,7 @@ function renderCardView(ranking) {
                 </div>
 
                             <div id="breakdown-${p.mls_id}" class="rank-card-breakdown" style="display:none;">
-                    <div style="font-weight:700; color:var(--accent-gold); font-size:0.8rem; margin-bottom:0.25rem;">🔍 Score Calculation Breakdown (${ranking.profile.label})</div>
+                    <div style="font-weight:700; color:var(--accent-gold); font-size:0.8rem; margin-bottom:0.25rem;"><i data-lucide="search"></i> Score Calculation Breakdown (${ranking.profile.label})</div>
                     ${breakdownRows}
                 </div>
 
@@ -497,7 +568,7 @@ function renderSideBySideMatrix(ranking) {
         const p = entry.property;
         const rankNum = idx + 1;
         const badge = getSituationalBadge(entry, rankNum);
-        const crown = rankNum === 1 ? '👑 ' : '';
+        const crown = rankNum === 1 ? '<i data-lucide="crown"></i> ' : '';
         const badgeStr = badge ? ` (${badge.label})` : '';
 
         return `
@@ -543,6 +614,19 @@ function renderResultsPanel(ranking) {
     const benchmarkHtml = renderGroupBenchmarkBar(ranking.benchmarks);
     const controlsHtml = renderControlsRow();
 
+    const isRealtorView = state.activeView === 'realtor';
+    const realtorActionBar = isRealtorView ? `
+        <div style="background: rgba(217, 164, 65, 0.1); border: 1px solid var(--accent-gold); border-radius: var(--radius-sm); padding: 0.75rem 1rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
+            <div style="font-weight: 700; font-size: 0.88rem; color: var(--accent-gold); display: flex; align-items: center; gap: 0.35rem;">
+                <i data-lucide="briefcase"></i> Realtor Action Suite:
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="button" class="btn btn-emerald btn-sm" onclick="window.transferRankedToTour()"><i data-lucide="map-pin"></i> Build Showing Tour from Top Picks</button>
+                <button type="button" class="btn btn-gold btn-sm" onclick="window.saveRankedPicksAsPlaylist()"><i data-lucide="music"></i> Save Top Picks as Client Playlist</button>
+            </div>
+        </div>
+    ` : '';
+
     let mainContentHtml = '';
     if (currentViewMode === 'cards') {
         mainContentHtml = `<div class="rank-card-list">${renderCardView(ranking)}</div>`;
@@ -552,15 +636,17 @@ function renderResultsPanel(ranking) {
 
     elements.recommendResultsBody.innerHTML = `
         ${benchmarkHtml}
+        ${realtorActionBar}
         ${controlsHtml}
-        <div class="modal-section-title">🏆 Top Picks Ranking (${ranking.profile.label})</div>
+        <div class="modal-section-title"><i data-lucide="trophy"></i> Top Picks Ranking (${ranking.profile.label})</div>
         ${mainContentHtml}
     `;
+    if (window.lucide) window.lucide.createIcons();
 }
 
 function buildRankingText(ranking) {
     const lines = [
-        `✨ Top Picks - Scout Ranking (${ranking.profile.label})`,
+        `Top Picks - Scout Ranking (${ranking.profile.label})`,
         `Selected Properties: ${ranking.benchmarks.count} | Group Avg Price: ${fmtMoney(ranking.benchmarks.avgPrice)} | Avg $/sqft: ${fmtMoney(ranking.benchmarks.avgPpsqft)}/sqft`,
         ''
     ];
@@ -621,14 +707,61 @@ export function backToRecommendSelection() {
 
 export function openRecommendModal() {
     if (!elements.modalRecommend) return;
-    if (!hasInitializedSelection) {
+    if (state.activeView === 'realtor' || !hasInitializedSelection) {
         selectedIds = new Set(defaultSelectionIds());
         hasInitializedSelection = true;
     }
+
+    const modalTitle = document.getElementById('recommend-modal-title');
+    if (modalTitle) {
+        const clientData = (state.activeView === 'realtor' && window.getRealtorActiveClientData) ? window.getRealtorActiveClientData() : null;
+        const clientName = clientData && clientData.selected_client ? (clientData.selected_client.full_name || clientData.selected_client.username) : null;
+        if (clientName) {
+            modalTitle.innerHTML = `<i data-lucide="sparkles" style="color:var(--accent-gold);"></i> Top Picks Strategy Engine for <span style="color:var(--accent-gold);">${escapeHtml(clientName)}</span>`;
+        } else {
+            modalTitle.innerHTML = `<i data-lucide="sparkles"></i> Top Picks`;
+        }
+    }
+
     renderSelectionPanel();
     showSelectPanel();
     elements.modalRecommend.classList.add('active');
+    if (window.lucide) window.lucide.createIcons();
 }
+
+window.transferRankedToTour = function() {
+    if (!lastRanking || !lastRanking.scored || lastRanking.scored.length === 0) return;
+    const topPicks = lastRanking.scored.slice(0, 5).map(e => e.property);
+    closeRecommendModal();
+    if (window.switchRealtorSubTab) {
+        window.switchRealtorSubTab('tour');
+        showToast(`Showing itinerary initialized with top ${topPicks.length} ranked picks!`, 'success');
+    }
+};
+
+window.saveRankedPicksAsPlaylist = function() {
+    if (!lastRanking || !lastRanking.scored || lastRanking.scored.length === 0) return;
+    const topMlsIds = lastRanking.scored.map(e => e.property.mls_id);
+    closeRecommendModal();
+
+    if (window.openPlaylistsModal) {
+        window.openPlaylistsModal();
+        setTimeout(() => {
+            const titleEl = document.getElementById('playlist-title');
+            const descEl = document.getElementById('playlist-description');
+            const clientData = (state.activeView === 'realtor' && window.getRealtorActiveClientData) ? window.getRealtorActiveClientData() : null;
+            const clientName = clientData && clientData.selected_client ? (clientData.selected_client.full_name || clientData.selected_client.username) : '';
+
+            if (titleEl) titleEl.value = `Top Picks Strategy (${lastRanking.profile.label}) - ${clientName}`;
+            if (descEl) descEl.value = `Curated top ${topMlsIds.length} ranked homes based on ${lastRanking.profile.label} strategy. Group avg price: ${fmtMoney(lastRanking.benchmarks.avgPrice)}.`;
+
+            if (window.setPlaylistEditingMlsIds) {
+                window.setPlaylistEditingMlsIds(topMlsIds);
+            }
+            showToast(`Playlist pre-populated with top ${topMlsIds.length} ranked properties!`, 'success');
+        }, 150);
+    }
+};
 
 export function closeRecommendModal() {
     if (elements.modalRecommend) elements.modalRecommend.classList.remove('active');

@@ -1,10 +1,7 @@
-/**
- * MLS & Redfin Property Scout - Filters, Saved Presets & Sorting
- */
 import { elements, state } from './state.js';
 import { getPropertyReviewStatus, escapeHtml } from './properties.js';
-import { updateKPIs, renderActiveView } from './views.js';
 import { showToast } from './toast.js';
+import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './api.js';
 
 
     export function resetFilters() {
@@ -145,7 +142,7 @@ import { showToast } from './toast.js';
         if (f.rfEstMin !== null) chips.push({ label: `Min Redfin Est: $${f.rfEstMin.toLocaleString()}`, clear: () => { f.rfEstMin = null; } });
         if (f.rfEstMax !== null) chips.push({ label: `Max Redfin Est: $${f.rfEstMax.toLocaleString()}`, clear: () => { f.rfEstMax = null; } });
         if (f.ppsqftMax !== null) chips.push({ label: `Max $/SqFt: $${f.ppsqftMax}`, clear: () => { f.ppsqftMax = null; } });
-        if (f.underRedfinOnly) chips.push({ label: `📉 Below Redfin Est`, clear: () => { f.underRedfinOnly = false; } });
+        if (f.underRedfinOnly) chips.push({ label: `Below Redfin Est`, icon: 'trending-down', clear: () => { f.underRedfinOnly = false; } });
         if (f.beds > 0) chips.push({ label: `Beds: ${f.beds}+`, clear: () => { f.beds = 0; } });
         if (f.bedsMax !== null) chips.push({ label: `Max Beds: ${f.bedsMax}`, clear: () => { f.bedsMax = null; } });
         if (f.baths > 0) chips.push({ label: `Baths: ${f.baths}+`, clear: () => { f.baths = 0; } });
@@ -157,8 +154,8 @@ import { showToast } from './toast.js';
         if (f.sqftMin !== null) chips.push({ label: `Min SqFt: ${f.sqftMin.toLocaleString()}`, clear: () => { f.sqftMin = null; } });
         if (f.sqftMax !== null) chips.push({ label: `Max SqFt: ${f.sqftMax.toLocaleString()}`, clear: () => { f.sqftMax = null; } });
         if (f.sqftTotMin !== null) chips.push({ label: `Total SqFt: ${f.sqftTotMin.toLocaleString()}+`, clear: () => { f.sqftTotMin = null; } });
-        if (f.sqftAboveMin !== null) chips.push({ label: `Above Grade: ${f.sqftAboveMin.toLocaleString()}+ SqFt`, clear: () => { f.sqftAboveMin = null; } });
-        if (f.sqftBelowMin !== null) chips.push({ label: `Below Grade: ${f.sqftBelowMin.toLocaleString()}+ SqFt`, clear: () => { f.sqftBelowMin = null; } });
+        if (f.sqftAboveMin !== null) chips.push({ label: `Above-Grade: ${f.sqftAboveMin.toLocaleString()}+ SqFt`, clear: () => { f.sqftAboveMin = null; } });
+        if (f.sqftBelowMin !== null) chips.push({ label: `Below-Grade: ${f.sqftBelowMin.toLocaleString()}+ SqFt`, clear: () => { f.sqftBelowMin = null; } });
         if (f.propertyType) chips.push({ label: `Type: ${f.propertyType}`, clear: () => { f.propertyType = ''; } });
         if (f.yearMin !== null) chips.push({ label: `Min Year: ${f.yearMin}`, clear: () => { f.yearMin = null; } });
         if (f.yearMax !== null) chips.push({ label: `Max Year: ${f.yearMax}`, clear: () => { f.yearMax = null; } });
@@ -166,7 +163,7 @@ import { showToast } from './toast.js';
         if (f.acresMax !== null) chips.push({ label: `Max Acres: ${f.acresMax}`, clear: () => { f.acresMax = null; } });
         if (f.parkingMin !== null) chips.push({ label: `Parking: ${f.parkingMin}+`, clear: () => { f.parkingMin = null; } });
         if (f.garageMin !== null) chips.push({ label: `Garage: ${f.garageMin}+`, clear: () => { f.garageMin = null; } });
-        if (f.noHoaOnly) chips.push({ label: `🚫 No HOA`, clear: () => { f.noHoaOnly = false; } });
+        if (f.noHoaOnly) chips.push({ label: `No HOA`, icon: 'ban', clear: () => { f.noHoaOnly = false; } });
         if (f.hoaMax !== null) chips.push({ label: `Max HOA: $${f.hoaMax}/yr`, clear: () => { f.hoaMax = null; } });
         if (f.taxMax !== null) chips.push({ label: `Max Tax: $${f.taxMax}/yr`, clear: () => { f.taxMax = null; } });
         if (f.taxYear !== null) chips.push({ label: `Tax Year: ${f.taxYear}`, clear: () => { f.taxYear = null; } });
@@ -179,17 +176,31 @@ import { showToast } from './toast.js';
         if (f.status !== 'all') chips.push({ label: `Status: ${f.status}`, clear: () => { f.status = 'all'; } });
         if (f.ratingMin > 0) chips.push({ label: `Rating: ${f.ratingMin}+ Stars`, clear: () => { f.ratingMin = 0; } });
         if (f.matrixStatus !== 'all') {
-            const statusLabels = { favorite: '⭐ Liked / Favorites', possibility: '🤔 Possibilities', dislike: '🚫 Disliked / Hidden', none: '📋 Unreviewed' };
-            chips.push({ label: `Review: ${statusLabels[f.matrixStatus] || f.matrixStatus}`, clear: () => { f.matrixStatus = 'all'; } });
+            const statusLabels = { favorite: 'Liked / Favorites', possibility: 'Possibilities', dislike: 'Disliked / Hidden', none: 'Unreviewed' };
+            chips.push({ label: `Review: ${statusLabels[f.matrixStatus] || f.matrixStatus}`, icon: 'filter', clear: () => { f.matrixStatus = 'all'; } });
         }
         if (f.appliances) chips.push({ label: `Appliance: "${f.appliances}"`, clear: () => { f.appliances = ''; } });
         if (f.flooring) chips.push({ label: `Flooring: "${f.flooring}"`, clear: () => { f.flooring = ''; } });
-        if (f.fireplaceOnly) chips.push({ label: `🔥 Has Fireplace`, clear: () => { f.fireplaceOnly = false; } });
-        if (f.realtorNotesOnly) chips.push({ label: `💬 Has Realtor Notes`, clear: () => { f.realtorNotesOnly = false; } });
-        if (f.favoritesOnly) chips.push({ label: `⭐ Favorites Only`, clear: () => { f.favoritesOnly = false; } });
-        if (f.possibilitiesOnly) chips.push({ label: `🤔 Possibilities Only`, clear: () => { f.possibilitiesOnly = false; } });
-        if (f.realtorSharedOnly) chips.push({ label: `🤝 Realtor Shared Only`, clear: () => { f.realtorSharedOnly = false; } });
-        if (f.hasNotesOnly) chips.push({ label: `📝 Has Notes`, clear: () => { f.hasNotesOnly = false; } });
+        if (f.fireplaceOnly) chips.push({ label: `Has Fireplace`, icon: 'flame', clear: () => { f.fireplaceOnly = false; } });
+        if (f.realtorNotesOnly) chips.push({ label: `Has Realtor Notes`, icon: 'message-square', clear: () => { f.realtorNotesOnly = false; } });
+        if (f.favoritesOnly) chips.push({ label: `Favorites Only`, icon: 'star', clear: () => { f.favoritesOnly = false; } });
+        if (f.possibilitiesOnly) chips.push({ label: `Possibilities Only`, icon: 'circle-help', clear: () => { f.possibilitiesOnly = false; } });
+        if (f.realtorSharedOnly) chips.push({ label: `Realtor Shared Only`, icon: 'handshake', clear: () => { f.realtorSharedOnly = false; } });
+        if (f.hasNotesOnly) chips.push({ label: `Has Notes`, icon: 'pencil', clear: () => { f.hasNotesOnly = false; } });
+        if (f.selectedClientId && f.selectedClientId !== 'all') {
+            const clientSelect = elements.filterClientSelect || document.getElementById('filter-client-select');
+            const selectedOpt = clientSelect && clientSelect.selectedIndex >= 0 ? clientSelect.options[clientSelect.selectedIndex] : null;
+            const clientLabel = selectedOpt ? selectedOpt.text.replace('👤 ', '') : `Client #${f.selectedClientId}`;
+            chips.push({
+                label: `Client: ${clientLabel}`,
+                icon: 'user',
+                clear: () => {
+                    f.selectedClientId = 'all';
+                    if (elements.filterClientSelect) elements.filterClientSelect.value = 'all';
+                    loadPresetsList();
+                }
+            });
+        }
 
         if (badge) {
             if (chips.length > 0) {
@@ -211,12 +222,13 @@ import { showToast } from './toast.js';
             <span style="font-weight: 700; color: var(--text-muted); margin-right: 0.25rem;">Active Filters (${chips.length}):</span>
             ${chips.map((c, idx) => `
                 <span class="active-filter-chip">
-                    ${escapeHtml(c.label)}
-                    <span class="chip-remove" data-chip-idx="${idx}">✕</span>
+                    ${c.icon ? `<i data-lucide="${c.icon}"></i> ` : ''}${escapeHtml(c.label)}
+                    <span class="chip-remove" data-chip-idx="${idx}"><i data-lucide="x"></i></span>
                 </span>
             `).join('')}
             <button class="btn btn-secondary" style="padding: 0.15rem 0.5rem; font-size: 0.75rem; margin-left: 0.5rem;" id="btn-clear-all-chips">Reset All</button>
         `;
+        if (window.lucide) window.lucide.createIcons();
 
         container.querySelectorAll('.chip-remove').forEach((btn, idx) => {
             btn.addEventListener('click', () => {
@@ -402,7 +414,7 @@ import { showToast } from './toast.js';
                 syncStateFromDrawerInputs();
                 applyFiltersAndRender();
                 modalDrawer.classList.remove('active');
-                showToast('Filters applied! Focus on your target houses 🚀', 'success');
+                showToast('Filters applied! Focus on your target houses', 'success');
             });
         }
 
@@ -429,6 +441,7 @@ import { showToast } from './toast.js';
         // Saved Presets Event Handlers
         const btnSavePreset = document.getElementById('btn-save-preset');
         const selectPresets = document.getElementById('select-saved-presets');
+        const btnDeletePreset = document.getElementById('btn-delete-preset');
 
         if (btnSavePreset) {
             btnSavePreset.addEventListener('click', saveCurrentPreset);
@@ -436,51 +449,202 @@ import { showToast } from './toast.js';
 
         if (selectPresets) {
             selectPresets.addEventListener('change', (e) => {
-                const presetName = e.target.value;
-                if (presetName) loadPreset(presetName);
+                const presetId = e.target.value;
+                if (presetId) loadPreset(presetId);
             });
         }
 
-        loadPresetsList();
-    }
-    export function getSavedPresets() {
-        try {
-            return JSON.parse(localStorage.getItem('scout_saved_presets') || '{}');
-        } catch (e) {
-            return {};
+        if (btnDeletePreset) {
+            btnDeletePreset.addEventListener('click', deleteSelectedPreset);
+        }
+
+        if (state.authenticated) {
+            loadPresetsList();
         }
     }
-    export function saveCurrentPreset() {
-        const presetName = prompt('Enter a name for this filter preset (e.g. "3+ Bed Denver under $750k"):');
-        if (!presetName) return;
 
-        const presets = getSavedPresets();
-        presets[presetName.trim()] = { ...state.filters };
-        localStorage.setItem('scout_saved_presets', JSON.stringify(presets));
-        showToast(`Saved filter preset "${presetName}"! 💾`, 'success');
-        loadPresetsList();
+    let cachedFilters = [];
+
+    export async function populateClientFilterDropdown() {
+        const clientGroup = elements.clientFilterGroup || document.getElementById('client-filter-group');
+        const clientSelect = elements.filterClientSelect || document.getElementById('filter-client-select');
+        if (!clientSelect) return;
+
+        if (!state.authenticated) {
+            if (clientGroup) clientGroup.style.display = 'none';
+            return;
+        }
+
+        const isRealtor = state.currentUserProfile?.role === 'realtor';
+        const isAdmin = state.isAdmin || state.currentUserProfile?.role === 'admin';
+
+        if (!isRealtor && !isAdmin) {
+            if (clientGroup) clientGroup.style.display = 'none';
+            return;
+        }
+
+        let clients = [];
+        if (isRealtor && Array.isArray(state.currentUserProfile?.assigned_clients)) {
+            clients = state.currentUserProfile.assigned_clients;
+        } else {
+            try {
+                const usersRes = await apiFetch('backend/api.php?action=list_users');
+                if (usersRes && usersRes.success && Array.isArray(usersRes.users)) {
+                    clients = usersRes.users.filter(u => u.role === 'client');
+                }
+            } catch (e) {}
+        }
+
+        if (clientGroup) clientGroup.style.display = 'flex';
+
+        clientSelect.innerHTML = `<option value="all">👥 All Clients (${clients.length})</option>` +
+            clients.map(c => `<option value="${c.id}">👤 ${escapeHtml(c.full_name || c.username)} [${c.initials || 'CL'}]</option>`).join('');
+
+        if (state.filters.selectedClientId) {
+            clientSelect.value = state.filters.selectedClientId;
+        }
     }
-    export function loadPresetsList() {
+
+    export async function loadPresetsList() {
         const selectPresets = document.getElementById('select-saved-presets');
         if (!selectPresets) return;
 
-        const presets = getSavedPresets();
-        const names = Object.keys(presets);
+        if (!state.authenticated) {
+            selectPresets.innerHTML = `<option value="">💾 Presets (0)...</option>`;
+            return;
+        }
 
-        selectPresets.innerHTML = `<option value="">💾 Presets (${names.length})...</option>` +
-            names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+        // Auto-migrate legacy localStorage filters to server database
+        try {
+            const localRaw = localStorage.getItem('scout_saved_presets');
+            if (localRaw) {
+                const localObj = JSON.parse(localRaw);
+                const localKeys = Object.keys(localObj);
+                if (localKeys.length > 0) {
+                    for (const name of localKeys) {
+                        await saveFilterApi({ name: name, filter_json: localObj[name] });
+                    }
+                    localStorage.removeItem('scout_saved_presets');
+                    showToast(`Migrated ${localKeys.length} saved filters to your account!`, 'info');
+                }
+            }
+        } catch (e) {
+            console.error('LocalStorage filter migration error:', e);
+        }
+
+        try {
+            const res = await fetchSavedFilters();
+            if (res && res.success && Array.isArray(res.filters)) {
+                cachedFilters = res.filters;
+                state.savedFilters = res.filters;
+
+                let visibleFilters = res.filters;
+                const selClient = state.filters.selectedClientId;
+                if (selClient && selClient !== 'all') {
+                    visibleFilters = res.filters.filter(f => String(f.user_id) === String(selClient) || String(f.target_user_id) === String(selClient) || String(f.created_by_user_id) === String(selClient));
+                }
+
+                selectPresets.innerHTML = `<option value="">💾 Presets (${visibleFilters.length})...</option>` +
+                    visibleFilters.map(f => `<option value="${f.id}">${escapeHtml(f.display_name || f.name)}</option>`).join('');
+            }
+        } catch (e) {
+            console.error('Failed to fetch saved filters from server:', e);
+        }
     }
-    export function loadPreset(presetName) {
-        const presets = getSavedPresets();
-        const target = presets[presetName];
+
+    export async function saveCurrentPreset() {
+        const presetName = prompt('Enter a name for this filter preset (e.g. "3+ Bed Denver under $750k"):');
+        if (!presetName || !presetName.trim()) return;
+
+        let targetUserId = null;
+
+        // If current user is Realtor or Admin, allow selecting a target client
+        if (state.currentUser && (state.currentUser.role === 'realtor' || state.currentUser.role === 'admin' || state.currentUser.is_admin)) {
+            try {
+                const usersRes = await apiFetch('backend/api.php?action=list_users');
+                if (usersRes && usersRes.success && Array.isArray(usersRes.users)) {
+                    const clients = usersRes.users.filter(u => u.role === 'client');
+                    if (clients.length > 0) {
+                        const clientOptions = clients.map((c, i) => `${i + 1}. ${c.username} [${c.initials}]`).join('\n');
+                        const choice = prompt(`Select client to share this filter with (or leave blank to save for yourself):\n\n0. Myself\n${clientOptions}`);
+                        if (choice !== null && choice !== '' && choice !== '0') {
+                            const selectedIdx = parseInt(choice) - 1;
+                            if (clients[selectedIdx]) {
+                                targetUserId = clients[selectedIdx].id;
+                            }
+                        }
+                    }
+                }
+            } catch (e) {}
+        }
+
+        try {
+            const payload = {
+                name: presetName.trim(),
+                filter_json: { ...state.filters },
+                target_user_id: targetUserId,
+                is_shared: targetUserId ? 1 : 0
+            };
+            const res = await saveFilterApi(payload);
+            if (res && res.success) {
+                showToast(`Saved filter preset "${presetName.trim()}"!`, 'success');
+                await loadPresetsList();
+                if (res.id && selectPresets) {
+                    selectPresets.value = String(res.id);
+                }
+            } else {
+                showToast(res.error || 'Failed to save filter preset', 'error');
+            }
+        } catch (e) {
+            showToast('Error saving filter preset', 'error');
+        }
+    }
+
+    export function loadPreset(presetId) {
+        const target = cachedFilters.find(f => String(f.id) === String(presetId));
         if (!target) return;
 
-        state.filters = { ...state.filters, ...target };
-        syncTopBarFromState();
-        syncDrawerInputsFromState();
-        applyFiltersAndRender();
-        showToast(`Loaded preset "${presetName}" 🚀`, 'info');
+        let filterData = target.filter_json;
+        if (typeof filterData === 'string') {
+            try { filterData = JSON.parse(filterData); } catch (e) {}
+        }
+
+        if (filterData && typeof filterData === 'object') {
+            state.filters = { ...state.filters, ...filterData };
+            syncTopBarFromState();
+            syncDrawerInputsFromState();
+            applyFiltersAndRender();
+            showToast(`Loaded preset "${target.display_name || target.name}"`, 'info');
+        }
     }
+
+    export async function deleteSelectedPreset() {
+        const selectPresets = document.getElementById('select-saved-presets');
+        if (!selectPresets || !selectPresets.value) {
+            return showToast('Please select a saved preset to delete first', 'warning');
+        }
+
+        const presetId = selectPresets.value;
+        const target = cachedFilters.find(f => String(f.id) === String(presetId));
+        if (!target) return;
+
+        if (!confirm(`Are you sure you want to delete the filter preset "${target.name}"?`)) {
+            return;
+        }
+
+        try {
+            const res = await deleteFilterApi(presetId);
+            if (res && res.success) {
+                showToast(`Deleted preset "${target.name}"`, 'info');
+                await loadPresetsList();
+            } else {
+                showToast(res.error || 'Failed to delete preset', 'error');
+            }
+        } catch (e) {
+            showToast('Error deleting preset', 'error');
+        }
+    }
+
     export function sortProperties() {
         const props = state.filteredProperties;
         switch (state.currentSort) {

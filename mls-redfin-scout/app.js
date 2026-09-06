@@ -10,11 +10,14 @@ import { showToast } from './js/toast.js';
 import { setupBookmarkletLink } from './js/bookmarkletLink.js';
 import {
     checkAuth, handleLoginSubmit, handleLogout, openUserMgmtModal, handleCreateUserSubmit,
-    toggleAdminMenu, closeAdminMenu, openEventLogModal, fetchEventLogs
+    toggleAdminMenu, closeAdminMenu, openEventLogModal, fetchEventLogs,
+    toggleUserMenu, closeUserMenu, toggleAgentHubMenu, closeAgentHubMenu,
+    openUserProfileModal, closeUserProfileModal, handleUpdateProfileSubmit,
+    openPasswordMgmtModal, closePasswordMgmtModal, handleSelfPasswordChangeSubmit
 } from './js/auth.js';
 import { fetchProperties } from './js/properties.js';
 import {
-    applyFiltersAndRender, resetFilters, setupFilterConsoleDrawer
+    applyFiltersAndRender, resetFilters, setupFilterConsoleDrawer, loadPresetsList, populateClientFilterDropdown
 } from './js/filters.js';
 import { switchView, renderActiveView } from './js/views.js';
 import {
@@ -28,9 +31,19 @@ import {
 import { openCompareMatrix, closeCompareMatrix, clearCompare } from './js/compare.js';
 import {
     openAdminCleanupModal, closeAdminCleanupModal, fetchAdminCleanupPreview,
-    renderAdminCleanupTable, selectCandidateHomes, clearSelection, toggleSelectAll,
+    renderAdminCleanupTable, selectCandidateHomes, clearSelection, toggleSelectAll, markSelectedForImageRetry,
     handleAdminCleanupExecute, updateCleanupSelectionSummary
 } from './js/adminCleanup.js';
+import {
+    openPlaylistsModal, closePlaylistsModal, handleCreatePlaylistSubmit
+} from './js/collections.js';
+import {
+    openRealtorPortalModal, closeRealtorPortalModal, applyRealtorPortalFilters
+} from './js/realtorPortalModal.js';
+import {
+    toggleNotificationDropdown, closeNotificationDropdown, markAllNotificationsAsRead
+} from './js/notifications.js';
+import { renderRealtorView } from './js/realtorView.js';
 // detailModal.js has no named exports - it's imported purely so its window.openDetailModal /
 // window.toggleFavorite / etc. side-effect assignments run (they're called from onclick="..."
 // attributes in dynamically-rendered HTML, so they must exist on window before any card renders).
@@ -71,16 +84,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize App
     function init() {
-        initTheme();
-        initSavedFilterPreferences();
-        bindEvents();
-        setupFilterConsoleDrawer();
-        setupBookmarkletLink();
-        checkAuth();
+        try { initTheme(); } catch (e) { console.error('Theme init error:', e); }
+        try { if (window.lucide) window.lucide.createIcons(); } catch (e) {}
+        try { initSavedFilterPreferences(); } catch (e) { console.error('Filter prefs init error:', e); }
+        try { bindEvents(); } catch (e) { console.error('Bind events error:', e); }
+        try { setupFilterConsoleDrawer(); } catch (e) { console.error('Filter drawer setup error:', e); }
+        try { setupBookmarkletLink(); } catch (e) { console.error('Bookmarklet link setup error:', e); }
+        try { checkAuth(); } catch (e) { console.error('Auth check error:', e); }
     }
 
 
     function initSavedFilterPreferences() {
+        // 1. Restore Active View (URL Hash > localStorage > Default 'grid')
+        const hashView = window.location.hash.replace('#', '');
+        const savedView = localStorage.getItem('scout_active_view');
+        const isRealtorUser = state.currentUserProfile?.role === 'realtor' || state.currentUserProfile?.role === 'admin';
+        const targetView = (hashView && ['grid', 'map', 'table', 'matrix', 'realtor', 'admin'].includes(hashView))
+            ? hashView
+            : (isRealtorUser ? 'realtor' : (savedView || 'grid'));
+
+        state.activeView = targetView;
+        document.querySelectorAll('.view-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.view === targetView);
+        });
+
+        // 2. Restore Current Sort
+        const savedSort = localStorage.getItem('scout_current_sort');
+        if (savedSort) {
+            state.currentSort = savedSort;
+            if (elements.sortSelect) elements.sortSelect.value = savedSort;
+        }
+
+        // 3. Restore Compare List
+        try {
+            const savedCompare = localStorage.getItem('scout_compare_list');
+            if (savedCompare) {
+                state.compareList = JSON.parse(savedCompare) || [];
+            }
+        } catch (e) {
+            state.compareList = [];
+        }
+
+        // 4. Restore Filter Statuses
         const savedStatus = localStorage.getItem('scout_filter_status');
         if (savedStatus) state.filters.status = savedStatus;
         const savedMatrixStatus = localStorage.getItem('scout_filter_matrix_status');
@@ -106,6 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 openCommandPalette();
             } else if (e.key === 'Escape') {
                 closeCommandPalette();
+                closeRealtorPortalModal();
+                document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
             }
         });
 
@@ -153,6 +200,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (drawerSelect) drawerSelect.value = e.target.value;
             applyFiltersAndRender();
         });
+        if (elements.filterClientSelect) {
+            elements.filterClientSelect.addEventListener('change', e => {
+                state.filters.selectedClientId = e.target.value;
+                loadPresetsList();
+                applyFiltersAndRender();
+                const text = e.target.options[e.target.selectedIndex]?.text || '';
+                showToast(`Filtering presets & view for ${text}`, 'info');
+            });
+        }
         
         // Toggles (Guarded)
         if (elements.toggleFavorites) elements.toggleFavorites.addEventListener('change', e => { state.filters.favoritesOnly = e.target.checked; applyFiltersAndRender(); });
@@ -170,65 +226,40 @@ document.addEventListener('DOMContentLoaded', () => {
             btnMoreFilters.addEventListener('click', () => {
                 const isHidden = panelMoreFilters.style.display === 'none' || !panelMoreFilters.style.display;
                 panelMoreFilters.style.display = isHidden ? 'flex' : 'none';
-                btnMoreFilters.innerText = isHidden ? '⚙️ Less Specs ▴' : '⚙️ More Specs ▾';
+                btnMoreFilters.innerText = isHidden ? 'Less Specs ▴' : 'More Specs ▾';
             });
         }
 
         // Sorting & Views
-        if (elements.sortSelect) elements.sortSelect.addEventListener('change', e => { state.currentSort = e.target.value; applyFiltersAndRender(); });
+        if (elements.sortSelect) elements.sortSelect.addEventListener('change', e => {
+            state.currentSort = e.target.value;
+            localStorage.setItem('scout_current_sort', e.target.value);
+            applyFiltersAndRender();
+        });
 
         document.querySelectorAll('.view-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                state.activeView = btn.dataset.view;
-                if (state.activeView === 'map' && mapState.leafletMap) {
-                    mapState.leafletMap._userHasInteracted = false;
-                }
-                renderActiveView();
+                switchView(btn.dataset.view);
             });
+        });
+
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash.replace('#', '').toLowerCase();
+            if (['grid', 'map', 'table', 'matrix'].includes(hash) && hash !== state.activeView) {
+                switchView(hash);
+            }
         });
 
         // Modals
         if (elements.btnBookmarkletGuide) elements.btnBookmarkletGuide.addEventListener('click', () => elements.modalBookmarklet.classList.add('active'));
         if (elements.modalBmClose) elements.modalBmClose.addEventListener('click', () => elements.modalBookmarklet.classList.remove('active'));
-        
-        document.getElementById('btn-copy-bm-code')?.addEventListener('click', () => {
-            const apiUrl = window.location.href.replace(/\/index\.html.*$/, '') + '/backend/api.php';
-            const code = typeof getBookmarkletCode === 'function' ? getBookmarkletCode(apiUrl) : '';
-            if (code) {
-                navigator.clipboard.writeText(code).then(() => {
-                    alert('📋 Bookmarklet code copied to clipboard!\n\nTo install:\n1. Create a new bookmark in your browser.\n2. Paste this copied code into the bookmark URL field.');
-                });
-            }
-        });
-
-        document.getElementById('btn-copy-console-code')?.addEventListener('click', () => {
-            const apiUrl = window.location.href.replace(/\/index\.html.*$/, '') + '/backend/api.php';
-            const code = typeof getConsoleSnippetCode === 'function' ? getConsoleSnippetCode(apiUrl) : '';
-            if (code) {
-                navigator.clipboard.writeText(code).then(() => {
-                    alert('💻 F12 Console snippet copied to clipboard!\n\nTo run:\n1. Open your Matrix MLS tab.\n2. Press F12 (or right-click -> Inspect -> Console).\n3. Paste this code and press Enter!');
-                });
-            }
-        });
-
-        document.getElementById('btn-copy-deep-bm-code')?.addEventListener('click', () => {
-            const apiUrl = window.location.href.replace(/\/index\.html.*$/, '') + '/backend/api.php';
-            const code = typeof getDeepScrapeBookmarkletCode === 'function' ? getDeepScrapeBookmarkletCode(apiUrl) : '';
-            if (code) {
-                navigator.clipboard.writeText(code).then(() => {
-                    alert('📋 Deep Scrape bookmarklet code copied to clipboard!\n\nTo install:\n1. Create a new bookmark in your browser.\n2. Paste this copied code into the bookmark URL field.');
-                });
-            }
-        });
 
         document.getElementById('btn-copy-deep-console-code')?.addEventListener('click', () => {
             const apiUrl = window.location.href.replace(/\/index\.html.*$/, '') + '/backend/api.php';
-            const code = typeof getDeepScrapeConsoleSnippetCode === 'function' ? getDeepScrapeConsoleSnippetCode(apiUrl) : '';
+            const code = typeof getDeepScrapeConsoleSnippetCode === 'function' ? getDeepScrapeConsoleSnippetCode(apiUrl, state.user) : '';
             if (code) {
                 navigator.clipboard.writeText(code).then(() => {
-                    alert('💻 Deep Scrape F12 console snippet copied to clipboard!\n\nTo run:\n1. Open one listing in Matrix into full detail view.\n2. Press F12 (or right-click -> Inspect -> Console).\n3. Paste this code and press Enter!');
+                    alert('Deep Scrape F12 console snippet copied to clipboard!\n\nTo run:\n1. Open one listing in Matrix into full detail view.\n2. Press F12 (or right-click -> Inspect -> Console).\n3. Paste this code and press Enter!');
                 });
             }
         });
@@ -258,18 +289,95 @@ document.addEventListener('DOMContentLoaded', () => {
             if (banner) banner.style.display = 'none';
         });
 
-        // Admin Dropdown (houses User Management, View Logs, and future admin actions)
+        // User Dropdown Menu & Account Modals
+        if (elements.btnUserMenu) {
+            elements.btnUserMenu.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleUserMenu();
+            });
+        }
+        document.addEventListener('click', (e) => {
+            const container = document.getElementById('user-dropdown-container');
+            if (container && !container.contains(e.target)) {
+                closeUserMenu();
+            }
+            if (elements.adminDropdown && !elements.adminDropdown.contains(e.target)) {
+                closeAdminMenu();
+            }
+            const agentHubContainer = document.getElementById('agent-hub-container');
+            if (agentHubContainer && !agentHubContainer.contains(e.target)) {
+                closeAgentHubMenu();
+            }
+            const notifContainer = document.getElementById('notification-container');
+            if (notifContainer && !notifContainer.contains(e.target)) {
+                closeNotificationDropdown();
+            }
+        });
+
+        // Agent Hub Dropdown Menu
+        document.getElementById('btn-agent-hub-menu')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleAgentHubMenu();
+        });
+
+        // Notifications Center
+        document.getElementById('btn-notifications')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleNotificationDropdown();
+        });
+        document.getElementById('btn-mark-all-notifications')?.addEventListener('click', markAllNotificationsAsRead);
+
+        // User Profile Modal & Actions
+        if (elements.btnUserProfile) elements.btnUserProfile.addEventListener('click', openUserProfileModal);
+        if (elements.modalUserProfileClose) elements.modalUserProfileClose.addEventListener('click', closeUserProfileModal);
+        if (elements.btnCancelUserProfile) elements.btnCancelUserProfile.addEventListener('click', closeUserProfileModal);
+        if (elements.formUserProfile) elements.formUserProfile.addEventListener('submit', handleUpdateProfileSubmit);
+
+        // Password Management Modal & Actions
+        if (elements.btnUserPassword) elements.btnUserPassword.addEventListener('click', openPasswordMgmtModal);
+        if (elements.modalPasswordMgmtClose) elements.modalPasswordMgmtClose.addEventListener('click', closePasswordMgmtModal);
+        if (elements.btnCancelPasswordMgmt) elements.btnCancelPasswordMgmt.addEventListener('click', closePasswordMgmtModal);
+        if (elements.formPasswordMgmt) elements.formPasswordMgmt.addEventListener('submit', handleSelfPasswordChangeSubmit);
+
+        // Curated Client Playlists & Collections Modal
+        if (elements.btnPlaylists) elements.btnPlaylists.addEventListener('click', () => {
+            closeAgentHubMenu();
+            openPlaylistsModal();
+        });
+        if (elements.modalPlaylistsClose) elements.modalPlaylistsClose.addEventListener('click', closePlaylistsModal);
+        if (elements.formCreatePlaylist) elements.formCreatePlaylist.addEventListener('submit', handleCreatePlaylistSubmit);
+
+        // Realtor Collaboration Portal Modal
+        if (elements.btnRealtorPortal) elements.btnRealtorPortal.addEventListener('click', () => {
+            closeAgentHubMenu();
+            openRealtorPortalModal();
+        });
+        document.getElementById('modal-realtor-portal-close')?.addEventListener('click', closeRealtorPortalModal);
+        document.getElementById('rp-search')?.addEventListener('input', applyRealtorPortalFilters);
+        document.getElementById('rp-mls-status')?.addEventListener('change', applyRealtorPortalFilters);
+        document.getElementById('rp-client-select')?.addEventListener('change', applyRealtorPortalFilters);
+        document.getElementById('rp-review-status')?.addEventListener('change', applyRealtorPortalFilters);
+        document.getElementById('rp-sort')?.addEventListener('change', applyRealtorPortalFilters);
+
+        // Universal Backdrop Click Listener to close any modal when clicking dark overlay background
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.classList.remove('active');
+                    if (overlay.id === 'modal-realtor-portal') {
+                        closeRealtorPortalModal();
+                    }
+                }
+            });
+        });
+
+        // Admin Dropdown
         if (elements.btnAdminMenu) {
             elements.btnAdminMenu.addEventListener('click', (e) => {
                 e.stopPropagation();
                 toggleAdminMenu();
             });
         }
-        document.addEventListener('click', (e) => {
-            if (elements.adminDropdown && !elements.adminDropdown.contains(e.target)) {
-                closeAdminMenu();
-            }
-        });
 
         // User Management Modal & Actions
         if (elements.btnUserMgmt) elements.btnUserMgmt.addEventListener('click', openUserMgmtModal);
@@ -292,6 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.cleanupProtectFavorites) elements.cleanupProtectFavorites.addEventListener('change', renderAdminCleanupTable);
         if (elements.btnCleanupSelectUnprotected) elements.btnCleanupSelectUnprotected.addEventListener('click', selectCandidateHomes);
         if (elements.btnCleanupClearSelection) elements.btnCleanupClearSelection.addEventListener('click', clearSelection);
+        if (elements.btnCleanupRetryImages) elements.btnCleanupRetryImages.addEventListener('click', markSelectedForImageRetry);
         if (elements.cleanupSelectAll) elements.cleanupSelectAll.addEventListener('change', toggleSelectAll);
         if (elements.cleanupIncludeOrphans) elements.cleanupIncludeOrphans.addEventListener('change', updateCleanupSelectionSummary);
         if (elements.btnAdminCleanupSubmit) elements.btnAdminCleanupSubmit.addEventListener('click', handleAdminCleanupExecute);

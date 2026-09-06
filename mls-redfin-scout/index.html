@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <title>MLS & Redfin Property Scout - Luxury Aggregator</title>
     <!-- Google Fonts: Plus Jakarta Sans & Playfair Display -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,6 +20,8 @@
     <link rel="stylesheet" href="styles.css?v=2.1">
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Lucide Icons (replaces emoji glyphs in the header/KPI chrome) -->
+    <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js"></script>
     <script src="bookmarklet-builder.js?v=2.0"></script>
 </head>
 <body>
@@ -32,43 +38,67 @@
     <!-- Header Navbar -->
     <header class="navbar">
         <div class="brand">
-            <span class="brand-icon">🏠</span>
+            <span class="brand-icon"><i data-lucide="home"></i></span>
             <div>
                 <div class="brand-title">MLS & Redfin Property Scout</div>
                 <div class="brand-subtitle">Real Estate Search & Aggregator Dashboard</div>
             </div>
         </div>
         <div class="nav-actions">
-            <button class="btn btn-secondary btn-cmd-k" id="btn-command-palette" title="Quick Search (Ctrl+K / Cmd+K)">
-                <span>🔍 Search...</span>
-                <kbd class="kbd-badge">Ctrl K</kbd>
+            <!-- Agent Hub Direct Button for Realtors & Admins -->
+            <button class="btn btn-gold realtor-or-admin-only" id="btn-agent-hub-direct" onclick="if(window.switchView){window.switchView('realtor');}" title="Agent Workspace Command Center" style="display: none;">
+                <i data-lucide="briefcase"></i> Agent Hub Workspace
             </button>
-            <button class="btn btn-secondary btn-ghost" id="btn-bookmarklet-guide" title="Bookmarklet Setup">🔖 Setup</button>
-            <a href="share.html" class="btn btn-secondary" target="_blank">🤝 Realtor Portal</a>
-            <button class="btn btn-gold" id="btn-recommend">✨ Top Picks</button>
-            <button class="btn btn-emerald" id="btn-export-homeward" title="Plot & view tour route of favorites in Homeward">🗺️ Map in Homeward</button>
-            <button class="btn btn-primary" id="btn-export-modal">📥 Export / Share</button>
+            <button class="btn btn-gold" id="btn-recommend"><i data-lucide="sparkles"></i> Top Picks</button>
+            <button class="btn btn-emerald" id="btn-export-homeward" title="Plot & view tour route of favorites in Homeward"><i data-lucide="map"></i> Map in Homeward</button>
+            <button class="btn btn-primary" id="btn-export-modal"><i data-lucide="download"></i> Export / Share</button>
             <div id="user-badge" class="user-profile-badge">
-                <span id="user-display-name" class="user-display-name">👤 Guest</span>
-                <div class="admin-dropdown" id="admin-dropdown" style="display: none;">
-                    <button class="btn btn-secondary btn-admin-trigger" id="btn-admin-menu" title="Admin Functions">⚙️ Admin <span style="font-size:0.65rem;">▾</span></button>
-                    <div class="dropdown-menu" id="admin-dropdown-menu">
-                        <button class="dropdown-item" id="btn-user-mgmt">👥 User Management</button>
-                        <button class="dropdown-item" id="btn-view-logs">📋 View Logs</button>
-                        <button class="dropdown-item" id="btn-admin-cleanup">🧹 Property & Media Cleanup</button>
+                <div class="user-dropdown-container" id="user-dropdown-container">
+                    <button class="btn btn-secondary user-menu-trigger" id="btn-user-menu" title="User Account Options">
+                        <span id="user-display-name" class="user-display-name"><i data-lucide="log-in"></i> Sign in</span>
+                        <span id="user-menu-caret" style="font-size: 0.65rem; margin-left: 0.25rem; display: none;">▾</span>
+                    </button>
+                    <div class="dropdown-menu" id="user-dropdown-menu">
+                        <button class="dropdown-item" id="btn-user-profile"><i data-lucide="user-cog"></i> My Profile</button>
+                        <button class="dropdown-item" id="btn-user-password"><i data-lucide="key-round"></i> Change Password</button>
+                        <div class="dropdown-divider" id="admin-divider" style="display: none;"></div>
+                        <button class="dropdown-item admin-only" id="btn-bookmarklet-guide" style="display: none;"><i data-lucide="bookmark"></i> Bookmarklet Setup</button>
+                        <button class="dropdown-item realtor-or-admin-only" id="btn-user-mgmt" style="display: none;"><i data-lucide="users"></i> User Management</button>
+                        <button class="dropdown-item admin-only" id="btn-view-logs" style="display: none;"><i data-lucide="clipboard-list"></i> View Logs</button>
+                        <button class="dropdown-item admin-only" id="btn-admin-cleanup" style="display: none;"><i data-lucide="eraser"></i> Property & Media Cleanup</button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item dropdown-item-danger" id="btn-logout"><i data-lucide="log-out"></i> Logout</button>
+            </div>
+            <!-- Notification Bell & Dropdown -->
+            <div class="nav-notification-container" id="notification-container" style="display: none;">
+                <button class="btn-notification-bell" id="btn-notifications" title="Notifications">
+                    <i data-lucide="bell" style="width: 18px; height: 18px;"></i>
+                    <span class="notification-badge" id="notification-badge" style="display: none;">0</span>
+                </button>
+                <div class="notification-dropdown" id="notification-dropdown">
+                    <div class="notification-header">
+                        <span style="font-weight:700; font-size:0.88rem; color:var(--text-main);"><i data-lucide="bell" style="width:14px; height:14px; margin-right:0.3rem;"></i> Notifications</span>
+                        <button class="btn btn-secondary" id="btn-mark-all-notifications" style="font-size:0.72rem; padding:0.2rem 0.5rem;">Mark All Read</button>
+                    </div>
+                    <div class="notification-list" id="notification-list-container">
+                        <!-- Rendered by js/notifications.js -->
                     </div>
                 </div>
-                <button class="btn btn-secondary btn-logout-trigger" id="btn-logout" title="Log Out" style="display: none;">🚪 Logout</button>
             </div>
         </div>
     </header>
+
+    <!-- Client Playlist Banner Container -->
+    <div id="client-playlist-banner-container" style="display: none;"></div>
+
+    <div id="client-next-steps-container" style="display: none;"></div>
 
     <!-- KPI Summary Grid (Modern High-Contrast Stat Cards) -->
     <section class="stats-bar">
         <div class="kpi-card">
             <div class="kpi-card-header">
                 <span class="kpi-label">Properties</span>
-                <span class="kpi-card-icon">🏠</span>
+                <span class="kpi-card-icon"><i data-lucide="home"></i></span>
             </div>
             <div class="kpi-value" id="kpi-total">0</div>
             <div class="kpi-sub" id="kpi-total-sub">0 Active</div>
@@ -76,7 +106,7 @@
         <div class="kpi-card">
             <div class="kpi-card-header">
                 <span class="kpi-label">Favorites</span>
-                <span class="kpi-card-icon">⭐</span>
+                <span class="kpi-card-icon"><i data-lucide="star"></i></span>
             </div>
             <div class="kpi-value" id="kpi-favorites">0</div>
             <div class="kpi-sub">Saved Items</div>
@@ -84,7 +114,7 @@
         <div class="kpi-card">
             <div class="kpi-card-header">
                 <span class="kpi-label">Avg List Price</span>
-                <span class="kpi-card-icon">💵</span>
+                <span class="kpi-card-icon"><i data-lucide="dollar-sign"></i></span>
             </div>
             <div class="kpi-value" id="kpi-avg-price">$0</div>
             <div class="kpi-sub" id="kpi-avg-sqft-price">$0 / SqFt</div>
@@ -92,7 +122,7 @@
         <div class="kpi-card">
             <div class="kpi-card-header">
                 <span class="kpi-label">Avg SqFt</span>
-                <span class="kpi-card-icon">📐</span>
+                <span class="kpi-card-icon"><i data-lucide="ruler"></i></span>
             </div>
             <div class="kpi-value" id="kpi-avg-sqft">0</div>
             <div class="kpi-sub">Finished Living Area</div>
@@ -105,7 +135,7 @@
             <div class="top-filter-row top-filter-row-unified">
                 <!-- Search Box -->
                 <div class="filter-search-box">
-                    <span class="search-icon">🔍</span>
+                    <span class="search-icon"><i data-lucide="search"></i></span>
                     <input type="text" id="filter-search" class="input-text" placeholder="Search address, city, keywords, MLS ID...">
                 </div>
 
@@ -131,31 +161,41 @@
                     </select>
                 </div>
 
+                <div class="filter-field-group" id="client-filter-group" style="display: none;">
+                    <span class="filter-field-label">Client</span>
+                    <select id="filter-client-select" class="select-input filter-select-pill">
+                        <option value="all" selected>👥 All Clients</option>
+                    </select>
+                </div>
+
                 <!-- Filter Actions Group -->
                 <div class="filter-actions-group">
                     <button class="btn btn-gold" id="btn-open-filter-console" type="button">
-                        🎛️ Filters <span id="filter-console-badge" class="badge-filter-count" style="display:none;">0</span>
+                        <i data-lucide="sliders-horizontal"></i> Filters <span id="filter-console-badge" class="badge-filter-count" style="display:none;">0</span>
                     </button>
 
                     <!-- Saved Presets Dropdown -->
-                    <div class="saved-presets-wrapper">
+                    <div class="saved-presets-wrapper" style="display: flex; gap: 0.4rem; align-items: center;">
                         <select id="select-saved-presets" class="select-input preset-select">
                             <option value="">💾 Presets...</option>
                         </select>
-                        <button class="btn btn-secondary btn-compact" id="btn-save-preset" title="Save current filter setup as a preset">💾 Save</button>
+                        <button class="btn btn-secondary btn-compact" id="btn-save-preset" title="Save current filter setup as a preset"><i data-lucide="save"></i> Save</button>
+                        <button class="btn btn-secondary btn-compact" id="btn-delete-preset" title="Delete selected preset"><i data-lucide="trash-2"></i> Delete</button>
                     </div>
 
-                    <button class="btn btn-secondary btn-compact" id="btn-reset-filters" title="Reset All Filters">🔄 Reset</button>
+                    <button class="btn btn-secondary btn-compact" id="btn-reset-filters" title="Reset All Filters"><i data-lucide="refresh-cw"></i> Reset</button>
                 </div>
             </div>
 
             <!-- Second Integrated Row: View Switcher & Sorting Controls -->
             <div class="top-control-subrow">
                 <div class="view-segmented-control">
-                    <button class="view-btn active" data-view="grid">🎴 Card Grid</button>
-                    <button class="view-btn" data-view="map">🗺️ Map View</button>
-                    <button class="view-btn" data-view="table">📊 Table View</button>
-                    <button class="view-btn" data-view="matrix">⚖️ Compare Matrix</button>
+                    <button class="view-btn active" data-view="grid"><i data-lucide="layout-grid"></i> Card Grid</button>
+                    <button class="view-btn" data-view="map"><i data-lucide="map"></i> Map View</button>
+                    <button class="view-btn" data-view="table"><i data-lucide="table"></i> Table View</button>
+                    <button class="view-btn" data-view="matrix"><i data-lucide="scale"></i> Compare Matrix</button>
+                    <button class="view-btn realtor-or-admin-only" data-view="realtor" id="btn-view-realtor" style="display: none;"><i data-lucide="briefcase"></i> Realtor Command Center</button>
+                    <button class="view-btn admin-only" data-view="admin" id="btn-view-admin" style="display: none;"><i data-lucide="shield-check"></i> Admin Operations</button>
                 </div>
 
                 <div class="sort-control-group">
@@ -180,20 +220,20 @@
             <!-- Header -->
             <div class="drawer-header">
                 <div>
-                    <h2 style="font-size:1.3rem; margin-bottom:2px;">🎛️ Property Filters</h2>
+                    <h2 style="font-size:1.3rem; margin-bottom:2px;"><i data-lucide="sliders-horizontal"></i> Property Filters</h2>
                     <p style="font-size:0.8rem; color:var(--text-muted);">Filter properties across 32 detailed specs, financials, location scores, and notes</p>
                 </div>
-                <button class="modal-close" id="btn-close-filter-console" style="position:static; font-size:1.4rem;">✕</button>
+                <button class="modal-close" aria-label="Close" id="btn-close-filter-console" style="position:static; font-size:1.4rem;"><i data-lucide="x"></i></button>
             </div>
 
             <!-- Tab Navigation Header -->
             <div class="drawer-tabs">
-                <button class="drawer-tab-btn active" data-tab="tab-price">💵 Price & Value</button>
-                <button class="drawer-tab-btn" data-tab="tab-rooms">🛏️ Rooms & Layout</button>
-                <button class="drawer-tab-btn" data-tab="tab-specs">📐 Size & Lot</button>
-                <button class="drawer-tab-btn" data-tab="tab-finances">📊 Taxes & HOA</button>
-                <button class="drawer-tab-btn" data-tab="tab-location">🗺️ Location & Scores</button>
-                <button class="drawer-tab-btn" data-tab="tab-collections">⭐ Ratings & Notes</button>
+                <button class="drawer-tab-btn active" data-tab="tab-price"><i data-lucide="dollar-sign"></i> Price & Value</button>
+                <button class="drawer-tab-btn" data-tab="tab-rooms"><i data-lucide="bed"></i> Rooms & Layout</button>
+                <button class="drawer-tab-btn" data-tab="tab-specs"><i data-lucide="ruler"></i> Size & Lot</button>
+                <button class="drawer-tab-btn" data-tab="tab-finances"><i data-lucide="bar-chart-3"></i> Taxes & HOA</button>
+                <button class="drawer-tab-btn" data-tab="tab-location"><i data-lucide="map-pin"></i> Location & Scores</button>
+                <button class="drawer-tab-btn" data-tab="tab-collections"><i data-lucide="star"></i> Ratings & Notes</button>
             </div>
 
             <!-- Drawer Body Panels -->
@@ -300,7 +340,7 @@
                         </div>
                         <div class="filter-group" style="display:flex; align-items:flex-end;">
                             <label class="toggle-chip" style="padding:0.6rem;">
-                                <input type="checkbox" id="toggle-under-redfin"> 📉 Below Redfin Estimate Only
+                                <input type="checkbox" id="toggle-under-redfin"> <i data-lucide="trending-down"></i> Below Redfin Estimate Only
                             </label>
                         </div>
                     </div>
@@ -440,9 +480,9 @@
                             </select>
                         </div>
                         <div class="filter-group">
-                            <label class="filter-label">Min Above Grade SqFt</label>
+                            <label class="filter-label">Min Above-Grade Finished SqFt</label>
                             <select id="filter-sqft-above-min" class="select-input">
-                                <option value="">Any Above Grade SqFt</option>
+                                <option value="">Any Above-Grade SqFt</option>
                                 <option value="1000">1,000+ SqFt</option>
                                 <option value="1250">1,250+ SqFt</option>
                                 <option value="1500">1,500+ SqFt</option>
@@ -452,9 +492,9 @@
                             </select>
                         </div>
                         <div class="filter-group">
-                            <label class="filter-label">Min Below Grade SqFt</label>
+                            <label class="filter-label">Min Below-Grade Finished SqFt</label>
                             <select id="filter-sqft-below-min" class="select-input">
-                                <option value="">Any Below Grade SqFt</option>
+                                <option value="">Any Below-Grade SqFt</option>
                                 <option value="500">500+ SqFt</option>
                                 <option value="750">750+ SqFt</option>
                                 <option value="1000">1,000+ SqFt</option>
@@ -566,7 +606,7 @@
                         </div>
                         <div class="filter-group" style="display:flex; align-items:flex-end;">
                             <label class="toggle-chip" style="padding:0.6rem;">
-                                <input type="checkbox" id="toggle-no-hoa"> 🚫 No HOA Fee Only ($0 HOA)
+                                
                             </label>
                         </div>
                         <div class="filter-group">
@@ -693,31 +733,31 @@
                         </div>
                         <div class="filter-group" style="display:flex; align-items:flex-end;">
                             <label class="toggle-chip" style="padding:0.6rem;">
-                                <input type="checkbox" id="toggle-fireplace"> 🔥 Has Fireplace Only
+                                <input type="checkbox" id="toggle-fireplace"> <i data-lucide="flame"></i> Has Fireplace Only
                             </label>
                         </div>
                         <div class="filter-group" style="display:flex; align-items:flex-end;">
                             <label class="toggle-chip" style="padding:0.6rem;">
-                                <input type="checkbox" id="toggle-realtor-notes"> 💬 Has Realtor Notes Only
+                                <input type="checkbox" id="toggle-realtor-notes"> <i data-lucide="message-square"></i> Has Realtor Notes Only
                             </label>
                         </div>
                     </div>
 
                     <div class="collections-chips-row" style="margin-top:1.25rem;">
-                        <span class="filter-label" style="margin-right: 0.5rem; display: inline;">⭐ Quick Toggles:</span>
-                        <label class="toggle-chip"><input type="checkbox" id="toggle-favorites"> ⭐ Favorites Only</label>
-                        <label class="toggle-chip"><input type="checkbox" id="toggle-possibilities"> 🤔 Possibilities Only</label>
-                        <label class="toggle-chip"><input type="checkbox" id="toggle-realtor-shared"> 🤝 Shared with Realtor</label>
-                        <label class="toggle-chip"><input type="checkbox" id="toggle-has-notes"> 📝 Has Personal Notes</label>
-                        <label class="toggle-chip"><input type="checkbox" id="toggle-include-hidden" checked> 👁️ Include Hidden / Disliked</label>
+                        <span class="filter-label" style="margin-right: 0.5rem; display: inline;"><i data-lucide="star"></i> Quick Toggles:</span>
+                        <label class="toggle-chip"><input type="checkbox" id="toggle-favorites"> <i data-lucide="star"></i> Favorites Only</label>
+                        <label class="toggle-chip"><input type="checkbox" id="toggle-possibilities"> <i data-lucide="circle-help"></i> Possibilities Only</label>
+                        <label class="toggle-chip"><input type="checkbox" id="toggle-realtor-shared"> <i data-lucide="handshake"></i> Shared with Realtor</label>
+                        <label class="toggle-chip"><input type="checkbox" id="toggle-has-notes"> <i data-lucide="pencil"></i> Has Personal Notes</label>
+                        <label class="toggle-chip"><input type="checkbox" id="toggle-include-hidden" checked> <i data-lucide="eye"></i> Include Hidden / Disliked</label>
                     </div>
                 </div>
             </div>
 
             <!-- Footer Action Buttons -->
             <div class="drawer-footer">
-                <button type="button" class="btn btn-secondary" id="btn-drawer-reset">🔄 Reset All Filters</button>
-                <button type="button" class="btn btn-gold" id="btn-drawer-apply" style="padding:0.6rem 1.75rem; font-size:1rem; font-weight:700;">Apply Filters & Focus 🚀</button>
+                <button type="button" class="btn btn-secondary" id="btn-drawer-reset"><i data-lucide="refresh-cw"></i> Reset All Filters</button>
+                <button type="button" class="btn btn-gold" id="btn-drawer-apply" style="padding:0.6rem 1.75rem; font-size:1rem; font-weight:700;"><i data-lucide="rocket"></i> Apply Filters & Focus</button>
             </div>
         </div>
     </div>
@@ -753,6 +793,14 @@
             <div id="view-matrix-container" class="matrix-container" style="display: none;">
                 <!-- Dynamically populated comparison matrix -->
             </div>
+
+            <div id="view-realtor-container" class="realtor-dashboard-wrapper" style="display: none;">
+                <!-- Dynamically populated Realtor Command Center -->
+            </div>
+
+            <div id="view-admin-container" class="realtor-dashboard-wrapper" style="display: none;">
+                <!-- Dynamically populated Admin Operations workspace -->
+            </div>
         </section>
     </main>
 
@@ -760,9 +808,9 @@
     <div class="modal-overlay" id="modal-command-palette">
         <div class="modal-content cmd-palette-content">
             <div class="cmd-palette-input-wrapper">
-                <span class="cmd-search-icon">🔍</span>
+                <span class="cmd-search-icon"><i data-lucide="search"></i></span>
                 <input type="text" id="cmd-palette-input" placeholder="Type to search properties, addresses, or jump to view..." autofocus>
-                <button class="modal-close" id="cmd-palette-close" style="position:static; font-size:1.2rem;">✕</button>
+                <button class="modal-close" aria-label="Close" id="cmd-palette-close" style="position:static; font-size:1.2rem;"><i data-lucide="x"></i></button>
             </div>
             <div id="cmd-palette-results" class="cmd-palette-results">
                 <!-- Dynamically populated search items -->
@@ -778,7 +826,7 @@
     <!-- Detail & Edit Modal -->
     <div class="modal-overlay" id="modal-detail">
         <div class="modal-content">
-            <button class="modal-close" id="modal-detail-close">✕</button>
+            <button class="modal-close" aria-label="Close" id="modal-detail-close"><i data-lucide="x"></i></button>
             <div id="modal-detail-body">
                 <!-- Dynamically populated property detail modal -->
             </div>
@@ -788,49 +836,34 @@
     <!-- Bookmarklet Setup Guide Modal -->
     <div class="modal-overlay" id="modal-bookmarklet">
         <div class="modal-content" style="max-width: 600px;">
-            <button class="modal-close" id="modal-bm-close">✕</button>
-            <h2>🔖 Bookmarklet Installation & Guide</h2>
+            <button class="modal-close" aria-label="Close" id="modal-bm-close"><i data-lucide="x"></i></button>
+            <h2><i data-lucide="bookmark"></i> Scout Bookmarklet Installation & Guide</h2>
             <p style="margin: 1rem 0; color: var(--text-muted);">
-                Our bookmarklet allows you to extract Matrix MLS property data and automatically enrich it with Redfin WalkScores and estimates straight from your browser without getting auto-blocked.
+                Our single-click bookmarklet extracts Matrix MLS property data, captures full photo galleries, ingests agent notes, and enriches listings straight from your browser.
             </p>
+            <div id="bm-target-user-container" style="display: none; margin-bottom: 1rem; text-align: left; background: var(--bg-card); padding: 0.75rem 1rem; border-radius: 6px; border: 1px solid var(--border-color);">
+                <label for="bm-target-user-select" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-heading);">
+                    <i data-lucide="user-check"></i> Target Account for MLS Import:
+                </label>
+                <select id="bm-target-user-select" class="form-select" style="width: 100%; padding: 0.4rem 0.6rem; font-size: 0.9rem;">
+                    <!-- Populated dynamically for admins/realtors -->
+                </select>
+            </div>
             <div style="background: var(--bg-input); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; margin-bottom: 1.5rem;">
-                <a id="modal-drag-bm-btn" href="javascript:void(0)" class="bookmarklet-btn" style="font-size: 1.1rem; padding: 0.6rem 1.5rem; display: inline-block;">📍 Scrape to Scout</a>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">← Drag this button up to your browser bookmarks bar</p>
+                <a id="modal-drag-bm-btn" href="javascript:void(0)" class="bookmarklet-btn" style="font-size: 1.1rem; padding: 0.6rem 1.5rem; display: inline-block;"><i data-lucide="map-pin"></i> Scrape to Scout</a>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;"><i data-lucide="arrow-left"></i> Drag this button up to your browser bookmarks bar</p>
                 <div style="display:flex; justify-content:center; gap: 0.5rem; flex-wrap:wrap; margin-top:0.75rem;">
-                    <button type="button" class="btn btn-gold" id="btn-copy-bm-code" style="font-size:0.85rem;">📋 Copy Bookmarklet Code</button>
-                    <button type="button" class="btn btn-secondary" id="btn-copy-console-code" style="font-size:0.85rem;">💻 Copy F12 Console Snippet</button>
+                    <button type="button" class="btn btn-gold" id="btn-copy-bm-code" style="font-size:0.85rem;"><i data-lucide="clipboard"></i> Copy Bookmarklet Code</button>
+                    <button type="button" class="btn btn-secondary" id="btn-copy-console-code" style="font-size:0.85rem;"><i data-lucide="laptop"></i> Copy F12 Console Snippet</button>
                 </div>
             </div>
             <h3>How to use:</h3>
             <ol style="margin-left: 1.25rem; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem;">
                 <li>Log in to your <strong>Matrix REColorado portal</strong> in another tab.</li>
-                <li>Navigate to your <strong>Favorites tab</strong> or any search listing page.</li>
-                <li>Click <strong>Scrape to Scout</strong> in your bookmarks bar (or press <code>F12</code> on Matrix, open the Console tab, paste the snippet, and hit Enter).</li>
-                <li>You will see a green popup: <strong>"Scraping Matrix MLS listings..."</strong> and <strong>"Scraped & Synced!"</strong></li>
-                <li>Return to this tab and refresh to see all your favorites updated!</li>
-            </ol>
-
-            <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid var(--border-color);">
-
-            <h2>🔬 Deep Scrape (full detail + all photos)</h2>
-            <p style="margin: 1rem 0; color: var(--text-muted); font-size: 0.9rem;">
-                Walks every listing in your current search into its full detail view, one at a time. Every listing gets its notes re-checked on every run (in case your agent has replied), while the full photo gallery is only downloaded the first time a listing is fully captured — much slower on the first pass, fast on repeat runs.
-            </p>
-            <div style="background: var(--bg-input); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; margin-bottom: 1.5rem;">
-                <a id="modal-drag-deep-bm-btn" href="javascript:void(0)" class="bookmarklet-btn" style="font-size: 1.1rem; padding: 0.6rem 1.5rem; display: inline-block;">🔬 Deep Scrape to Scout</a>
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem;">← Drag this button up to your browser bookmarks bar</p>
-                <div style="display:flex; justify-content:center; gap: 0.5rem; flex-wrap:wrap; margin-top:0.75rem;">
-                    <button type="button" class="btn btn-gold" id="btn-copy-deep-bm-code" style="font-size:0.85rem;">📋 Copy Deep Scrape Code</button>
-                    <button type="button" class="btn btn-secondary" id="btn-copy-deep-console-code" style="font-size:0.85rem;">💻 Copy F12 Console Snippet</button>
-                </div>
-            </div>
-            <h3>How to use:</h3>
-            <ol style="margin-left: 1.25rem; margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9rem;">
-                <li>In Matrix, open <strong>one listing</strong> from your search into its full detail view (so the prev/next arrows are visible) — Deep Scrape starts from wherever you currently have expanded.</li>
-                <li>Click <strong>Deep Scrape to Scout</strong> in your bookmarks bar (or paste the F12 console snippet).</li>
-                <li>Leave the tab open — a progress popup appears for each listing (e.g. "12 of 57 — full scrape, 24 photos" or "13 of 57 — notes only") until the whole search has been walked.</li>
-                <li>The final summary popup calls out any listings where a possible agent reply was detected in the notes, so you can double-check those.</li>
-                <li>First run on a new search can take 15-30+ minutes; routine re-runs are much faster since previously-captured listings only get their notes re-checked.</li>
+                <li>Go to your <strong>main search page</strong> (or any search list/favorites view).</li>
+                <li>Click <strong>Scrape to Scout</strong> in your bookmarks bar (or run the F12 console snippet).</li>
+                <li>The bookmarklet automatically performs an instant search list sync, enters the detail view, and steps through each listing — checking notes on every run and downloading full photo galleries for new listings.</li>
+                <li>Progress popups will keep you updated (e.g. <em>"12 of 57 — full scrape, 24 photos"</em> or <em>"13 of 57 — notes re-checked"</em>). Routine re-runs are ultra-fast because cached photos are skipped automatically!</li>
             </ol>
         </div>
     </div>
@@ -838,8 +871,8 @@
     <!-- Top Picks Recommendation Modal -->
     <div class="modal-overlay" id="modal-recommend">
         <div class="modal-content" style="max-width: 920px;">
-            <button class="modal-close" id="modal-recommend-close">✕</button>
-            <h2>✨ Top Picks</h2>
+            <button class="modal-close" aria-label="Close" id="modal-recommend-close"><i data-lucide="x"></i></button>
+            <h2 id="recommend-modal-title"><i data-lucide="sparkles"></i> Top Picks</h2>
             <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">
                 Pick which properties to compare, then Scout ranks them by value, lot size, negotiation leverage, and overhead - the same kind of analysis you'd get pasting your favorites into an LLM, computed instantly from your own data.
             </p>
@@ -847,14 +880,14 @@
             <!-- Selection Panel -->
             <div id="recommend-select-panel">
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1.25rem 0 0.75rem;">
-                    <button type="button" class="btn btn-secondary" id="btn-recommend-select-favorites" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;">⭐ Favorites</button>
-                    <button type="button" class="btn btn-secondary" id="btn-recommend-select-possibilities" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;">🤔 + Possibilities</button>
+                    <button type="button" class="btn btn-secondary" id="btn-recommend-select-favorites" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;"><i data-lucide="star"></i> Favorites</button>
+                    <button type="button" class="btn btn-secondary" id="btn-recommend-select-possibilities" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;"><i data-lucide="circle-help"></i> + Possibilities</button>
                     <button type="button" class="btn btn-secondary" id="btn-recommend-select-none" style="font-size: 0.8rem; padding: 0.4rem 0.75rem;">Clear</button>
                 </div>
                 <div id="recommend-pick-list" class="pick-list"><!-- populated by js/recommend.js --></div>
                 <div id="recommend-select-hint" style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);"></div>
                 <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
-                    <button type="button" class="btn btn-gold" id="btn-recommend-rank" style="padding: 0.6rem 1.5rem; font-weight: 700;" disabled>Rank These 🏆</button>
+                    <button type="button" class="btn btn-gold" id="btn-recommend-rank" style="padding: 0.6rem 1.5rem; font-weight: 700;" disabled><i data-lucide="trophy"></i> Rank These</button>
                 </div>
             </div>
 
@@ -862,8 +895,8 @@
             <div id="recommend-results-panel" style="display: none;">
                 <div id="recommend-results-body" style="margin-top: 1.25rem;"><!-- populated by js/recommend.js --></div>
                 <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
-                    <button type="button" class="btn btn-secondary" id="btn-recommend-back">← Back to Selection</button>
-                    <button type="button" class="btn btn-primary" id="btn-recommend-copy">📋 Copy as Text</button>
+                    <button type="button" class="btn btn-secondary" id="btn-recommend-back"><i data-lucide="arrow-left"></i> Back to Selection</button>
+                    <button type="button" class="btn btn-primary" id="btn-recommend-copy"><i data-lucide="clipboard"></i> Copy as Text</button>
                 </div>
             </div>
         </div>
@@ -872,38 +905,52 @@
     <!-- Export & Share Modal -->
     <div class="modal-overlay" id="modal-export">
         <div class="modal-content" style="max-width: 500px;">
-            <button class="modal-close" id="modal-export-close">✕</button>
-            <h2>📥 Export & Share Options</h2>
+            <button class="modal-close" aria-label="Close" id="modal-export-close"><i data-lucide="x"></i></button>
+            <h2><i data-lucide="download"></i> Export & Share Options</h2>
             <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.9rem;">Export filtered listings or generate reports for your realtor.</p>
             <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
-                <button class="btn btn-emerald" id="btn-export-modal-homeward">🗺️ Export Favorites to Homeward Route Planner</button>
-                <button class="btn btn-primary" id="btn-export-csv">📄 Export CSV / Spreadsheet</button>
-                <button class="btn btn-gold" id="btn-export-json">💾 Export Raw JSON Backup</button>
-                <button class="btn btn-secondary" id="btn-print-pdf">🖨️ Print / Save as PDF Report</button>
+                <button class="btn btn-emerald" id="btn-export-modal-homeward"><i data-lucide="map"></i> Export Favorites to Homeward Route Planner</button>
+                <button class="btn btn-primary" id="btn-export-csv"><i data-lucide="file-text"></i> Export CSV / Spreadsheet</button>
+                <button class="btn btn-gold" id="btn-export-json"><i data-lucide="save"></i> Export Raw JSON Backup</button>
+                <button class="btn btn-secondary" id="btn-print-pdf"><i data-lucide="printer"></i> Print / Save as PDF Report</button>
             </div>
         </div>
     </div>
 
     <!-- User Management Modal Overlay -->
     <div class="modal-overlay" id="modal-user-mgmt">
-        <div class="modal-content" style="max-width: 680px;">
-            <button class="modal-close" id="modal-user-mgmt-close">✕</button>
-            <h2>👥 User Account Management</h2>
+        <div class="modal-content" style="max-width: 960px;">
+            <button class="modal-close" aria-label="Close" id="modal-user-mgmt-close"><i data-lucide="x"></i></button>
+            <h2><i data-lucide="users"></i> User Account Management</h2>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">Create, view, reset passwords, and delete user accounts for Scout Dashboard</p>
 
             <!-- Create New User Form -->
             <div style="background: var(--bg-input); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                <h3 style="font-size: 1rem; margin-bottom: 0.75rem;">➕ Create New User Account</h3>
+                <h3 style="font-size: 1rem; margin-bottom: 0.75rem;"><i data-lucide="plus"></i> Create New User Account</h3>
                 <form id="form-create-user" style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end;">
-                    <div style="flex: 1; min-width: 150px;">
+                    <div style="flex: 1; min-width: 140px;">
                         <label class="filter-label" for="new-user-username">Username</label>
                         <input type="text" id="new-user-username" class="input-text" placeholder="e.g. realtor_john" required style="width: 100%;">
                     </div>
-                    <div style="flex: 1; min-width: 150px;">
+                    <div style="flex: 1; min-width: 140px;">
                         <label class="filter-label" for="new-user-password">Password</label>
-                        <input type="password" id="new-user-password" class="input-text" placeholder="Minimum 4 chars" required style="width: 100%;">
+                        <input type="password" id="new-user-password" class="input-text" placeholder="Minimum 8 chars" required style="width: 100%;">
                     </div>
-                    <button type="submit" class="btn btn-primary" id="btn-submit-create-user" style="padding: 0.6rem 1.25rem; font-size: 0.9rem;">Create User 🚀</button>
+                    <div style="flex: 1; min-width: 130px;" id="wrapper-new-user-role">
+                        <label class="filter-label" for="new-user-role">Account Role</label>
+                        <select id="new-user-role" class="select-input" style="width: 100%; height: 38px;">
+                            <option value="client">Client (Homebuyer)</option>
+                            <option value="realtor">Realtor / Agent</option>
+                            <option value="admin">Administrator</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1; min-width: 140px;" id="wrapper-new-user-realtor">
+                        <label class="filter-label" for="new-user-realtor">Assigned Realtor</label>
+                        <select id="new-user-realtor" class="select-input" style="width: 100%; height: 38px;">
+                            <option value="">(None / Direct)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-create-user" style="padding: 0.6rem 1.25rem; font-size: 0.9rem;"><i data-lucide="rocket"></i> Create User</button>
                 </form>
             </div>
 
@@ -914,7 +961,9 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Username</th>
+                            <th>Username & Role</th>
+                            <th>Initials</th>
+                            <th>Assigned Realtor</th>
                             <th>Created Date</th>
                             <th>Last Login</th>
                             <th>Actions</th>
@@ -930,21 +979,22 @@
 
     <!-- Event Log Modal Overlay -->
     <div class="modal-overlay" id="modal-event-log">
-        <div class="modal-content" style="max-width: 920px;">
-            <button class="modal-close" id="modal-event-log-close">✕</button>
-            <h2>📋 Event Log</h2>
+        <div class="modal-content" style="max-width: 1200px;">
+            <button class="modal-close" aria-label="Close" id="modal-event-log-close"><i data-lucide="x"></i></button>
+            <h2><i data-lucide="clipboard-list"></i> Event Log</h2>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">Sync, scrape (bookmarklet), client (app), and system events — this is where the bookmarklet reports in from the MLS portal page, since it has no storage of its own.</p>
 
             <div style="display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;">
                 <label class="filter-label" for="event-log-source-filter" style="margin: 0;">Source</label>
                 <select id="event-log-source-filter" class="input-text" style="width: auto;">
-                    <option value="">All</option>
+                    <option value="">All Log Sources</option>
+                    <option value="login">🔐 Security & Login Attempts</option>
                     <option value="sync">Sync</option>
                     <option value="scrape">Scrape (bookmarklet)</option>
                     <option value="client">Client (app)</option>
                     <option value="system">System</option>
                 </select>
-                <button class="btn btn-secondary" id="btn-refresh-event-log" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">🔄 Refresh</button>
+                <button class="btn btn-secondary" id="btn-refresh-event-log" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;"><i data-lucide="refresh-cw"></i> Refresh</button>
             </div>
 
             <div style="overflow-x: auto;">
@@ -954,6 +1004,7 @@
                             <th>Time</th>
                             <th>Source</th>
                             <th>Level</th>
+                            <th>User</th>
                             <th>MLS ID</th>
                             <th>Message</th>
                             <th>Context</th>
@@ -970,11 +1021,11 @@
     <!-- Login Modal Overlay -->
     <div class="modal-overlay active" id="modal-login" style="z-index: 99999; backdrop-filter: blur(8px);">
         <div class="modal-content" style="max-width: 420px; text-align: center; border: 1px solid var(--border-color); box-shadow: 0 20px 50px rgba(0,0,0,0.6);">
-            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔐</div>
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;"><i data-lucide="lock-keyhole"></i></div>
             <h2 style="margin-bottom: 0.25rem;">Scout Dashboard Login</h2>
             <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">Enter your credentials to access MLS & Redfin analytics</p>
             <div id="login-error" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem; text-align: left;"></div>
-            <form id="form-login" style="display: flex; flex-direction: column; gap: 1rem; text-align: left;">
+            <form id="form-login" action="javascript:void(0)" onsubmit="event.preventDefault(); if(window.handleLoginSubmit){window.handleLoginSubmit(event);} return false;" style="display: flex; flex-direction: column; gap: 1rem; text-align: left;">
                 <div>
                     <label class="filter-label" for="login-username">Username</label>
                     <input type="text" id="login-username" class="input-text" placeholder="Enter username" required autocomplete="username" style="width: 100%;">
@@ -983,7 +1034,7 @@
                     <label class="filter-label" for="login-password">Password</label>
                     <input type="password" id="login-password" class="input-text" placeholder="Enter password" required autocomplete="current-password" style="width: 100%;">
                 </div>
-                <button type="submit" class="btn btn-primary" id="btn-submit-login" style="margin-top: 0.5rem; width: 100%; padding: 0.75rem; font-size: 1rem; font-weight: 700;">Sign In 🚀</button>
+                <button type="submit" class="btn btn-primary" id="btn-submit-login" style="margin-top: 0.5rem; width: 100%; padding: 0.75rem; font-size: 1rem; font-weight: 700;"><i data-lucide="rocket"></i> Sign In</button>
             </form>
         </div>
     </div>
@@ -991,13 +1042,13 @@
     <div id="compare-dock" class="compare-dock" style="display: none;">
         <div class="compare-dock-inner">
             <div class="compare-dock-info">
-                <span class="compare-dock-title">⚖️ Property Comparison Dock</span>
+                <span class="compare-dock-title"><i data-lucide="scale"></i> Property Comparison Dock</span>
                 <span id="compare-count-badge" class="badge-gold">0 / 4 Selected</span>
             </div>
             <div id="compare-thumbnails" class="compare-thumbnails"></div>
             <div class="compare-dock-actions">
-                <button class="btn btn-gold" id="btn-open-compare-matrix">📊 Compare Side-by-Side</button>
-                <button class="btn btn-secondary btn-compact" id="btn-clear-compare">✕ Clear</button>
+                <button class="btn btn-gold" id="btn-open-compare-matrix"><i data-lucide="columns-3"></i> Compare Side-by-Side</button>
+                <button class="btn btn-secondary btn-compact" id="btn-clear-compare"><i data-lucide="x"></i> Clear</button>
             </div>
         </div>
     </div>
@@ -1007,10 +1058,10 @@
         <div class="modal-content modal-lg" style="max-width: 1000px; width: 95vw;">
             <div class="modal-header">
                 <div>
-                    <h2 class="font-serif" style="font-size: 1.5rem; margin-bottom: 0.2rem;">🧹 Off-Market Listing & Media Cleanup</h2>
+                    <h2 class="font-serif" style="font-size: 1.5rem; margin-bottom: 0.2rem;"><i data-lucide="eraser"></i> Off-Market Listing & Media Cleanup</h2>
                     <p style="font-size: 0.85rem; color: var(--text-muted);">Audit and clean up listings and cached photos for sold, closed, pending, or off-market homes.</p>
                 </div>
-                <button class="modal-close" id="modal-admin-cleanup-close">✕</button>
+                <button class="modal-close" aria-label="Close" id="modal-admin-cleanup-close"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body" style="padding: 1.5rem;">
                 <!-- Cleanup Overview Stats Bar -->
@@ -1018,7 +1069,7 @@
                     <div class="kpi-card" style="padding: 1rem;">
                         <div class="kpi-card-header">
                             <span class="kpi-label">Off-Market Listings</span>
-                            <span class="kpi-card-icon">🏷️</span>
+                            <span class="kpi-card-icon"><i data-lucide="tag"></i></span>
                         </div>
                         <div class="kpi-value" id="cleanup-stat-props">0</div>
                         <div class="kpi-sub" id="cleanup-stat-props-sub">Sold, Closed, Pending, etc.</div>
@@ -1026,7 +1077,7 @@
                     <div class="kpi-card" style="padding: 1rem;">
                         <div class="kpi-card-header">
                             <span class="kpi-label">Cached Listing Photos</span>
-                            <span class="kpi-card-icon">🖼️</span>
+                            <span class="kpi-card-icon"><i data-lucide="image"></i></span>
                         </div>
                         <div class="kpi-value" id="cleanup-stat-photos">0</div>
                         <div class="kpi-sub" id="cleanup-stat-photos-bytes">0 MB on disk</div>
@@ -1034,7 +1085,7 @@
                     <div class="kpi-card" style="padding: 1rem;">
                         <div class="kpi-card-header">
                             <span class="kpi-label">Orphan Media Files</span>
-                            <span class="kpi-card-icon">🗑️</span>
+                            <span class="kpi-card-icon"><i data-lucide="trash-2"></i></span>
                         </div>
                         <div class="kpi-value" id="cleanup-stat-orphans">0</div>
                         <div class="kpi-sub" id="cleanup-stat-orphans-bytes">0 MB on disk</div>
@@ -1042,10 +1093,18 @@
                     <div class="kpi-card" style="padding: 1rem; border-color: rgba(16, 185, 129, 0.3);">
                         <div class="kpi-card-header">
                             <span class="kpi-label">Reclaimable Space</span>
-                            <span class="kpi-card-icon">⚡</span>
+                            <span class="kpi-card-icon"><i data-lucide="zap"></i></span>
                         </div>
                         <div class="kpi-value" id="cleanup-stat-reclaimable" style="color: var(--accent-emerald);">0 MB</div>
                         <div class="kpi-sub">Total recoverable disk space</div>
+                    </div>
+                    <div class="kpi-card" style="padding: 1rem; border-color: rgba(184, 122, 42, 0.35);">
+                        <div class="kpi-card-header">
+                            <span class="kpi-label">Image Health Issues</span>
+                            <span class="kpi-card-icon"><i data-lucide="image-off"></i></span>
+                        </div>
+                        <div class="kpi-value" id="cleanup-stat-image-issues" style="color: var(--badge-pending);">0</div>
+                        <div class="kpi-sub">Missing or invalid primary previews</div>
                     </div>
                 </div>
 
@@ -1068,14 +1127,15 @@
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.2rem;">
                             <input type="checkbox" id="cleanup-protect-favorites" checked style="accent-color: var(--accent-emerald); cursor: pointer;">
                             <label for="cleanup-protect-favorites" style="font-size: 0.82rem; cursor: pointer; user-select: none;">
-                                🛡️ Protect Favorites & Notes
+                                <i data-lucide="shield"></i> Protect Favorites & Notes
                             </label>
                         </div>
                     </div>
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <button class="btn btn-secondary btn-compact" id="btn-cleanup-select-unprotected" type="button">Select Candidate Homes</button>
                         <button class="btn btn-secondary btn-compact" id="btn-cleanup-clear-selection" type="button">Deselect All</button>
-                        <button class="btn btn-secondary btn-compact" id="btn-cleanup-refresh" type="button" title="Refresh Audit Data">🔄 Refresh</button>
+                        <button class="btn btn-secondary btn-compact" id="btn-cleanup-retry-images" type="button" title="Mark selected listings for a fresh deep image scrape"><i data-lucide="image-plus"></i> Mark for Image Re-scrape</button>
+                        <button class="btn btn-secondary btn-compact" id="btn-cleanup-refresh" type="button" title="Refresh Audit Data"><i data-lucide="refresh-cw"></i> Refresh</button>
                     </div>
                 </div>
 
@@ -1107,7 +1167,7 @@
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <input type="checkbox" id="cleanup-include-orphans" style="accent-color: var(--accent-emerald); cursor: pointer;">
                             <label for="cleanup-include-orphans" style="font-size: 0.85rem; font-weight: 600; cursor: pointer;">
-                                🗑️ Include Orphaned Media Files (<span id="cleanup-orphan-summary-text">0 files, 0 MB</span>)
+                                <i data-lucide="trash-2"></i> Include Orphaned Media Files (<span id="cleanup-orphan-summary-text">0 files, 0 MB</span>)
                             </label>
                         </div>
                         <span style="font-size: 0.75rem; color: var(--text-muted);">Photos on disk for listings no longer in database</span>
@@ -1122,8 +1182,8 @@
                 </div>
                 <div style="display: flex; gap: 0.75rem;">
                     <button class="btn btn-secondary" id="btn-admin-cleanup-cancel">Cancel</button>
-                    <button class="btn btn-gold" id="btn-admin-cleanup-submit" disabled style="background: linear-gradient(135deg, #ef4444, #b91c1c); color: #fff; border: none;">
-                        🔥 Clean Up Selected Items
+                    <button class="btn btn-gold" id="btn-admin-cleanup-submit" disabled style="background: linear-gradient(135deg, #B0463A, #8F3529); color: #fff; border: none;">
+                        <i data-lucide="flame"></i> Clean Up Selected Items
                     </button>
                 </div>
             </div>
@@ -1135,10 +1195,10 @@
         <div class="modal-content modal-lg compare-matrix-modal">
             <div class="modal-header">
                 <div>
-                    <h2 class="font-serif" style="font-size: 1.5rem; margin-bottom: 0.2rem;">⚖️ Side-by-Side Luxury Property Comparison</h2>
+                    <h2 class="font-serif" style="font-size: 1.5rem; margin-bottom: 0.2rem;"><i data-lucide="scale"></i> Side-by-Side Luxury Property Comparison</h2>
                     <p style="font-size: 0.85rem; color: var(--text-muted);">Compare specs, valuation metrics, location scores, and financial highlights side-by-side</p>
                 </div>
-                <button class="modal-close" id="btn-close-compare-matrix">✕</button>
+                <button class="modal-close" aria-label="Close" id="btn-close-compare-matrix"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body" id="compare-matrix-body" style="padding: 1.5rem; overflow-x: auto;">
                 <!-- Dynamically rendered side-by-side comparison table -->
@@ -1146,6 +1206,307 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=2.4"></script>
+    <!-- User Profile Modal -->
+    <div class="modal-overlay" id="modal-user-profile">
+        <div class="modal-content" style="max-width: 580px; width: 92vw;">
+            <div class="modal-header">
+                <div>
+                    <h2 class="font-serif" style="font-size: 1.4rem; margin-bottom: 0.2rem;"><i data-lucide="user"></i> My Profile & Account</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Manage your personal information and contact preferences</p>
+                </div>
+                <button class="modal-close" aria-label="Close" id="modal-user-profile-close"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem;">
+                <!-- Account Meta Summary Card -->
+                <div style="background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div id="profile-avatar-badge" style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-gold), #8F7226); color: #000; font-weight: 800; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; font-family: monospace;">US</div>
+                        <div>
+                            <div style="font-weight: 700; font-size: 1rem;" id="profile-summary-username">username</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);" id="profile-summary-role">Role: Client</div>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.78rem; color: var(--text-muted); text-align: right;">
+                        <div>Member Since: <span id="profile-summary-created" style="color: var(--text-primary);">N/A</span></div>
+                        <div id="profile-summary-rel-row"><span id="profile-summary-rel-label">Assigned Agent:</span> <span id="profile-summary-realtor" style="color: var(--accent-blue);">None</span></div>
+                    </div>
+                </div>
+
+                <div id="profile-form-error" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem;"></div>
+
+                <form id="form-user-profile" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <label class="filter-label" for="profile-full-name">Full Name</label>
+                        <input type="text" id="profile-full-name" class="input-text" placeholder="e.g. John Doe" maxlength="100" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label class="filter-label" for="profile-email">Email Address</label>
+                        <input type="email" id="profile-email" class="input-text" placeholder="e.g. john@example.com" maxlength="255" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label class="filter-label" for="profile-phone">Phone Number</label>
+                        <input type="tel" id="profile-phone" class="input-text" placeholder="e.g. (555) 000-0000" maxlength="30" style="width: 100%;">
+                    </div>
+                    <div id="profile-realtor-branding-group">
+                        <div style="margin-bottom: 1rem;">
+                            <label class="filter-label" for="profile-brokerage">Brokerage / Agency Name</label>
+                            <input type="text" id="profile-brokerage" class="input-text" placeholder="e.g. RE/MAX Professionals" maxlength="150" style="width: 100%;">
+                        </div>
+                        <div>
+                            <label class="filter-label" for="profile-avatar">Headshot / Logo Image URL</label>
+                            <input type="url" id="profile-avatar" class="input-text" placeholder="https://example.com/headshot.jpg" maxlength="1000" style="width: 100%;">
+                            <span style="font-size:0.75rem; color:var(--text-muted); margin-top:3px; display:block;">Displayed on client playlist banners and public portal headers.</span>
+                        </div>
+                    </div>
+                    <div id="profile-client-preferences-group" style="display:none; border-top:1px solid var(--border-color); padding-top:1rem;">
+                        <h3 style="font-size:0.95rem;"><i data-lucide="sliders-horizontal"></i> Home Search Preferences</h3>
+                        <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0.75rem; margin-top:0.75rem;">
+                            <div><label class="filter-label" for="profile-target-min-price">Minimum Budget</label><input type="number" id="profile-target-min-price" class="input-text" min="0" step="1000" placeholder="No minimum"></div>
+                            <div><label class="filter-label" for="profile-target-max-price">Maximum Budget</label><input type="number" id="profile-target-max-price" class="input-text" min="0" step="1000" placeholder="No maximum"></div>
+                        </div>
+                        <div style="margin-top:0.75rem;"><label class="filter-label" for="profile-target-cities">Target Areas or Cities</label><input type="text" id="profile-target-cities" class="input-text" maxlength="500" placeholder="Example: Aurora, Parker, Centennial"></div>
+                        <div style="display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:0.75rem; margin-top:0.75rem;"><div><label class="filter-label" for="profile-target-beds">Minimum Bedrooms</label><input type="number" id="profile-target-beds" class="input-text" min="0" max="20" step="1" placeholder="No preference"></div><div><label class="filter-label" for="profile-target-timeline">Move Timeline</label><input type="text" id="profile-target-timeline" class="input-text" maxlength="100" placeholder="Example: 3-6 months"></div></div>
+                        <div style="margin-top:0.75rem;"><label class="filter-label" for="profile-must-haves">Must-Haves</label><textarea id="profile-must-haves" class="input-text" rows="3" maxlength="2000" placeholder="Example: Home office, fenced yard, attached garage"></textarea></div>
+                        <div style="margin-top:0.75rem;"><label class="filter-label" for="profile-deal-breakers">Deal-Breakers</label><textarea id="profile-deal-breakers" class="input-text" rows="3" maxlength="2000" placeholder="Example: No HOA, no shared walls, avoid high-traffic roads"></textarea></div>
+                    </div>
+                    <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.5rem;">
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-user-profile">Cancel</button>
+                        <button type="submit" class="btn btn-gold" id="btn-save-user-profile"><i data-lucide="check"></i> Save Profile</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Management Modal -->
+    <div class="modal-overlay" id="modal-password-mgmt">
+        <div class="modal-content" style="max-width: 540px; width: 92vw;">
+            <div class="modal-header">
+                <div>
+                    <h2 class="font-serif" style="font-size: 1.4rem; margin-bottom: 0.2rem;"><i data-lucide="shield-check"></i> Security & Password Management</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Change your account password securely</p>
+                </div>
+                <button class="modal-close" aria-label="Close" id="modal-password-mgmt-close"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem;">
+                <!-- Password Security Requirements Banner -->
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+                    <div style="font-weight: 700; font-size: 0.85rem; color: var(--accent-gold); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+                        <i data-lucide="lock"></i> Password Requirements & Security Rules:
+                    </div>
+                    <ul style="font-size: 0.8rem; color: var(--text-muted); margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.25rem;">
+                        <li id="req-length">At least <strong>8 characters</strong> long</li>
+                        <li id="req-match">New password and confirmation must <strong>match exactly</strong></li>
+                        <li id="req-current">Requires correct verification of your <strong>current password</strong></li>
+                        <li>Protected by encrypted session & CSRF security tokens</li>
+                    </ul>
+                </div>
+
+                <div id="pwd-mgmt-error" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem;"></div>
+
+                <form id="form-password-mgmt" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <label class="filter-label" for="pwd-current">Current Password</label>
+                        <input type="password" id="pwd-current" class="input-text" placeholder="Enter your current password" required style="width: 100%;">
+                    </div>
+                    <div>
+                        <label class="filter-label" for="pwd-new">New Password</label>
+                        <input type="password" id="pwd-new" class="input-text" placeholder="Enter new password (min. 8 chars)" required minlength="8" style="width: 100%;">
+                    </div>
+                    <div>
+                        <label class="filter-label" for="pwd-confirm">Confirm New Password</label>
+                        <input type="password" id="pwd-confirm" class="input-text" placeholder="Re-enter new password" required minlength="8" style="width: 100%;">
+                    </div>
+                    <div style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.5rem;">
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-password-mgmt">Cancel</button>
+                        <button type="submit" class="btn btn-gold" id="btn-save-password-mgmt"><i data-lucide="key-round"></i> Update Password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Curated Client Playlists & Collections Modal -->
+    <div class="modal-overlay" id="modal-playlists">
+        <div class="modal-content modal-lg" style="max-width: 980px; width: 95vw;">
+            <div class="modal-header">
+                <div>
+                    <h2 class="font-serif" style="font-size: 1.4rem; margin-bottom: 0.2rem;"><i data-lucide="folder-heart"></i> Curated Client Playlists & Custom Collections</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Create curated home collections, attach agent intro notes, assign target clients, and generate shareable links.</p>
+                </div>
+                <button class="modal-close" aria-label="Close" id="modal-playlists-close"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 1.5rem;">
+                <!-- Create / Edit Playlist Form -->
+                <div style="background: var(--bg-input); padding: 1.25rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;" id="playlist-form-container">
+                    <h3 id="playlist-form-heading" style="font-size: 1rem; margin-bottom: 0.75rem;"><i data-lucide="plus-circle"></i> Create New Playlist Collection</h3>
+                    <form id="form-create-playlist" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <input type="hidden" id="playlist-id" value="">
+                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                            <div style="flex: 2; min-width: 200px;">
+                                <label class="filter-label" for="playlist-title">Playlist Title</label>
+                                <input type="text" id="playlist-title" class="input-text" placeholder="e.g. Modern 4BDR Homes in Cherry Creek" required style="width: 100%;">
+                            </div>
+                            <div style="flex: 1; min-width: 180px;">
+                                <label class="filter-label" for="playlist-client-select">Assign to Client (Optional)</label>
+                                <select id="playlist-client-select" class="select-input" style="width: 100%; height: 38px;">
+                                    <option value="">(None / General Share)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="filter-label" for="playlist-description">Agent Intro Note / Message for Client</label>
+                            <textarea id="playlist-description" class="input-text" rows="2" placeholder="e.g. Hi Sarah! I curated these 5 homes based on your preference for a large backyard and updated kitchen..." style="width: 100%; font-family: inherit;"></textarea>
+                        </div>
+                        <div id="playlist-properties-editor" style="display: none; background: rgba(0,0,0,0.15); padding: 0.85rem; border-radius: 6px; border: 1px dashed var(--border-color);">
+                            <!-- Rendered dynamically by renderPlaylistHomesEditor() -->
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                            <button type="button" class="btn btn-secondary" id="btn-cancel-edit-playlist" style="display: none;" onclick="window.resetPlaylistForm()"><i data-lucide="x"></i> Cancel Edit</button>
+                            <button type="submit" class="btn btn-primary" id="btn-submit-playlist"><i data-lucide="plus"></i> Create Playlist</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Existing Playlists Table -->
+                <h3 style="font-size: 1rem; margin-bottom: 0.75rem;"><i data-lucide="list"></i> Your Active Playlists</h3>
+                <div style="overflow-x: auto;">
+                    <table class="matrix-table" style="width: 100%; font-size: 0.88rem;">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Title & Agent Note</th>
+                                <th>Assigned Client</th>
+                                <th>Listings Count</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="playlists-table-body">
+                            <!-- Dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Realtor Collaboration Portal Modal -->
+    <div class="modal-overlay" id="modal-realtor-portal">
+        <div class="modal-content modal-lg" style="max-width: 1240px; width: 95vw; max-height: 90vh; display: flex; flex-direction: column;">
+            <button class="modal-close" aria-label="Close" id="modal-realtor-portal-close"><i data-lucide="x"></i></button>
+            <div class="modal-header" style="padding-right: 3rem;">
+                <div>
+                    <h2 class="font-serif" style="font-size: 1.4rem; margin-bottom: 0.2rem;"><i data-lucide="handshake"></i> Realtor Collaboration Portal</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">View curated property portfolio, buyer interest ratings, buyer notes, and save showing feedback.</p>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button class="btn btn-primary" id="btn-print-realtor-portal" style="padding:0.4rem 0.85rem; font-size:0.82rem;" onclick="window.print()"><i data-lucide="printer"></i> Print Summary</button>
+                </div>
+            </div>
+            <div class="modal-body" style="padding: 1.25rem; overflow-y: auto; flex: 1;">
+                <!-- KPI Summary Bar -->
+                <div class="realtor-kpi-bar">
+                    <div class="realtor-kpi-card">
+                        <span class="realtor-kpi-label">Total Properties</span>
+                        <span class="realtor-kpi-val" id="kpi-rp-total">0</span>
+                        <span class="realtor-kpi-sub" id="kpi-rp-active">0 Active</span>
+                    </div>
+                    <div class="realtor-kpi-card">
+                        <span class="realtor-kpi-label"><i data-lucide="star"></i> Client Liked</span>
+                        <span class="realtor-kpi-val" id="kpi-rp-fav">0</span>
+                        <span class="realtor-kpi-sub">Top Buyer Picks</span>
+                    </div>
+                    <div class="realtor-kpi-card">
+                        <span class="realtor-kpi-label"><i data-lucide="circle-help"></i> Client Possibilities</span>
+                        <span class="realtor-kpi-val" id="kpi-rp-poss">0</span>
+                        <span class="realtor-kpi-sub">Under Consideration</span>
+                    </div>
+                    <div class="realtor-kpi-card">
+                        <span class="realtor-kpi-label"><i data-lucide="ban"></i> Client Disliked</span>
+                        <span class="realtor-kpi-val" id="kpi-rp-dislike">0</span>
+                        <span class="realtor-kpi-sub">Filtered Out</span>
+                    </div>
+                    <div class="realtor-kpi-card">
+                        <span class="realtor-kpi-label">Avg List Price</span>
+                        <span class="realtor-kpi-val" id="kpi-rp-avg-price">$0</span>
+                        <span class="realtor-kpi-sub" id="kpi-rp-avg-ppsqft">$0 / SqFt</span>
+                    </div>
+                </div>
+
+                <!-- Filter Controls Panel -->
+                <div class="realtor-filter-panel">
+                    <div class="realtor-filter-row">
+                        <div class="realtor-search-box">
+                            <span class="search-icon"><i data-lucide="search"></i></span>
+                            <input type="text" id="rp-search" placeholder="Search address, city, buyer notes, MLS ID...">
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); white-space:nowrap;">LISTING STATUS</span>
+                            <select id="rp-mls-status" class="select-input filter-select-pill">
+                                <option value="active" selected>🟢 Active Listings Only</option>
+                                <option value="all">All Statuses (Active, Pending & Sold)</option>
+                                <option value="pending">⏳ Pending / Under Contract</option>
+                                <option value="closed">🔒 Closed / Sold Only</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.5rem;" id="rp-client-filter-container">
+                            <span style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); white-space:nowrap;">CLIENT</span>
+                            <select id="rp-client-select" class="select-input filter-select-pill">
+                                <option value="all" selected>👥 All Clients</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); white-space:nowrap;">CLIENT REVIEW STATUS</span>
+                            <select id="rp-review-status" class="select-input filter-select-pill">
+                                <option value="all" selected>All Client Reviews</option>
+                                <option value="favorite">⭐ Liked / Favorites</option>
+                                <option value="possibility">🤔 Possibilities</option>
+                                <option value="dislike">🚫 Disliked / Hidden</option>
+                                <option value="none">📋 Unreviewed Only</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); white-space:nowrap;">SORT</span>
+                            <select id="rp-sort" class="select-input filter-select-pill">
+                                <option value="rating-desc" selected>Buyer Rating: Highest First</option>
+                                <option value="price-desc">Price: High to Low</option>
+                                <option value="price-asc">Price: Low to High</option>
+                                <option value="date-desc">List Date: Newest First</option>
+                                <option value="sqft-desc">SqFt: Largest First</option>
+                                <option value="walkscore-desc">WalkScore: Highest First</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2-Column Property List Container -->
+                <div id="rp-list-container" class="realtor-grid-container">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client View Preview Modal -->
+    <div class="modal-overlay" id="modal-client-preview" style="z-index: 10500;">
+        <div class="modal-content modal-lg modal-content--surface" style="max-width: 1320px; width: 96vw; height: 92vh; display: flex; flex-direction: column;">
+            <div class="modal-header--accent">
+                <div>
+                    <span class="badge modal-eyebrow">Client Dashboard Preview</span>
+                    <h2 class="font-serif modal-title--accent" id="client-preview-heading" style="font-size: 1.3rem;"><i data-lucide="eye"></i> Client Dashboard Banner Preview</h2>
+                </div>
+                <a id="client-preview-external-link" href="#" target="_blank" class="btn modal-action-primary">
+                        <i data-lucide="external-link"></i> Open Full Screen Tab
+                </a>
+            </div>
+            <button class="modal-close modal-close--accent" aria-label="Close" id="modal-client-preview-close" onclick="window.closeClientPreviewModal()"><i data-lucide="x"></i></button>
+            <div class="modal-body" style="padding: 0; flex: 1; overflow: hidden;" id="client-preview-body">
+                <!-- Dynamically populated by renderClientPreviewModal() -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js?v=3.1"></script>
 </body>
 </html>

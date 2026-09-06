@@ -22,11 +22,12 @@ function getEngineCode() {
     const CONFIG = {
         API_URL: window.SCOUT_API_URL || (window.location.origin.includes('nycto.ninja')
             ? 'https://nycto.ninja/mls-redfin-scout/backend/api.php'
-            : 'http://127.0.0.1:8888/mls-redfin-scout/backend/api.php'),
-        // 'quick' = single-shot scrape of whatever's currently on screen (list rows + whichever
-        // listing happens to be expanded). 'deep' = walk every listing into full detail view,
-        // one at a time, capturing fresh notes always and a full photo gallery once per listing.
-        MODE: window.SCOUT_MODE || 'quick',
+            : 'http://127.0.0.1:8888/backend/api.php'),
+        USER: window.SCOUT_USER || null,
+        SCRAPE_TOKEN: window.SCOUT_SCRAPE_TOKEN || null,
+        // 'deep' = walk every listing into full detail view, one at a time, capturing fresh notes
+        // always and a full photo gallery once per listing.
+        MODE: window.SCOUT_MODE || 'deep',
         AUTO_POPUP_REDFIN: true
     };
 
@@ -55,6 +56,18 @@ function getEngineCode() {
         }
     }
 
+    function getEffectiveApiUrl() {
+        let url = CONFIG.API_URL || '';
+        // Only upgrade http:// to https:// for remote servers (e.g. nycto.ninja).
+        // Leave 127.0.0.1 / localhost as http:// since local dev servers run plain HTTP.
+        if (window.location.protocol === 'https:' && url.startsWith('http://')) {
+            if (!url.includes('127.0.0.1') && !url.includes('localhost')) {
+                url = url.replace(/^http:\/\//i, 'https://');
+            }
+        }
+        return url;
+    }
+
     // Fire-and-forget beacon to backend/api.php's action=client_log, since the bookmarklet has
     // no storage of its own and runs on the MLS portal's origin — a console.warn here is only
     // ever seen if DevTools happens to be open on this exact tab at this exact moment (which is
@@ -62,15 +75,16 @@ function getEngineCode() {
     // throws and never blocks the scrape — a failed log beacon must not affect scraping itself.
     function logToServer(level, message, mlsId, context) {
         try {
-            fetch(CONFIG.API_URL + '?action=client_log', {
+            fetch(getEffectiveApiUrl() + '?action=client_log', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-Scout-Token': CONFIG.SCRAPE_TOKEN || '' },
                 body: JSON.stringify({
                     source: 'scrape',
                     level: level,
                     message: String(message).slice(0, 2000),
                     mls_id: mlsId || null,
-                    context: context || null
+                    context: context || null,
+                    username: CONFIG.USER || null
                 }),
                 keepalive: true
             }).catch(() => {});
@@ -174,8 +188,15 @@ function getEngineCode() {
         }
 
         // 7. Multiline search for (Me) comments and inline JSON scripts
+        // Tightened per the false-positive documented in bookmarklet-notes-extraction.md (MLS
+        // 7950162, "881 S **Me**mphis Way" matched as a fake note): \b word boundaries so this
+        // only matches a standalone "Me"/"(Me)" token, not "me" as a mid-word substring, and the
+        // capture length is cut from 1000 to 300 — a real personal note is a short phrase, not a
+        // paragraph, and this fallback (used when no proper .mtx-listingNotesWidget row exists)
+        // was otherwise capturing the listing's full marketing remarks/description as a "note"
+        // on ordinary listings that don't have one at all — confirmed live at scale (Sept 2026).
         const pageText = (block || document.body).innerText || '';
-        const meBlockMatches = pageText.match(/(?:Me|\(Me\))[\s\r\n]*(?:\d{2}\/\d{2}\/\d{4})?[\s\r\n]*["“]?([^"”\r\n]{3,1000})["”]?/ig);
+        const meBlockMatches = pageText.match(/\b(?:Me|\(Me\))\b[\s\r\n]*(?:\d{2}\/\d{2}\/\d{4})?[\s\r\n]*["“]?([^"”\r\n]{3,300})["”]?/ig);
         if (meBlockMatches) {
             meBlockMatches.forEach(m => candidateTexts.push(m));
         }
@@ -218,7 +239,13 @@ function getEngineCode() {
                 lower === 'dislike' ||
                 lower === 'possibility' ||
                 lower === 'favorite' ||
-                clean.length < 2
+                clean.length < 2 ||
+                // A real personal note is a short phrase (every confirmed example in
+                // bookmarklet-notes-extraction.md is under 100 chars); a multi-sentence block
+                // this long is almost certainly the listing's public-remarks/marketing
+                // description caught by one of the broader fallback selectors above, not an
+                // actual saved note. Caps false positives regardless of which selector matched.
+                clean.length > 400
             ) {
                 continue;
             }
@@ -601,8 +628,18 @@ function getEngineCode() {
 
         const portalNotes = extractMatrixNotes(block, mlsId);
 
-        const imgEl = block.querySelector('img[src*="Photo"], img[src*="photo"], .display-photo img, img');
-        const mainImg = imgEl ? imgEl.src : '';
+        // Matches extractGalleryImages()'s selector below rather than the old generic
+        // 'img[src*="Photo"], img[src*="photo"], .display-photo img, img' chain, whose final
+        // bare 'img' fallback was grabbing whatever <img> happened to be first in the row block
+        // when the more specific selectors missed — confirmed live to be a small UI icon (e.g.
+        // Matrix/images/icons/icon-map-blue.svg), not the listing thumbnail, for a large share
+        // of listings. That bad "photo" URL got cached server-side as this listing's main image
+        // (see backend/properties.php's looksLikeRealPhotoBody(), which now rejects it, and the
+        // notes in properties-fix history for the corrupted-index-0 symptom this caused). Only
+        // accept an <img> whose src is an actual Matrix media asset; leave main_image_url empty
+        // (clean placeholder) rather than fall back to an arbitrary icon.
+        const imgEl = block.querySelector('img[src*="GetMedia.ashx"], img[src*="matrixmedia"], .display-photo img');
+        const mainImg = (imgEl && !/\/icons?\//i.test(imgEl.src)) ? imgEl.src : '';
 
         return {
             mls_id: mlsId,
@@ -669,11 +706,11 @@ function getEngineCode() {
     // which awaits this per listing — never hang on a single failed sync. On failure the error
     // toast is already shown here; callers just get {success:false, ...} back to log/skip.
     function syncToBackend(payload, callback) {
-        const dataStr = JSON.stringify({ properties: payload });
+        const dataStr = JSON.stringify({ properties: payload, username: CONFIG.USER || null });
 
-        fetch(CONFIG.API_URL + '?action=sync', {
+        fetch(getEffectiveApiUrl() + '?action=sync', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-Scout-Token': CONFIG.SCRAPE_TOKEN || '' },
             body: dataStr
         })
         .then(res => res.json())
@@ -695,7 +732,7 @@ function getEngineCode() {
     // Asks the backend which mls_ids already have a completed full (photo) scrape, so the deep
     // walker can skip straight past the expensive photo work for them and only re-check notes.
     function fetchScrapeStatus(callback) {
-        fetch(CONFIG.API_URL + '?action=scrape_status')
+        fetch(getEffectiveApiUrl() + '?action=scrape_status', { headers: { 'X-Scout-Token': CONFIG.SCRAPE_TOKEN || '' } })
             .then(res => res.json())
             .then(data => {
                 const completed = (data && data.success && Array.isArray(data.completed)) ? data.completed.map(String) : [];
@@ -749,10 +786,9 @@ function delay(ms) {
         return m ? { cur: parseInt(m[1], 10), total: parseInt(m[2], 10) } : null;
     }
 
-    // Polls (every 250ms, confirmed a ~1s settle time is typical for the in-place AJAX postback)
-    // until the counter changes from prevCur, or times out. Returns the new counter info, or null
-    // if it never changed within timeoutMs.
-    async function waitForCounterChange(prevCur, timeoutMs) {
+    // Polls (every 250ms, confirmed a ~1s settle time is typical for the in-place AJAX postback,
+    // though page/chunk boundary postbacks on Matrix can take 5-8s) until counter changes from prevCur.
+    async function waitForCounterChange(prevCur, timeoutMs = 15000) {
         const start = Date.now();
         while (Date.now() - start < timeoutMs) {
             await delay(250);
@@ -817,6 +853,8 @@ function delay(ms) {
             const multiAuthorFlags = [];
             let processedCount = 0;
             let fullScrapeCount = 0;
+            let failedSyncCount = 0;
+            let reachedFinalListing = false;
             const MAX_ITER = 500; // safety cap independent of the "X of Y" counter, in case it's ever absent/unreliable
             let iter = 0;
             let keepGoing = true;
@@ -824,12 +862,24 @@ function delay(ms) {
             while (keepGoing && iter < MAX_ITER) {
                 iter++;
 
-                const blocks = findListingBlocks();
+                let blocks = findListingBlocks();
                 let listing = null;
                 let matchedBlock = null;
                 for (const b of blocks) {
                     const parsed = parseListingBlock(b);
                     if (parsed) { listing = parsed; matchedBlock = b; break; }
+                }
+
+                // If DOM is mid-render, give it up to 5 seconds to settle
+                if (!listing) {
+                    await waitUntil(() => {
+                        blocks = findListingBlocks();
+                        for (const b of blocks) {
+                            const parsed = parseListingBlock(b);
+                            if (parsed) { listing = parsed; matchedBlock = b; return true; }
+                        }
+                        return false;
+                    }, 5000);
                 }
 
                 if (!listing) {
@@ -840,7 +890,10 @@ function delay(ms) {
 
                 const counter = getCounterInfo();
                 if (counter) {
-                    if (visitedPositions.has(counter.cur)) break;
+                    if (visitedPositions.has(counter.cur)) {
+                        logToServer('info', 'Deep scrape reached previously visited position, stopping', null, { position: counter.cur, processedCount });
+                        break;
+                    }
                     visitedPositions.add(counter.cur);
                 }
 
@@ -872,35 +925,69 @@ function delay(ms) {
 
                 const syncResult = await new Promise(resolve => syncToBackend([listing], resolve));
                 if (!syncResult || !syncResult.success) {
+                    failedSyncCount++;
                     console.warn('Scout deep-scrape: sync failed for', listing.mls_id, syncResult);
                     logToServer('error', 'Deep-scrape sync failed for listing', listing.mls_id, { syncResult: syncResult, posLabel: posLabel });
                 } else if (notesInfo.multiAuthor) {
                     logToServer('warn', 'Multi-author (or unattributed) note row detected', listing.mls_id, { rowCount: notesInfo.rowCount, authors: notesInfo.authors });
                 }
 
-                const nextLink = document.querySelector('a.glyphicon-chevron-right');
-                if (!nextLink) break;
+                if (counter && counter.cur >= counter.total) {
+                    reachedFinalListing = true;
+                    logToServer('info', 'Deep scrape reached final listing', null, { processedCount, position: counter.cur, total: counter.total });
+                    break;
+                }
+
+                // Find next listing chevron button (wait up to 4s if DOM is updating)
+                let nextLink = document.querySelector('a.glyphicon-chevron-right');
+                if (!nextLink) {
+                    const found = await waitUntil(() => !!document.querySelector('a.glyphicon-chevron-right'), 4000);
+                    if (found) nextLink = document.querySelector('a.glyphicon-chevron-right');
+                }
+
+                if (!nextLink) {
+                    logToServer('info', 'Deep scrape: no next chevron link found, walk complete', null, { processedCount });
+                    break;
+                }
 
                 const prevCur = counter ? counter.cur : null;
                 nextLink.click();
 
                 if (prevCur !== null) {
-                    const changed = await waitForCounterChange(prevCur, 4000);
-                    if (!changed || visitedPositions.has(changed.cur)) {
+                    // Wait up to 15 seconds for counter to change (handles cross-page boundary postbacks)
+                    let changed = await waitForCounterChange(prevCur, 15000);
+                    if (!changed) {
+                        // Retry clicking next once more if button is still present
+                        const retryNext = document.querySelector('a.glyphicon-chevron-right');
+                        if (retryNext) {
+                            retryNext.click();
+                            changed = await waitForCounterChange(prevCur, 10000);
+                        }
+                    }
+                    if (!changed) {
+                        logToServer('info', 'Deep scrape: counter did not change after postback wait, stopping', null, { prevCur, processedCount });
+                        keepGoing = false;
+                    } else if (visitedPositions.has(changed.cur)) {
+                        logToServer('info', 'Deep scrape: counter looped back to visited position, stopping', null, { newCur: changed.cur, processedCount });
                         keepGoing = false;
                     }
                 } else {
-                    await delay(1000);
+                    await delay(1500);
                 }
             }
 
-            let summary = \`✅ Deep scrape complete — \${processedCount} listing(s) visited, \${fullScrapeCount} fully scraped\`;
+            let summary = reachedFinalListing
+                ? \`✅ Deep scrape complete — \${processedCount} listing(s) visited, \${fullScrapeCount} fully scraped\`
+                : \`⚠️ Deep scrape stopped — \${processedCount} listing(s) visited, \${fullScrapeCount} fully scraped\`;
+            if (failedSyncCount) {
+                summary += \`. \${failedSyncCount} listing sync\${failedSyncCount === 1 ? '' : 's'} failed — check the event log\`;
+            }
             if (multiAuthorFlags.length) {
                 summary += \`. ⚠️ \${multiAuthorFlags.length} listing(s) had multi-author notes — check: \${multiAuthorFlags.join(', ')}\`;
             }
-            notify(summary);
+            notify(summary, failedSyncCount > 0 || !reachedFinalListing, true);
             logToServer('info', 'Deep scrape complete', null, {
-                processedCount, fullScrapeCount, multiAuthorFlags, url: window.location.href
+                processedCount, fullScrapeCount, failedSyncCount, reachedFinalListing, multiAuthorFlags, url: window.location.href
             });
         });
     }
@@ -942,22 +1029,22 @@ function cleanJsForBookmarklet(jsCode) {
         .join(' ');
 }
 
-function getBookmarkletCode(apiUrl) {
+function getBookmarkletCode(apiUrl, username, scrapeToken) {
     const cleanEngine = cleanJsForBookmarklet(getEngineCode());
-    const wrapper = `(function(){ window.SCOUT_API_URL='` + apiUrl + `'; window.SCOUT_MODE='quick'; ` + cleanEngine + `})();`;
+    const userPart = username ? `window.SCOUT_USER='` + username + `'; ` : '';
+    const tokenPart = scrapeToken ? `window.SCOUT_SCRAPE_TOKEN='` + scrapeToken + `'; ` : '';
+    const wrapper = `(function(){ window.SCOUT_API_URL='` + apiUrl + `'; ` + userPart + tokenPart + `window.SCOUT_MODE='deep'; ` + cleanEngine + `})();`;
     return 'javascript:' + wrapper;
 }
 
-function getDeepScrapeBookmarkletCode(apiUrl) {
-    const cleanEngine = cleanJsForBookmarklet(getEngineCode());
-    const wrapper = `(function(){ window.SCOUT_API_URL='` + apiUrl + `'; window.SCOUT_MODE='deep'; ` + cleanEngine + `})();`;
-    return 'javascript:' + wrapper;
+function getDeepScrapeBookmarkletCode(apiUrl, username, scrapeToken) {
+    return getBookmarkletCode(apiUrl, username, scrapeToken);
 }
 
-function getConsoleSnippetCode(apiUrl) {
-    return getBookmarkletCode(apiUrl).replace(/^javascript:/, '');
+function getConsoleSnippetCode(apiUrl, username, scrapeToken) {
+    return getBookmarkletCode(apiUrl, username, scrapeToken).replace(/^javascript:/, '');
 }
 
-function getDeepScrapeConsoleSnippetCode(apiUrl) {
-    return getDeepScrapeBookmarkletCode(apiUrl).replace(/^javascript:/, '');
+function getDeepScrapeConsoleSnippetCode(apiUrl, username, scrapeToken) {
+    return getConsoleSnippetCode(apiUrl, username, scrapeToken);
 }

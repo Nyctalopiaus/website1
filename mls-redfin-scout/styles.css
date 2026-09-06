@@ -1,36 +1,36 @@
 /* MLS & Redfin Property Scout - Luxury Aggregator Stylesheet */
 
 :root {
-    /* Signature Emerald Obsidian Luxury Theme (MLS Scout Exclusive) */
-    --bg-main: #070a12;
-    --bg-panel: #0d1527;
-    --bg-card: rgba(13, 21, 39, 0.82);
-    --bg-card-solid: #0d1527;
-    --bg-card-hover: rgba(20, 31, 56, 0.92);
-    --bg-input: #0b1120;
-    --border-color: rgba(16, 185, 129, 0.16);
-    --border-hover: rgba(16, 185, 129, 0.45);
-    
-    --text-primary: #f8fafc;
-    --text-muted: #94a3b8;
-    --text-dark: #64748b;
+    /* Warm & Earthy Light Theme (MLS Scout) */
+    --bg-main: #FAF6F0;
+    --bg-panel: #F5EFE3;
+    --bg-card: rgba(255, 255, 255, 0.90);
+    --bg-card-solid: #FFFFFF;
+    --bg-card-hover: rgba(250, 244, 235, 0.95);
+    --bg-input: #FFFFFF;
+    --border-color: rgba(47, 75, 60, 0.16);
+    --border-hover: rgba(47, 75, 60, 0.40);
 
-    --accent-emerald: #10b981;
-    --accent-emerald-bright: #34d399;
-    --accent-gold: #fbbf24;
-    --accent-gold-gradient: linear-gradient(135deg, #fde047 0%, #d97706 100%);
-    --accent-blue: #6366f1;
-    --accent-cyan: #38bdf8;
-    --accent-purple: #a855f7;
-    --accent-red: #ef4444;
+    --text-primary: #3A342A;
+    --text-muted: #8A7F6E;
+    --text-dark: #B0A48F;
 
-    --badge-active: #059669;
-    --badge-pending: #d97706;
-    --badge-closed: #dc2626;
+    --accent-emerald: #2F4B3C;
+    --accent-emerald-bright: #4F7A63;
+    --accent-gold: #C1892E;
+    --accent-gold-gradient: linear-gradient(135deg, #E8C468 0%, #B4552E 100%);
+    --accent-blue: #5B7C99;
+    --accent-cyan: #6FA8A0;
+    --accent-purple: #8B6F8C;
+    --accent-red: #B0463A;
 
-    --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.6), 0 4px 12px -2px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 20px 35px -5px rgba(0, 0, 0, 0.75), 0 10px 15px -5px rgba(0, 0, 0, 0.5);
-    --shadow-glow: 0 0 25px rgba(16, 185, 129, 0.2);
+    --badge-active: #4F7A46;
+    --badge-pending: #B87A2A;
+    --badge-closed: #8F5A42;
+
+    --shadow-md: 0 8px 24px -4px rgba(58, 52, 42, 0.12), 0 4px 12px -2px rgba(58, 52, 42, 0.08);
+    --shadow-lg: 0 20px 35px -5px rgba(58, 52, 42, 0.16), 0 10px 15px -5px rgba(58, 52, 42, 0.10);
+    --shadow-glow: 0 0 25px rgba(217, 164, 65, 0.25);
     --radius-sm: 8px;
     --radius-md: 14px;
     --radius-lg: 20px;
@@ -46,13 +46,27 @@
     padding: 0;
 }
 
+/* Lucide icon defaults (replaces emoji glyphs in the header/KPI chrome) */
+[data-lucide] {
+    width: 1em;
+    height: 1em;
+    stroke-width: 2.1;
+    vertical-align: -0.15em;
+    color: currentColor;
+}
+.kpi-card-icon [data-lucide] {
+    width: 1.15em;
+    height: 1.15em;
+    color: var(--accent-emerald);
+}
+
 body {
     font-family: var(--font-sans);
     background-color: var(--bg-main);
     background-image: 
-        radial-gradient(circle at 50% 0%, #0e1a32 0%, #070a12 75%),
-        radial-gradient(circle at 100% 40%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 0% 70%, rgba(99, 102, 241, 0.07) 0%, transparent 50%);
+        radial-gradient(circle at 50% 0%, #FFFFFF 0%, #FAF6F0 75%),
+        radial-gradient(circle at 100% 40%, rgba(47, 75, 60, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 0% 70%, rgba(91, 124, 153, 0.07) 0%, transparent 50%);
     color: var(--text-primary);
     line-height: 1.5;
     min-height: 100vh;
@@ -66,7 +80,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 1rem 2rem;
-    background-color: #111827;
+    background-color: #FFFFFF;
     border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
@@ -84,11 +98,10 @@ body {
 }
 
 .brand-title {
-    font-size: 1.25rem;
+    font-family: var(--font-display);
+    font-size: 1.35rem;
     font-weight: 700;
-    background: linear-gradient(135deg, #f59e0b, #3b82f6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--accent-emerald);
 }
 
 .nav-actions {
@@ -113,12 +126,12 @@ body {
 }
 
 .btn-primary {
-    background-color: var(--accent-blue);
+    background-color: var(--accent-emerald);
     color: #ffffff;
 }
 
 .btn-primary:hover {
-    background-color: #2563eb;
+    background-color: #24392D;
 }
 
 .btn-secondary {
@@ -132,7 +145,7 @@ body {
 }
 
 .btn-gold {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
+    background: linear-gradient(135deg, #E8B968, #B87A2A);
     color: #ffffff;
 }
 
@@ -141,7 +154,7 @@ body {
 }
 
 .btn-emerald {
-    background: linear-gradient(135deg, #10b981, #059669);
+    background: linear-gradient(135deg, #7DA36C, #4F7A46);
     color: #ffffff;
 }
 
@@ -212,6 +225,32 @@ body {
     background-color: var(--bg-card-hover);
 }
 
+.user-dropdown-container {
+    position: relative;
+    display: inline-block;
+}
+
+.user-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 0.35rem 0;
+}
+
+.dropdown-item-danger {
+    color: var(--accent-red);
+}
+
+.dropdown-item-danger:hover {
+    background-color: rgba(176, 70, 58, 0.15);
+}
+
 /* Event log level badges */
 .log-level-badge {
     display: inline-block;
@@ -221,13 +260,13 @@ body {
     font-weight: 700;
     text-transform: uppercase;
 }
-.log-level-info { background-color: rgba(59, 130, 246, 0.15); color: var(--accent-blue); }
-.log-level-warn { background-color: rgba(245, 158, 11, 0.15); color: var(--accent-gold); }
-.log-level-error { background-color: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+.log-level-info { background-color: rgba(91, 124, 153, 0.15); color: var(--accent-blue); }
+.log-level-warn { background-color: rgba(217, 164, 65, 0.15); color: var(--accent-gold); }
+.log-level-error { background-color: rgba(176, 70, 58, 0.15); color: var(--accent-red); }
 
 /* Bookmarklet Banner */
 .bookmarklet-banner {
-    background: linear-gradient(90deg, #1e293b, #0f172a);
+    background: linear-gradient(90deg, #F7EFE0, #F0E4CC);
     border-bottom: 1px solid var(--border-color);
     padding: 0.75rem 2rem;
     display: flex;
@@ -245,11 +284,11 @@ body {
 .bookmarklet-btn {
     display: inline-block;
     padding: 0.4rem 1rem;
-    background: linear-gradient(135deg, #10b981, #059669);
+    background: linear-gradient(135deg, #7DA36C, #4F7A46);
     color: #fff;
     font-weight: 700;
     border-radius: 20px;
-    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 4px 10px rgba(47, 75, 60, 0.3);
     cursor: grab;
     user-select: none;
     text-decoration: none;
@@ -268,19 +307,19 @@ body {
 }
 
 .kpi-card {
-    background: linear-gradient(135deg, rgba(13, 21, 39, 0.95) 0%, rgba(17, 24, 39, 0.85) 100%);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.97) 0%, rgba(250, 244, 235, 0.92) 100%);
+    border: 1px solid rgba(47, 75, 60, 0.2);
     border-radius: var(--radius-md);
     padding: 0.9rem 1.15rem;
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 16px rgba(58, 52, 42, 0.4);
     transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .kpi-card:hover {
-    border-color: rgba(16, 185, 129, 0.45);
+    border-color: rgba(47, 75, 60, 0.45);
     transform: translateY(-2px);
 }
 
@@ -306,7 +345,7 @@ body {
 .kpi-value {
     font-size: 1.4rem;
     font-weight: 800;
-    color: #ffffff;
+    color: var(--text-primary);
     letter-spacing: -0.01em;
     line-height: 1.25;
 }
@@ -324,7 +363,7 @@ body {
     gap: 0.5rem;
     margin-left: 0.5rem;
     padding-left: 0.75rem;
-    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    border-left: 1px solid rgba(58, 52, 42, 0.10);
 }
 
 .user-display-name {
@@ -335,7 +374,7 @@ body {
 
 .btn-ghost {
     background: transparent;
-    border-color: rgba(255, 255, 255, 0.1);
+    border-color: rgba(58, 52, 42, 0.10);
     color: var(--text-muted);
 }
 
@@ -388,7 +427,7 @@ body {
     justify-content: space-between;
     padding-top: 0.6rem;
     margin-top: 0.4rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 1px solid rgba(58, 52, 42, 0.08);
     flex-wrap: wrap;
     gap: 0.75rem;
 }
@@ -420,7 +459,7 @@ body {
 .view-segmented-control .view-btn.active {
     background: var(--accent-blue);
     color: #ffffff;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 2px 8px rgba(91, 124, 153, 0.35);
 }
 
 .sort-control-group {
@@ -705,6 +744,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    padding-bottom: 120px;
 }
 
 .toolbar {
@@ -769,7 +809,7 @@ body {
     position: relative;
     width: 100%;
     height: 200px;
-    background-color: #000;
+    background-color: #F0EAE0;
 }
 
 .card-img {
@@ -802,11 +842,11 @@ body {
     font-size: 0.75rem;
     font-weight: 800;
     border-radius: 14px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    box-shadow: 0 2px 6px rgba(58, 52, 42,0.4);
 }
-.badge-matrix-fav { background-color: #d97706; color: #ffffff; border: 1px solid #fbbf24; }
-.badge-matrix-possibility { background-color: #0284c7; color: #ffffff; border: 1px solid #38bdf8; }
-.badge-matrix-dislike { background-color: #dc2626; color: #ffffff; border: 1px solid #f87171; }
+.badge-matrix-fav { background-color: #B87A2A; color: #ffffff; border: 1px solid #D9A441; }
+.badge-matrix-possibility { background-color: #3F5A70; color: #ffffff; border: 1px solid #7FA0B8; }
+.badge-matrix-dislike { background-color: #A8442E; color: #ffffff; border: 1px solid #C97A63; }
 
 .card-fav-btn {
     position: absolute;
@@ -829,6 +869,12 @@ body {
 
 .card-fav-btn.is-fav {
     color: var(--accent-gold);
+}
+
+.fav-star-icon {
+    width: 17px;
+    height: 17px;
+    display: block;
 }
 
 .card-body {
@@ -858,8 +904,8 @@ body {
     border-radius: 4px;
 }
 
-.delta-above { background-color: rgba(239, 68, 68, 0.2); color: #f87171; }
-.delta-below { background-color: rgba(16, 185, 129, 0.2); color: #34d399; }
+.delta-above { background-color: rgba(176, 70, 58, 0.2); color: #C97A63; }
+.delta-below { background-color: rgba(47, 75, 60, 0.2); color: #4F7A63; }
 
 .card-address {
     font-size: 0.95rem;
@@ -922,7 +968,7 @@ body {
     font-size: 0.8rem;
     color: var(--accent-gold);
     font-style: italic;
-    background-color: rgba(245, 158, 11, 0.1);
+    background-color: rgba(217, 164, 65, 0.1);
     padding: 0.5rem;
     border-radius: var(--radius-sm);
     border-left: 3px solid var(--accent-gold);
@@ -946,7 +992,7 @@ body {
 
 .scout-table th {
     padding: 0.85rem 1rem;
-    background-color: #111827;
+    background-color: #F0EAE0;
     color: var(--text-muted);
     font-weight: 600;
     border-bottom: 1px solid var(--border-color);
@@ -972,10 +1018,12 @@ body {
     background-color: var(--border-color);
     border-radius: var(--radius-md);
     overflow: hidden;
+    padding-bottom: 140px; /* Generous scroll clearance past floating compare dock */
+    margin-bottom: 2rem;
 }
 
 .matrix-row-header {
-    background-color: #111827;
+    background-color: #F0EAE0;
     padding: 1rem;
     font-weight: 700;
     color: var(--text-muted);
@@ -997,7 +1045,7 @@ body {
 .modal-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-color: rgba(0, 0, 0, 0.75);
+    background-color: rgba(58, 52, 42, 0.75);
     backdrop-filter: blur(4px);
     z-index: 1000;
     display: flex;
@@ -1037,6 +1085,91 @@ body {
 }
 
 .modal-close:hover { color: var(--text-primary); }
+
+.modal-content--surface {
+    padding: 0;
+    overflow: hidden;
+    background: var(--bg-main);
+    border-color: var(--accent-gold);
+}
+
+.modal-header--accent {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 3.5rem 0.85rem 1.25rem;
+    background: var(--bg-main);
+    border-bottom: 1px solid var(--accent-gold);
+}
+
+.modal-eyebrow {
+    display: inline-flex;
+    background: var(--accent-gold);
+    color: var(--accent-emerald);
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.modal-title--accent {
+    margin-top: 0.2rem;
+    color: var(--accent-emerald);
+}
+
+.modal-action-primary {
+    background: var(--accent-emerald);
+    color: var(--bg-main);
+    border-color: var(--accent-emerald);
+    font-size: 0.8rem;
+    padding: 0.4rem 0.85rem;
+    font-weight: 700;
+}
+
+.modal-action-primary:hover {
+    background: var(--accent-emerald-bright);
+    border-color: var(--accent-emerald-bright);
+}
+
+.modal-close--accent {
+    top: 0.85rem;
+    right: 1rem;
+    color: var(--accent-emerald);
+}
+
+.modal-content--confirm {
+    max-width: 520px;
+}
+
+.modal-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.modal-description {
+    margin-top: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+}
+
+.modal-field-label {
+    display: block;
+    margin-top: 1rem;
+}
+
+.modal-field-control {
+    width: 100%;
+    margin-top: 0.35rem;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    margin-top: 1rem;
+}
 
 .btn:disabled {
     opacity: 0.5;
@@ -1082,7 +1215,7 @@ body {
     object-fit: cover;
     border-radius: 6px;
     flex-shrink: 0;
-    background: #000;
+    background: #F0EAE0;
 }
 
 .pick-row-info {
@@ -1195,8 +1328,8 @@ body {
     flex-wrap: wrap;
     gap: 0.6rem 1.25rem;
     padding: 0.65rem 1rem;
-    background: rgba(59, 130, 246, 0.08);
-    border: 1px solid rgba(59, 130, 246, 0.25);
+    background: rgba(91, 124, 153, 0.08);
+    border: 1px solid rgba(91, 124, 153, 0.25);
     border-radius: var(--radius-sm);
     font-size: 0.82rem;
     margin-bottom: 1rem;
@@ -1249,10 +1382,24 @@ body {
 }
 
 .preset-pill.active {
-    background: rgba(251, 191, 36, 0.15);
+    background: rgba(217, 164, 65, 0.15);
     border-color: var(--accent-gold);
     color: var(--accent-gold);
     font-weight: 700;
+}
+
+/* Preset Action Buttons in Top Picks Modal */
+.btn-preset-active {
+    background: rgba(217, 164, 65, 0.22) !important;
+    border-color: var(--accent-gold) !important;
+    color: var(--accent-gold) !important;
+    font-weight: 800 !important;
+    box-shadow: 0 0 10px rgba(217, 164, 65, 0.35);
+}
+
+.pick-row-checked {
+    background: rgba(217, 164, 65, 0.08) !important;
+    border-color: rgba(217, 164, 65, 0.4) !important;
 }
 
 .recommend-view-toggle {
@@ -1289,7 +1436,7 @@ body {
 
 .score-badge-interactive:hover {
     transform: scale(1.05);
-    box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
+    box-shadow: 0 0 10px rgba(217, 164, 65, 0.4);
 }
 
 .situational-badge {
@@ -1298,14 +1445,14 @@ body {
     font-weight: 700;
     padding: 0.15rem 0.5rem;
     border-radius: 12px;
-    background: rgba(16, 185, 129, 0.15);
-    border: 1px solid rgba(16, 185, 129, 0.35);
+    background: rgba(47, 75, 60, 0.15);
+    border: 1px solid rgba(47, 75, 60, 0.35);
     color: var(--accent-green);
     margin-left: 0.4rem;
 }
 
 .situational-badge-top {
-    background: rgba(251, 191, 36, 0.15);
+    background: rgba(217, 164, 65, 0.15);
     border-color: var(--accent-gold);
     color: var(--accent-gold);
 }
@@ -1327,7 +1474,7 @@ body {
 .rank-card-breakdown {
     margin-top: 0.5rem;
     padding: 0.75rem;
-    background: rgba(0, 0, 0, 0.25);
+    background: rgba(58, 52, 42, 0.25);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     display: flex;
@@ -1351,7 +1498,7 @@ body {
 
 .breakdown-bar-bg {
     height: 6px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(58, 52, 42, 0.08);
     border-radius: 3px;
     overflow: hidden;
 }
@@ -1378,7 +1525,7 @@ body {
 }
 
 .recommend-table th {
-    background: #111827;
+    background: #F0EAE0;
     padding: 0.75rem 0.85rem;
     text-align: left;
     font-weight: 700;
@@ -1395,7 +1542,7 @@ body {
 }
 
 .recommend-table tr:hover td {
-    background: rgba(59, 130, 246, 0.05);
+    background: rgba(91, 124, 153, 0.05);
 }
 
 /* Matrix MLS Detail Report Styling */
@@ -1490,7 +1637,7 @@ body {
 }
 
 .room-table th {
-    background-color: #111827;
+    background-color: #F0EAE0;
     color: var(--accent-gold);
     font-weight: 700;
     text-transform: uppercase;
@@ -1512,7 +1659,7 @@ body {
 }
 
 .room-table tr:hover {
-    background-color: rgba(59, 130, 246, 0.08);
+    background-color: rgba(91, 124, 153, 0.08);
 }
 
 .level-badge {
@@ -1523,9 +1670,9 @@ body {
     border-radius: 4px;
 }
 
-.level-main { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-.level-basement { background-color: rgba(139, 92, 246, 0.2); color: #c084fc; }
-.level-upper { background-color: rgba(16, 185, 129, 0.2); color: #34d399; }
+.level-main { background-color: rgba(91, 124, 153, 0.2); color: #6B8CA3; }
+.level-basement { background-color: rgba(139, 92, 246, 0.2); color: #A98BA8; }
+.level-upper { background-color: rgba(47, 75, 60, 0.2); color: #4F7A63; }
 
 /* Responsive adjustments */
 @media (max-width: 992px) {
@@ -1689,13 +1836,13 @@ body {
     align-items: center;
     justify-content: center;
     gap: 4px;
-    background: linear-gradient(135deg, var(--accent-blue), #1d4ed8);
+    background: linear-gradient(135deg, var(--accent-blue), #3F5A70);
     color: #ffffff;
     font-weight: 800;
     font-size: 0.8rem;
     padding: 5px 12px;
     border-radius: 20px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 0 2px rgba(255,255,255,0.8);
+    box-shadow: 0 4px 12px rgba(58, 52, 42,0.5), 0 0 0 2px rgba(255,255,255,0.8);
     white-space: nowrap;
     text-align: center;
     cursor: pointer;
@@ -1715,7 +1862,7 @@ body {
 }
 
 .custom-map-pin.fav-pin {
-    background: linear-gradient(135deg, var(--accent-gold), #d97706);
+    background: linear-gradient(135deg, var(--accent-gold), #B87A2A);
     color: #ffffff;
 }
 
@@ -1767,14 +1914,14 @@ body {
     cursor: pointer;
     user-select: none;
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(58, 52, 42, 0.04);
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .filter-accordion summary:hover {
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(58, 52, 42, 0.07);
 }
 
 .filter-accordion-content {
@@ -1804,8 +1951,8 @@ body {
     align-items: center;
     gap: 0.4rem;
     padding: 0.25rem 0.6rem;
-    background: rgba(59, 130, 246, 0.15);
-    border: 1px solid rgba(59, 130, 246, 0.4);
+    background: rgba(91, 124, 153, 0.15);
+    border: 1px solid rgba(91, 124, 153, 0.4);
     color: var(--text-primary);
     border-radius: 12px;
     font-size: 0.8rem;
@@ -1828,12 +1975,12 @@ body {
     background: var(--bg-card-solid);
     border: 1px solid var(--accent-blue);
     border-radius: 14px;
-    color: #ffffff;
+    color: var(--text-primary);
     font-weight: 700;
     font-size: 0.75rem;
     padding: 3px 8px;
     white-space: nowrap;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 10px rgba(58, 52, 42,0.4);
     text-align: center;
     transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
     cursor: pointer;
@@ -1846,18 +1993,18 @@ body {
 }
 
 .leaflet-price-pin.pin-highlight {
-    background: linear-gradient(135deg, #fbbf24, #d97706) !important;
+    background: linear-gradient(135deg, #D9A441, #B87A2A) !important;
     color: #ffffff !important;
-    border-color: #fde047 !important;
+    border-color: #E8C468 !important;
     transform: scale(1.35) !important;
-    box-shadow: 0 0 20px rgba(251, 191, 36, 0.9), 0 0 10px rgba(217, 119, 6, 0.8) !important;
+    box-shadow: 0 0 20px rgba(217, 164, 65, 0.9), 0 0 10px rgba(180, 85, 46, 0.8) !important;
     z-index: 99999 !important;
 }
 
 .property-card.is-map-hovered {
     border-color: var(--accent-gold) !important;
     transform: translateY(-4px) scale(1.02);
-    box-shadow: 0 0 25px rgba(251, 191, 36, 0.35), var(--shadow-lg);
+    box-shadow: 0 0 25px rgba(217, 164, 65, 0.35), var(--shadow-lg);
 }
 
 .leaflet-price-pin.status-pending {
@@ -1926,8 +2073,8 @@ body {
 
 /* Matrix Compare Winner Highlight */
 .matrix-cell-winner {
-    background: rgba(16, 185, 129, 0.18) !important;
-    border: 1px solid rgba(16, 185, 129, 0.4) !important;
+    background: rgba(47, 75, 60, 0.18) !important;
+    border: 1px solid rgba(47, 75, 60, 0.4) !important;
     font-weight: 700;
     color: var(--accent-green) !important;
 }
@@ -1965,9 +2112,9 @@ body {
     width: 100%;
     max-width: 680px;
     height: 100vh;
-    background: #0f172a;
+    background: #FFFFFF;
     border-left: 1px solid var(--border-color);
-    box-shadow: -10px 0 35px rgba(0, 0, 0, 0.6);
+    box-shadow: -10px 0 35px rgba(58, 52, 42, 0.14);
     display: flex;
     flex-direction: column;
     transform: translateX(100%);
@@ -1980,7 +2127,7 @@ body {
 
 .drawer-header {
     padding: 1.25rem 1.5rem;
-    background: #111827;
+    background: #F5EFE3;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     align-items: center;
@@ -1992,7 +2139,7 @@ body {
     flex-wrap: wrap;
     gap: 0.4rem;
     padding: 0.75rem 1rem;
-    background: #0b0f19;
+    background: #F0EAE0;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -2003,8 +2150,8 @@ body {
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-muted);
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(58, 52, 42, 0.04);
+    border: 1px solid rgba(58, 52, 42, 0.10);
     border-radius: 6px;
     white-space: nowrap;
     cursor: pointer;
@@ -2014,13 +2161,13 @@ body {
 
 .drawer-tab-btn:hover {
     color: var(--text-primary);
-    background: rgba(255, 255, 255, 0.07);
-    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(58, 52, 42, 0.07);
+    border-color: rgba(58, 52, 42, 0.16);
 }
 
 .drawer-tab-btn.active {
     color: var(--accent-gold);
-    background: rgba(251, 191, 36, 0.12);
+    background: rgba(217, 164, 65, 0.12);
     border-color: var(--accent-gold);
     font-weight: 700;
 }
@@ -2048,7 +2195,7 @@ body {
 
 .drawer-footer {
     padding: 1.25rem 1.5rem;
-    background: #111827;
+    background: #F5EFE3;
     border-top: 1px solid var(--border-color);
     display: flex;
     align-items: center;
@@ -2058,7 +2205,7 @@ body {
 
 .badge-filter-count {
     background: var(--accent-gold);
-    color: #000000;
+    color: #3A342A;
     font-size: 0.75rem;
     font-weight: 800;
     padding: 0.15rem 0.5rem;
@@ -2072,6 +2219,113 @@ body {
         min-width: 110px;
         font-size: 0.75rem;
         padding: 0.45rem 0.5rem;
+    }
+}
+
+/* ==========================================================================
+   MOBILE / TABLET RESPONSIVENESS PASS (Sept 2026 hardening pass, item #14)
+   The 992px/1024px/600px rules above handle the sidebar/map-split/drawer-tab
+   cases specifically; these two tiers cover everything else: the top navbar,
+   KPI grid, property grid, comparison matrix, and modal sizing/tap targets.
+   ========================================================================== */
+@media (max-width: 768px) {
+    .navbar {
+        flex-wrap: wrap;
+        row-gap: 0.6rem;
+        padding: 0.75rem 1rem;
+    }
+
+    .brand-subtitle {
+        display: none;
+    }
+
+    .nav-actions {
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 0.5rem;
+    }
+
+    .nav-actions .btn {
+        padding: 0.45rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .kbd-badge {
+        display: none;
+    }
+
+    .stats-bar {
+        margin: 1rem 1rem 0 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.6rem;
+    }
+
+    .main-container {
+        padding: 1rem 1rem 1.5rem 1rem;
+    }
+
+    .top-filter-container {
+        padding: 0 1rem;
+    }
+
+    .property-grid {
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 1rem;
+    }
+
+    /* The comparison matrix uses a fixed 200px label column plus auto-fit data
+       columns (min 240px each) — on a phone that's wider than the viewport no
+       matter what, so it needs its own horizontal scroll instead of pushing
+       the whole page wide. (Table view already has this via .table-container.) */
+    .matrix-container {
+        overflow-x: auto;
+    }
+
+    .modal-content {
+        width: 95%;
+        padding: 1.25rem;
+    }
+
+    .modal-close {
+        top: 1rem;
+        right: 1rem;
+    }
+
+    /* Touch-friendly tap targets (44px minimum) for icon-only controls that
+       are sized for a mouse cursor today. */
+    .btn-icon,
+    .modal-close {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .dropdown-menu {
+        min-width: 190px;
+    }
+}
+
+@media (max-width: 480px) {
+    .brand-title {
+        font-size: 1.05rem;
+    }
+
+    .brand-icon {
+        font-size: 1.4rem;
+    }
+
+    .stats-bar {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .property-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-content {
+        padding: 1rem;
     }
 }
 
@@ -2113,7 +2367,7 @@ body {
     pointer-events: none;
     z-index: -1;
     overflow: hidden;
-    background: radial-gradient(circle at 50% 0%, #0d1527 0%, #070a12 75%);
+    background: radial-gradient(circle at 50% 0%, #FFFFFF 0%, #FAF6F0 75%);
 }
 
 .ambient-spot {
@@ -2130,7 +2384,7 @@ body {
     right: 5%;
     width: 750px;
     height: 750px;
-    background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(5, 150, 105, 0.04) 55%, transparent 75%);
+    background: radial-gradient(circle, rgba(47, 75, 60, 0.22) 0%, rgba(47, 75, 60, 0.04) 55%, transparent 75%);
 }
 
 .ambient-blue {
@@ -2138,7 +2392,7 @@ body {
     left: 2%;
     width: 850px;
     height: 850px;
-    background: radial-gradient(circle, rgba(251, 191, 36, 0.18) 0%, rgba(217, 119, 6, 0.03) 60%, transparent 80%);
+    background: radial-gradient(circle, rgba(217, 164, 65, 0.18) 0%, rgba(180, 85, 46, 0.03) 60%, transparent 80%);
 }
 
 /* Seamless Full-Viewport Emerald Topographic Map & Location Radar Flow */
@@ -2146,8 +2400,8 @@ body {
     position: absolute;
     inset: 0;
     background-image: 
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='600' viewBox='0 0 800 600' fill='none' stroke='rgba(16,185,129,0.1)' stroke-width='1.2'%3E%3Cpath d='M-100 100 C 200 200, 400 50, 900 150'/%3E%3Cpath d='M-100 220 C 250 320, 450 170, 900 270'/%3E%3Cpath d='M-100 340 C 300 440, 500 290, 900 390'/%3E%3Cpath d='M-100 460 C 350 560, 550 410, 900 510'/%3E%3Ccircle cx='620' cy='200' r='50' stroke='rgba(251,191,36,0.12)' stroke-dasharray='4 4'/%3E%3Ccircle cx='620' cy='200' r='90' stroke='rgba(16,185,129,0.09)' stroke-dasharray='6 6'/%3E%3Cpath d='M620 90 V310 M510 200 H730' stroke='rgba(251,191,36,0.09)' stroke-dasharray='2 4'/%3E%3C/svg%3E"),
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='600' viewBox='0 0 800 600' fill='none' stroke='rgba(251,191,36,0.09)' stroke-width='1.2'%3E%3Cpath d='M-100 180 C 150 20, 550 350, 900 180'/%3E%3Cpath d='M-100 300 C 200 140, 600 470, 900 300'/%3E%3Cpath d='M-100 420 C 250 260, 650 590, 900 420'/%3E%3Ccircle cx='200' cy='420' r='55' stroke='rgba(16,185,129,0.11)' stroke-dasharray='4 4'/%3E%3Ccircle cx='200' cy='420' r='100' stroke='rgba(251,191,36,0.08)' stroke-dasharray='6 6'/%3E%3Cpath d='M200 300 V540 M80 420 H320' stroke='rgba(16,185,129,0.08)' stroke-dasharray='2 4'/%3E%3C/svg%3E");
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='600' viewBox='0 0 800 600' fill='none' stroke='rgba(47, 75, 60,0.1)' stroke-width='1.2'%3E%3Cpath d='M-100 100 C 200 200, 400 50, 900 150'/%3E%3Cpath d='M-100 220 C 250 320, 450 170, 900 270'/%3E%3Cpath d='M-100 340 C 300 440, 500 290, 900 390'/%3E%3Cpath d='M-100 460 C 350 560, 550 410, 900 510'/%3E%3Ccircle cx='620' cy='200' r='50' stroke='rgba(217, 164, 65,0.12)' stroke-dasharray='4 4'/%3E%3Ccircle cx='620' cy='200' r='90' stroke='rgba(47, 75, 60,0.09)' stroke-dasharray='6 6'/%3E%3Cpath d='M620 90 V310 M510 200 H730' stroke='rgba(217, 164, 65,0.09)' stroke-dasharray='2 4'/%3E%3C/svg%3E"),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='600' viewBox='0 0 800 600' fill='none' stroke='rgba(217, 164, 65,0.09)' stroke-width='1.2'%3E%3Cpath d='M-100 180 C 150 20, 550 350, 900 180'/%3E%3Cpath d='M-100 300 C 200 140, 600 470, 900 300'/%3E%3Cpath d='M-100 420 C 250 260, 650 590, 900 420'/%3E%3Ccircle cx='200' cy='420' r='55' stroke='rgba(47, 75, 60,0.11)' stroke-dasharray='4 4'/%3E%3Ccircle cx='200' cy='420' r='100' stroke='rgba(217, 164, 65,0.08)' stroke-dasharray='6 6'/%3E%3Cpath d='M200 300 V540 M80 420 H320' stroke='rgba(47, 75, 60,0.08)' stroke-dasharray='2 4'/%3E%3C/svg%3E");
     background-size: 800px 600px, 800px 600px;
     background-position: 0 0, 400px 300px;
     background-repeat: repeat, repeat;
@@ -2170,33 +2424,53 @@ body {
 
 .property-card:hover {
     transform: translateY(-5px) scale(1.008);
-    box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.5), 0 0 25px rgba(251, 191, 36, 0.12);
-    border-color: rgba(251, 191, 36, 0.35);
+    box-shadow: 0 16px 36px -6px rgba(58, 52, 42, 0.5), 0 0 25px rgba(217, 164, 65, 0.12);
+    border-color: rgba(217, 164, 65, 0.35);
 }
 
-/* Compare Checkbox Button on Cards */
-.card-compare-btn {
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    z-index: 10;
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: var(--text-primary);
-    font-size: 0.75rem;
+/* Bottom-Right Compare Checkbox on Cards */
+.card-footer-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 0.5rem;
+    padding-top: 0.4rem;
+    border-top: 1px dashed rgba(58, 52, 42, 0.12);
+}
+
+.card-compare-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
     font-weight: 600;
-    padding: 0.3rem 0.6rem;
-    border-radius: 20px;
+    color: var(--text-muted);
+    background: rgba(240, 234, 224, 0.7);
+    border: 1px solid var(--border-color);
+    padding: 0.25rem 0.65rem;
+    border-radius: 14px;
     cursor: pointer;
-    backdrop-filter: blur(8px);
+    user-select: none;
     transition: all 0.2s ease;
 }
 
-.card-compare-btn:hover, .card-compare-btn.is-comparing {
-    background: var(--accent-gold);
-    color: #000;
+.card-compare-checkbox-label:hover {
     border-color: var(--accent-gold);
+    color: var(--text-primary);
+}
+
+.card-compare-checkbox-label.is-checked {
+    background: rgba(217, 164, 65, 0.15);
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
     font-weight: 700;
+}
+
+.card-compare-checkbox {
+    accent-color: var(--accent-gold);
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
 }
 
 /* Floating Bottom Property Compare Dock */
@@ -2208,11 +2482,11 @@ body {
     z-index: 900;
     width: 90%;
     max-width: 760px;
-    background: rgba(15, 23, 42, 0.92);
+    background: rgba(255, 255, 255, 0.92);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(251, 191, 36, 0.3);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(251, 191, 36, 0.15);
+    border: 1px solid rgba(217, 164, 65, 0.3);
+    box-shadow: 0 20px 40px rgba(58, 52, 42, 0.6), 0 0 30px rgba(217, 164, 65, 0.15);
     border-radius: 18px;
     padding: 0.75rem 1.25rem;
     animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -2244,7 +2518,7 @@ body {
 }
 
 .badge-gold {
-    background: rgba(251, 191, 36, 0.15);
+    background: rgba(217, 164, 65, 0.15);
     border: 1px solid var(--accent-gold);
     color: var(--accent-gold);
     font-size: 0.75rem;
@@ -2280,7 +2554,7 @@ body {
     position: absolute;
     top: -2px;
     right: -2px;
-    background: rgba(239, 68, 68, 0.9);
+    background: rgba(176, 70, 58, 0.9);
     color: #fff;
     font-size: 0.6rem;
     width: 16px;
@@ -2298,9 +2572,63 @@ body {
     gap: 0.5rem;
 }
 
-/* Side-by-Side Comparison Matrix Modal */
+/* Side-by-Side Comparison Matrix Modal & Explanation Banner */
+.matrix-info-banner {
+    background: rgba(250, 244, 235, 0.9);
+    border: 1px solid rgba(47, 75, 60, 0.25);
+    border-radius: var(--radius-md);
+    padding: 0.9rem 1.15rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 4px 15px rgba(58, 52, 42, 0.3);
+    backdrop-filter: var(--glass-backdrop);
+}
+
+.matrix-info-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.matrix-info-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--accent-emerald-bright);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.matrix-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 0.6rem 1.25rem;
+    font-size: 0.825rem;
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+
+.matrix-info-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.matrix-info-item strong {
+    color: var(--text-primary);
+}
+
+.modal-matrix-banner {
+    margin-bottom: 1.25rem;
+}
+
 .compare-matrix-modal {
     max-width: 1100px !important;
+}
+
+.compare-matrix-modal .modal-body {
+    padding-bottom: 120px !important;
 }
 
 .compare-table {
@@ -2318,7 +2646,7 @@ body {
 }
 
 .compare-table th.metric-col {
-    background: rgba(15, 23, 42, 0.6);
+    background: rgba(240, 234, 224, 0.6);
     color: var(--text-muted);
     font-weight: 600;
     width: 160px;
@@ -2352,7 +2680,7 @@ body {
 }
 
 .compare-table tr:hover td {
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(58, 52, 42, 0.03);
 }
 
 /* Gallery & Multi-Photo Viewer Styles */
@@ -2496,13 +2824,13 @@ body {
 
 .gallery-thumb-item:hover {
     opacity: 0.9;
-    border-color: rgba(251, 191, 36, 0.5);
+    border-color: rgba(217, 164, 65, 0.5);
 }
 
 .gallery-thumb-item.active {
     opacity: 1;
     border-color: var(--accent-gold);
-    box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
+    box-shadow: 0 0 10px rgba(217, 164, 65, 0.4);
 }
 
 .gallery-thumb-item img {
@@ -2526,7 +2854,7 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.2);
     pointer-events: none;
     z-index: 2;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 6px rgba(58, 52, 42, 0.3);
 }
 
 /* Global Print Stylesheet */
@@ -2544,6 +2872,848 @@ body {
     .modal-overlay, .modal-close, button, input, select, .nav-actions, .ambient-bg-glow {
         display: none !important;
     }
+}
+
+/* Realtor Collaboration Portal Modal & Page Styles */
+.realtor-container {
+    max-width: 1320px;
+    margin: 1.5rem auto 3rem auto;
+    padding: 0 1.5rem;
+}
+.realtor-kpi-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+.realtor-kpi-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-md);
+}
+.realtor-kpi-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 0.2rem;
+}
+.realtor-kpi-val {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text-primary);
+}
+.realtor-kpi-sub {
+    font-size: 0.75rem;
+    color: var(--accent-gold);
+    margin-top: 0.2rem;
+}
+.realtor-filter-panel {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+.realtor-filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.85rem;
+}
+.realtor-search-box {
+    flex: 1;
+    min-width: 240px;
+    position: relative;
+}
+.realtor-search-box input {
+    width: 100%;
+    padding: 0.55rem 1rem 0.55rem 2.4rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 0.88rem;
+}
+.realtor-search-box .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+.realtor-select-pill {
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.5rem 0.85rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+.realtor-select-pill:focus, .realtor-select-pill:hover {
+    border-color: var(--accent-blue);
+}
+.realtor-grid-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+}
+@media (max-width: 960px) {
+    .realtor-grid-container {
+        grid-template-columns: 1fr;
+    }
+}
+.realtor-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    box-shadow: var(--shadow-md);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.realtor-card:hover {
+    border-color: var(--border-hover);
+}
+.realtor-media {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: #0b0f19;
+}
+.realtor-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+.realtor-card-badges-overlay {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    flex-wrap: wrap;
+    z-index: 2;
+}
+.realtor-card-rating-overlay {
+    position: absolute;
+    bottom: 0.75rem;
+    right: 0.75rem;
+    background: #0f172a;
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    color: var(--accent-gold);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    z-index: 2;
+}
+.realtor-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    flex: 1;
+}
+.badge-matrix-review {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+.badge-matrix-fav {
+    background: #d97706;
+    color: #ffffff;
+    border: 1px solid #fbbf24;
+}
+.badge-matrix-possibility {
+    background: #0284c7;
+    color: #ffffff;
+    border: 1px solid #38bdf8;
+}
+.badge-matrix-dislike {
+    background: #dc2626;
+    color: #ffffff;
+    border: 1px solid #f87171;
+}
+.badge-matrix-unreviewed {
+    background: #475569;
+    color: #ffffff;
+    border: 1px solid #94a3b8;
+}
+.realtor-notes-box {
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem;
+}
+
+/* Notification Center Bell & Dropdown */
+.nav-notification-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+.btn-notification-bell {
+    position: relative;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    padding: 0.45rem;
+    border-radius: 50%;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+.btn-notification-bell:hover {
+    background: var(--bg-input);
+}
+.notification-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: var(--accent-red);
+    color: #ffffff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0.1rem 0.35rem;
+    border-radius: 10px;
+    border: 2px solid var(--bg-main);
+    line-height: 1;
+}
+.notification-dropdown {
+    display: none;
+    position: absolute;
+    top: 120%;
+    right: 0;
+    width: 340px;
+    max-height: 420px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+    flex-direction: column;
+    overflow: hidden;
+}
+.notification-dropdown.active {
+    display: flex;
+}
+.notification-header {
+    padding: 0.75rem 1rem;
+    background: var(--bg-input);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.notification-list {
+    overflow-y: auto;
+    max-height: 340px;
+}
+.realtor-avatar-lg {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--accent-gold);
+}
+.realtor-avatar-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--accent-gold);
+}
+
+/* ==========================================================================
+   REALTOR COMMAND CENTER & DASHBOARD STYLES
+   ========================================================================== */
+.realtor-dashboard-wrapper {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.realtor-cc-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 1.25rem;
+    align-items: start;
+}
+
+@media (max-width: 900px) {
+    .realtor-cc-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Sidebar Roster */
+.realtor-roster-sidebar {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.sidebar-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-main);
+}
+
+.client-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.client-roster-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.client-roster-card:hover {
+    border-color: var(--accent-gold);
+    transform: translateY(-1px);
+}
+
+.client-roster-card.active {
+    background: var(--bg-secondary);
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 1px var(--accent-gold);
+}
+
+.client-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--accent-gold);
+    color: #000;
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.client-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+
+.client-stage-pill {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    border: 1px solid;
+    margin-top: 0.2rem;
+    display: inline-block;
+}
+
+/* Workspace Main */
+.realtor-workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.client-workspace-header {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.client-header-main {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.client-header-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-gold), #d97706);
+    color: #fff;
+    font-weight: 800;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.client-header-name {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text-main);
+}
+
+.client-header-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+.client-header-meta span {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.pipeline-selector-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.35rem;
+}
+
+.pipeline-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.pipeline-chips {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.pipeline-chip {
+    padding: 0.3rem 0.65rem;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-input);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pipeline-chip:hover {
+    border-color: var(--accent-gold);
+}
+
+/* Subnav Bar */
+.realtor-subnav-bar {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.4rem 0.6rem;
+}
+
+.realtor-subnav-tabs {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.realtor-tab-btn {
+    background: transparent;
+    border: none;
+    padding: 0.55rem 1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+}
+
+.realtor-tab-btn:hover {
+    color: var(--text-main);
+    background: var(--bg-input);
+}
+
+.realtor-tab-btn.active {
+    color: var(--accent-gold);
+    background: var(--bg-secondary);
+    font-weight: 700;
+}
+
+/* Status Matrix Columns */
+.status-matrix-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+.matrix-column {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.matrix-col-header h4 {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-main);
+}
+
+.matrix-col-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.matrix-empty-pill {
+    padding: 1.5rem 0.75rem;
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    background: var(--bg-input);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--border-color);
+}
+
+/* Property Card inside Realtor Portal */
+.realtor-prop-card {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.realtor-prop-card:hover {
+    border-color: var(--accent-gold);
+}
+
+.realtor-card-thumb {
+    position: relative;
+    height: 120px;
+    width: 100%;
+}
+
+.realtor-card-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.realtor-card-price {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+}
+
+.btn-prop-chat-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.btn-prop-chat-badge.has-msg {
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+}
+
+.realtor-card-body {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.realtor-card-address {
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.realtor-card-specs {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+/* Dual Note Boxes */
+.note-box {
+    border-radius: 6px;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.client-note-box {
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+    color: var(--text-main);
+}
+
+.realtor-private-note-box {
+    background: rgba(234, 179, 8, 0.08);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    color: var(--text-main);
+}
+
+.note-box-title {
+    font-weight: 700;
+    font-size: 0.75rem;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.realtor-note-textarea {
+    width: 100%;
+    min-height: 54px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-main);
+    font-size: 0.8rem;
+    padding: 0.4rem;
+    resize: vertical;
+}
+
+.realtor-note-textarea:focus {
+    border-color: var(--accent-gold);
+    outline: none;
+}
+
+.note-save-status {
+    font-size: 0.7rem;
+    color: var(--accent-emerald-bright);
+    margin-top: 0.2rem;
+    display: block;
+}
+
+/* Realtor Chat Styles */
+.realtor-chat-container {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    height: 480px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-header-bar {
+    padding: 0.85rem 1.15rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-input);
+}
+
+.chat-header-bar h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.chat-messages-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.chat-bubble-row {
+    display: flex;
+    width: 100%;
+}
+
+.chat-sent {
+    justify-content: flex-end;
+}
+
+.chat-received {
+    justify-content: flex-start;
+}
+
+.chat-bubble {
+    max-width: 75%;
+    padding: 0.65rem 0.9rem;
+    border-radius: 12px;
+    font-size: 0.88rem;
+}
+
+.chat-sent .chat-bubble {
+    background: linear-gradient(135deg, var(--accent-gold), #b45309);
+    color: #ffffff;
+    border-bottom-right-radius: 2px;
+}
+
+.chat-received .chat-bubble {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    border-bottom-left-radius: 2px;
+}
+
+.chat-prop-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    opacity: 0.9;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.chat-msg-time {
+    font-size: 0.68rem;
+    opacity: 0.75;
+    margin-top: 0.25rem;
+    text-align: right;
+}
+
+.chat-input-bar {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.5rem;
+    background: var(--bg-input);
+}
+
+/* Tour Planner */
+.realtor-tour-planner {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+}
+
+.tour-planner-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.tour-list-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.tour-item-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+}
+
+.tour-step-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent-gold);
+    color: #000;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tour-prop-info {
+    flex: 1;
+}
+
+.tour-prop-title {
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--text-main);
+}
+
+.tour-prop-sub {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.tour-inputs {
+    display: flex;
+    gap: 0.5rem;
 }
 
 

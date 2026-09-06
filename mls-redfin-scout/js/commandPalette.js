@@ -5,7 +5,6 @@ import { elements, state } from './state.js';
 import { switchView } from './views.js';
 import { applyFiltersAndRender } from './filters.js';
 import { exportCSV } from './export.js';
-import { toggleTheme } from './theme.js';
 import { escapeHtml } from './properties.js';
 import { openRecommendModal } from './recommend.js';
 // openDetailModal is called here but not imported: it's exposed on window by detailModal.js
@@ -36,15 +35,14 @@ import { openRecommendModal } from './recommend.js';
 
         // View Actions
         const actions = [
-            { icon: '🎴', title: 'Switch to Card Grid View', action: () => switchView('grid') },
-            { icon: '🗺️', title: 'Switch to Interactive Map View', action: () => switchView('map') },
-            { icon: '📊', title: 'Switch to Table View', action: () => switchView('table') },
-            { icon: '⚖️', title: 'Switch to Comparison Matrix View', action: () => switchView('matrix') },
-            { icon: '⭐', title: 'Filter: Favorites Only', action: () => { elements.toggleFavorites.checked = true; state.filters.favoritesOnly = true; applyFiltersAndRender(); switchView('grid'); } },
-            { icon: '🤝', title: 'Filter: Shared with Realtor Only', action: () => { elements.toggleRealtorShared.checked = true; state.filters.realtorSharedOnly = true; applyFiltersAndRender(); switchView('grid'); } },
-            { icon: '✨', title: 'Top Picks: Rank My Favorites', action: () => openRecommendModal() },
-            { icon: '📄', title: 'Export Properties to CSV', action: () => exportCSV() },
-            { icon: '🌙', title: 'Toggle Light / Dark Theme', action: () => toggleTheme() }
+            { icon: 'layout-grid', title: 'Switch to Card Grid View', action: () => switchView('grid') },
+            { icon: 'map', title: 'Switch to Interactive Map View', action: () => switchView('map') },
+            { icon: 'table', title: 'Switch to Table View', action: () => switchView('table') },
+            { icon: 'scale', title: 'Switch to Comparison Matrix View', action: () => switchView('matrix') },
+            { icon: 'star', title: 'Filter: Favorites Only', action: () => { elements.toggleFavorites.checked = true; state.filters.favoritesOnly = true; applyFiltersAndRender(); switchView('grid'); } },
+            { icon: 'handshake', title: 'Filter: Shared with Realtor Only', action: () => { elements.toggleRealtorShared.checked = true; state.filters.realtorSharedOnly = true; applyFiltersAndRender(); switchView('grid'); } },
+            { icon: 'sparkles', title: 'Top Picks: Rank My Favorites', action: () => openRecommendModal() },
+            { icon: 'file-text', title: 'Export Properties to CSV', action: () => exportCSV() }
         ];
 
         actions.forEach(act => {
@@ -65,7 +63,7 @@ import { openRecommendModal } from './recommend.js';
             if (query && textMatch.includes(query)) {
                 results.push({
                     type: 'property',
-                    icon: '🏠',
+                    icon: 'home',
                     title: `$${p.price.toLocaleString()} - ${p.address}`,
                     subtitle: `${p.city}, CO | MLS #${p.mls_id} | ${p.beds} Beds, ${p.baths} Baths`,
                     execute: () => openDetailModal(p.mls_id)
@@ -81,7 +79,7 @@ import { openRecommendModal } from './recommend.js';
         elements.cmdPaletteResults.innerHTML = results.slice(0, 8).map((res, idx) => `
             <div class="cmd-item ${idx === 0 ? 'selected' : ''}" data-idx="${idx}">
                 <div style="display:flex; align-items:center; gap:0.75rem;">
-                    <span style="font-size:1.2rem;">${res.icon}</span>
+                    <span style="font-size:1.2rem;"><i data-lucide="${res.icon}"></i></span>
                     <div>
                         <div class="cmd-item-title">${escapeHtml(res.title)}</div>
                         <div class="cmd-item-subtitle">${escapeHtml(res.subtitle)}</div>
@@ -90,6 +88,7 @@ import { openRecommendModal } from './recommend.js';
                 <span style="font-size:0.75rem; color:var(--text-muted);">Jump ↵</span>
             </div>
         `).join('');
+        if (window.lucide) window.lucide.createIcons();
 
         // Attach click listeners to items
         elements.cmdPaletteResults.querySelectorAll('.cmd-item').forEach((itemEl, idx) => {
