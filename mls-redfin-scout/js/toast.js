@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - Toast Notifications
+ * Nycto's MLS Property Scout - Toast Notifications
  */
 import { elements } from './state.js';
 import { escapeHtml } from './properties.js';

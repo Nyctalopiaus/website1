@@ -1,6 +1,6 @@
 <?php
 /**
- * MLS & Redfin Property Scout - Backend Bootstrap
+ * Nycto's MLS Property Scout - Backend Bootstrap
  * Session/CORS setup, SQLite connection, schema creation and migrations.
  * Included by api.php before auth.php and properties.php.
  */
@@ -271,6 +271,7 @@ try {
             current_sort TEXT DEFAULT 'price-desc',
             compare_list_json TEXT DEFAULT '[]',
             active_filters_json TEXT DEFAULT '{}',
+            custom_reaction_chips_json TEXT DEFAULT '[]',
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
@@ -495,6 +496,7 @@ try {
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_scrape_tokens_expiry ON scrape_tokens(expires_at)", 'scrape_tokens.expires_at');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_scrape_runs_user_started ON scrape_runs(initiated_by_user_id, started_at DESC)", 'scrape_runs.user_started');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_user_preferences_id ON user_preferences(user_id)", 'idx_user_preferences_id');
+    runMigration($pdo, "ALTER TABLE user_preferences ADD COLUMN custom_reaction_chips_json TEXT DEFAULT '[]'", 'user_preferences.custom_reaction_chips_json');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_saved_filters_user_id ON saved_filters(user_id)", 'idx_saved_filters_user_id');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_saved_filters_target ON saved_filters(target_user_id)", 'idx_saved_filters_target');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_users_realtor ON users(realtor_id)", 'idx_users_realtor');

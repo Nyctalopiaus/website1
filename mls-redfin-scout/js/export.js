@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - CSV / JSON Export
+ * Nycto's MLS Property Scout - CSV / JSON Export
  */
 import { state } from './state.js';
 import { showToast } from './toast.js';
@@ -109,4 +109,56 @@ export function exportFavoritesToHomeward() {
     const favorites = all.filter(p => p.favorite || getPropertyReviewStatus(p) === 'favorite');
     sendPropertiesToHomeward(favorites);
 }
+
+export function downloadTourCalendarICS(properties, client) {
+    const props = properties || [];
+    if (!props.length) {
+        return showToast('No properties in showing itinerary to export', 'warning');
+    }
+    const clientName = client ? (client.full_name || client.username) : 'Client';
+    const nowStr = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+    const icsLines = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//MLS Redfin Scout//Realtor Showing Itinerary//EN',
+        'CALSCALE:GREGORIAN',
+        'METHOD:PUBLISH'
+    ];
+
+    props.forEach((p, idx) => {
+        const addr = p.address ? `${p.address}, ${p.city || ''} ${p.state || ''}` : `Stop #${idx + 1}`;
+        const showingTime = p.showing_time ? new Date(p.showing_time) : new Date(Date.now() + (idx * 3600000));
+        const startTimeStr = isNaN(showingTime.getTime()) ? nowStr : showingTime.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        const endTime = new Date((isNaN(showingTime.getTime()) ? new Date() : showingTime).getTime() + 45 * 60000);
+        const endTimeStr = endTime.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+        const summary = `Showing Stop #${idx + 1}: ${p.address || p.mls_id}`;
+        const description = `Property Showing for ${clientName}\\nMLS #${p.mls_id}\\nPrice: $${(p.price || 0).toLocaleString()}\\nAccess Instructions: ${p.access_notes || 'None'}\\nPost-showing Feedback: ${p.feedback || 'None'}`;
+        const location = addr.replace(/,/g, '\\,');
+
+        icsLines.push('BEGIN:VEVENT');
+        icsLines.push(`UID:scout-showing-${p.mls_id}-${idx}-${Date.now()}@scout`);
+        icsLines.push(`DTSTAMP:${nowStr}`);
+        icsLines.push(`DTSTART:${startTimeStr}`);
+        icsLines.push(`DTEND:${endTimeStr}`);
+        icsLines.push(`SUMMARY:${summary}`);
+        icsLines.push(`DESCRIPTION:${description}`);
+        icsLines.push(`LOCATION:${location}`);
+        icsLines.push('STATUS:CONFIRMED');
+        icsLines.push('END:VEVENT');
+    });
+
+    icsLines.push('END:VCALENDAR');
+
+    const blob = new Blob([icsLines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = window.URL.createObjectURL(blob);
+    link.setAttribute('download', `showing_tour_${clientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Calendar Itinerary (.ics) Exported', 'success');
+}
+
 

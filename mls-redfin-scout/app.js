@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - Main Dashboard Entry Point
+ * Nycto's MLS Property Scout - Main Dashboard Entry Point
  * Wires up the app: init() runs once on DOMContentLoaded, bindEvents() attaches every DOM
  * event listener. Split out of what used to be one 2155-line file - see js/*.js for the
  * feature modules (auth, filters, map, view renderers, etc.) this file wires together.
@@ -31,7 +31,7 @@ import {
 import { openCompareMatrix, closeCompareMatrix, clearCompare } from './js/compare.js';
 import {
     openAdminCleanupModal, closeAdminCleanupModal, fetchAdminCleanupPreview,
-    renderAdminCleanupTable, selectCandidateHomes, clearSelection, toggleSelectAll, markSelectedForImageRetry,
+    renderAdminCleanupTable, selectCandidateHomes, selectStaleCandidates, clearSelection, toggleSelectAll, markSelectedForImageRetry,
     handleAdminCleanupExecute, updateCleanupSelectionSummary
 } from './js/adminCleanup.js';
 import {
@@ -86,7 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function init() {
         try { initTheme(); } catch (e) { console.error('Theme init error:', e); }
         try { if (window.lucide) window.lucide.createIcons(); } catch (e) {}
-        try { initSavedFilterPreferences(); } catch (e) { console.error('Filter prefs init error:', e); }
         try { bindEvents(); } catch (e) { console.error('Bind events error:', e); }
         try { setupFilterConsoleDrawer(); } catch (e) { console.error('Filter drawer setup error:', e); }
         try { setupBookmarkletLink(); } catch (e) { console.error('Bookmarklet link setup error:', e); }
@@ -95,13 +94,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     function initSavedFilterPreferences() {
-        // 1. Restore Active View (URL Hash > localStorage > Default 'grid')
+        // 1. Restore Active View (URL Hash > localStorage > Role Default 'admin'/'realtor' > 'grid')
         const hashView = window.location.hash.replace('#', '');
         const savedView = localStorage.getItem('scout_active_view');
-        const isRealtorUser = state.currentUserProfile?.role === 'realtor' || state.currentUserProfile?.role === 'admin';
+        const role = state.currentUserProfile?.role;
+        const isAdminUser = state.isAdmin || role === 'admin';
+        const isRealtorUser = role === 'realtor';
+        const defaultRoleView = isAdminUser ? 'admin' : (isRealtorUser ? 'realtor' : (savedView || 'grid'));
+
         const targetView = (hashView && ['grid', 'map', 'table', 'matrix', 'realtor', 'admin'].includes(hashView))
             ? hashView
-            : (isRealtorUser ? 'realtor' : (savedView || 'grid'));
+            : (savedView || defaultRoleView);
 
         state.activeView = targetView;
         document.querySelectorAll('.view-btn').forEach(b => {
@@ -131,6 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedMatrixStatus = localStorage.getItem('scout_filter_matrix_status');
         if (savedMatrixStatus) state.filters.matrixStatus = savedMatrixStatus;
     }
+    window.initSavedFilterPreferences = initSavedFilterPreferences;
 
     // Theme Switcher & Toast System
 
@@ -152,7 +156,11 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (e.key === 'Escape') {
                 closeCommandPalette();
                 closeRealtorPortalModal();
-                document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+                document.querySelectorAll('.modal-overlay.active').forEach(m => {
+                    if (m.id !== 'modal-login') {
+                        m.classList.remove('active');
+                    }
+                });
             }
         });
 
@@ -289,6 +297,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (banner) banner.style.display = 'none';
         });
 
+        // Realtor Tools Dropdown Menu
+        document.getElementById('btn-realtor-tools-menu')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const menu = document.getElementById('realtor-tools-dropdown-menu');
+            if (menu) menu.classList.toggle('open');
+        });
+
         // User Dropdown Menu & Account Modals
         if (elements.btnUserMenu) {
             elements.btnUserMenu.addEventListener('click', (e) => {
@@ -300,6 +315,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const container = document.getElementById('user-dropdown-container');
             if (container && !container.contains(e.target)) {
                 closeUserMenu();
+            }
+            const realtorToolsContainer = document.getElementById('realtor-tools-dropdown-container');
+            if (realtorToolsContainer && !realtorToolsContainer.contains(e.target)) {
+                document.getElementById('realtor-tools-dropdown-menu')?.classList.remove('open');
             }
             if (elements.adminDropdown && !elements.adminDropdown.contains(e.target)) {
                 closeAdminMenu();
@@ -363,6 +382,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) {
+                    if (overlay.id === 'modal-login') {
+                        return;
+                    }
                     overlay.classList.remove('active');
                     if (overlay.id === 'modal-realtor-portal') {
                         closeRealtorPortalModal();
@@ -396,9 +418,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.btnAdminCleanupCancel) elements.btnAdminCleanupCancel.addEventListener('click', closeAdminCleanupModal);
         if (elements.btnCleanupRefresh) elements.btnCleanupRefresh.addEventListener('click', fetchAdminCleanupPreview);
         if (elements.cleanupFilterStatus) elements.cleanupFilterStatus.addEventListener('change', renderAdminCleanupTable);
+        if (elements.cleanupStaleThreshold) elements.cleanupStaleThreshold.addEventListener('change', fetchAdminCleanupPreview);
         if (elements.cleanupModeSelect) elements.cleanupModeSelect.addEventListener('change', updateCleanupSelectionSummary);
         if (elements.cleanupProtectFavorites) elements.cleanupProtectFavorites.addEventListener('change', renderAdminCleanupTable);
         if (elements.btnCleanupSelectUnprotected) elements.btnCleanupSelectUnprotected.addEventListener('click', selectCandidateHomes);
+        if (elements.btnCleanupSelectStale) elements.btnCleanupSelectStale.addEventListener('click', selectStaleCandidates);
         if (elements.btnCleanupClearSelection) elements.btnCleanupClearSelection.addEventListener('click', clearSelection);
         if (elements.btnCleanupRetryImages) elements.btnCleanupRetryImages.addEventListener('click', markSelectedForImageRetry);
         if (elements.cleanupSelectAll) elements.cleanupSelectAll.addEventListener('change', toggleSelectAll);

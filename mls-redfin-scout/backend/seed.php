@@ -1,6 +1,6 @@
 <?php
 /**
- * Fixture Data Seeder for MLS & Redfin Property Scout
+ * Fixture Data Seeder for Nycto's MLS Property Scout
  *
  * CLI-only by design: this has no auth of its own and upserts fixture rows straight into
  * properties.db. It's meant for `php backend/seed.php` during local setup, never for a web

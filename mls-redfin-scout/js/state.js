@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - Shared State
+ * Nycto's MLS Property Scout - Shared State
  * CONFIG, the app's mutable state object, cached DOM element references, and the Leaflet
  * map's mutable refs (grouped under mapState since ES module bindings can't be reassigned
  * by importers - only their properties can be mutated). Every other module imports from here.
@@ -22,6 +22,7 @@
         csrfToken: '',
         compareList: [],
         collections: [],
+        userCustomChips: [],
         filters: {
             search: '',
             priceMin: null, priceMax: null,
@@ -193,14 +194,18 @@
         cleanupStatPropsSub: document.getElementById('cleanup-stat-props-sub'),
         cleanupStatPhotos: document.getElementById('cleanup-stat-photos'),
         cleanupStatPhotosBytes: document.getElementById('cleanup-stat-photos-bytes'),
+        cleanupStatStale: document.getElementById('cleanup-stat-stale'),
+        cleanupStatStaleSub: document.getElementById('cleanup-stat-stale-sub'),
         cleanupStatOrphans: document.getElementById('cleanup-stat-orphans'),
         cleanupStatOrphansBytes: document.getElementById('cleanup-stat-orphans-bytes'),
         cleanupStatReclaimable: document.getElementById('cleanup-stat-reclaimable'),
         cleanupStatImageIssues: document.getElementById('cleanup-stat-image-issues'),
         cleanupFilterStatus: document.getElementById('cleanup-filter-status'),
+        cleanupStaleThreshold: document.getElementById('cleanup-stale-threshold'),
         cleanupModeSelect: document.getElementById('cleanup-mode-select'),
         cleanupProtectFavorites: document.getElementById('cleanup-protect-favorites'),
         btnCleanupSelectUnprotected: document.getElementById('btn-cleanup-select-unprotected'),
+        btnCleanupSelectStale: document.getElementById('btn-cleanup-select-stale'),
         btnCleanupClearSelection: document.getElementById('btn-cleanup-clear-selection'),
         btnCleanupRetryImages: document.getElementById('btn-cleanup-retry-images'),
         btnCleanupRefresh: document.getElementById('btn-cleanup-refresh'),

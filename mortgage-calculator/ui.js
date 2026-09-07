@@ -2108,9 +2108,25 @@ export function attachTooltipPositioning() {
     icon.style.setProperty('--tooltip-shift-x', `${shift}px`);
   };
 
+  const handleTouch = (event) => {
+    event.stopPropagation();
+    const icon = event.currentTarget;
+    reposition(event);
+    const wasActive = icon.classList.contains('touch-active');
+    document.querySelectorAll('.tooltip-icon.touch-active').forEach(el => el.classList.remove('touch-active'));
+    if (!wasActive) {
+      icon.classList.add('touch-active');
+    }
+  };
+
   document.querySelectorAll('.tooltip-icon').forEach(icon => {
     icon.addEventListener('mouseenter', reposition);
     icon.addEventListener('focus', reposition);
+    icon.addEventListener('click', handleTouch);
+  });
+
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.tooltip-icon.touch-active').forEach(el => el.classList.remove('touch-active'));
   });
 }
 
@@ -2878,6 +2894,7 @@ export function setupLoanComparisonModal(domRefs, onSelectPrice) {
       targetModal.classList.remove('hidden');
       targetModal.removeAttribute('hidden');
       targetModal.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('modal-open');
     }
 
     const currentPrice = parseFloat(domRefs.homePriceInput?.value) || 400000;
@@ -2915,6 +2932,10 @@ export function setupLoanComparisonModal(domRefs, onSelectPrice) {
       targetModal.style.display = 'none';
       targetModal.classList.add('hidden');
       targetModal.setAttribute('aria-hidden', 'true');
+      const openModals = document.querySelectorAll('.modal-overlay:not(.hidden)');
+      if (openModals.length === 0) {
+        document.body.classList.remove('modal-open');
+      }
     }
   };
 

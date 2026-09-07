@@ -820,15 +820,15 @@
         </div>
 
         <div class="panel-card collapsible" id="rates-card">
-          <button type="button" class="collapsible-header" id="rates-toggle" data-section-key="ratesAndTaxes" aria-expanded="true" aria-controls="rates-body">
-            <h2>Rates & Taxes</h2>
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-              <span id="btn-load-rates" role="button" tabindex="0" aria-label="Fetch current mortgage rates from live data" style="font-size: 0.75rem; color: var(--accent-emerald); background: var(--accent-emerald-dim); padding: 0.35rem 0.75rem; border-radius: 1rem; border: 1px solid rgba(229, 193, 88, 0.3); font-weight: 600; cursor: pointer; transition: all 0.2s; flex-shrink: 0;">
-                <svg class="icon" aria-hidden="true"><use href="#icon-bolt"/></svg> Load Live Rates
-              </span>
+          <div class="collapsible-header-wrap">
+            <button type="button" class="collapsible-header" id="rates-toggle" data-section-key="ratesAndTaxes" aria-expanded="true" aria-controls="rates-body">
+              <h2>Rates &amp; Taxes</h2>
               <span class="chevron" aria-hidden="true">▾</span>
-            </div>
-          </button>
+            </button>
+            <button type="button" id="btn-load-rates" class="btn-load-rates-pill" aria-label="Fetch current mortgage rates from live data">
+              <svg class="icon" aria-hidden="true"><use href="#icon-bolt"/></svg> Load Live Rates
+            </button>
+          </div>
           <div class="collapsible-body" id="rates-body">
           <span id="rates-attribution" class="rates-attribution-text" style="display: block; margin-bottom: 1rem; font-size: 0.7rem; color: var(--text-muted);"></span>
 

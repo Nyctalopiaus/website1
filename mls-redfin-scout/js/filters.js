@@ -497,8 +497,8 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
 
         if (clientGroup) clientGroup.style.display = 'flex';
 
-        clientSelect.innerHTML = `<option value="all">👥 All Clients (${clients.length})</option>` +
-            clients.map(c => `<option value="${c.id}">👤 ${escapeHtml(c.full_name || c.username)} [${c.initials || 'CL'}]</option>`).join('');
+        clientSelect.innerHTML = `<option value="all">All Clients (${clients.length})</option>` +
+            clients.map(c => `<option value="${c.id}">${escapeHtml(c.full_name || c.username)} [${c.initials || 'CL'}]</option>`).join('');
 
         if (state.filters.selectedClientId) {
             clientSelect.value = state.filters.selectedClientId;
@@ -510,7 +510,7 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         if (!selectPresets) return;
 
         if (!state.authenticated) {
-            selectPresets.innerHTML = `<option value="">💾 Presets (0)...</option>`;
+            selectPresets.innerHTML = `<option value="">Presets (0)...</option>`;
             return;
         }
 
@@ -544,7 +544,7 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
                     visibleFilters = res.filters.filter(f => String(f.user_id) === String(selClient) || String(f.target_user_id) === String(selClient) || String(f.created_by_user_id) === String(selClient));
                 }
 
-                selectPresets.innerHTML = `<option value="">💾 Presets (${visibleFilters.length})...</option>` +
+                selectPresets.innerHTML = `<option value="">Presets (${visibleFilters.length})...</option>` +
                     visibleFilters.map(f => `<option value="${f.id}">${escapeHtml(f.display_name || f.name)}</option>`).join('');
             }
         } catch (e) {

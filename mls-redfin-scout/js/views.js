@@ -1,35 +1,241 @@
 /**
- * MLS & Redfin Property Scout - View Switching & Renderers (grid/table/matrix)
+ * Nycto's MLS Property Scout - View Switching & Renderers (grid/table/matrix)
  */
 import { state, elements } from './state.js';
-import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './properties.js';
+import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG, getStatusBadgeClass } from './properties.js';
 import { renderMap, highlightMapMarker, unhighlightMapMarker } from './map.js';
 import { showToast } from './toast.js';
 import { updateCompareButtons } from './compare.js';
 import { renderAdminView } from './adminView.js';
+import { apiFetch } from './api.js';
 
+function tryParseTags(jsonStr) {
+    if (!jsonStr) return [];
+    try {
+        const parsed = JSON.parse(jsonStr);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+        return [];
+    }
+}
 
-    export function updateKPIs() {
-        const total = state.allProperties.length;
-        const filtered = state.filteredProperties;
-        const activeCount = filtered.filter(p => p.status === 'Active').length;
-        const favCount = state.allProperties.filter(p => p.favorite).length;
-        const sharedCount = state.allProperties.filter(p => p.shared_with_realtor).length;
+export async function fetchAdminStats() {
+    if (!state.authenticated || !state.isAdmin) return;
+    try {
+        const [usersResult, cleanupResult] = await Promise.all([
+            apiFetch('backend/api.php?action=list_users'),
+            apiFetch('backend/api.php?action=admin_cleanup_preview')
+        ]);
+        const users = usersResult?.users || [];
+        const summary = cleanupResult?.summary || {};
+        state.adminStats = {
+            userCount: users.length,
+            clientCount: users.filter(u => u.role === 'client').length,
+            missingAddressCount: summary.missing_address_count || 0,
+            orphanFilesCount: summary.orphan_files_count || 0,
+            invalidImageCount: summary.invalid_primary_preview_count || 0
+        };
+        updateKPIs();
+    } catch (e) {
+        console.error('Error fetching admin stats:', e);
+    }
+}
+window.fetchAdminStats = fetchAdminStats;
 
-        const totalPrice = filtered.reduce((acc, p) => acc + p.price, 0);
-        const totalSqft = filtered.reduce((acc, p) => acc + p.sqft_finished, 0);
+export function updateKPIs() {
+    const statsBar = document.querySelector('.stats-bar');
+    if (!statsBar) return;
+
+    const total = state.allProperties.length;
+    const filtered = state.filteredProperties;
+    const activeCount = filtered.filter(p => p.status === 'Active').length;
+
+    if (state.authenticated && state.isAdmin) {
+        const stats = state.adminStats || {
+            userCount: '-',
+            clientCount: '-',
+            missingAddressCount: 0,
+            orphanFilesCount: 0
+        };
+        const hiddenCount = state.allProperties.filter(p => p.is_hidden).length;
+
+        statsBar.innerHTML = `
+            <section class="user-top-panel">
+                <div class="user-top-panel-header">
+                    <div>
+                        <h2 class="user-top-panel-title"><i data-lucide="shield-check"></i> System Operations</h2>
+                        <p class="user-top-panel-sub">System metrics, user accounts & data maintenance.</p>
+                    </div>
+                </div>
+                <div class="user-top-panel-grid">
+                    <div class="user-panel-card" onclick="if(window.switchView) window.switchView('admin');" title="Open Admin Operations">
+                        <div class="user-panel-card-header">
+                            <span class="user-panel-card-label">Listings DB</span>
+                            <i data-lucide="database" style="color:var(--accent-emerald);"></i>
+                        </div>
+                        <div class="user-panel-card-value">${total}</div>
+                        <div class="user-panel-card-sub">${activeCount} Active${hiddenCount ? ` / ${hiddenCount} Hidden` : ''}</div>
+                    </div>
+
+                    <div class="user-panel-card" onclick="if(window.openUserMgmtModal) window.openUserMgmtModal();" title="Open User Management">
+                        <div class="user-panel-card-header">
+                            <span class="user-panel-card-label">User Roster</span>
+                            <i data-lucide="users" style="color:var(--accent-blue);"></i>
+                        </div>
+                        <div class="user-panel-card-value">${stats.userCount}</div>
+                        <div class="user-panel-card-sub">${stats.clientCount === '-' ? 'User Accounts' : `${stats.clientCount} Client accounts`}</div>
+                    </div>
+
+                    <div class="user-panel-card" onclick="if(window.switchView) window.switchView('admin');" title="View Address Quality Queue" style="${stats.missingAddressCount > 0 ? 'border-color: rgba(176,70,58,0.5);' : ''}">
+                        <div class="user-panel-card-header">
+                            <span class="user-panel-card-label">Address Fix</span>
+                            <i data-lucide="map-pin-off" style="color:${stats.missingAddressCount > 0 ? 'var(--accent-red)' : 'var(--text-muted)'};"></i>
+                        </div>
+                        <div class="user-panel-card-value" style="${stats.missingAddressCount > 0 ? 'color: var(--accent-red);' : ''}">${stats.missingAddressCount}</div>
+                        <div class="user-panel-card-sub">Listings needing fix</div>
+                    </div>
+
+                    <div class="user-panel-card" onclick="if(window.openAdminCleanupModal) window.openAdminCleanupModal();" title="Open Media Cleanup" style="${stats.orphanFilesCount > 0 ? 'border-color: rgba(184,122,42,0.5);' : ''}">
+                        <div class="user-panel-card-header">
+                            <span class="user-panel-card-label">Media Cleanup</span>
+                            <i data-lucide="image-off" style="color:${stats.orphanFilesCount > 0 ? 'var(--accent-gold)' : 'var(--text-muted)'};"></i>
+                        </div>
+                        <div class="user-panel-card-value" style="${stats.orphanFilesCount > 0 ? 'color: var(--accent-gold);' : ''}">${stats.orphanFilesCount}</div>
+                        <div class="user-panel-card-sub">Files to clean</div>
+                    </div>
+                </div>
+            </section>
+        `;
+    } else {
+        const totalPrice = filtered.reduce((acc, p) => acc + (p.price || 0), 0);
+        const totalSqft = filtered.reduce((acc, p) => acc + (p.sqft_finished || 0), 0);
         const avgPrice = filtered.length ? Math.round(totalPrice / filtered.length) : 0;
         const avgSqft = filtered.length ? Math.round(totalSqft / filtered.length) : 0;
         const avgPpsqft = totalSqft ? Math.round(totalPrice / totalSqft) : 0;
 
-        if (elements.kpiTotal) elements.kpiTotal.innerText = filtered.length;
-        if (elements.kpiTotalSub) elements.kpiTotalSub.innerText = `${activeCount} Active`;
-        if (elements.kpiFavorites) elements.kpiFavorites.innerText = favCount;
-        if (elements.kpiShared) elements.kpiShared.innerText = sharedCount;
-        if (elements.kpiAvgPrice) elements.kpiAvgPrice.innerText = `$${avgPrice.toLocaleString()}`;
-        if (elements.kpiAvgSqftPrice) elements.kpiAvgSqftPrice.innerText = `$${avgPpsqft} / SqFt`;
-        if (elements.kpiAvgSqft) elements.kpiAvgSqft.innerText = `${avgSqft.toLocaleString()}`;
+        const priceDropCount = filtered.filter(p => p.price_reduced || p.price_drop || (p.original_price && p.original_price > p.price)).length;
+        
+        function parseListDate(dateStr) {
+            if (!dateStr) return null;
+            const str = String(dateStr).trim();
+            const parts = str.split('/');
+            if (parts.length === 3) {
+                let m = parseInt(parts[0], 10) - 1;
+                let d = parseInt(parts[1], 10);
+                let y = parseInt(parts[2], 10);
+                if (y < 100) y += 2000;
+                const dt = new Date(y, m, d);
+                if (!Number.isNaN(dt.getTime())) return dt;
+            }
+            const isoDt = new Date(str.replace(' ', 'T'));
+            if (!Number.isNaN(isoDt.getTime())) return isoDt;
+            return null;
+        }
+
+        const nowMs = Date.now();
+        const domList = filtered.map(p => {
+            if (typeof p.days_on_market === 'number') return p.days_on_market;
+            const dt = parseListDate(p.list_date);
+            if (dt) {
+                const days = Math.max(0, Math.round((nowMs - dt.getTime()) / (1000 * 60 * 60 * 24)));
+                return Number.isNaN(days) ? null : days;
+            }
+            return null;
+        }).filter(val => val !== null);
+        const hasRealDom = domList.length > 0;
+        const avgDom = hasRealDom ? Math.round(domList.reduce((a, b) => a + b, 0) / domList.length) : 0;
+
+        const collapsedText = document.getElementById('dashboard-collapsed-summary-text');
+        if (collapsedText) {
+            collapsedText.innerHTML = `<b>${filtered.length}</b> Properties &nbsp;•&nbsp; <b>$${avgPrice.toLocaleString()}</b> Avg Price &nbsp;•&nbsp; <b>${priceDropCount}</b> Price Drops${hasRealDom ? ` &nbsp;•&nbsp; Avg <b>${avgDom} Days</b>` : ''}`;
+        }
+
+        statsBar.innerHTML = `
+            <section class="user-top-panel">
+                <div class="user-top-panel-header">
+                    <div>
+                        <h2 class="user-top-panel-title"><i data-lucide="bar-chart-3"></i> Search Intelligence</h2>
+                        <p class="user-top-panel-sub">Live metrics for current search criteria.</p>
+                    </div>
+                    <button class="btn-dashboard-collapse" onclick="if(window.toggleUserDashboard) window.toggleUserDashboard(true);" title="Collapse Dashboard Metrics" type="button">
+                        <i data-lucide="chevron-up"></i> Collapse
+                    </button>
+                </div>
+                <div class="user-top-panel-grid">
+                    <div class="user-panel-card" title="Total properties matching current filters">
+                        <div class="user-panel-card-header">
+                            <span class="user-panel-card-label">Properties</span>
+                            <i data-lucide="home" style="color:var(--accent-emerald);"></i>
+                        </div>
+                        <div class="user-panel-card-value">${filtered.length}</div>
+                        <div class="user-panel-card-sub">${activeCount} Active listings</div>
+                    </div>
+
+                    <div class="user-panel-card" title="Properties with recent price reductions">
+                        <div class="user-panel-card-header">
+                            <span class="user-panel-card-label">Price Drops</span>
+                            <i data-lucide="trending-down" style="color:${priceDropCount ? 'var(--accent-emerald)' : 'var(--accent-gold)'};"></i>
+                        </div>
+                        <div class="user-panel-card-value">${priceDropCount}</div>
+                        <div class="user-panel-card-sub">${priceDropCount ? 'Recent price cuts' : 'Active reductions'}</div>
+                    </div>
+
+                    <div class="user-panel-card" title="Average listing price and price per sqft">
+                        <div class="user-panel-card-header">
+                            <span class="user-panel-card-label">Avg List Price</span>
+                            <i data-lucide="dollar-sign" style="color:var(--accent-gold);"></i>
+                        </div>
+                        <div class="user-panel-card-value">$${avgPrice.toLocaleString()}</div>
+                        <div class="user-panel-card-sub">$${avgPpsqft} / SqFt</div>
+                    </div>
+
+                    <div class="user-panel-card" title="${hasRealDom ? 'Average days on market' : 'Average finished square footage'}">
+                        <div class="user-panel-card-header">
+                            <span class="user-panel-card-label">${hasRealDom ? 'Avg Market Time' : 'Avg SqFt'}</span>
+                            <i data-lucide="${hasRealDom ? 'clock' : 'ruler'}" style="color:var(--accent-blue);"></i>
+                        </div>
+                        <div class="user-panel-card-value">${hasRealDom ? `${avgDom} Days` : avgSqft.toLocaleString()}</div>
+                        <div class="user-panel-card-sub">${hasRealDom ? 'Average listing age' : 'Finished living area'}</div>
+                    </div>
+                </div>
+            </section>
+        `;
     }
+
+    if (window.lucide) window.lucide.createIcons();
+}
+
+window.toggleUserDashboard = function(collapse) {
+    const topGrid = document.querySelector('.user-dashboard-top-grid');
+    const strip = document.getElementById('dashboard-collapsed-strip');
+    const isCollapsed = collapse !== undefined ? collapse : !topGrid?.classList.contains('collapsed');
+
+    if (topGrid) {
+        if (isCollapsed) {
+            topGrid.classList.add('collapsed');
+            if (strip) strip.style.display = 'flex';
+            localStorage.setItem('user_dashboard_collapsed', 'true');
+        } else {
+            topGrid.classList.remove('collapsed');
+            if (strip) strip.style.display = 'none';
+            localStorage.setItem('user_dashboard_collapsed', 'false');
+        }
+    }
+    if (window.lucide) window.lucide.createIcons();
+};
+
+export function syncDashboardCollapseState() {
+    const isCollapsed = localStorage.getItem('user_dashboard_collapsed') === 'true';
+    const topGrid = document.querySelector('.user-dashboard-top-grid');
+    const strip = document.getElementById('dashboard-collapsed-strip');
+    if (topGrid && isCollapsed) {
+        topGrid.classList.add('collapsed');
+        if (strip) strip.style.display = 'flex';
+    } else if (topGrid) {
+        topGrid.classList.remove('collapsed');
+        if (strip) strip.style.display = 'none';
+    }
+}
 
     export function renderActiveView() {
         if (state.activeView === 'admin' && !state.isAdmin) {
@@ -47,10 +253,12 @@ import { renderAdminView } from './adminView.js';
         const adminContainer = document.getElementById('view-admin-container');
         if (adminContainer) adminContainer.style.display = 'none';
 
+        const topGrid = document.querySelector('.user-dashboard-top-grid');
         const statsBar = document.querySelector('.stats-bar');
         const topFilterContainer = document.querySelector('.top-filter-container');
 
         if (state.activeView === 'realtor') {
+            if (topGrid) topGrid.style.display = 'none';
             if (statsBar) statsBar.style.display = 'none';
             if (topFilterContainer) topFilterContainer.style.display = 'none';
             if (realtorContainer) {
@@ -58,6 +266,7 @@ import { renderAdminView } from './adminView.js';
                 if (window.renderRealtorView) window.renderRealtorView();
             }
         } else if (state.activeView === 'admin') {
+            if (topGrid) topGrid.style.display = 'none';
             if (statsBar) statsBar.style.display = 'none';
             if (topFilterContainer) topFilterContainer.style.display = 'none';
             if (adminContainer) {
@@ -65,8 +274,10 @@ import { renderAdminView } from './adminView.js';
                 renderAdminView();
             }
         } else {
+            if (topGrid) topGrid.style.display = 'grid';
             if (statsBar) statsBar.style.display = 'grid';
             if (topFilterContainer) topFilterContainer.style.display = 'block';
+            syncDashboardCollapseState();
 
             if (state.activeView === 'grid') {
                 elements.gridContainer.style.display = 'grid';
@@ -138,7 +349,7 @@ export function switchView(viewName) {
             <div class="property-card" data-mls="${p.mls_id}" onclick="openDetailModal('${p.mls_id}')">
                 <div class="card-media">
                     <img src="${escapeHtml(imgUrl)}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="card-img" alt="${escapeHtml(p.address || 'Property photo')}">
-                    <span class="card-status-badge badge-${(p.status || 'Active').toLowerCase().replace(/[^a-z0-9-]/g, '')}">${escapeHtml(p.status || '')}</span>
+                    <span class="card-status-badge ${getStatusBadgeClass(p.status)}">${escapeHtml(p.status || '')}</span>
                     ${photoBadge}
                     <button class="card-fav-btn ${p.favorite ? 'is-fav' : ''}" onclick="toggleFavorite('${p.mls_id}', event)" aria-label="${p.favorite ? 'Remove from favorites' : 'Add to favorites'}" aria-pressed="${p.favorite ? 'true' : 'false'}" title="${p.favorite ? 'Remove from favorites' : 'Add to favorites'}">
                         <svg class="fav-star-icon" viewBox="0 0 24 24" fill="${p.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 2.5l2.98 6.04 6.67.97-4.83 4.7 1.14 6.65L12 17.77l-5.96 3.13 1.14-6.65-4.83-4.7 6.67-.97L12 2.5z"/></svg>
@@ -166,6 +377,13 @@ export function switchView(viewName) {
                         ${p.hoa_fee ? `<span class="score-badge" style="background:#B87A2A; color:#fff;">HOA: $${p.hoa_fee}</span>` : '<span class="score-badge">No HOA</span>'}
                         ${matrixBadge}
                     </div>
+                    ${(() => {
+                        const tags = Array.isArray(p.tags_json) ? p.tags_json : (Array.isArray(p.tags) ? p.tags : (typeof p.tags_json === 'string' ? (tryParseTags(p.tags_json)) : []));
+                        if (!tags || !tags.length) return '';
+                        const displayTags = tags.slice(0, 3);
+                        const extraCount = tags.length - 3;
+                        return `<div class="card-reaction-chips" style="display:flex; flex-wrap:wrap; gap:0.25rem; margin-top:0.4rem;">${displayTags.map(t => `<span class="card-reaction-pill">${escapeHtml(t)}</span>`).join('')}${extraCount > 0 ? `<span class="card-reaction-pill pill-more">+${extraCount}</span>` : ''}</div>`;
+                    })()}
                     ${p.user_notes ? `<div class="card-notes-preview"><i data-lucide="file-text"></i> ${escapeHtml(p.user_notes)}</div>` : ''}
                     <div class="card-footer-row">
                         <label class="card-compare-checkbox-label ${isComparing ? 'is-checked' : ''}" onclick="event.stopPropagation();" title="Select to include in Compare Matrix (up to 4)">
@@ -236,7 +454,7 @@ export function switchView(viewName) {
 
                         return `
                             <tr onclick="openDetailModal('${p.mls_id}')" style="cursor:pointer;">
-                                <td><span class="card-status-badge badge-${escapeHtml((p.status || 'Active').toLowerCase())}">${escapeHtml(p.status || '')}</span></td>
+                                <td><span class="badge ${getStatusBadgeClass(p.status)}">${escapeHtml(p.status || '')}</span></td>
                                 <td>${matrixBadge}</td>
                                 <td><strong>${escapeHtml(cleanDisplayAddress(p.address, p.mls_id))}</strong><br><small style="color:var(--text-muted);">${escapeHtml(p.city || '')}, ${escapeHtml(p.zip || '')}</small></td>
                                 <td style="font-weight:700; color:var(--accent-gold);">$${p.price.toLocaleString()}</td>
@@ -345,7 +563,7 @@ export function switchView(viewName) {
                 <select class="matrix-col-select input-text" data-col-idx="${idx}" style="font-size:0.75rem; padding:0.25rem 0.4rem; width:100%; font-weight:600; background:var(--bg-input); border-color:var(--border-color); color:var(--accent-gold);">
                     ${availableProps.map(ap => `
                         <option value="${ap.mls_id}" ${String(ap.mls_id) === String(p.mls_id) ? 'selected' : ''}>
-                            ${ap.favorite ? '⭐ ' : ''}${escapeHtml(cleanDisplayAddress(ap.address, ap.mls_id))} ($${ap.price.toLocaleString()})
+                            ${ap.favorite ? '★ ' : ''}${escapeHtml(cleanDisplayAddress(ap.address, ap.mls_id))} ($${ap.price.toLocaleString()})
                         </option>
                     `).join('')}
                 </select>

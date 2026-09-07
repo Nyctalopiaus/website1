@@ -1,6 +1,6 @@
 <?php
 /**
- * MLS & Redfin Property Scout - Curated Collections & Playlists Handler
+ * Nycto's MLS Property Scout - Curated Collections & Playlists Handler
  * Handles CRUD and share-link endpoints for Realtor curated property playlists.
  * Requires backend/bootstrap.php to already be included.
  */

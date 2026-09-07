@@ -698,7 +698,7 @@
             <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid #0f172a; padding-bottom:0.6rem; margin-bottom:1rem;">
                 <div>
                     <h1 style="margin:0; font-size:18pt; font-weight:800; color:#0f172a; letter-spacing:-0.02em; text-transform:uppercase;">Curated Property Portfolio</h1>
-                    <p style="margin:2px 0 0 0; font-size:9pt; color:#475569; font-weight:600;">MLS & Redfin Scout • Buyer Interest & Portfolio Summary</p>
+                    <p style="margin:2px 0 0 0; font-size:9pt; color:#475569; font-weight:600;">Nycto's MLS Property Scout • Buyer Interest & Portfolio Summary</p>
                 </div>
                 <div style="text-align:right;">
                     <div style="font-size:9.5pt; font-weight:700; color:#0f172a;" id="print-date-stamp"></div>
@@ -1368,7 +1368,6 @@
 
                 const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
                 const mlsUrl = p.mls_url || `https://matrix.recolorado.com/Matrix/Public/Portal.aspx`;
-                const redfinUrl = getRedfinUrl(p);
 
                 let tagsArray = [];
                 if (Array.isArray(p.tags_json)) tagsArray = p.tags_json;
@@ -1468,9 +1467,6 @@
                                     <div style="display:flex; gap:0.4rem;">
                                         <a href="${mlsUrl}" target="_blank" class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.6rem; text-decoration:none;">
                                             <i data-lucide="link"></i> Matrix
-                                        </a>
-                                        <a href="${redfinUrl}" target="_blank" class="btn btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.6rem; text-decoration:none;">
-                                            <i data-lucide="circle"></i> Redfin
                                         </a>
                                     </div>
                                 </div>

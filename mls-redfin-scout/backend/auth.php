@@ -1,6 +1,6 @@
 <?php
 /**
- * MLS & Redfin Property Scout - Auth & User Administration
+ * Nycto's MLS Property Scout - Auth & User Administration
  * CSRF/session guards, login/logout, and user CRUD (list/create/change-password/delete),
  * plus login-attempt logging. Requires backend/bootstrap.php to already be included
  * (uses $pdo and $_SESSION set up there).
@@ -273,6 +273,18 @@ function handleLogout() {
     $_SESSION = [];
     if (session_status() === PHP_SESSION_ACTIVE) {
         session_destroy();
+    }
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(
+            session_name(),
+            '',
+            time() - 42000,
+            $params["path"] ?? '/',
+            $params["domain"] ?? '',
+            $params["secure"] ?? false,
+            $params["httponly"] ?? true
+        );
     }
     echo json_encode(['success' => true]);
 }

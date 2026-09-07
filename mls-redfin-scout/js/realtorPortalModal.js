@@ -1,11 +1,11 @@
 /**
- * MLS & Redfin Property Scout - Realtor Collaboration Portal Modal
+ * Nycto's MLS Property Scout - Realtor Collaboration Portal Modal
  * Manages rendering the Realtor Collaboration Portal inside an interactive modal dialog.
  */
 import { apiFetch } from './api.js';
 import { CONFIG, state, elements } from './state.js';
 import { showToast } from './toast.js';
-import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, getRedfinUrl, NO_PHOTO_IMG } from './properties.js';
+import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG, getStatusBadgeClass } from './properties.js';
 
 let rpProperties = [];
 let rpFilteredProperties = [];
@@ -35,8 +35,8 @@ export async function populatePortalClientDropdown() {
     }
 
     const currentVal = clientSelect.value || 'all';
-    clientSelect.innerHTML = `<option value="all">👥 All Clients (${clients.length})</option>` +
-        clients.map(c => `<option value="${c.id}">👤 ${escapeHtml(c.full_name || c.username)}</option>`).join('');
+    clientSelect.innerHTML = `<option value="all">All Clients (${clients.length})</option>` +
+        clients.map(c => `<option value="${c.id}">${escapeHtml(c.full_name || c.username)}</option>`).join('');
 
     if (clients.some(c => String(c.id) === String(currentVal))) {
         clientSelect.value = currentVal;
@@ -229,7 +229,6 @@ export function renderRealtorPortalList(properties) {
 
         const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
         const mlsUrl = p.mls_url || `https://matrix.recolorado.com/Matrix/Public/Portal.aspx`;
-        const redfinUrl = getRedfinUrl(p);
 
         let tagsArray = [];
         if (Array.isArray(p.tags_json)) tagsArray = p.tags_json;
@@ -245,7 +244,7 @@ export function renderRealtorPortalList(properties) {
                 <div class="realtor-media">
                     <img src="${p.main_image_url || NO_PHOTO_IMG}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="realtor-img" alt="Property Thumbnail">
                     <div class="realtor-card-badges-overlay">
-                        <span class="card-status-badge badge-${(p.status || 'Active').toLowerCase()}">${p.status || 'Active'}</span>
+                        <span class="card-status-badge ${getStatusBadgeClass(p.status)}">${escapeHtml(p.status || 'Active')}</span>
                         ${revBadgeHtml}
                     </div>
                     <div class="realtor-card-rating-overlay">
@@ -303,9 +302,6 @@ export function renderRealtorPortalList(properties) {
                             <div style="display:flex; gap:0.4rem;">
                                 <a href="${mlsUrl}" target="_blank" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.55rem; text-decoration:none;">
                                     <i data-lucide="link"></i> Matrix
-                                </a>
-                                <a href="${redfinUrl}" target="_blank" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.55rem; text-decoration:none;">
-                                    <i data-lucide="circle"></i> Redfin
                                 </a>
                             </div>
                         </div>

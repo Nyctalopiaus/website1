@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - API Fetch Wrapper
+ * Nycto's MLS Property Scout - API Fetch Wrapper
  */
 import { elements, state } from './state.js';
 
@@ -84,6 +84,10 @@ import { elements, state } from './state.js';
                         localStorage.setItem('scout_filter_matrix_status', p.active_filters.matrixStatus);
                     }
                 }
+                if (Array.isArray(p.custom_reaction_chips)) {
+                    state.userCustomChips = p.custom_reaction_chips;
+                    localStorage.setItem('scout_custom_reaction_chips', JSON.stringify(p.custom_reaction_chips));
+                }
             }
         } catch (e) {
             console.warn('Could not sync preferences from server, using local fallback:', e);
@@ -96,6 +100,7 @@ import { elements, state } from './state.js';
             active_view: state.activeView,
             current_sort: state.currentSort,
             compare_list: state.compareList,
+            custom_reaction_chips: state.userCustomChips || [],
             active_filters: {
                 status: state.filters.status,
                 matrixStatus: state.filters.matrixStatus

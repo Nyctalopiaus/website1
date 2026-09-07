@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - Leaflet Interactive Map
+ * Nycto's MLS Property Scout - Leaflet Interactive Map
  * mapLayerControl/fitBoundsControl are local to this module (only ever used here); the
  * shared leafletMap/currentTileLayer/mapMarkers refs live in state.js's mapState instead,
  * since other modules (theme.js, the entry app.js) need to read/reset them too.

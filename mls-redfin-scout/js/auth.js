@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - Auth & User Management UI
+ * Nycto's MLS Property Scout - Auth & User Management UI
  * promptResetPassword/confirmDeleteUser are exposed on window because they're called from
  * onclick="..." attributes in dynamically-rendered HTML (see renderUsersTable), same as in
  * the original single-file app.js.
@@ -51,6 +51,17 @@ function resetLocalStateForAccount(username) {
             userCaret.style.display = authenticated ? 'inline' : 'none';
         }
 
+        const toolsMenuBtn = document.getElementById('btn-realtor-tools-menu');
+        if (toolsMenuBtn) {
+            if (isAdmin) {
+                toolsMenuBtn.innerHTML = `<i data-lucide="shield"></i> Admin Tools <span style="font-size: 0.65rem; margin-left: 0.25rem;">▾</span>`;
+                toolsMenuBtn.title = "Admin Operational Tools";
+            } else {
+                toolsMenuBtn.innerHTML = `<i data-lucide="wrench"></i> Realtor Tools <span style="font-size: 0.65rem; margin-left: 0.25rem;">▾</span>`;
+                toolsMenuBtn.title = "Realtor Operational Tools";
+            }
+        }
+
         if (elements.userDisplayName) {
             if (authenticated) {
                 const displayName = state.currentUserProfile?.full_name || state.user || 'User';
@@ -58,8 +69,9 @@ function resetLocalStateForAccount(username) {
             } else {
                 elements.userDisplayName.innerHTML = `<i data-lucide="log-in"></i> Sign in`;
             }
-            if (window.lucide) window.lucide.createIcons();
         }
+
+        if (window.lucide) window.lucide.createIcons();
 
         if (elements.adminDropdown) {
             elements.adminDropdown.style.display = isAdmin ? 'flex' : 'none';
@@ -69,6 +81,9 @@ function resetLocalStateForAccount(username) {
         if (notifContainer) notifContainer.style.display = authenticated ? 'inline-flex' : 'none';
 
         if (authenticated) {
+            if (isAdmin && window.fetchAdminStats) {
+                window.fetchAdminStats();
+            }
             populateClientFilterDropdown();
             loadPresetsList();
             fetchCollections();
@@ -77,7 +92,7 @@ function resetLocalStateForAccount(username) {
             const clientGroup = elements.clientFilterGroup || document.getElementById('client-filter-group');
             if (clientGroup) clientGroup.style.display = 'none';
             const selectPresets = document.getElementById('select-saved-presets');
-            if (selectPresets) selectPresets.innerHTML = `<option value="">💾 Presets (0)...</option>`;
+            if (selectPresets) selectPresets.innerHTML = `<option value="">Presets (0)...</option>`;
         }
 
         if (!isAdmin && !authenticated) closeUserMenu();
@@ -138,9 +153,14 @@ function resetLocalStateForAccount(username) {
                         modalLoginEl.style.display = 'none';
                     }
                     updateUserUI();
+                    if (window.initSavedFilterPreferences) {
+                        try { window.initSavedFilterPreferences(); } catch (e) {}
+                    }
                     await syncUserPreferencesFromServer();
                     fetchProperties();
-                    if (data.role === 'realtor' && (!window.location.hash || window.location.hash === '#realtor')) {
+                    if ((data.role === 'admin' || data.is_admin) && (!window.location.hash || window.location.hash === '#admin')) {
+                        if (window.switchView) window.switchView('admin');
+                    } else if (data.role === 'realtor' && (!window.location.hash || window.location.hash === '#realtor')) {
                         if (window.switchView) window.switchView('realtor');
                     }
                 } else {
@@ -158,6 +178,12 @@ function resetLocalStateForAccount(username) {
         state.isAdmin = false;
         state.currentUserProfile = null;
         updateUserUI();
+        if (window.location.hash || window.location.pathname.includes('//')) {
+            const cleanPath = window.location.pathname.replace(/\/+/g, '/');
+            if (window.history && window.history.replaceState) {
+                window.history.replaceState(null, '', cleanPath);
+            }
+        }
         const loginErrEl = elements.loginError || document.getElementById('login-error');
         if (loginErrEl) {
             if (errMsg) {
@@ -172,6 +198,7 @@ function resetLocalStateForAccount(username) {
             modalLoginEl.style.display = '';
             modalLoginEl.classList.add('active');
         }
+        try { if (window.lucide) window.lucide.createIcons(); } catch (e) {}
     }
     window.showLoginModal = showLoginModal;
 
@@ -228,10 +255,15 @@ function resetLocalStateForAccount(username) {
                 }
                 if (loginPassEl) loginPassEl.value = '';
                 updateUserUI();
+                if (window.initSavedFilterPreferences) {
+                    try { window.initSavedFilterPreferences(); } catch (e) {}
+                }
                 await syncUserPreferencesFromServer();
                 showToast(`Welcome back, ${data.full_name || data.username}!`, 'success');
                 fetchProperties();
-                if (data.role === 'realtor') {
+                if (data.role === 'admin' || data.is_admin) {
+                    if (window.switchView) window.switchView('admin');
+                } else if (data.role === 'realtor') {
                     if (window.switchView) window.switchView('realtor');
                 }
             } else {
@@ -259,15 +291,30 @@ function resetLocalStateForAccount(username) {
 
     window.handleLoginSubmit = handleLoginSubmit;
 
+    export function clearScoutLocalStorage() {
+        Object.keys(localStorage)
+            .filter(key => key.startsWith('scout_'))
+            .forEach(key => localStorage.removeItem(key));
+    }
+
     export function handleLogout() {
         closeUserMenu();
         apiFetch(CONFIG.API_URL + '?action=logout')
             .finally(() => {
+                clearScoutLocalStorage();
                 state.allProperties = [];
                 state.filteredProperties = [];
                 state.currentUserProfile = null;
+                state.authenticated = false;
+                state.user = null;
+                state.isAdmin = false;
+                state.csrfToken = null;
                 showToast('Logged out successfully', 'info');
-                showLoginModal();
+                const cleanPath = window.location.pathname.replace(/\/+/g, '/');
+                if (window.history && window.history.replaceState) {
+                    window.history.replaceState(null, '', cleanPath);
+                }
+                window.location.href = window.location.origin + cleanPath;
             });
     }
 
@@ -581,8 +628,15 @@ function resetLocalStateForAccount(username) {
     }
     export function renderUsersTable(users) {
         if (!elements.userMgmtTableBody) return;
+
+        // Update count badge in header
+        const countBadge = document.getElementById('user-mgmt-count-badge');
+        if (countBadge) {
+            countBadge.textContent = `${users.length} ${users.length === 1 ? 'Account' : 'Accounts'}`;
+        }
+
         if (!users.length) {
-            elements.userMgmtTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:1.5rem;">No user accounts found</td></tr>`;
+            elements.userMgmtTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No user accounts found</td></tr>`;
             return;
         }
 
@@ -596,43 +650,53 @@ function resetLocalStateForAccount(username) {
 
         const realtorsMap = new Map(users.map(u => [u.id, u.username]));
 
+        const formatShortDateTime = (dStr) => {
+            if (!dStr || dStr === 'Never') return 'Never';
+            const d = new Date(dStr);
+            if (isNaN(d.getTime())) return dStr;
+            return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        };
+
         elements.userMgmtTableBody.innerHTML = users.map(u => {
             const isSelf = u.username === state.user;
             const isAdminAcc = u.username === 'admin';
             const role = u.role || (u.is_admin ? 'admin' : 'client');
-            const created = u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A';
-            const lastLogin = u.last_login ? new Date(u.last_login).toLocaleString() : 'Never';
+            const created = u.created_at ? new Date(u.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
+            const lastLogin = formatShortDateTime(u.last_login);
             const initials = u.initials || 'US';
 
-            let roleBadge = '<span class="badge" style="background:var(--bg-input); color:var(--text-muted); font-size:0.7rem; margin-left:0.4rem; padding:0.1rem 0.4rem; border-radius:4px;">CLIENT</span>';
+            let roleBadge = '<span class="user-role-badge role-client">CLIENT</span>';
             if (role === 'admin') {
-                roleBadge = '<span class="badge" style="background:var(--accent-gold); color:#000; font-weight:700; font-size:0.7rem; margin-left:0.4rem; padding:0.1rem 0.4rem; border-radius:4px;">ADMIN</span>';
+                roleBadge = '<span class="user-role-badge role-admin"><i data-lucide="shield-check" style="width:11px; height:11px; margin-right:3px;"></i> ADMIN</span>';
             } else if (role === 'realtor') {
-                roleBadge = '<span class="badge" style="background:#0284c7; color:#fff; font-weight:700; font-size:0.7rem; margin-left:0.4rem; padding:0.1rem 0.4rem; border-radius:4px;">REALTOR</span>';
+                roleBadge = '<span class="user-role-badge role-realtor"><i data-lucide="award" style="width:11px; height:11px; margin-right:3px;"></i> REALTOR</span>';
             }
 
-            const assignedRealtorName = u.realtor_id ? (realtorsMap.get(u.realtor_id) || `ID #${u.realtor_id}`) : '—';
+            const assignedRealtorName = u.realtor_id ? (realtorsMap.get(u.realtor_id) || `ID #${u.realtor_id}`) : null;
+            const realtorDisplay = assignedRealtorName 
+                ? `<span class="assigned-realtor-tag"><i data-lucide="user-check" style="width:13px; height:13px;"></i> ${escapeHtml(assignedRealtorName)}</span>`
+                : `<span style="font-size:0.82rem; color:var(--text-muted); font-style:italic;">None</span>`;
 
             return `
                 <tr>
-                    <td><strong>#${u.id}</strong></td>
+                    <td style="font-weight:700; color:var(--text-muted); font-size:0.85rem;">#${u.id}</td>
                     <td>
-                        <span style="font-weight:600;">${escapeHtml(u.username)}</span>
+                        <span style="font-weight:600; font-size:0.92rem; color:var(--text-primary);">${escapeHtml(u.username)}</span>
                         ${roleBadge}
-                        ${isSelf ? '<span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.3rem;">(You)</span>' : ''}
+                        ${isSelf ? '<span style="font-size:0.75rem; color:var(--accent-gold); font-weight:600; margin-left:0.4rem;">(You)</span>' : ''}
                     </td>
                     <td>
-                        <span style="font-family:monospace; font-weight:bold; background:var(--bg-tertiary); padding:2px 6px; border-radius:4px;">${escapeHtml(initials)}</span>
+                        <span class="user-avatar-pill" title="User Initials: ${escapeHtml(initials)}">${escapeHtml(initials)}</span>
                     </td>
-                    <td style="font-size:0.85rem; color:var(--accent-blue);">${escapeHtml(assignedRealtorName)}</td>
+                    <td>${realtorDisplay}</td>
                     <td style="font-size:0.85rem; color:var(--text-muted);">${created}</td>
                     <td style="font-size:0.85rem; color:var(--text-muted);">${lastLogin}</td>
                     <td>
-                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
                             ${state.isAdmin ? `<button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="promptResetPassword(${u.id}, '${escapeHtml(u.username)}')"><i data-lucide="key-round"></i> Password</button>` : ''}
                             ${(state.isAdmin && !isAdminAcc) ? `<button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="promptChangeRole(${u.id}, '${escapeHtml(u.username)}', '${role}', ${u.realtor_id || 'null'})"><i data-lucide="user-check"></i> Edit Role</button>` : ''}
                             ${(state.isAdmin && !isAdminAcc) ? `<button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem; color:var(--accent-red);" onclick="confirmDeleteUser(${u.id}, '${escapeHtml(u.username)}')"><i data-lucide="trash-2"></i> Delete</button>` : ''}
-                            ${!state.isAdmin ? `<span style="font-size:0.75rem; color:var(--text-muted);">—</span>` : ''}
+                            ${!state.isAdmin ? `<span style="font-size:0.75rem; color:var(--text-muted); background:var(--bg-input); padding:0.2rem 0.5rem; border-radius:4px; border:1px solid var(--border-color); display:inline-flex; align-items:center; gap:0.25rem;"><i data-lucide="lock" style="width:11px; height:11px;"></i> View Only</span>` : ''}
                         </div>
                     </td>
                 </tr>
@@ -676,30 +740,61 @@ function resetLocalStateForAccount(username) {
     }
     export function renderEventLogTable(logs) {
         if (!elements.eventLogTableBody) return;
+
+        // Update count badge
+        const countBadge = document.getElementById('event-log-count-badge');
+        if (countBadge) {
+            countBadge.textContent = `${logs.length} ${logs.length === 1 ? 'Event Entry' : 'Event Entries'}`;
+        }
+
         if (!logs.length) {
-            elements.eventLogTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:1.5rem;">No events logged yet</td></tr>`;
+            elements.eventLogTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No events logged yet</td></tr>`;
             return;
         }
 
+        const formatLogTime = (ts) => {
+            if (!ts) return 'N/A';
+            const d = new Date(ts.replace(' ', 'T'));
+            if (isNaN(d.getTime())) return ts;
+            return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        };
+
         elements.eventLogTableBody.innerHTML = logs.map(l => {
-            const time = l.timestamp ? new Date(l.timestamp.replace(' ', 'T')).toLocaleString() : '';
+            const time = formatLogTime(l.timestamp);
             const level = (l.level || 'info').toLowerCase();
             const user = l.username || 'System';
             const context = l.context_json || '';
-            const contextShort = context.length > 100 ? context.slice(0, 100) + '…' : context;
+            const contextShort = context.length > 90 ? context.slice(0, 90) + '…' : context;
+
+            let levelClass = 'level-info';
+            let levelIcon = 'info';
+            if (level === 'warn' || level === 'warning') {
+                levelClass = 'level-warn';
+                levelIcon = 'alert-triangle';
+            } else if (level === 'error' || level === 'fail' || level === 'failure') {
+                levelClass = 'level-error';
+                levelIcon = 'alert-octagon';
+            } else if (level === 'login' || level === 'security') {
+                levelClass = 'level-security';
+                levelIcon = 'shield-check';
+            }
+
+            const levelBadge = `<span class="log-level-badge ${levelClass}"><i data-lucide="${levelIcon}" style="width:11px; height:11px; margin-right:3px;"></i> ${escapeHtml(level.toUpperCase())}</span>`;
+            const sourcePill = `<span class="log-source-tag">${escapeHtml(l.source || 'system')}</span>`;
 
             return `
                 <tr>
                     <td style="white-space:nowrap; font-size:0.8rem; color:var(--text-muted);">${escapeHtml(time)}</td>
-                    <td style="white-space:nowrap;">${escapeHtml(l.source || '')}</td>
-                    <td><span class="log-level-badge log-level-${escapeHtml(level)}">${escapeHtml(level)}</span></td>
-                    <td style="white-space:nowrap; font-weight:600; font-size:0.8rem; color:var(--accent-gold);">${escapeHtml(user)}</td>
-                    <td style="white-space:nowrap; font-size:0.8rem;">${escapeHtml(l.mls_id || '')}</td>
-                    <td style="max-width:320px;">${escapeHtml(l.message || '')}</td>
-                    <td style="max-width:260px; font-size:0.75rem; color:var(--text-muted);" title="${escapeHtml(context)}">${escapeHtml(contextShort)}</td>
+                    <td style="white-space:nowrap;">${sourcePill}</td>
+                    <td style="white-space:nowrap;">${levelBadge}</td>
+                    <td style="white-space:nowrap; font-weight:600; font-size:0.82rem; color:var(--accent-gold);">${escapeHtml(user)}</td>
+                    <td style="white-space:nowrap; font-size:0.8rem; font-weight:600; color:var(--text-muted);">${escapeHtml(l.mls_id || '—')}</td>
+                    <td style="max-width:320px; font-weight:500;">${escapeHtml(l.message || '')}</td>
+                    <td style="max-width:260px; font-size:0.75rem; color:var(--text-muted);" title="${escapeHtml(context)}">${escapeHtml(contextShort || '—')}</td>
                 </tr>
             `;
         }).join('');
+        if (window.lucide) window.lucide.createIcons();
     }
 
     export function handleCreateUserSubmit(e) {

@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - Side-by-Side Property Comparison Module
+ * Nycto's MLS Property Scout - Side-by-Side Property Comparison Module
  */
 import { state } from './state.js';
 import { cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './properties.js';
@@ -48,7 +48,7 @@ export function updateCompareButtons() {
         const mls = btn.dataset.mls;
         const isComparing = state.compareList.includes(String(mls));
         btn.classList.toggle('is-comparing', isComparing);
-        btn.innerText = isComparing ? '✓ Comparing' : '+ Compare';
+        btn.innerHTML = isComparing ? '<i data-lucide="check"></i> Comparing' : '<i data-lucide="scale"></i> Compare';
     });
 
     document.querySelectorAll('.card-compare-checkbox').forEach(input => {
@@ -60,10 +60,12 @@ export function updateCompareButtons() {
             label.classList.toggle('is-checked', isComparing);
             const textSpan = label.querySelector('.checkbox-text');
             if (textSpan) {
-                textSpan.innerText = isComparing ? '✓ Comparing' : 'Compare';
+                textSpan.innerHTML = isComparing ? '<i data-lucide="check"></i> Comparing' : 'Compare';
             }
         }
     });
+
+    if (window.lucide) window.lucide.createIcons();
 }
 
 export function updateCompareDock() {

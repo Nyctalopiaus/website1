@@ -1,11 +1,11 @@
 /**
- * MLS & Redfin Property Scout - Admin Property & Media Cleanup Module
+ * Nycto's MLS Property Scout - Admin Property & Media Cleanup Module
  * Audits off-market listings, cached photos, and orphan media files, and manages cleanup execution.
  */
 import { apiFetch } from './api.js';
 import { CONFIG, state, elements } from './state.js';
 import { showToast } from './toast.js';
-import { escapeHtml, fetchProperties } from './properties.js';
+import { escapeHtml, fetchProperties, getStatusBadgeClass } from './properties.js';
 import { closeAdminMenu } from './auth.js';
 
 let cleanupData = {
@@ -53,18 +53,20 @@ export function fetchAdminCleanupPreview() {
     if (!elements.cleanupPropertiesTbody) return;
     elements.cleanupPropertiesTbody.innerHTML = `
         <tr>
-            <td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">
-                Auditing off-market listings & cached photo files...
+            <td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">
+                Auditing off-market & stale active listings & cached photo files...
             </td>
         </tr>
     `;
 
-    apiFetch(CONFIG.API_URL + '?action=admin_cleanup_preview')
+    const staleDays = elements.cleanupStaleThreshold ? elements.cleanupStaleThreshold.value : 14;
+
+    apiFetch(CONFIG.API_URL + '?action=admin_cleanup_preview&stale_days=' + encodeURIComponent(staleDays))
         .then(data => {
             if (data && data.success) {
                 cleanupData = data;
                 updateCleanupStats(data.summary, data.properties, data.orphans);
-                populateStatusFilter(data.summary.status_counts);
+                populateStatusFilter(data.summary.status_counts, data.summary);
                 renderAdminCleanupTable();
             } else {
                 showToast(data.error || 'Failed to load cleanup preview data', 'error');
@@ -75,7 +77,7 @@ export function fetchAdminCleanupPreview() {
             if (elements.cleanupPropertiesTbody) {
                 elements.cleanupPropertiesTbody.innerHTML = `
                     <tr>
-                        <td colspan="7" style="text-align:center; padding:2rem; color:var(--accent-red);">
+                        <td colspan="8" style="text-align:center; padding:2rem; color:var(--accent-red);">
                             Failed to load audit data: ${escapeHtml(err.message || 'Server error')}
                         </td>
                     </tr>
@@ -95,13 +97,18 @@ function updateCleanupStats(summary, properties, orphans) {
         elements.cleanupStatPropsSub.innerText = statuses ? `Statuses: ${statuses}` : 'Non-Active Listings';
     }
 
-    if (elements.cleanupStatPhotos) elements.cleanupStatPhotos.innerText = summary.off_market_photos_count || 0;
-    if (elements.cleanupStatPhotosBytes) elements.cleanupStatPhotosBytes.innerText = `${formatBytes(summary.off_market_photos_bytes)} on disk`;
+    if (elements.cleanupStatStale) elements.cleanupStatStale.innerText = summary.stale_active_count || 0;
+    if (elements.cleanupStatStaleSub) {
+        elements.cleanupStatStaleSub.innerText = `Active but not synced in ${summary.stale_days_threshold || 14}+ days`;
+    }
+
+    if (elements.cleanupStatPhotos) elements.cleanupStatPhotos.innerText = (summary.off_market_photos_count || 0) + (summary.stale_active_photos_count || 0);
+    if (elements.cleanupStatPhotosBytes) elements.cleanupStatPhotosBytes.innerText = `${formatBytes((summary.off_market_photos_bytes || 0) + (summary.stale_active_photos_bytes || 0))} on disk`;
 
     if (elements.cleanupStatOrphans) elements.cleanupStatOrphans.innerText = summary.orphan_files_count || 0;
     if (elements.cleanupStatOrphansBytes) elements.cleanupStatOrphansBytes.innerText = `${formatBytes(summary.orphan_bytes)} on disk`;
 
-    const totalReclaimable = (summary.off_market_photos_bytes || 0) + (summary.orphan_bytes || 0);
+    const totalReclaimable = (summary.off_market_photos_bytes || 0) + (summary.stale_active_photos_bytes || 0) + (summary.orphan_bytes || 0);
     if (elements.cleanupStatReclaimable) elements.cleanupStatReclaimable.innerText = formatBytes(totalReclaimable);
     if (elements.cleanupStatImageIssues) elements.cleanupStatImageIssues.innerText = summary.invalid_primary_preview_count || 0;
 
@@ -110,11 +117,14 @@ function updateCleanupStats(summary, properties, orphans) {
     }
 }
 
-function populateStatusFilter(statusCounts) {
+function populateStatusFilter(statusCounts, summary) {
     if (!elements.cleanupFilterStatus) return;
     const currentVal = elements.cleanupFilterStatus.value;
+    const staleDays = summary?.stale_days_threshold || 14;
+    const staleCount = summary?.stale_active_count || 0;
     
-    let html = `<option value="all">All Non-Active Statuses</option>`;
+    let html = `<option value="all">All Candidates (Off-Market + Stale)</option>`;
+    html += `<option value="stale_active">Stale Active Listings (${staleCount})</option>`;
     if (statusCounts) {
         for (const [st, count] of Object.entries(statusCounts)) {
             if (st.toLowerCase() === 'active') continue;
@@ -134,6 +144,9 @@ export function renderAdminCleanupTable() {
     const protectFavorites = elements.cleanupProtectFavorites ? elements.cleanupProtectFavorites.checked : true;
 
     const filteredProps = (cleanupData.properties || []).filter(p => {
+        if (filterStatus === 'stale_active') {
+            return !!p.is_stale_active;
+        }
         if (filterStatus !== 'all' && (p.status || '').toLowerCase() !== filterStatus) {
             return false;
         }
@@ -143,8 +156,8 @@ export function renderAdminCleanupTable() {
     if (!filteredProps.length) {
         elements.cleanupPropertiesTbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">
-                    No candidate off-market properties match the current status filter.
+                <td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">
+                    No candidate properties match the current status filter.
                 </td>
             </tr>
         `;
@@ -156,10 +169,14 @@ export function renderAdminCleanupTable() {
         const isSelected = selectedMlsIds.has(p.mls_id);
         const isDisabled = protectFavorites && p.is_protected;
 
-        let statusClass = 'badge-closed';
-        const stLower = (p.status || '').toLowerCase();
-        if (stLower.includes('pending') || stLower.includes('contract')) statusClass = 'badge-pending';
-        else if (stLower.includes('active')) statusClass = 'badge-active';
+        const statusClass = p.is_stale_active ? 'badge-warning' : getStatusBadgeClass(p.status);
+        const statusBadge = p.is_stale_active
+            ? `<span class="badge ${statusClass}" style="background:rgba(234, 179, 8, 0.15); color:#D97706; border:1px solid rgba(234, 179, 8, 0.3);"><i data-lucide="clock" style="width:11px; height:11px; margin-right:3px;"></i> Active (Stale)</span>`
+            : `<span class="badge ${statusClass}">${escapeHtml(p.status)}</span>`;
+
+        const syncAgeHtml = p.days_since_sync !== undefined
+            ? `<span style="font-size:0.75rem; font-weight:600; color:${p.days_since_sync >= 14 ? 'var(--accent-gold)' : 'var(--text-muted)'};">${p.days_since_sync}d ago</span>`
+            : `<span style="font-size:0.75rem; color:var(--text-muted);">N/A</span>`;
 
         const thumb = p.main_image_url
             ? `<img src="${escapeHtml(p.main_image_url)}" style="width:40px; height:30px; object-fit:cover; border-radius:4px;" alt="thumb">`
@@ -190,7 +207,8 @@ export function renderAdminCleanupTable() {
                         </div>
                     </div>
                 </td>
-                <td><span class="badge ${statusClass}">${escapeHtml(p.status)}</span></td>
+                <td>${statusBadge}</td>
+                <td>${syncAgeHtml}</td>
                 <td style="font-weight:600;">${formatPrice(p.price)}</td>
                 <td style="font-size:0.75rem;">${savedHtml}</td>
                 <td>${p.media_files_count} photos</td>
@@ -240,7 +258,10 @@ export function updateCleanupSelectionSummary() {
         if (selectedPropsCount === 0 && !includeOrphans) {
             elements.cleanupSelectionSummary.innerText = 'No properties or orphan files selected for cleanup.';
         } else {
-            const modeText = mode === 'full_delete' ? 'delete properties & photos' : 'delete photos only';
+            let modeText = 'delete properties & photos';
+            if (mode === 'mark_stale') modeText = 'mark status as "Stale / Unsynced"';
+            else if (mode === 'media_only') modeText = 'delete photos only';
+
             const propText = selectedPropsCount === 1 ? '1 property' : `${selectedPropsCount} properties`;
             const orphanText = includeOrphans ? ` + ${cleanupData.summary?.orphan_files_count || 0} orphan files` : '';
             elements.cleanupSelectionSummary.innerHTML = `
@@ -263,6 +284,22 @@ export function selectCandidateHomes() {
     (cleanupData.properties || []).forEach(p => {
         if (!protectFavorites || !p.is_protected) {
             selectedMlsIds.add(p.mls_id);
+        }
+    });
+
+    if (elements.cleanupSelectAll) elements.cleanupSelectAll.checked = true;
+    renderAdminCleanupTable();
+}
+
+export function selectStaleCandidates() {
+    const protectFavorites = elements.cleanupProtectFavorites ? elements.cleanupProtectFavorites.checked : true;
+    selectedMlsIds.clear();
+
+    (cleanupData.properties || []).forEach(p => {
+        if (p.is_stale_active) {
+            if (!protectFavorites || !p.is_protected) {
+                selectedMlsIds.add(p.mls_id);
+            }
         }
     });
 
@@ -324,15 +361,18 @@ export function handleAdminCleanupExecute() {
         return showToast('Please select at least one property or orphan cleanup option.', 'error');
     }
 
-    let modeDescription = mode === 'full_delete'
-        ? 'PERMANENTLY DELETE selected property records and their photo files'
-        : 'DELETE local photo files for selected properties while preserving listing text data';
+    let modeDescription = 'PERMANENTLY DELETE selected property records and their photo files';
+    if (mode === 'mark_stale') {
+        modeDescription = 'CHANGE STATUS of selected properties to "Stale / Unsynced" (preserving local photos & notes)';
+    } else if (mode === 'media_only') {
+        modeDescription = 'DELETE local photo files for selected properties while preserving listing text data';
+    }
 
     let confirmMsg = `Are you sure you want to execute property cleanup?\n\n`
         + `• Mode: ${modeDescription}\n`
         + `• Target Properties: ${targetMlsIds.length}\n`
         + `• Include Orphan Media Files: ${includeOrphans ? 'Yes' : 'No'}\n\n`
-        + `This action cannot be undone. Proceed?`;
+        + `Proceed?`;
 
     if (!confirm(confirmMsg)) {
         return;
@@ -340,7 +380,7 @@ export function handleAdminCleanupExecute() {
 
     if (elements.btnAdminCleanupSubmit) {
         elements.btnAdminCleanupSubmit.disabled = true;
-        elements.btnAdminCleanupSubmit.innerText = 'Cleaning Up...';
+        elements.btnAdminCleanupSubmit.innerText = 'Processing...';
     }
 
     apiFetch(CONFIG.API_URL + '?action=admin_cleanup_execute', {
@@ -349,13 +389,15 @@ export function handleAdminCleanupExecute() {
         body: JSON.stringify({
             target_mls_ids: targetMlsIds,
             cleanup_mode: mode,
+            target_status: 'Stale / Unsynced',
             clean_orphans: includeOrphans
         })
     })
     .then(data => {
         if (data && data.success) {
             const freedText = formatBytes(data.freed_bytes || 0);
-            showToast(`Cleanup complete! Removed ${data.deleted_properties_count} items and freed ${freedText}`, 'success');
+            const actionText = mode === 'mark_stale' ? 'Updated status for' : 'Removed';
+            showToast(`Cleanup complete! ${actionText} ${data.deleted_properties_count} items and freed ${freedText}`, 'success');
             selectedMlsIds.clear();
             if (elements.cleanupSelectAll) elements.cleanupSelectAll.checked = false;
             fetchProperties(); // Refresh main dashboard list

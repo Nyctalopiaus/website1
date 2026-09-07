@@ -48,30 +48,104 @@ export function saveInputs(data) {
   }
 }
 
+const SHARE_KEY_MAP = {
+  homePrice: 'hp',
+  downPaymentAmount: 'dp',
+  downPaymentPercent: 'dpp',
+  cashDownPayment: 'cdp',
+  interest30: 'r30',
+  interest15: 'r15',
+  taxRate: 'tr',
+  homeInsurance: 'hi',
+  hoaFees: 'hoa',
+  pmiRate: 'pmi',
+  grossAnnualIncome: 'inc',
+  otherMonthlyDebts: 'omd',
+  targetBackEndDTI: 'tdti',
+  creditScoreBand: 'csb',
+  closingCostPercent: 'ccp',
+  reserveMonths: 'rm',
+  extraProjectCash: 'epc',
+  cashAvailable: 'ca',
+  incomeBasis: 'ib',
+  payFrequency: 'pf',
+  netMonthlyOverride: 'nmo',
+  additionalPayment: 'ap',
+  lumpSumAmount: 'ls',
+  lumpSumFrequency: 'lsf',
+  paymentFrequency: 'payf',
+  biweeklyExtra: 'be',
+  hasHouseToSell: 'hs',
+  saleMode: 'sm',
+  homeAction: 'ha',
+  sellHomeValue: 'shv',
+  sellMortgagePayoff: 'smp',
+  sellMortgagePayment: 'smpt',
+  sellMortgageSchedule: 'sms',
+  sellCommissionPercent: 'sc',
+  sellClosingCostsPercent: 'scc',
+  sellRepairCosts: 'sr',
+  sellConcessions: 'scs',
+  sellMovingCosts: 'smc',
+  asIsSaleValue: 'aisv',
+  asIsMonthsSaved: 'aism',
+  sellProceedsPercent: 'spp',
+  financingType: 'ft',
+  bridgeLoanAmount: 'ba',
+  bridgeExtraCash: 'bec',
+  monthsUntilSale: 'mus',
+  bridgeLoanRate: 'br',
+  bridgeLoanFeesPercent: 'bf',
+  recastPayoffStrategy: 'rps',
+  recastFee: 'rf',
+  rentalProjectedMonthlyRent: 'rpr',
+  rentalOffsetPercent: 'rop',
+  rentalFundingMode: 'rfm',
+  rentalHelocAmount: 'rha',
+  rentalHelocRate: 'rhr',
+  rentalHelocPayment: 'rhp'
+};
+
+const REVERSE_SHARE_KEY_MAP = Object.fromEntries(
+  Object.entries(SHARE_KEY_MAP).map(([k, v]) => [v, k])
+);
+
 /**
  * Encodes calculator state into a URL-safe string for the "Copy Link" share
- * feature — same JSON shape as the localStorage blob, just percent-encoded
- * into a query-string value instead of written to disk. Never touches a
- * server: the numbers live entirely in the link itself, so sharing one
- * doesn't compromise the "100% Private & Local" promise shown in the UI.
+ * feature — compresses object keys to keep shared links short and clean.
+ * Retains backward compatibility for uncompressed links.
  * @param {Object} data - Same shape as saveInputs()'s argument (see buildSaveData() in app.js)
  * @returns {string} Percent-encoded JSON, safe to use as a query param value
  */
 export function encodeStateForSharing(data) {
-  return encodeURIComponent(JSON.stringify(data));
+  if (!data || typeof data !== 'object') return '';
+  const compressed = {};
+  for (const [key, val] of Object.entries(data)) {
+    if (val !== undefined && val !== null) {
+      const shortKey = SHARE_KEY_MAP[key] || key;
+      compressed[shortKey] = val;
+    }
+  }
+  return encodeURIComponent(JSON.stringify(compressed));
 }
 
 /**
- * Reverses encodeStateForSharing(). Returns null on any malformed input
- * (hand-edited URL, truncated copy/paste, a link from a much older version
- * of this app, etc.) so the caller can fall back to the normal localStorage
- * load instead of crashing on startup.
+ * Reverses encodeStateForSharing(). Handles both compressed short keys and
+ * legacy long keys. Returns null on any malformed input.
  * @param {string} encoded
  * @returns {Object|null}
  */
 export function decodeStateFromSharing(encoded) {
   try {
-    return JSON.parse(decodeURIComponent(encoded));
+    const raw = JSON.parse(decodeURIComponent(encoded));
+    if (!raw || typeof raw !== 'object') return null;
+
+    const decompressed = {};
+    for (const [key, val] of Object.entries(raw)) {
+      const longKey = REVERSE_SHARE_KEY_MAP[key] || key;
+      decompressed[longKey] = val;
+    }
+    return decompressed;
   } catch (error) {
     console.error('[ERROR] Failed to decode shared calculator link:', error);
     return null;

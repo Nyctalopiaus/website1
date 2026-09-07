@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - Command Palette (Cmd/Ctrl+K)
+ * Nycto's MLS Property Scout - Command Palette (Cmd/Ctrl+K)
  */
 import { elements, state } from './state.js';
 import { switchView } from './views.js';

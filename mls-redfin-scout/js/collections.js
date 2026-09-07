@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - Curated Playlists & Custom Collections
+ * Nycto's MLS Property Scout - Curated Playlists & Custom Collections
  * Manages realtor-curated property collections, agent intro notes, client share links,
  * and adding items to playlists.
  */
@@ -58,7 +58,7 @@ window.renderInlineCarouselSlide = function() {
     if (!container) return;
     const props = window.inlineCarouselState.properties;
     if (!props || !props.length) {
-        container.innerHTML = `<span style="font-size:0.85rem; color:rgba(250, 246, 240, 0.7); font-style:italic; padding:0.5rem;">No homes in this playlist yet</span>`;
+        container.innerHTML = `<span style="font-size:0.85rem; color:var(--text-muted); font-style:italic; padding:0.5rem;">No homes in this playlist yet</span>`;
         return;
     }
     const idx = window.inlineCarouselState.currentIndex;
@@ -69,11 +69,11 @@ window.renderInlineCarouselSlide = function() {
     
     let revStatusBadge = '';
     const rawStatus = getPropertyReviewStatus(p);
-    if (rawStatus === 'favorite') revStatusBadge = `<span style="font-size:0.75rem; background:#d97706; color:#fff; padding:2px 8px; border-radius:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,0.3);"><i data-lucide="star"></i> Liked</span>`;
-    else if (rawStatus === 'possibility') revStatusBadge = `<span style="font-size:0.75rem; background:#0284c7; color:#fff; padding:2px 8px; border-radius:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,0.3);"><i data-lucide="circle-help"></i> Possibility</span>`;
+    if (rawStatus === 'favorite') revStatusBadge = `<span style="font-size:0.75rem; background:#d97706; color:#fff; padding:2px 8px; border-radius:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,0.15);"><i data-lucide="star"></i> Liked</span>`;
+    else if (rawStatus === 'possibility') revStatusBadge = `<span style="font-size:0.75rem; background:#0284c7; color:#fff; padding:2px 8px; border-radius:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,0.15);"><i data-lucide="circle-help"></i> Possibility</span>`;
 
     container.innerHTML = `
-        <div style="width:105px; height:68px; border-radius:6px; overflow:hidden; border:1px solid rgba(193, 137, 46, 0.45); flex-shrink:0; position:relative; background:#0f1712; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,0.4);" onclick="window.goToPropertyCard('${p.mls_id}')" title="Click to view house details">
+        <div style="width:105px; height:68px; border-radius:6px; overflow:hidden; border:1px solid var(--border-color); flex-shrink:0; position:relative; background:var(--bg-card); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.08);" onclick="window.goToPropertyCard('${p.mls_id}')" title="Click to view house details">
             <img src="${imgUrl}" alt="${displayAddr}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s ease;" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" onmouseenter="this.style.transform='scale(1.06)'" onmouseleave="this.style.transform='scale(1)'">
         </div>
         <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:3px; cursor:pointer;" onclick="window.goToPropertyCard('${p.mls_id}')" title="Click to view house details">
@@ -81,19 +81,19 @@ window.renderInlineCarouselSlide = function() {
                 <span style="font-size:1.15rem; font-weight:800; color:var(--accent-gold); white-space:nowrap; letter-spacing:-0.01em;">$${(p.price || 0).toLocaleString()}</span>
                 ${revStatusBadge}
             </div>
-            <div style="font-size:0.95rem; font-weight:700; color:#FAF6F0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2;" title="${displayAddr}">
+            <div style="font-size:0.95rem; font-weight:700; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2;" title="${displayAddr}">
                 ${displayAddr}
             </div>
-            <div style="font-size:0.82rem; color:rgba(250, 246, 240, 0.8); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;">
+            <div style="font-size:0.82rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;">
                 ${p.beds || 0} Bed • ${p.baths || 0} Bath • ${(p.sqft_finished || 0).toLocaleString()} SqFt ${ppsqft ? `($${ppsqft}/sqft)` : ''}
             </div>
         </div>
         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; flex-shrink:0; margin-left:0.25rem;">
             <div style="display:flex; gap:4px;">
-                <button type="button" class="btn btn-secondary" style="padding:4px 8px; font-size:0.78rem; border-radius:4px; background:rgba(255,255,255,0.12); color:#FAF6F0; border:1px solid rgba(255,255,255,0.25);" onclick="event.stopPropagation(); window.stepInlineCarousel(-1);" title="Previous house"><i data-lucide="chevron-left"></i></button>
+                <button type="button" class="btn btn-secondary" style="padding:4px 8px; font-size:0.78rem; border-radius:4px;" onclick="event.stopPropagation(); window.stepInlineCarousel(-1);" title="Previous house"><i data-lucide="chevron-left"></i></button>
                 <button type="button" class="btn btn-gold" style="padding:4px 8px; font-size:0.78rem; border-radius:4px;" onclick="event.stopPropagation(); window.stepInlineCarousel(1);" title="Next house"><i data-lucide="chevron-right"></i></button>
             </div>
-            <span style="font-size:0.75rem; color:var(--accent-gold); font-weight:800; letter-spacing:0.04em;">${idx + 1} / ${props.length}</span>
+            <span style="font-size:0.75rem; color:var(--accent-emerald); font-weight:800; letter-spacing:0.04em;">${idx + 1} / ${props.length}</span>
         </div>
     `;
     if (window.lucide) window.lucide.createIcons();
@@ -192,9 +192,9 @@ export function renderClientPlaylistBanner(collections) {
         } else {
             const clientName = col.client_display_name || col.client_username;
             if (clientName) {
-                return `Shared with: <span style="color:var(--accent-gold); font-weight:700;">👤 ${escapeHtml(clientName)}</span>`;
+                return `Shared with: <span style="color:var(--accent-gold); font-weight:700;"><i data-lucide="user"></i> ${escapeHtml(clientName)}</span>`;
             } else {
-                return `Shared with: <span style="color:var(--text-muted); font-weight:400;">🌐 Public / General Link</span>`;
+                return `Shared with: <span style="color:var(--text-muted); font-weight:400;"><i data-lucide="globe"></i> Public / General Link</span>`;
             }
         }
     };
@@ -209,7 +209,7 @@ export function renderClientPlaylistBanner(collections) {
     const activeToken = myCollections[0].share_token;
 
     bannerContainer.innerHTML = `
-        <div style="background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(15,23,42,0.6)); border: 1px solid var(--accent-gold); border-radius: 8px; padding: 0.85rem 1.15rem; margin-bottom: 1.25rem;">
+        <div style="background: transparent; border: 1px solid var(--accent-gold); border-radius: 8px; padding: 0.85rem 1.15rem; margin-bottom: 1.25rem;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
                 <!-- Left: Playlist Selector & Meta -->
                 <div style="flex-shrink:0;">
@@ -229,10 +229,10 @@ export function renderClientPlaylistBanner(collections) {
                 </div>
 
                 <!-- Middle: Auto-Rotating Mini Property Preview Banner Carousel -->
-                <div id="inline-playlist-carousel" style="flex:1; min-width:320px; max-width:680px; background:linear-gradient(135deg, #1C2B22 0%, #15221A 100%); border:1px solid var(--accent-gold); border-radius:8px; padding:0.55rem 1rem; display:flex; align-items:center; gap:0.85rem; box-shadow:0 8px 24px -4px rgba(47, 75, 60, 0.35), 0 4px 12px rgba(0,0,0,0.25);"
+                <div id="inline-playlist-carousel" style="flex:1; min-width:320px; max-width:680px; background:linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(250, 244, 235, 0.78) 100%); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--border-color); border-radius:8px; padding:0.55rem 1rem; display:flex; align-items:center; gap:0.85rem; box-shadow:0 4px 16px rgba(58, 52, 42, 0.12);"
                      onmouseenter="window.inlineCarouselState.isPaused = true;" 
                      onmouseleave="window.inlineCarouselState.isPaused = false;">
-                    <span style="font-size:0.85rem; color:rgba(250, 246, 240, 0.7);"><i data-lucide="loader" class="spin"></i> Loading home preview...</span>
+                    <span style="font-size:0.85rem; color:var(--text-muted);"><i data-lucide="loader" class="spin"></i> Loading home preview...</span>
                 </div>
 
                 <!-- Right: Action Buttons -->
@@ -417,7 +417,7 @@ function renderClientDashboardBannerPreview(bodyEl, playlist, props) {
 
     bodyEl.innerHTML = `
         <div style="padding:1.5rem; background:var(--bg-primary); min-height:100%;">
-            <div style="background:linear-gradient(135deg, rgba(212,175,55,0.12), rgba(15,23,42,0.6)); border:1px solid var(--accent-gold); border-radius:8px; padding:0.85rem 1.15rem;">
+            <div style="background:transparent; border:1px solid var(--accent-gold); border-radius:8px; padding:0.85rem 1.15rem;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
                     <div style="flex-shrink:0;">
                         <div style="display:flex; align-items:center; gap:0.5rem;">
@@ -430,18 +430,18 @@ function renderClientDashboardBannerPreview(bodyEl, playlist, props) {
                             <span style="font-size:0.85rem; color:var(--accent-blue); font-weight:600;">Agent: ${escapeHtml(realtorName)}</span>
                         </div>
                     </div>
-                    <div style="flex:1; min-width:320px; max-width:680px; background:linear-gradient(135deg, #1C2B22 0%, #15221A 100%); border:1px solid var(--accent-gold); border-radius:8px; padding:0.55rem 1rem; display:flex; align-items:center; gap:0.85rem; box-shadow:0 8px 24px -4px rgba(47, 75, 60, 0.35), 0 4px 12px rgba(0,0,0,0.25);">
-                        <div style="width:105px; height:68px; border-radius:6px; overflow:hidden; border:1px solid rgba(193, 137, 46, 0.45); flex-shrink:0; background:#0f1712;">
+                    <div style="flex:1; min-width:320px; max-width:680px; background:linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(250, 244, 235, 0.78) 100%); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--border-color); border-radius:8px; padding:0.55rem 1rem; display:flex; align-items:center; gap:0.85rem; box-shadow:0 4px 16px rgba(58, 52, 42, 0.12);">
+                        <div style="width:105px; height:68px; border-radius:6px; overflow:hidden; border:1px solid var(--border-color); flex-shrink:0; background:var(--bg-card);">
                             <img src="${imageUrl}" alt="${displayAddress}" style="width:100%; height:100%; object-fit:cover;" referrerpolicy="no-referrer">
                         </div>
                         <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:3px;">
                             <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem;"><span style="font-size:1.15rem; font-weight:800; color:var(--accent-gold); white-space:nowrap;">$${(property.price || 0).toLocaleString()}</span>${reviewBadge}</div>
-                            <div style="font-size:0.95rem; font-weight:700; color:#FAF6F0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2;">${displayAddress}</div>
-                            <div style="font-size:0.82rem; color:rgba(250,246,240,0.8); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;">${property.beds || 0} Bed • ${property.baths || 0} Bath • ${(property.sqft_finished || 0).toLocaleString()} SqFt ${pricePerSqft ? `($${pricePerSqft}/sqft)` : ''}</div>
+                            <div style="font-size:0.95rem; font-weight:700; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2;">${displayAddress}</div>
+                            <div style="font-size:0.82rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;">${property.beds || 0} Bed • ${property.baths || 0} Bath • ${(property.sqft_finished || 0).toLocaleString()} SqFt ${pricePerSqft ? `($${pricePerSqft}/sqft)` : ''}</div>
                         </div>
                         <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; flex-shrink:0; margin-left:0.25rem;">
-                            <div style="display:flex; gap:4px;"><button type="button" class="btn btn-secondary" style="padding:4px 8px; font-size:0.78rem; border-radius:4px; background:rgba(255,255,255,0.12); color:#FAF6F0; border:1px solid rgba(255,255,255,0.25);" onclick="window.rotatePreviewCarousel(-1, ${totalCount})" title="Previous house"><i data-lucide="chevron-left"></i></button><button type="button" class="btn btn-gold" style="padding:4px 8px; font-size:0.78rem; border-radius:4px;" onclick="window.rotatePreviewCarousel(1, ${totalCount})" title="Next house"><i data-lucide="chevron-right"></i></button></div>
-                            <span style="font-size:0.75rem; color:var(--accent-gold); font-weight:800; letter-spacing:0.04em;">${index + 1} / ${totalCount}</span>
+                            <div style="display:flex; gap:4px;"><button type="button" class="btn btn-secondary" style="padding:4px 8px; font-size:0.78rem; border-radius:4px;" onclick="window.rotatePreviewCarousel(-1, ${totalCount})" title="Previous house"><i data-lucide="chevron-left"></i></button><button type="button" class="btn btn-gold" style="padding:4px 8px; font-size:0.78rem; border-radius:4px;" onclick="window.rotatePreviewCarousel(1, ${totalCount})" title="Next house"><i data-lucide="chevron-right"></i></button></div>
+                            <span style="font-size:0.75rem; color:var(--accent-emerald); font-weight:800; letter-spacing:0.04em;">${index + 1} / ${totalCount}</span>
                         </div>
                     </div>
                     <button type="button" class="btn btn-gold" style="font-size:0.85rem; padding:0.45rem 1rem;" disabled><i data-lucide="eye"></i> Open Playlist View</button>
@@ -734,7 +734,7 @@ export async function populatePlaylistClientSelect() {
     }
 
     select.innerHTML = `<option value="">(None / General Share)</option>` +
-        clients.map(c => `<option value="${c.id}">👤 ${escapeHtml(c.full_name || c.username)} [${c.initials || 'CL'}]</option>`).join('');
+        clients.map(c => `<option value="${c.id}">${escapeHtml(c.full_name || c.username)} [${c.initials || 'CL'}]</option>`).join('');
 }
 
 export function renderPlaylistsTable(collections) {
@@ -749,27 +749,33 @@ export function renderPlaylistsTable(collections) {
     const currentOrigin = window.location.origin + window.location.pathname.replace(/\/index\.html.*$/, '/');
 
     tbody.innerHTML = collections.map(c => {
-        const client = c.client_display_name ? `👤 ${escapeHtml(c.client_display_name)}` : '—';
+        const client = c.client_display_name ? `<i data-lucide="user"></i> ${escapeHtml(c.client_display_name)}` : '—';
         const created = c.created_at ? new Date(c.created_at).toLocaleDateString() : 'N/A';
         const shareUrl = `${currentOrigin}share.html?token=${c.share_token}`;
 
         return `
             <tr>
-                <td><strong>#${c.id}</strong></td>
+                <td style="vertical-align:top; text-align:center;"><strong>#${c.id}</strong></td>
                 <td>
-                    <div style="font-weight:700; color:var(--accent-gold);">${escapeHtml(c.title)}</div>
-                    ${c.description ? `<div style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(c.description)}</div>` : ''}
+                    <div style="font-weight:700; color:var(--accent-gold); font-size:0.95rem;">${escapeHtml(c.title)}</div>
+                    ${c.description ? `<div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">${escapeHtml(c.description)}</div>` : ''}
                 </td>
                 <td style="font-size:0.85rem; color:var(--accent-blue);">${client}</td>
-                <td><span class="badge" style="background:var(--bg-input); padding:2px 8px; border-radius:12px; font-weight:700;">${c.item_count} Homes</span></td>
+                <td><span class="badge" style="background:var(--bg-card); border:1px solid var(--border-color); padding:3px 10px; border-radius:12px; font-weight:700; font-size:0.78rem;">${c.item_count} Homes</span></td>
                 <td style="font-size:0.8rem; color:var(--text-muted);">${created}</td>
-                <td>
-                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                        <button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="copyCollectionShareLink('${escapeHtml(shareUrl)}')"><i data-lucide="copy"></i> Copy Link</button>
-                        <button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="window.viewPlaylistPortal('${c.share_token}')"><i data-lucide="eye"></i> View</button>
-                        <button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem; background:#ffffff; color:#0f172a; font-weight:700; border:1px solid var(--accent-gold);" onclick="window.previewClientView('${c.share_token}')"><i data-lucide="external-link" style="color:var(--accent-gold);"></i> Client View</button>
-                        <button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="window.editPlaylist(${c.id})"><i data-lucide="edit-3"></i> Edit</button>
-                        <button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem; color:var(--accent-red);" onclick="confirmDeletePlaylist(${c.id}, '${escapeHtml(c.title)}')"><i data-lucide="trash-2"></i> Delete</button>
+                <td style="text-align:right;">
+                    <div style="display:flex; gap:0.4rem; justify-content:flex-end; align-items:center;">
+                        <button class="btn btn-secondary" style="padding:0.3rem 0.65rem; font-size:0.78rem; background:#ffffff; color:#0f172a; font-weight:700; border:1px solid var(--accent-gold);" onclick="window.previewClientView('${c.share_token}')"><i data-lucide="external-link" style="color:var(--accent-gold);"></i> Client View</button>
+                        <div class="playlist-actions-cell" style="display:inline-block;">
+                            <button class="btn btn-secondary" style="padding:0.3rem 0.55rem; font-size:0.78rem;" onclick="window.togglePlaylistActionsMenu(event, ${c.id})" title="More Actions"><i data-lucide="more-horizontal"></i> Actions</button>
+                            <div class="playlist-actions-menu" id="playlist-menu-${c.id}">
+                                <button onclick="copyCollectionShareLink('${escapeHtml(shareUrl)}')"><i data-lucide="copy"></i> Copy Link</button>
+                                <button onclick="window.viewPlaylistPortal('${c.share_token}')"><i data-lucide="eye"></i> View Portal</button>
+                                <button onclick="window.editPlaylist(${c.id})"><i data-lucide="edit-3"></i> Edit Playlist</button>
+                                <div style="height:1px; background:var(--border-color); margin:2px 0;"></div>
+                                <button class="danger-item" onclick="confirmDeletePlaylist(${c.id}, '${escapeHtml(c.title)}')"><i data-lucide="trash-2"></i> Delete</button>
+                            </div>
+                        </div>
                     </div>
                 </td>
             </tr>
@@ -778,6 +784,41 @@ export function renderPlaylistsTable(collections) {
 
     if (window.lucide) window.lucide.createIcons();
 }
+
+window.togglePlaylistActionsMenu = function(event, id) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const targetMenu = document.getElementById(`playlist-menu-${id}`);
+    const allMenus = document.querySelectorAll('.playlist-actions-menu');
+    
+    const isCurrentlyActive = targetMenu ? targetMenu.classList.contains('active') : false;
+
+    allMenus.forEach(m => m.classList.remove('active'));
+
+    if (targetMenu && !isCurrentlyActive) {
+        const rect = btn.getBoundingClientRect();
+        const menuWidth = 160;
+        
+        let top = rect.bottom + 4;
+        let left = rect.right - menuWidth;
+        if (left < 10) left = 10;
+        
+        targetMenu.style.position = 'fixed';
+        targetMenu.style.top = `${top}px`;
+        targetMenu.style.left = `${left}px`;
+        targetMenu.style.zIndex = '999999';
+        
+        targetMenu.classList.add('active');
+    }
+};
+
+window.addEventListener('scroll', () => {
+    document.querySelectorAll('.playlist-actions-menu').forEach(m => m.classList.remove('active'));
+}, true);
+
+document.addEventListener('click', () => {
+    document.querySelectorAll('.playlist-actions-menu').forEach(m => m.classList.remove('active'));
+});
 
 export function editPlaylist(id) {
     const target = cachedCollections.find(c => c.id === id);
@@ -801,7 +842,7 @@ export function editPlaylist(id) {
     renderPlaylistHomesEditor();
 
     if (headingEl) {
-        headingEl.innerHTML = `<i data-lucide="edit-3"></i> Edit Playlist #${target.id}: ${escapeHtml(target.title)}`;
+        headingEl.innerHTML = `<i data-lucide="edit-3" style="color:var(--accent-gold);"></i> Edit Playlist #${target.id}: ${escapeHtml(target.title)}`;
     }
     if (submitBtn) {
         submitBtn.innerHTML = `<i data-lucide="check"></i> Save Changes`;
@@ -837,7 +878,7 @@ export function resetPlaylistForm() {
     if (editorEl) editorEl.style.display = 'none';
 
     if (headingEl) {
-        headingEl.innerHTML = `<i data-lucide="plus-circle"></i> Create New Playlist Collection`;
+        headingEl.innerHTML = `<i data-lucide="plus-circle" style="color:var(--accent-gold);"></i> Create New Playlist Collection`;
     }
     if (submitBtn) {
         submitBtn.innerHTML = `<i data-lucide="plus"></i> Create Playlist`;
@@ -860,11 +901,11 @@ export function renderPlaylistHomesEditor() {
     const availableProps = allProps.filter(p => !editingMlsIds.includes(p.mls_id));
 
     let html = `
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.6rem;">
-            <label class="filter-label" style="margin:0; font-weight:700;">Included Homes in Playlist (<span id="playlist-edit-count">${editingMlsIds.length}</span>):</label>
-            <div style="display:flex; gap:0.4rem; align-items:center; flex:1; max-width:480px; min-width:260px;">
-                <select id="playlist-add-prop-select" class="select-input" style="font-size:0.83rem; width:100%; height:32px; padding:0.2rem 0.5rem;" onchange="window.addHomeToEditingPlaylist(this.value)">
-                    <option value="">➕ Add property to this playlist...</option>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
+            <label class="filter-label" style="margin:0; font-weight:700; font-size:0.85rem; color:var(--text-primary);"><i data-lucide="home" style="width:14px; height:14px; color:var(--accent-gold);"></i> Included Homes (<span id="playlist-edit-count">${editingMlsIds.length}</span>):</label>
+            <div style="display:flex; gap:0.4rem; align-items:center; flex:1; max-width:440px; min-width:240px;">
+                <select id="playlist-add-prop-select" class="select-input" style="font-size:0.83rem; width:100%; height:34px; padding:0.2rem 0.5rem;" onchange="window.addHomeToEditingPlaylist(this.value)">
+                    <option value="">+ Add property to this playlist...</option>
                     ${availableProps.map(p => `<option value="${p.mls_id}">${escapeHtml(p.address || p.mls_id)} — $${(p.price || 0).toLocaleString()} (${p.beds || 0}B/${p.baths || 0}B, ${escapeHtml(p.city || '')}) [MLS #${p.mls_id}]</option>`).join('')}
                 </select>
             </div>
@@ -874,14 +915,17 @@ export function renderPlaylistHomesEditor() {
     if (!editingMlsIds || !editingMlsIds.length) {
         html += `<div id="playlist-edit-homes-list" style="font-size:0.82rem; color:var(--text-muted); font-style:italic; padding:0.4rem 0;">No properties currently in this playlist. Use the dropdown above to add houses!</div>`;
     } else {
-        html += `<div id="playlist-edit-homes-list" style="display: flex; flex-wrap: wrap; gap: 0.4rem; max-height: 140px; overflow-y: auto;">` +
+        html += `<div id="playlist-edit-homes-list" style="display: flex; flex-wrap: wrap; gap: 0.5rem; max-height: 160px; overflow-y: auto; padding: 2px;">` +
             editingMlsIds.map(mlsId => {
                 const prop = allProps.find(p => p.mls_id === mlsId);
-                const label = prop ? `${prop.address || mlsId} ($${(prop.price || 0).toLocaleString()})` : `MLS #${mlsId}`;
+                const addressStr = prop ? (prop.address || mlsId) : `MLS #${mlsId}`;
+                const priceStr = prop && prop.price ? `$${(prop.price).toLocaleString()}` : '';
                 return `
-                    <span style="display:inline-flex; align-items:center; gap:0.35rem; background:var(--bg-card); border:1px solid var(--border-color); padding:0.25rem 0.6rem; border-radius:14px; font-size:0.8rem;">
-                        <span>🏠 ${escapeHtml(label)}</span>
-                        <button type="button" style="background:none; border:none; color:var(--accent-red); cursor:pointer; font-weight:bold; padding:0 2px; font-size:0.9rem;" onclick="window.removeHomeFromEditingPlaylist('${mlsId}')" title="Remove home from playlist">&times;</button>
+                    <span class="playlist-home-tag">
+                        <i data-lucide="home" style="width:13px; height:13px; color:var(--accent-gold);"></i>
+                        <span>${escapeHtml(addressStr)}</span>
+                        ${priceStr ? `<span class="tag-price">${priceStr}</span>` : ''}
+                        <button type="button" class="tag-remove" onclick="window.removeHomeFromEditingPlaylist('${mlsId}')" title="Remove property">&times;</button>
                     </span>
                 `;
             }).join('') +
@@ -889,6 +933,7 @@ export function renderPlaylistHomesEditor() {
     }
 
     editorEl.innerHTML = html;
+    if (window.lucide) window.lucide.createIcons();
 }
 
 window.addHomeToEditingPlaylist = function(mlsId) {

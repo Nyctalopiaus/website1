@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - Self-Contained Bookmarklet Engine Builder
+ * Nycto's MLS Property Scout - Self-Contained Bookmarklet Engine Builder
  * Generates 100% inline bookmarklet executable directly on HTTPS Matrix MLS & Redfin pages.
  */
 function getEngineCode() {
@@ -13,7 +13,7 @@ function getEngineCode() {
     // template literals inside the engine below still use \` and \${ escapes as written, and
     // the two .replace() calls after the raw extraction below strip those backslashes back out.
     const raw = String.raw`/**
- * MLS & Redfin Property Scout - Bookmarklet Engine
+ * Nycto's MLS Property Scout - Bookmarklet Engine
  * High-performance DOM parser for Matrix REColorado and Redfin property pages.
  */
 (function() {

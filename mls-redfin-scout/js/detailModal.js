@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - Property Detail Modal & Its Actions
+ * Nycto's MLS Property Scout - Property Detail Modal & Its Actions
  * Every export here is attached to window (not just module-exported) because these are all
  * invoked from onclick="..." attributes inside dynamically-rendered HTML strings, which
  * execute in global scope regardless of module boundaries - same pattern the original
@@ -7,12 +7,131 @@
  * side effects (setting window.openDetailModal etc.) is enough.
  */
 import { state, elements, CONFIG } from './state.js';
-import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, getRedfinUrl, isSafeMediaUrl, NO_PHOTO_IMG } from './properties.js';
+import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, isSafeMediaUrl, NO_PHOTO_IMG, getStatusBadgeClass } from './properties.js';
 import { apiFetch } from './api.js';
 import { applyFiltersAndRender } from './filters.js';
 import { showToast } from './toast.js';
 import { renderClientNextSteps } from './clientNextSteps.js';
 
+
+export const DEFAULT_REACTION_CHIPS = [
+    '😍 Great Kitchen',
+    '🌳 Big Yard',
+    '📐 Great Layout',
+    '🛠️ Needs Renovation',
+    '🔊 Busy Road',
+    '💵 Priced Well'
+];
+
+export function getPropertyTags(p) {
+    if (!p) return [];
+    if (Array.isArray(p.tags_json)) return p.tags_json;
+    if (Array.isArray(p.tags)) return p.tags;
+    if (typeof p.tags_json === 'string') {
+        try {
+            const parsed = JSON.parse(p.tags_json);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch(e) {}
+    }
+    return [];
+}
+
+export function getAvailableReactionChips() {
+    const custom = Array.isArray(state.userCustomChips) ? state.userCustomChips : [];
+    const combined = [...DEFAULT_REACTION_CHIPS];
+    custom.forEach(c => {
+        if (c && typeof c === 'string' && !combined.includes(c)) {
+            combined.push(c);
+        }
+    });
+    return combined;
+}
+
+window.renderReactionChipsHtml = function(p) {
+    const activeTags = getPropertyTags(p);
+    const availableChips = getAvailableReactionChips();
+
+    let html = '<div class="reaction-chips-wrapper" style="display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center;">';
+    
+    availableChips.forEach(chip => {
+        const isActive = activeTags.includes(chip);
+        const isCustom = !DEFAULT_REACTION_CHIPS.includes(chip);
+        html += `
+            <button type="button" class="reaction-chip ${isActive ? 'active' : ''}" 
+                    onclick="window.togglePropertyReactionChip('${p.mls_id}', '${escapeHtml(chip)}')">
+                <span>${escapeHtml(chip)}</span>
+                ${isCustom ? `<span class="chip-delete-btn" title="Delete chip from your reusable library" onclick="window.deleteCustomReactionChip(event, '${escapeHtml(chip)}')">&times;</span>` : ''}
+            </button>
+        `;
+    });
+
+    html += `
+        <button type="button" class="btn btn-secondary btn-compact reaction-chip-add" onclick="window.promptAddCustomReactionChip('${p.mls_id}')">
+            <i data-lucide="plus"></i> Custom Chip
+        </button>
+    `;
+    html += '</div>';
+    return html;
+};
+
+window.togglePropertyReactionChip = function(mlsId, chipText) {
+    const p = state.allProperties.find(item => item.mls_id === mlsId);
+    if (!p) return;
+    let currentTags = getPropertyTags(p);
+    if (currentTags.includes(chipText)) {
+        currentTags = currentTags.filter(t => t !== chipText);
+    } else {
+        currentTags.push(chipText);
+    }
+    p.tags_json = currentTags;
+    p.tags = currentTags;
+
+    apiFetch(CONFIG.API_URL + '?action=update_user_data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mls_id: mlsId, tags: currentTags })
+    }).then(() => {
+        const container = document.getElementById('modal-reaction-chips-container');
+        if (container) {
+            container.innerHTML = window.renderReactionChipsHtml(p);
+            if (window.lucide) window.lucide.createIcons();
+        }
+        applyFiltersAndRender();
+    });
+};
+
+window.promptAddCustomReactionChip = function(mlsId) {
+    const input = prompt('Enter a custom property reaction (e.g. "🏊 Needs Pool", "🏔️ Mountain View"):');
+    if (!input || !input.trim()) return;
+    const cleanChip = input.trim();
+    if (!state.userCustomChips) state.userCustomChips = [];
+    if (!state.userCustomChips.includes(cleanChip) && !DEFAULT_REACTION_CHIPS.includes(cleanChip)) {
+        state.userCustomChips.push(cleanChip);
+        if (window.savePreferencesToServer) window.savePreferencesToServer();
+    }
+    window.togglePropertyReactionChip(mlsId, cleanChip);
+};
+
+window.deleteCustomReactionChip = function(event, chipText) {
+    event.stopPropagation();
+    if (!confirm(`Delete "${chipText}" from your reusable reaction chips library?`)) return;
+    if (state.userCustomChips) {
+        state.userCustomChips = state.userCustomChips.filter(c => c !== chipText);
+        if (window.savePreferencesToServer) window.savePreferencesToServer();
+    }
+    const modalEl = document.getElementById('modal-detail');
+    const mlsId = modalEl?.dataset?.currentMlsId || '';
+    if (mlsId) {
+        const p = state.allProperties.find(item => item.mls_id === mlsId);
+        if (p) {
+            const container = document.getElementById('modal-reaction-chips-container');
+            if (container) {
+                container.innerHTML = window.renderReactionChipsHtml(p);
+                if (window.lucide) window.lucide.createIcons();
+            }
+        }
+    }
+};
 
     // Detail Modal Multi-Photo State
     let currentGalleryImages = [];
@@ -60,7 +179,6 @@ import { renderClientNextSteps } from './clientNextSteps.js';
         }
 
         const mlsUrl = p.mls_url || `https://matrix.recolorado.com/Matrix/Public/Portal.aspx?L=1&k=2343995XHKSS&p=CS-3939147-0#1`;
-        const redfinUrl = getRedfinUrl(p);
 
         const matrixRev = getPropertyReviewStatus(p);
         let matrixBadgeModal = '';
@@ -106,7 +224,7 @@ import { renderClientNextSteps } from './clientNextSteps.js';
                     <div>
                         <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:0.25rem;">
                             <h1 style="color:var(--accent-gold); font-size:2rem; font-weight:800;">$${p.price.toLocaleString()}</h1>
-                            <span class="card-status-badge badge-${escapeHtml((p.status || 'Active').toLowerCase())}">${escapeHtml(p.status || 'Active')}</span>
+                            <span class="badge ${getStatusBadgeClass(p.status)}">${escapeHtml(p.status || 'Active')}</span>
                             ${matrixBadgeModal}
                             ${ppsqft ? `<span class="score-badge" style="font-size:0.9rem;">$${ppsqft} / SqFt</span>` : ''}
                         </div>
@@ -120,9 +238,6 @@ import { renderClientNextSteps } from './clientNextSteps.js';
                     <div class="modal-action-bar">
                         <a href="${mlsUrl}" target="_blank" class="btn btn-gold" style="text-decoration:none;">
                             <i data-lucide="link"></i> View Original Matrix MLS Portal Listing
-                        </a>
-                        <a href="${redfinUrl}" target="_blank" class="btn btn-primary" style="text-decoration:none;">
-                            <i data-lucide="circle"></i> View on Redfin
                         </a>
                         <a href="${calcUrl}" target="_blank" class="btn btn-secondary" style="text-decoration:none; background:rgba(91,124,153,0.2); color:#6B8CA3; border:1px solid #5B7C99;">
                             <i data-lucide="calculator"></i> Mortgage Calculator
@@ -300,6 +415,16 @@ import { renderClientNextSteps } from './clientNextSteps.js';
                     </div>
 
                     <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h3 style="font-size:0.95rem; font-weight:700; color:var(--text-primary);"><i data-lucide="sparkles"></i> Property Reaction Chips</h3>
+                            <span style="font-size:0.78rem; color:var(--text-muted);">Click to tag listing</span>
+                        </div>
+                        <div id="modal-reaction-chips-container">
+                            ${window.renderReactionChipsHtml(p)}
+                        </div>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:0.5rem;">
                         <h3 style="font-size:0.95rem; font-weight:700; color:var(--text-primary);"><i data-lucide="pencil"></i> Personal Buyer Notes & Pros/Cons</h3>
                         <textarea id="modal-user-notes" class="input-text" style="min-height:90px;" placeholder="Add private notes, pros/cons, showing feedback...">${escapeHtml(p.user_notes || '')}</textarea>
                     </div>
@@ -335,6 +460,7 @@ import { renderClientNextSteps } from './clientNextSteps.js';
         if (window.lucide) window.lucide.createIcons();
 
         elements.modalDetail.classList.add('active');
+        elements.modalDetail.dataset.currentMlsId = mlsId;
         window.loadPropertyActivity(mlsId);
     };
 

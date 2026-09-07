@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - Property Data & Small Shared Helpers
+ * Nycto's MLS Property Scout - Property Data & Small Shared Helpers
  * Fetching/geocoding properties, plus escapeHtml/cleanDisplayAddress/getPropertyReviewStatus
  * used across nearly every other module.
  */
@@ -198,4 +198,18 @@ export const NO_PHOTO_IMG = 'data:image/svg+xml;charset=UTF-8,' + encodeURICompo
 
         return `https://www.redfin.com/stingray/do/query-location?location=${encodeURIComponent(query)}`;
     }
+
+export function getStatusBadgeClass(status) {
+    const st = (status || 'Active').toLowerCase().trim();
+    if (st.includes('active')) return 'badge-active';
+    if (st.includes('pending') || st.includes('contract') || st.includes('contingent') || st.includes('under')) return 'badge-pending';
+    if (st.includes('closed') || st.includes('sold') || st.includes('off')) return 'badge-closed';
+    if (st.includes('withdrawn') || st.includes('expired') || st.includes('cancel')) return 'badge-withdrawn';
+    if (st.includes('coming')) return 'badge-comingsoon';
+    return 'badge-pending';
+}
+if (typeof window !== 'undefined') {
+    window.getStatusBadgeClass = getStatusBadgeClass;
+}
+
 

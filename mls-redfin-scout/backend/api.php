@@ -1,6 +1,6 @@
 <?php
 /**
- * MLS & Redfin Property Scout - Backend API Router
+ * Nycto's MLS Property Scout - Backend API Router
  * Handles SQLite persistence for scraped MLS listings, Redfin enrichment, notes, tags, and favorites.
  * Bootstraps the DB/session (bootstrap.php), loads auth/user-admin handlers (auth.php) and the
  * property data pipeline (properties.php), then dispatches on $action. Public endpoint and
@@ -425,7 +425,7 @@ function handleGetPreferences(PDO $pdo) {
     requireAuth();
     $userId = (int)$_SESSION['user_id'];
 
-    $stmt = $pdo->prepare("SELECT active_view, current_sort, compare_list_json, active_filters_json FROM user_preferences WHERE user_id = :user_id");
+    $stmt = $pdo->prepare("SELECT active_view, current_sort, compare_list_json, active_filters_json, custom_reaction_chips_json FROM user_preferences WHERE user_id = :user_id");
     $stmt->execute([':user_id' => $userId]);
     $prefs = $stmt->fetch();
 
@@ -434,13 +434,15 @@ function handleGetPreferences(PDO $pdo) {
             'active_view' => 'grid',
             'current_sort' => 'price-desc',
             'compare_list_json' => '[]',
-            'active_filters_json' => '{}'
+            'active_filters_json' => '{}',
+            'custom_reaction_chips_json' => '[]'
         ];
     }
 
     $prefs['compare_list'] = json_decode($prefs['compare_list_json'] ?? '[]', true) ?: [];
     $prefs['active_filters'] = json_decode($prefs['active_filters_json'] ?? '{}', true) ?: (object)[];
-    unset($prefs['compare_list_json'], $prefs['active_filters_json']);
+    $prefs['custom_reaction_chips'] = json_decode($prefs['custom_reaction_chips_json'] ?? '[]', true) ?: [];
+    unset($prefs['compare_list_json'], $prefs['active_filters_json'], $prefs['custom_reaction_chips_json']);
 
     echo json_encode(['success' => true, 'preferences' => $prefs]);
 }
@@ -451,28 +453,31 @@ function handleUpdatePreferences(PDO $pdo) {
     $userId = (int)$_SESSION['user_id'];
     $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 
-    $stmtFetch = $pdo->prepare("SELECT active_view, current_sort, compare_list_json, active_filters_json FROM user_preferences WHERE user_id = :user_id");
+    $stmtFetch = $pdo->prepare("SELECT active_view, current_sort, compare_list_json, active_filters_json, custom_reaction_chips_json FROM user_preferences WHERE user_id = :user_id");
     $stmtFetch->execute([':user_id' => $userId]);
     $existing = $stmtFetch->fetch() ?: [
         'active_view' => 'grid',
         'current_sort' => 'price-desc',
         'compare_list_json' => '[]',
-        'active_filters_json' => '{}'
+        'active_filters_json' => '{}',
+        'custom_reaction_chips_json' => '[]'
     ];
 
     $activeView = isset($input['active_view']) ? (string)$input['active_view'] : $existing['active_view'];
     $currentSort = isset($input['current_sort']) ? (string)$input['current_sort'] : $existing['current_sort'];
     $compareListJson = isset($input['compare_list']) ? json_encode($input['compare_list']) : $existing['compare_list_json'];
     $activeFiltersJson = isset($input['active_filters']) ? json_encode($input['active_filters']) : $existing['active_filters_json'];
+    $customChipsJson = isset($input['custom_reaction_chips']) ? json_encode($input['custom_reaction_chips']) : $existing['custom_reaction_chips_json'];
 
     $stmtUpsert = $pdo->prepare("
-        INSERT INTO user_preferences (user_id, active_view, current_sort, compare_list_json, active_filters_json, updated_at)
-        VALUES (:user_id, :active_view, :current_sort, :compare_list_json, :active_filters_json, CURRENT_TIMESTAMP)
+        INSERT INTO user_preferences (user_id, active_view, current_sort, compare_list_json, active_filters_json, custom_reaction_chips_json, updated_at)
+        VALUES (:user_id, :active_view, :current_sort, :compare_list_json, :active_filters_json, :custom_reaction_chips_json, CURRENT_TIMESTAMP)
         ON CONFLICT(user_id) DO UPDATE SET
             active_view = excluded.active_view,
             current_sort = excluded.current_sort,
             compare_list_json = excluded.compare_list_json,
             active_filters_json = excluded.active_filters_json,
+            custom_reaction_chips_json = excluded.custom_reaction_chips_json,
             updated_at = CURRENT_TIMESTAMP
     ");
     $stmtUpsert->execute([
@@ -480,7 +485,8 @@ function handleUpdatePreferences(PDO $pdo) {
         ':active_view' => $activeView,
         ':current_sort' => $currentSort,
         ':compare_list_json' => $compareListJson,
-        ':active_filters_json' => $activeFiltersJson
+        ':active_filters_json' => $activeFiltersJson,
+        ':custom_reaction_chips_json' => $customChipsJson
     ]);
 
     echo json_encode(['success' => true]);

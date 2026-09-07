@@ -1,12 +1,12 @@
 /**
- * MLS & Redfin Property Scout - Realtor Command Center Module
+ * Nycto's MLS Property Scout - Realtor Command Center Module
  * Handles client management, client status matrix, dual property notes, property chat, and tour planning.
  */
 import { apiFetch } from './api.js';
 import { state, elements } from './state.js';
 import { showToast } from './toast.js';
 import { cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG, getRedfinUrl } from './properties.js';
-import { sendPropertiesToHomeward } from './export.js';
+import { sendPropertiesToHomeward, downloadTourCalendarICS } from './export.js';
 
 let activeClientId = null;
 let clientActivity = [];
@@ -26,6 +26,73 @@ let realtorFilterStatus = 'all'; // 'all' | 'loved' | 'shortlisted' | 'disliked'
 let realtorSearchQuery = '';
 let realtorMlsStatusFilter = 'all'; // 'all' | 'Active' | 'Pending' | 'Closed'
 
+export function calculateFitScore(p, client) {
+    if (!client) return null;
+    let score = 50; // base score
+
+    if (p.price) {
+        const minP = client.target_min_price || 0;
+        const maxP = client.target_max_price || 0;
+        if (minP > 0 && maxP > 0 && p.price >= minP && p.price <= maxP) {
+            score += 25;
+        } else if (maxP > 0 && p.price <= maxP * 1.1) {
+            score += 15;
+        } else if (minP > 0 || maxP > 0) {
+            score += 5;
+        } else {
+            score += 15;
+        }
+    } else {
+        score += 10;
+    }
+
+    if (p.beds && client.target_beds) {
+        if (p.beds >= client.target_beds) {
+            score += 15;
+        } else if (p.beds === client.target_beds - 1) {
+            score += 5;
+        }
+    } else {
+        score += 10;
+    }
+
+    if (client.target_cities && (p.city || p.address)) {
+        const cities = client.target_cities.toLowerCase().split(',').map(c => c.trim()).filter(Boolean);
+        const pCity = (p.city || '').toLowerCase();
+        const pAddr = (p.address || '').toLowerCase();
+        const isMatch = cities.some(c => pCity.includes(c) || pAddr.includes(c));
+        if (isMatch) score += 10;
+    } else {
+        score += 5;
+    }
+
+    score = Math.min(99, Math.max(62, Math.round(score)));
+    let scoreClass = 'fit-score-standard';
+    if (score >= 85) scoreClass = 'fit-score-high';
+    else if (score >= 75) scoreClass = 'fit-score-medium';
+
+    return { score, label: `${score}% Match`, class: scoreClass };
+}
+
+function renderSkeletonLoader(container) {
+    container.innerHTML = `
+        <div style="padding: 1rem 0;">
+            <div class="realtor-skeleton-box" style="height: 90px; width: 100%; margin-bottom: 1.25rem; border-radius: var(--radius-md);"></div>
+            <div class="realtor-cc-layout">
+                <div class="realtor-skeleton-box" style="height: 480px; width: 100%; border-radius: var(--radius-md);"></div>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div class="realtor-skeleton-box" style="height: 80px; width: 100%; border-radius: var(--radius-md);"></div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+                        <div class="realtor-skeleton-card realtor-skeleton-box"></div>
+                        <div class="realtor-skeleton-card realtor-skeleton-box"></div>
+                        <div class="realtor-skeleton-card realtor-skeleton-box"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
 // Accessors used outside this module (e.g. js/export.js) to work with whichever
 // client is currently selected in the Realtor Command Center, instead of the
 // logged-in account's own data.
@@ -44,8 +111,7 @@ export async function renderRealtorView(clientId = null) {
     const container = document.getElementById('view-realtor-container');
     if (!container) return;
 
-    container.innerHTML = `<div class="loading-spinner-container" style="text-align:center; padding: 4rem;"><i data-lucide="loader-2" class="spin-icon" style="width:36px; height:36px; color:var(--accent-gold);"></i><p style="margin-top:1rem; color:var(--text-muted);">Loading Realtor Command Center...</p></div>`;
-    if (window.lucide) window.lucide.createIcons();
+    renderSkeletonLoader(container);
 
     try {
         const url = clientId ? `backend/api.php?action=get_client_matrix&client_id=${clientId}` : 'backend/api.php?action=get_client_matrix';
@@ -71,6 +137,7 @@ export async function renderRealtorView(clientId = null) {
     buildRealtorDom(container);
 }
 
+
 function buildRealtorDom(container) {
     const clients = realtorData.clients || [];
     const client = realtorData.selected_client;
@@ -89,11 +156,11 @@ function buildRealtorDom(container) {
     }
 
     const stageOptions = [
-        { key: 'searching', label: '🔍 Searching', color: '#3b82f6' },
-        { key: 'touring', label: '🚗 Touring', color: '#eab308' },
-        { key: 'offer', label: '📝 Making Offer', color: '#a855f7' },
-        { key: 'contract', label: '🔑 Under Contract', color: '#10b981' },
-        { key: 'closed', label: '🎉 Closed', color: '#06b6d4' }
+        { key: 'searching', label: 'Searching', icon: 'search', color: '#3b82f6' },
+        { key: 'touring', label: 'Touring', icon: 'car', color: '#eab308' },
+        { key: 'offer', label: 'Making Offer', icon: 'file-text', color: '#a855f7' },
+        { key: 'contract', label: 'Under Contract', icon: 'key-round', color: '#10b981' },
+        { key: 'closed', label: 'Closed', icon: 'party-popper', color: '#06b6d4' }
     ];
 
     const currentStage = client.pipeline_stage || 'searching';
@@ -111,46 +178,95 @@ function buildRealtorDom(container) {
     const dislikedCount = (matrix.disliked || []).length;
 
     container.innerHTML = `
-        <div class="realtor-kpi-summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
-            <div class="kpi-card"><div class="kpi-card-header"><span class="kpi-label">Active Clients</span><span class="kpi-card-icon"><i data-lucide="users"></i></span></div><div class="kpi-value">${realtorOverview.active_clients || 0}</div><div class="kpi-sub">Current client roster</div></div>
-            <div class="kpi-card"><div class="kpi-card-header"><span class="kpi-label">Awaiting Review</span><span class="kpi-card-icon"><i data-lucide="clipboard-list"></i></span></div><div class="kpi-value">${realtorOverview.homes_awaiting_review || 0}</div><div class="kpi-sub">Client-property decisions</div></div>
-            <div class="kpi-card"><div class="kpi-card-header"><span class="kpi-label">Scheduled Showings</span><span class="kpi-card-icon"><i data-lucide="calendar-clock"></i></span></div><div class="kpi-value">${realtorOverview.scheduled_showings || 0}</div><div class="kpi-sub">Across active clients</div></div>
-            <div class="kpi-card"><div class="kpi-card-header"><span class="kpi-label">Unread Follow-Ups</span><span class="kpi-card-icon"><i data-lucide="bell"></i></span></div><div class="kpi-value">${realtorOverview.unread_notifications || 0}</div><div class="kpi-sub">New client activity</div></div>
+        <!-- Sticky Header Container: Side-by-Side 50/50 Split Grid -->
+        <div class="realtor-sticky-topbar">
+            <div class="realtor-sticky-grid">
+                <!-- Left 50%: Global Roster Overview -->
+                <div class="realtor-topbar-col">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.35rem;">
+                        <span style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); display:flex; align-items:center; gap:0.35rem;">
+                            <i data-lucide="globe" style="width:13px; height:13px;"></i> Global Roster Overview (All Clients)
+                        </span>
+                    </div>
+                    <div class="realtor-kpi-summary-grid mini-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-card-header"><span class="kpi-label">Active Clients</span><span class="kpi-card-icon"><i data-lucide="users"></i></span></div>
+                            <div class="kpi-value">${realtorOverview.active_clients || 0}</div>
+                            <div class="kpi-sub">Current client roster</div>
+                        </div>
+                        <div class="kpi-card interactive-kpi" onclick="window.handleKpiCardClick('needs-curation')" title="Click to view clients needing curation">
+                            <div class="kpi-card-header"><span class="kpi-label">Needs Curation</span><span class="kpi-card-icon"><i data-lucide="user-check"></i></span></div>
+                            <div class="kpi-value">${realtorOverview.clients_needing_curation ?? (realtorOverview.homes_awaiting_review || 0)}</div>
+                            <div class="kpi-sub">Clients with pending homes</div>
+                        </div>
+                        <div class="kpi-card interactive-kpi" onclick="window.handleKpiCardClick('showings')" title="Click to view scheduled showings">
+                            <div class="kpi-card-header"><span class="kpi-label">Scheduled Showings</span><span class="kpi-card-icon"><i data-lucide="calendar-clock"></i></span></div>
+                            <div class="kpi-value">${realtorOverview.scheduled_showings || 0}</div>
+                            <div class="kpi-sub">Across active clients</div>
+                        </div>
+                        <div class="kpi-card interactive-kpi" onclick="window.handleKpiCardClick('chat')" title="Click to view messages & follow-ups">
+                            <div class="kpi-card-header"><span class="kpi-label">Unread Follow-Ups</span><span class="kpi-card-icon"><i data-lucide="bell"></i></span></div>
+                            <div class="kpi-value">${realtorOverview.unread_notifications || 0}</div>
+                            <div class="kpi-sub">New client activity</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right 50%: Selected Client Spotlight -->
+                <div class="realtor-topbar-col">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.35rem;">
+                        <span style="font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--accent-gold); display:flex; align-items:center; gap:0.35rem;">
+                            <i data-lucide="user-check" style="width:13px; height:13px;"></i> ${escapeHtml(client.full_name || client.username)} — Property Decisions
+                        </span>
+                        ${realtorFilterStatus !== 'all' ? `<span style="font-size:0.75rem; color:var(--accent-blue); cursor:pointer;" onclick="window.setRealtorStatusFilter('all')"><i data-lucide="rotate-ccw" style="width:12px; height:12px;"></i> Clear Filter (${realtorFilterStatus})</span>` : ''}
+                    </div>
+                    <div class="realtor-kpi-summary-grid mini-grid-5">
+                        <div class="kpi-card interactive-kpi kpi-card-loved ${realtorFilterStatus === 'loved' ? 'active-kpi-filter' : ''}" onclick="window.handleKpiCardClick('loved')" title="Click to filter board to Loved / Favorites">
+                            <div class="kpi-card-header">
+                                <span class="kpi-label">Loved</span>
+                                <span class="kpi-card-icon"><i data-lucide="heart" class="icon-heart"></i></span>
+                            </div>
+                            <div class="kpi-value">${lovedCount}</div>
+                            <div class="kpi-sub">Favorites</div>
+                        </div>
+                        <div class="kpi-card interactive-kpi kpi-card-shortlisted ${realtorFilterStatus === 'shortlisted' ? 'active-kpi-filter' : ''}" onclick="window.handleKpiCardClick('shortlisted')" title="Click to filter board to Shortlisted">
+                            <div class="kpi-card-header">
+                                <span class="kpi-label">Shortlisted</span>
+                                <span class="kpi-card-icon"><i data-lucide="star" class="icon-star"></i></span>
+                            </div>
+                            <div class="kpi-value">${shortlistCount}</div>
+                            <div class="kpi-sub">Top Picks</div>
+                        </div>
+                        <div class="kpi-card interactive-kpi kpi-card-disliked ${realtorFilterStatus === 'disliked' ? 'active-kpi-filter' : ''}" onclick="window.handleKpiCardClick('disliked')" title="Click to filter board to Disliked / Passed">
+                            <div class="kpi-card-header">
+                                <span class="kpi-label">Passed</span>
+                                <span class="kpi-card-icon"><i data-lucide="thumbs-down" class="icon-thumbs-down"></i></span>
+                            </div>
+                            <div class="kpi-value">${dislikedCount}</div>
+                            <div class="kpi-sub">Disliked</div>
+                        </div>
+                        <div class="kpi-card interactive-kpi kpi-card-unreviewed ${realtorFilterStatus === 'unreviewed' ? 'active-kpi-filter' : ''}" onclick="window.handleKpiCardClick('unreviewed')" title="Click to filter board to Unreviewed">
+                            <div class="kpi-card-header">
+                                <span class="kpi-label">Unreviewed</span>
+                                <span class="kpi-card-icon"><i data-lucide="eye" class="icon-eye"></i></span>
+                            </div>
+                            <div class="kpi-value">${unreviewedCount}</div>
+                            <div class="kpi-sub">Pending</div>
+                        </div>
+                        <div class="kpi-card interactive-kpi ${activeSubTab === 'activity' ? 'active-kpi-filter' : ''}" onclick="window.handleKpiCardClick('recent-activity')" title="Click to view recent client activity log">
+                            <div class="kpi-card-header">
+                                <span class="kpi-label">Recent Activity</span>
+                                <span class="kpi-card-icon"><i data-lucide="activity"></i></span>
+                            </div>
+                            <div class="kpi-value">${matrix.recent_activity_count || 0}</div>
+                            <div class="kpi-sub">Last 48h</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="realtor-kpi-summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
-            <div class="kpi-card">
-                <div class="kpi-card-header">
-                    <span class="kpi-label">Assigned Clients</span>
-                    <span class="kpi-card-icon"><i data-lucide="users"></i></span>
-                </div>
-                <div class="kpi-value">${clients.length}</div>
-                <div class="kpi-sub">Roster Size</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-card-header">
-                    <span class="kpi-label">Client Loved</span>
-                    <span class="kpi-card-icon"><i data-lucide="heart" style="color:var(--accent-red);"></i></span>
-                </div>
-                <div class="kpi-value">${lovedCount}</div>
-                <div class="kpi-sub">Favorites for ${escapeHtml(client.full_name || client.username)}</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-card-header">
-                    <span class="kpi-label">Shortlisted</span>
-                    <span class="kpi-card-icon"><i data-lucide="star" style="color:var(--accent-gold);"></i></span>
-                </div>
-                <div class="kpi-value">${shortlistCount}</div>
-                <div class="kpi-sub">Top Picks</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-card-header">
-                    <span class="kpi-label">Unreviewed Homes</span>
-                    <span class="kpi-card-icon"><i data-lucide="eye" style="color:var(--accent-blue);"></i></span>
-                </div>
-                <div class="kpi-value">${unreviewedCount}</div>
-                <div class="kpi-sub">Pending Curation</div>
-            </div>
-        </div>
+
+
 
         <div class="realtor-cc-layout">
             <!-- Left Sidebar: Client Roster -->
@@ -168,7 +284,7 @@ function buildRealtorDom(container) {
                                 <div class="client-avatar">${initial}</div>
                                 <div class="client-info">
                                     <div class="client-name">${escapeHtml(c.full_name || c.username)}</div>
-                                    <div class="client-stage-pill" style="border-color:${stg.color}; color:${stg.color};">${stg.label}</div>
+                                    <div class="client-stage-pill" style="border-color:${stg.color}; color:${stg.color};"><i data-lucide="${stg.icon}"></i> ${stg.label}</div>
                                 </div>
                             </div>
                         `;
@@ -204,14 +320,14 @@ function buildRealtorDom(container) {
                                 <button type="button" class="pipeline-chip ${currentStage === stg.key ? 'active' : ''}"
                                         style="${currentStage === stg.key ? `background-color:${stg.color}; color:#fff; border-color:${stg.color};` : ''}"
                                         onclick="window.updateClientStage(${client.id}, '${stg.key}')">
-                                    ${stg.label}
+                                    <i data-lucide="${stg.icon}"></i> ${stg.label}
                                 </button>
                             `).join('')}
                         </div>
                     </div>
                 </div>
 
-                <!-- Sub-Navigation Tabs: Property Board | Discussion Thread | Tour Planner | Curated Playlists -->
+                <!-- Sub-Navigation Tabs: 100% Client-Scoped (Status Board | Discussion | Activity | Tour Planner | Playlists) -->
                 <div class="realtor-subnav-bar">
                     <div class="realtor-subnav-tabs">
                         <button class="realtor-tab-btn ${activeSubTab === 'matrix' ? 'active' : ''}" onclick="window.switchRealtorSubTab('matrix')">
@@ -229,9 +345,6 @@ function buildRealtorDom(container) {
                         <button class="realtor-tab-btn ${activeSubTab === 'playlists' ? 'active' : ''}" onclick="window.switchRealtorSubTab('playlists')">
                             <i data-lucide="music"></i> Curated Playlists
                         </button>
-                        <button class="realtor-tab-btn ${activeSubTab === 'property-management' ? 'active' : ''}" onclick="window.switchRealtorSubTab('property-management')">
-                            <i data-lucide="settings-2"></i> Property Management
-                        </button>
                     </div>
                 </div>
 
@@ -242,7 +355,6 @@ function buildRealtorDom(container) {
                     ${activeSubTab === 'activity' ? renderClientActivityContent(client) : ''}
                     ${activeSubTab === 'tour' ? renderTourPlannerContent(matrix, client) : ''}
                     ${activeSubTab === 'playlists' ? renderPlaylistsTabContent(client) : ''}
-                    ${activeSubTab === 'property-management' ? renderPropertyManagementContent() : ''}
                 </div>
             </main>
         </div>
@@ -299,12 +411,12 @@ function renderStatusMatrixContent(matrix, client) {
                     <i data-lucide="filter" style="width:16px; height:16px;"></i> Client Reaction Filter:
                 </label>
                 <select class="input-select" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" onchange="window.setRealtorStatusFilter(this.value)">
-                    <option value="all" ${realtorFilterStatus === 'all' ? 'selected' : ''}>📊 All Status Columns (${totalCount})</option>
-                    <option value="loved" ${realtorFilterStatus === 'loved' ? 'selected' : ''}>❤️ Loved / Favorites (${(matrix.loved || []).length})</option>
-                    <option value="shortlisted" ${realtorFilterStatus === 'shortlisted' ? 'selected' : ''}>⭐ Shortlisted / Top Picks (${(matrix.shortlisted || []).length})</option>
-                    <option value="disliked" ${realtorFilterStatus === 'disliked' ? 'selected' : ''}>👎 Disliked / Passed (${(matrix.disliked || []).length})</option>
-                    <option value="unreviewed" ${realtorFilterStatus === 'unreviewed' ? 'selected' : ''}>📋 Unreviewed Homes (${(matrix.unreviewed || []).length})</option>
-                    <option value="in_discussion" ${realtorFilterStatus === 'in_discussion' ? 'selected' : ''}>💬 In Discussion Thread (${(matrix.in_discussion || []).length})</option>
+                    <option value="all" ${realtorFilterStatus === 'all' ? 'selected' : ''}>All Status Columns (${totalCount})</option>
+                    <option value="loved" ${realtorFilterStatus === 'loved' ? 'selected' : ''}>Loved / Favorites (${(matrix.loved || []).length})</option>
+                    <option value="shortlisted" ${realtorFilterStatus === 'shortlisted' ? 'selected' : ''}>Shortlisted / Top Picks (${(matrix.shortlisted || []).length})</option>
+                    <option value="disliked" ${realtorFilterStatus === 'disliked' ? 'selected' : ''}>Disliked / Passed (${(matrix.disliked || []).length})</option>
+                    <option value="unreviewed" ${realtorFilterStatus === 'unreviewed' ? 'selected' : ''}>Unreviewed Homes (${(matrix.unreviewed || []).length})</option>
+                    <option value="in_discussion" ${realtorFilterStatus === 'in_discussion' ? 'selected' : ''}>In Discussion Thread (${(matrix.in_discussion || []).length})</option>
                 </select>
             </div>
 
@@ -326,45 +438,57 @@ function renderStatusMatrixContent(matrix, client) {
 
         <div class="status-matrix-grid" style="${gridStyle}">
             ${showLoved ? `
-                <div class="matrix-column matrix-col-loved">
+                <div class="matrix-column matrix-col-loved"
+                     ondragover="window.handleRealtorColDragOver(event)"
+                     ondragleave="window.handleRealtorColDragLeave(event)"
+                     ondrop="window.handleRealtorColDrop(event, 'loved', ${client.id})">
                     <div class="matrix-col-header">
-                        <h4><i data-lucide="heart" style="color:var(--accent-red);"></i> Loved / Favorites (${loved.length})</h4>
+                        <h4><i data-lucide="heart" class="icon-heart"></i> Loved / Favorites (${loved.length})</h4>
                     </div>
                     <div class="matrix-col-body" style="${singleCol ? 'display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;' : ''}">
-                        ${loved.length === 0 ? '<div class="matrix-empty-pill">No loved properties match</div>' : loved.map(p => renderRealtorPropertyCard(p, client.id)).join('')}
+                        ${loved.length === 0 ? '<div class="matrix-empty-pill">No loved properties match (drag card here)</div>' : loved.map(p => renderRealtorPropertyCard(p, client.id)).join('')}
                     </div>
                 </div>
             ` : ''}
 
             ${showShortlisted ? `
-                <div class="matrix-column matrix-col-shortlist">
+                <div class="matrix-column matrix-col-shortlist"
+                     ondragover="window.handleRealtorColDragOver(event)"
+                     ondragleave="window.handleRealtorColDragLeave(event)"
+                     ondrop="window.handleRealtorColDrop(event, 'shortlisted', ${client.id})">
                     <div class="matrix-col-header">
-                        <h4><i data-lucide="star" style="color:var(--accent-gold);"></i> Shortlisted (${shortlisted.length})</h4>
+                        <h4><i data-lucide="star" class="icon-star"></i> Shortlisted (${shortlisted.length})</h4>
                     </div>
                     <div class="matrix-col-body" style="${singleCol ? 'display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;' : ''}">
-                        ${shortlisted.length === 0 ? '<div class="matrix-empty-pill">No shortlisted properties match</div>' : shortlisted.map(p => renderRealtorPropertyCard(p, client.id)).join('')}
+                        ${shortlisted.length === 0 ? '<div class="matrix-empty-pill">No shortlisted properties match (drag card here)</div>' : shortlisted.map(p => renderRealtorPropertyCard(p, client.id)).join('')}
                     </div>
                 </div>
             ` : ''}
 
             ${showDisliked ? `
-                <div class="matrix-column matrix-col-disliked">
+                <div class="matrix-column matrix-col-disliked"
+                     ondragover="window.handleRealtorColDragOver(event)"
+                     ondragleave="window.handleRealtorColDragLeave(event)"
+                     ondrop="window.handleRealtorColDrop(event, 'disliked', ${client.id})">
                     <div class="matrix-col-header">
-                        <h4><i data-lucide="thumbs-down" style="color:var(--text-muted);"></i> Disliked / Passed (${disliked.length})</h4>
+                        <h4><i data-lucide="thumbs-down" class="icon-thumbs-down"></i> Disliked / Passed (${disliked.length})</h4>
                     </div>
                     <div class="matrix-col-body" style="${singleCol ? 'display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;' : ''}">
-                        ${disliked.length === 0 ? '<div class="matrix-empty-pill">No disliked properties match</div>' : disliked.map(p => renderRealtorPropertyCard(p, client.id)).join('')}
+                        ${disliked.length === 0 ? '<div class="matrix-empty-pill">No disliked properties match (drag card here)</div>' : disliked.map(p => renderRealtorPropertyCard(p, client.id)).join('')}
                     </div>
                 </div>
             ` : ''}
 
             ${showUnreviewed ? `
-                <div class="matrix-column matrix-col-unreviewed">
+                <div class="matrix-column matrix-col-unreviewed"
+                     ondragover="window.handleRealtorColDragOver(event)"
+                     ondragleave="window.handleRealtorColDragLeave(event)"
+                     ondrop="window.handleRealtorColDrop(event, 'unreviewed', ${client.id})">
                     <div class="matrix-col-header">
-                        <h4><i data-lucide="eye" style="color:var(--accent-blue);"></i> Unreviewed (${unreviewed.length})</h4>
+                        <h4><i data-lucide="eye" class="icon-eye"></i> Unreviewed (${unreviewed.length})</h4>
                     </div>
                     <div class="matrix-col-body" style="${singleCol ? 'display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;' : ''}">
-                        ${unreviewed.length === 0 ? '<div class="matrix-empty-pill">No unreviewed properties match</div>' : unreviewed.map(p => renderRealtorPropertyCard(p, client.id)).join('')}
+                        ${unreviewed.length === 0 ? '<div class="matrix-empty-pill">No unreviewed properties match (drag card here)</div>' : unreviewed.map(p => renderRealtorPropertyCard(p, client.id)).join('')}
                     </div>
                 </div>
             ` : ''}
@@ -389,6 +513,9 @@ function renderRealtorPropertyCard(p, clientId) {
     const priceStr = `$${(p.price || 0).toLocaleString()}`;
     const ppsqft = p.sqft_finished ? `$${Math.round(p.price / p.sqft_finished)}/sqft` : '';
 
+    const fitScore = calculateFitScore(p, realtorData.selected_client);
+    const fitBadgeHtml = fitScore ? `<span class="fit-score-badge ${fitScore.class}" title="Calculated match fit based on client search criteria"><i data-lucide="sparkles" style="width:11px; height:11px;"></i> ${fitScore.label}</span>` : '';
+
     const statusRaw = p.status || 'Active';
     let statusBg = '#10b981'; // emerald green
     let statusColor = '#ffffff';
@@ -402,12 +529,21 @@ function renderRealtorPropertyCard(p, clientId) {
     }
 
     return `
-        <div class="realtor-prop-card" data-mls-id="${p.mls_id}" style="cursor:pointer;" onclick="window.openDetailModal('${p.mls_id}')">
+        <div class="realtor-prop-card"
+             data-mls-id="${p.mls_id}"
+             draggable="true"
+             ondragstart="window.handleRealtorCardDragStart(event, '${p.mls_id}', ${clientId})"
+             ondragend="window.handleRealtorCardDragEnd(event)"
+             style="cursor:grab;"
+             onclick="window.openDetailModal('${p.mls_id}')">
             <div class="realtor-card-thumb">
                 <img src="${imgUrl}" alt="${escapeHtml(displayAddr)}" loading="lazy">
-                <span class="realtor-card-status-badge" style="position: absolute; top: 6px; left: 6px; background: ${statusBg}; color: ${statusColor}; font-weight: 800; font-size: 0.68rem; padding: 0.15rem 0.45rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; z-index: 2; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">
-                    ${escapeHtml(statusRaw)}
-                </span>
+                <div class="realtor-card-badges-overlay" style="position: absolute; top: 6px; left: 6px; display: flex; gap: 0.35rem; align-items: center; z-index: 2;">
+                    <span class="realtor-card-status-badge" style="background: ${statusBg}; color: ${statusColor}; font-weight: 800; font-size: 0.68rem; padding: 0.15rem 0.45rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">
+                        ${escapeHtml(statusRaw)}
+                    </span>
+                    ${fitBadgeHtml}
+                </div>
                 <span class="realtor-card-price">${priceStr}</span>
                 <button class="btn-prop-chat-badge ${p.has_messages ? 'has-msg' : ''}" onclick="event.stopPropagation(); window.openPropertyChat('${p.mls_id}', ${clientId})" title="Property Discussion Thread">
                     <i data-lucide="message-square"></i> Chat
@@ -426,7 +562,9 @@ function renderRealtorPropertyCard(p, clientId) {
                     </div>
                 </div>
 
-                    <button type="button" class="btn btn-secondary" style="font-size:0.78rem; align-self:flex-start;" onclick="event.stopPropagation(); window.requestClientFeedback('${p.mls_id}', ${clientId})"><i data-lucide="message-circle-question"></i> Request Feedback</button>
+                <div style="display:flex; gap:0.4rem; align-items:center; margin-top:0.35rem;">
+                    <button type="button" class="btn btn-secondary" style="font-size:0.78rem;" onclick="event.stopPropagation(); window.requestClientFeedback('${p.mls_id}', ${clientId})"><i data-lucide="message-circle-question"></i> Request Feedback</button>
+                </div>
 
                 <!-- Client Notes Box -->
                 <div class="note-box client-note-box">
@@ -447,6 +585,7 @@ function renderRealtorPropertyCard(p, clientId) {
         </div>
     `;
 }
+
 
 function renderChatThreadContent(client) {
     return `
@@ -471,12 +610,16 @@ function renderTourPlannerContent(matrix, client) {
 
     return `
         <div class="realtor-tour-planner">
-            <div class="tour-planner-header">
+            <div class="tour-planner-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
                 <div>
                     <h3><i data-lucide="map-pin"></i> Showing & Tour Itinerary Builder</h3>
                     <p style="color:var(--text-muted); font-size:0.88rem;">Curated shortlist of houses to show ${escapeHtml(client.full_name || client.username)}.</p>
                 </div>
-                <button class="btn btn-gold" onclick="window.openHomewardTourRoute()"><i data-lucide="map"></i> Map Route in Homeward</button>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button class="btn btn-secondary" onclick="window.exportShowingCalendar()"><i data-lucide="calendar"></i> Export Calendar (.ics)</button>
+                    <button class="btn btn-secondary" onclick="window.openClientTourDossierModal()"><i data-lucide="file-text"></i> Client Tour Dossier</button>
+                    <button class="btn btn-gold" onclick="window.openHomewardTourRoute()"><i data-lucide="map"></i> Map Route in Homeward</button>
+                </div>
             </div>
 
             ${tourProps.length === 0 ? `
@@ -488,7 +631,14 @@ function renderTourPlannerContent(matrix, client) {
                     ${tourProps.map((p, idx) => {
                         const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
                         return `
-                            <div class="tour-item-card">
+                            <div class="tour-item-card"
+                                 draggable="true"
+                                 ondragstart="window.handleTourItemDragStart(event, ${idx})"
+                                 ondragover="window.handleTourItemDragOver(event)"
+                                 ondragleave="window.handleTourItemDragLeave(event)"
+                                 ondragend="window.handleTourItemDragEnd(event)"
+                                 ondrop="window.handleTourItemDrop(event, ${idx}, ${client.id})">
+                                <div class="tour-drag-handle" title="Click and drag to reorder showing itinerary stop"><i data-lucide="grip-vertical" style="width:18px; height:18px;"></i></div>
                                 <div class="tour-step-badge">${idx + 1}</div>
                                 <div class="tour-prop-info">
                                     <div class="tour-prop-title">${escapeHtml(displayAddr)}</div>
@@ -509,6 +659,226 @@ function renderTourPlannerContent(matrix, client) {
     `;
 }
 
+// Window Globals for Drag-and-Drop Matrix & Tour Movement
+let draggedMlsId = null;
+let draggedClientId = null;
+let draggedTourIdx = null;
+
+window.handleTourItemDragStart = function(e, idx) {
+    draggedTourIdx = idx;
+    if (e.dataTransfer) {
+        e.dataTransfer.setData('text/plain', String(idx));
+        e.dataTransfer.effectAllowed = 'move';
+    }
+    if (e.currentTarget) e.currentTarget.classList.add('dragging');
+};
+
+window.handleTourItemDragOver = function(e) {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    const item = e.currentTarget;
+    if (item && !item.classList.contains('drag-over')) {
+        item.classList.add('drag-over');
+    }
+};
+
+window.handleTourItemDragLeave = function(e) {
+    const item = e.currentTarget;
+    if (item) item.classList.remove('drag-over');
+};
+
+window.handleTourItemDragEnd = function(e) {
+    if (e.currentTarget) e.currentTarget.classList.remove('dragging');
+    document.querySelectorAll('.tour-item-card').forEach(card => card.classList.remove('drag-over'));
+};
+
+window.handleTourItemDrop = function(e, targetIdx, clientId) {
+    e.preventDefault();
+    const item = e.currentTarget;
+    if (item) item.classList.remove('drag-over');
+
+    const fromIdx = draggedTourIdx !== null ? draggedTourIdx : parseInt(e.dataTransfer ? e.dataTransfer.getData('text/plain') : '-1', 10);
+    if (fromIdx < 0 || fromIdx === targetIdx) return;
+
+    const matrix = realtorData.matrix || {};
+    const tourProps = [...(matrix.loved || []), ...(matrix.shortlisted || [])];
+    if (!tourProps[fromIdx] || !tourProps[targetIdx]) return;
+
+    // Move element in tourProps array
+    const [moved] = tourProps.splice(fromIdx, 1);
+    tourProps.splice(targetIdx, 0, moved);
+
+    // Update internal matrix order
+    realtorData.matrix.loved = tourProps.filter(p => (matrix.loved || []).some(lp => lp.mls_id === p.mls_id));
+    realtorData.matrix.shortlisted = tourProps.filter(p => (matrix.shortlisted || []).some(sp => sp.mls_id === p.mls_id));
+
+    showToast(`Reordered showing stop #${fromIdx + 1} ➔ #${targetIdx + 1}`, 'success');
+
+    // Re-build DOM
+    const container = document.getElementById('view-realtor-container');
+    if (container) buildRealtorDom(container);
+};
+
+
+window.handleRealtorCardDragStart = function(e, mlsId, clientId) {
+    draggedMlsId = mlsId;
+    draggedClientId = clientId;
+    if (e.dataTransfer) {
+        e.dataTransfer.setData('text/plain', mlsId);
+        e.dataTransfer.effectAllowed = 'move';
+    }
+    if (e.currentTarget) e.currentTarget.classList.add('dragging');
+};
+
+window.handleRealtorCardDragEnd = function(e) {
+    if (e.currentTarget) e.currentTarget.classList.remove('dragging');
+    document.querySelectorAll('.matrix-column').forEach(col => col.classList.remove('drag-over'));
+};
+
+window.handleRealtorColDragOver = function(e) {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    const col = e.currentTarget;
+    if (col && !col.classList.contains('drag-over')) {
+        col.classList.add('drag-over');
+    }
+};
+
+window.handleRealtorColDragLeave = function(e) {
+    const col = e.currentTarget;
+    if (col) col.classList.remove('drag-over');
+};
+
+window.handleRealtorColDrop = async function(e, targetStatus, clientId) {
+    e.preventDefault();
+    const col = e.currentTarget;
+    if (col) col.classList.remove('drag-over');
+
+    const mlsId = (e.dataTransfer ? e.dataTransfer.getData('text/plain') : '') || draggedMlsId;
+    if (!mlsId || !clientId) return;
+
+    let payload = { mls_id: mlsId, client_id: clientId };
+    if (targetStatus === 'loved') {
+        payload.favorite = 1;
+        payload.hidden = 0;
+        payload.rating = 5;
+    } else if (targetStatus === 'shortlisted') {
+        payload.favorite = 0;
+        payload.hidden = 0;
+        payload.rating = 4;
+        payload.shared_with_realtor = 1;
+    } else if (targetStatus === 'disliked') {
+        payload.favorite = 0;
+        payload.hidden = 1;
+        payload.rating = 1;
+    } else if (targetStatus === 'unreviewed') {
+        payload.favorite = 0;
+        payload.hidden = 0;
+        payload.rating = 0;
+        payload.shared_with_realtor = 0;
+    }
+
+    try {
+        const res = await apiFetch('backend/api.php?action=update_user_data', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        if (res && res.success) {
+            showToast(`Moved property to ${targetStatus.toUpperCase()}`, 'success');
+            renderRealtorView(clientId);
+        } else {
+            showToast(res?.error || 'Failed to update property status', 'error');
+        }
+    } catch (err) {
+        showToast('Error updating property status', 'error');
+    }
+};
+
+// Window Globals for Showing Calendar Export & Tour Dossier
+window.exportShowingCalendar = function() {
+    const client = getActiveRealtorClient();
+    const tourProps = getActiveClientTourProperties();
+    downloadTourCalendarICS(tourProps, client);
+};
+
+window.openClientTourDossierModal = function() {
+    const client = getActiveRealtorClient();
+    const matrix = realtorData.matrix || {};
+    const tourProps = [...(matrix.loved || []), ...(matrix.shortlisted || [])];
+
+    if (!client || !tourProps.length) {
+        return showToast('No properties available to generate client tour dossier', 'warning');
+    }
+
+    const existing = document.getElementById('modal-client-tour-dossier');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'modal-client-tour-dossier';
+    modal.className = 'modal-overlay active';
+    modal.style.zIndex = '10900';
+
+    const clientName = escapeHtml(client.full_name || client.username);
+    const dateStr = new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    modal.innerHTML = `
+        <div class="modal-content tour-dossier-modal" style="padding: 2rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--accent-gold); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+                <div>
+                    <h2 style="font-family:'Space Grotesk',sans-serif; margin:0; font-size:1.5rem; color:var(--text-main);">
+                        🏡 Client Showing Dossier — ${clientName}
+                    </h2>
+                    <p style="margin: 0.3rem 0 0; color:var(--text-muted); font-size:0.88rem;">Prepared by Realtor Command Center • ${dateStr}</p>
+                </div>
+                <div class="no-print" style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button type="button" class="btn btn-gold" onclick="window.print()"><i data-lucide="printer"></i> Print / Save PDF</button>
+                    <button type="button" class="modal-close" style="position:static;" onclick="document.getElementById('modal-client-tour-dossier').remove()"><i data-lucide="x"></i></button>
+                </div>
+            </div>
+
+            <div style="flex:1; overflow-y:auto; padding-right:0.5rem;">
+                <div style="background:var(--bg-input); padding:1rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-bottom:1.5rem; display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:0.75rem; font-size:0.85rem;">
+                    <div><strong>Client:</strong> ${clientName}</div>
+                    <div><strong>Budget:</strong> ${client.target_min_price ? `$${(client.target_min_price/1000).toFixed(0)}k` : 'Any'} - ${client.target_max_price ? `$${(client.target_max_price/1000).toFixed(0)}k` : 'Any'}</div>
+                    <div><strong>Target Areas:</strong> ${escapeHtml(client.target_cities || 'All')}</div>
+                    <div><strong>Properties Scheduled:</strong> ${tourProps.length} Homes</div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:1rem;">
+                    ${tourProps.map((p, idx) => {
+                        const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
+                        const imgUrl = p.main_image_url || NO_PHOTO_IMG;
+                        const showingTime = p.showing_time ? new Date(p.showing_time).toLocaleString([], { dateStyle:'short', timeStyle:'short' }) : 'Time pending';
+                        return `
+                            <div class="dossier-property-row" style="border:1px solid var(--border-color); border-radius:var(--radius-md);">
+                                <img src="${imgUrl}" class="dossier-property-img" alt="${escapeHtml(displayAddr)}">
+                                <div style="flex:1; display:flex; flex-direction:column; justify-content:space-between;">
+                                    <div>
+                                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                            <h4 style="margin:0; font-size:1.05rem; font-weight:700;">Stop #${idx+1}: ${escapeHtml(displayAddr)}</h4>
+                                            <span style="font-weight:800; color:var(--accent-gold); font-size:1.1rem;">$${(p.price||0).toLocaleString()}</span>
+                                        </div>
+                                        <div style="font-size:0.82rem; color:var(--text-muted); margin-top:0.25rem;">
+                                            MLS #${escapeHtml(p.mls_id)} • ${p.beds||0} Beds • ${p.baths||0} Baths • ${(p.sqft_finished||0).toLocaleString()} SqFt
+                                        </div>
+                                    </div>
+                                    <div style="font-size:0.82rem; margin-top:0.5rem; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; background:var(--bg-input); padding:0.5rem; border-radius:var(--radius-sm);">
+                                        <div><strong>Showing Time:</strong> ${showingTime}</div>
+                                        <div><strong>Access / Lockbox:</strong> ${escapeHtml(p.access_notes || 'Keypad / Realtor Door')}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    if (window.lucide) window.lucide.createIcons();
+};
+
 // Window Globals for Interactive Controls
 window.selectRealtorClient = function(clientId) {
     activeClientId = clientId;
@@ -527,6 +897,7 @@ window.openHomewardTourRoute = function() {
             : 'No client selected to build a tour for.'
     });
 };
+
 
 async function loadGlobalPropertyVisibility() {
     try {
@@ -560,7 +931,25 @@ function renderClientActivityContent(client) {
     `;
 }
 
-function renderPropertyManagementContent() {
+window.openGlobalPropertyManagementModal = async function() {
+    await loadGlobalPropertyVisibility();
+    renderGlobalPropertyManagementModal();
+};
+
+window.closeGlobalPropertyManagementModal = function() {
+    document.getElementById('modal-global-property-mgmt')?.remove();
+};
+
+function renderGlobalPropertyManagementModal() {
+    let modal = document.getElementById('modal-global-property-mgmt');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-global-property-mgmt';
+        modal.className = 'modal-overlay active';
+        modal.style.zIndex = '10800';
+        document.body.appendChild(modal);
+    }
+
     const statuses = [...new Set(globalPropertyVisibility.map(property => property.status || 'Unknown'))].sort();
     const filteredProperties = globalPropertyVisibility.filter(property => {
         const isHidden = Boolean(property.is_hidden);
@@ -576,45 +965,94 @@ function renderPropertyManagementContent() {
     });
     const hiddenProperties = globalPropertyVisibility.filter(property => property.is_hidden);
 
-    return `
-        <section style="background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1.25rem;">
-            <div style="margin-bottom:1.25rem;">
-                <h3 style="display:flex; align-items:center; gap:0.45rem; font-size:1.1rem;"><i data-lucide="settings-2"></i> Global Property Visibility</h3>
-                <p style="margin-top:0.25rem; color:var(--text-muted); font-size:0.85rem;">Hidden listings are removed from every client and realtor dashboard. Add an optional internal reason before hiding a property.</p>
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 960px; width: 94%; max-height: 90vh; display: flex; flex-direction: column; padding: 1.5rem;">
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <h3 style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.25rem; font-weight: 700; color: var(--text-main);">
+                        <i data-lucide="settings-2" style="color: var(--accent-gold);"></i> Global Property Visibility & Management
+                    </h3>
+                    <p style="margin-top: 0.25rem; color: var(--text-muted); font-size: 0.85rem;">
+                        System-wide visibility controls. Hidden listings are removed from every client and realtor dashboard.
+                    </p>
+                </div>
+                <button type="button" class="modal-close" aria-label="Close Modal" onclick="window.closeGlobalPropertyManagementModal()" style="position: static;">
+                    <i data-lucide="x"></i>
+                </button>
             </div>
-            <div style="display:flex; flex-wrap:wrap; gap:0.65rem; align-items:end; margin-bottom:1rem; padding:0.85rem; background:var(--bg-input); border:1px solid var(--border-color); border-radius:var(--radius-sm);">
-                <label style="display:grid; gap:0.3rem; flex:1; min-width:220px;"><span class="filter-label">Search</span><input class="input-text" value="${escapeHtml(globalPropertySearch)}" placeholder="Address, city, ZIP, or MLS ID" oninput="window.setGlobalPropertySearch(this.value)"></label>
-                <label style="display:grid; gap:0.3rem;"><span class="filter-label">Property Status</span><select class="input-select" onchange="window.setGlobalPropertyStatusFilter(this.value)"><option value="all">All statuses</option>${statuses.map(status => `<option value="${escapeHtml(status)}" ${globalPropertyStatusFilter === status ? 'selected' : ''}>${escapeHtml(status)}</option>`).join('')}</select></label>
-                <label style="display:grid; gap:0.3rem;"><span class="filter-label">Visibility</span><select class="input-select" onchange="window.setGlobalPropertyVisibilityFilter(this.value)"><option value="all" ${globalPropertyVisibilityFilter === 'all' ? 'selected' : ''}>All (${globalPropertyVisibility.length})</option><option value="visible" ${globalPropertyVisibilityFilter === 'visible' ? 'selected' : ''}>Visible (${globalPropertyVisibility.length - hiddenProperties.length})</option><option value="hidden" ${globalPropertyVisibilityFilter === 'hidden' ? 'selected' : ''}>Hidden (${hiddenProperties.length})</option></select></label>
-                <button type="button" class="btn btn-secondary" title="Reset property management filters" onclick="window.resetGlobalPropertyFilters()"><i data-lucide="rotate-ccw"></i></button>
+
+            <!-- Search & Filters -->
+            <div style="display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: end; margin-bottom: 1rem; padding: 0.85rem; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <label style="display: grid; gap: 0.3rem; flex: 1; min-width: 220px;">
+                    <span class="filter-label">Search Properties</span>
+                    <input class="input-text" value="${escapeHtml(globalPropertySearch)}" placeholder="Address, city, ZIP, or MLS ID..." oninput="window.setGlobalPropertySearch(this.value)">
+                </label>
+                <label style="display: grid; gap: 0.3rem;">
+                    <span class="filter-label">MLS Status</span>
+                    <select class="input-select" onchange="window.setGlobalPropertyStatusFilter(this.value)">
+                        <option value="all">All statuses</option>
+                        ${statuses.map(status => `<option value="${escapeHtml(status)}" ${globalPropertyStatusFilter === status ? 'selected' : ''}>${escapeHtml(status)}</option>`).join('')}
+                    </select>
+                </label>
+                <label style="display: grid; gap: 0.3rem;">
+                    <span class="filter-label">Visibility</span>
+                    <select class="input-select" onchange="window.setGlobalPropertyVisibilityFilter(this.value)">
+                        <option value="all" ${globalPropertyVisibilityFilter === 'all' ? 'selected' : ''}>All (${globalPropertyVisibility.length})</option>
+                        <option value="visible" ${globalPropertyVisibilityFilter === 'visible' ? 'selected' : ''}>Visible (${globalPropertyVisibility.length - hiddenProperties.length})</option>
+                        <option value="hidden" ${globalPropertyVisibilityFilter === 'hidden' ? 'selected' : ''}>Hidden (${hiddenProperties.length})</option>
+                    </select>
+                </label>
+                <button type="button" class="btn btn-secondary" title="Reset property management filters" onclick="window.resetGlobalPropertyFilters()"><i data-lucide="rotate-ccw"></i> Reset</button>
             </div>
-            <div style="margin-top:1.25rem;">
-                <h4 style="font-size:0.95rem; margin-bottom:0.65rem;">Properties (${filteredProperties.length})</h4>
+
+            <!-- Table Container -->
+            <div style="flex: 1; overflow-y: auto; max-height: 55vh; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
                 ${filteredProperties.length ? `
-                    <div style="overflow-x:auto;">
-                        <table class="matrix-table" style="width:100%; font-size:0.84rem;">
-                            <thead><tr><th>Property</th><th>MLS Status</th><th>Lifecycle</th><th>Visibility</th><th>Reason</th><th>Hidden By</th><th></th></tr></thead>
-                            <tbody>${filteredProperties.map(property => `<tr>
-                                <td>${escapeHtml(cleanDisplayAddress(property.address, property.mls_id))}</td>
-                                <td>${escapeHtml(property.status || 'Unknown')}<br><span style="color:var(--text-muted); font-size:0.76rem;">MLS #${escapeHtml(property.mls_id)}</span></td>
-                                <td>${escapeHtml((property.lifecycle_status || 'active').replace(/^./, character => character.toUpperCase()))}</td>
-                                <td>${property.is_hidden ? '<span class="badge" style="background:rgba(176,70,58,0.12); color:var(--accent-red);">Hidden</span>' : '<span class="badge" style="background:rgba(79,122,70,0.12); color:var(--badge-active);">Visible</span>'}</td>
-                                <td>${escapeHtml(property.hidden_reason || '-')}</td>
-                                <td>${escapeHtml(property.hidden_by || '-')} ${property.hidden_at ? `<br><span style="color:var(--text-muted); font-size:0.76rem;">${escapeHtml(property.hidden_at)}</span>` : ''}</td>
-                                <td>${property.is_hidden ? `<button type="button" class="btn btn-secondary" style="font-size:0.78rem; padding:0.3rem 0.55rem;" onclick="window.restoreGlobalProperty('${escapeHtml(property.mls_id)}')"><i data-lucide="eye"></i> Restore</button>` : `<button type="button" class="btn btn-secondary" style="font-size:0.78rem; padding:0.3rem 0.55rem;" onclick="window.openGlobalPropertyHideModal('${escapeHtml(property.mls_id)}', '${escapeHtml(cleanDisplayAddress(property.address, property.mls_id))}')"><i data-lucide="eye-off"></i> Hide</button>`}</td>
-                            </tr>`).join('')}</tbody>
-                        </table>
-                    </div>` : `<p style="color:var(--text-muted); font-size:0.85rem;">No properties match these filters.</p>`}
+                    <table class="matrix-table" style="width: 100%; font-size: 0.85rem;">
+                        <thead style="position: sticky; top: 0; background: var(--bg-card-solid); z-index: 10;">
+                            <tr>
+                                <th>Property</th>
+                                <th>MLS Status</th>
+                                <th>Lifecycle</th>
+                                <th>Visibility</th>
+                                <th>Reason</th>
+                                <th>Hidden By</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filteredProperties.map(property => `
+                                <tr>
+                                    <td><strong>${escapeHtml(cleanDisplayAddress(property.address, property.mls_id))}</strong></td>
+                                    <td>${escapeHtml(property.status || 'Unknown')}<br><span style="color:var(--text-muted); font-size:0.76rem;">MLS #${escapeHtml(property.mls_id)}</span></td>
+                                    <td>${escapeHtml((property.lifecycle_status || 'active').replace(/^./, character => character.toUpperCase()))}</td>
+                                    <td>${property.is_hidden ? '<span class="badge" style="background:rgba(176,70,58,0.12); color:var(--accent-red);">Hidden</span>' : '<span class="badge" style="background:rgba(79,122,70,0.12); color:var(--badge-active);">Visible</span>'}</td>
+                                    <td>${escapeHtml(property.hidden_reason || '-')}</td>
+                                    <td>${escapeHtml(property.hidden_by || '-')} ${property.hidden_at ? `<br><span style="color:var(--text-muted); font-size:0.76rem;">${escapeHtml(property.hidden_at)}</span>` : ''}</td>
+                                    <td>
+                                        ${property.is_hidden
+                                            ? `<button type="button" class="btn btn-secondary" style="font-size:0.78rem; padding:0.3rem 0.55rem;" onclick="window.restoreGlobalProperty('${escapeHtml(property.mls_id)}')"><i data-lucide="eye"></i> Restore</button>`
+                                            : `<button type="button" class="btn btn-secondary" style="font-size:0.78rem; padding:0.3rem 0.55rem;" onclick="window.openGlobalPropertyHideModal('${escapeHtml(property.mls_id)}', '${escapeHtml(cleanDisplayAddress(property.address, property.mls_id))}')"><i data-lucide="eye-off"></i> Hide</button>`
+                                        }
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                ` : `<div style="padding: 3rem; text-align: center; color: var(--text-muted);"><i data-lucide="eye-off" style="width: 32px; height: 32px;"></i><p style="margin-top: 0.65rem;">No properties match these filter criteria.</p></div>`}
             </div>
-        </section>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+                <button type="button" class="btn btn-secondary" onclick="window.closeGlobalPropertyManagementModal()">Close</button>
+            </div>
+        </div>
     `;
+
+    if (window.lucide) window.lucide.createIcons();
 }
 
 window.switchRealtorSubTab = async function(tabName) {
     activeSubTab = tabName;
-    if (tabName === 'property-management') {
-        await loadGlobalPropertyVisibility();
-    }
     if (tabName === 'activity' && activeClientId) {
         await loadClientActivity(activeClientId);
     }
@@ -630,7 +1068,11 @@ window.restoreGlobalProperty = async function(mlsId) {
         if (res?.success) {
             showToast('Property restored for all users', 'success');
             await loadGlobalPropertyVisibility();
-            buildRealtorDom(document.getElementById('view-realtor-container'));
+            if (document.getElementById('modal-global-property-mgmt')) {
+                renderGlobalPropertyManagementModal();
+            }
+            const container = document.getElementById('view-realtor-container');
+            if (container) buildRealtorDom(container);
         } else {
             showToast(res?.error || 'Failed to restore property', 'error');
         }
@@ -683,7 +1125,11 @@ window.hideGlobalProperty = async function(mlsId) {
             window.closeGlobalPropertyHideModal();
             showToast('Property hidden from all users', 'success');
             await loadGlobalPropertyVisibility();
-            buildRealtorDom(document.getElementById('view-realtor-container'));
+            if (document.getElementById('modal-global-property-mgmt')) {
+                renderGlobalPropertyManagementModal();
+            }
+            const container = document.getElementById('view-realtor-container');
+            if (container) buildRealtorDom(container);
         } else {
             showToast(res?.error || 'Failed to update property visibility', 'error');
         }
@@ -694,24 +1140,32 @@ window.hideGlobalProperty = async function(mlsId) {
 
 window.setGlobalPropertySearch = function(value) {
     globalPropertySearch = value;
-    buildRealtorDom(document.getElementById('view-realtor-container'));
+    if (document.getElementById('modal-global-property-mgmt')) {
+        renderGlobalPropertyManagementModal();
+    }
 };
 
 window.setGlobalPropertyStatusFilter = function(value) {
     globalPropertyStatusFilter = value;
-    buildRealtorDom(document.getElementById('view-realtor-container'));
+    if (document.getElementById('modal-global-property-mgmt')) {
+        renderGlobalPropertyManagementModal();
+    }
 };
 
 window.setGlobalPropertyVisibilityFilter = function(value) {
     globalPropertyVisibilityFilter = value;
-    buildRealtorDom(document.getElementById('view-realtor-container'));
+    if (document.getElementById('modal-global-property-mgmt')) {
+        renderGlobalPropertyManagementModal();
+    }
 };
 
 window.resetGlobalPropertyFilters = function() {
     globalPropertySearch = '';
     globalPropertyStatusFilter = 'all';
     globalPropertyVisibilityFilter = 'all';
-    buildRealtorDom(document.getElementById('view-realtor-container'));
+    if (document.getElementById('modal-global-property-mgmt')) {
+        renderGlobalPropertyManagementModal();
+    }
 };
 
 window.updateClientStage = async function(clientId, stageKey) {
@@ -890,9 +1344,6 @@ function renderPlaylistsTabContent(client) {
                                     <button class="btn btn-sm btn-secondary" style="font-size: 0.78rem;" onclick="window.openPlaylistAndEdit('${p.share_token}')">
                                         <i data-lucide="edit-3"></i> Edit Playlist
                                     </button>
-                                    <button class="btn btn-sm btn-primary" style="font-size: 0.78rem;" onclick="navigator.clipboard.writeText('${shareUrl}'); showToast('Playlist share link copied!', 'success');">
-                                        <i data-lucide="share-2"></i> Share Link
-                                    </button>
                                 </div>
                             </div>
                         `;
@@ -937,8 +1388,36 @@ window.resetRealtorFilters = function() {
     if (container) buildRealtorDom(container);
 };
 
+window.handleKpiCardClick = function(action) {
+    if (['loved', 'shortlisted', 'disliked', 'unreviewed'].includes(action)) {
+        if (realtorFilterStatus === action && activeSubTab === 'matrix') {
+            realtorFilterStatus = 'all';
+        } else {
+            realtorFilterStatus = action;
+        }
+        activeSubTab = 'matrix';
+        const container = document.getElementById('view-realtor-container');
+        if (container) buildRealtorDom(container);
+
+        setTimeout(() => {
+            const matrixGrid = document.querySelector('.status-matrix-grid') || document.querySelector('.realtor-filter-toolbar');
+            if (matrixGrid) matrixGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+    } else if (action === 'needs-curation') {
+        const sidebar = document.querySelector('.realtor-roster-sidebar');
+        if (sidebar) sidebar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (action === 'recent-activity') {
+        window.switchRealtorSubTab('activity');
+    } else if (action === 'showings') {
+        window.switchRealtorSubTab('tour');
+    } else if (action === 'chat') {
+        window.switchRealtorSubTab('chat');
+    }
+};
+
 window.getRealtorActiveClientData = function() {
     return realtorData;
 };
 
 window.renderRealtorView = renderRealtorView;
+

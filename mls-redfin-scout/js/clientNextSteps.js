@@ -31,15 +31,52 @@ export async function renderClientNextSteps() {
 
     container.style.display = 'block';
     container.innerHTML = `
-        <section style="margin:0 0 1.25rem; padding:1rem 1.15rem; background:var(--bg-card); border:1px solid var(--border-color); border-radius:var(--radius-md);">
-            <div style="display:flex; justify-content:space-between; align-items:baseline; gap:1rem; flex-wrap:wrap; margin-bottom:0.75rem;">
-                <div><h2 style="font-size:1rem;"><i data-lucide="circle-check"></i> My Next Steps</h2><p style="margin-top:0.15rem; color:var(--text-muted); font-size:0.82rem;">Keep your shortlist current and share your reactions with your realtor.</p></div>
+        <section class="user-top-panel">
+            <div class="user-top-panel-header">
+                <div>
+                    <h2 class="user-top-panel-title"><i data-lucide="circle-check"></i> My Next Steps</h2>
+                    <p class="user-top-panel-sub">Keep your shortlist current and share your reactions with your realtor.</p>
+                </div>
+                <button class="btn-dashboard-collapse" onclick="if(window.toggleUserDashboard) window.toggleUserDashboard(true);" title="Collapse Dashboard Metrics" type="button">
+                    <i data-lucide="chevron-up"></i> Collapse
+                </button>
             </div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:0.65rem;">
-                <button type="button" class="btn btn-secondary" style="justify-content:flex-start; text-align:left;" onclick="window.focusClientNextStep('none')"><i data-lucide="clipboard-list"></i><span><strong>${reviewNeeded}</strong><br><small>Homes to review</small></span></button>
-                <button type="button" class="btn btn-secondary" style="justify-content:flex-start; text-align:left;" onclick="window.focusClientNextStep('favorite')"><i data-lucide="star"></i><span><strong>${favorites}</strong><br><small>Saved favorites</small></span></button>
-                <button type="button" class="btn btn-secondary" style="justify-content:flex-start; text-align:left;" onclick="window.focusClientNextStep('possibility')"><i data-lucide="circle-help"></i><span><strong>${possibilities}</strong><br><small>Under consideration</small></span></button>
-                <div style="display:flex; align-items:center; gap:0.55rem; padding:0.6rem 0.75rem; border:1px solid var(--border-color); border-radius:var(--radius-sm);"><i data-lucide="calendar-clock" style="color:var(--accent-emerald);"></i><span><strong>${showings.length}</strong><br><small>${showingDetail}</small></span></div>
+            <div class="user-top-panel-grid">
+                <div class="user-panel-card" onclick="window.focusClientNextStep('none')" title="Filter to unreviewed listings">
+                    <div class="user-panel-card-header">
+                        <span class="user-panel-card-label">To Review</span>
+                        <i data-lucide="clipboard-list" style="color:var(--accent-gold);"></i>
+                    </div>
+                    <div class="user-panel-card-value">${reviewNeeded}</div>
+                    <div class="user-panel-card-sub">Homes to review</div>
+                </div>
+
+                <div class="user-panel-card" onclick="window.focusClientNextStep('favorite')" title="Filter to saved favorites">
+                    <div class="user-panel-card-header">
+                        <span class="user-panel-card-label">Favorites</span>
+                        <i data-lucide="star" style="color:var(--accent-gold);"></i>
+                    </div>
+                    <div class="user-panel-card-value">${favorites}</div>
+                    <div class="user-panel-card-sub">Saved favorites</div>
+                </div>
+
+                <div class="user-panel-card" onclick="window.focusClientNextStep('possibility')" title="Filter to under consideration">
+                    <div class="user-panel-card-header">
+                        <span class="user-panel-card-label">Consideration</span>
+                        <i data-lucide="circle-help" style="color:var(--accent-blue);"></i>
+                    </div>
+                    <div class="user-panel-card-value">${possibilities}</div>
+                    <div class="user-panel-card-sub">Under consideration</div>
+                </div>
+
+                <div class="user-panel-card" onclick="if(window.switchView) window.switchView('grid');" title="View scheduled property showings">
+                    <div class="user-panel-card-header">
+                        <span class="user-panel-card-label">Showings</span>
+                        <i data-lucide="calendar-clock" style="color:var(--accent-emerald);"></i>
+                    </div>
+                    <div class="user-panel-card-value">${showings.length}</div>
+                    <div class="user-panel-card-sub">${showingDetail}</div>
+                </div>
             </div>
         </section>
     `;

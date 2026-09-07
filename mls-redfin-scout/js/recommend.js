@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - "Top Picks" Recommendation Modal
+ * Nycto's MLS Property Scout - "Top Picks" Recommendation Modal
  * Deterministic, client-side scoring over whichever properties the user checks in the
  * selection panel - no LLM call, no backend endpoint, no API key. Reproduces the kind of
  * analysis Josh got by pasting a favorites CSV into an LLM ($/sqft, lot size, days-on-market
@@ -20,12 +20,12 @@ export const WEIGHT_PROFILES = {
         weights: { ppsqft: 0.35, lotAcres: 0.20, domDays: 0.20, hoaFee: 0.15, redfinDeltaPct: 0.10 }
     },
     negotiation: {
-        label: '🔥 High Leverage Negotiation',
+        label: 'High Leverage Negotiation',
         desc: 'Identifies listings with longest Days on Market for aggressive price negotiation',
         weights: { domDays: 0.60, ppsqft: 0.25, redfinDeltaPct: 0.15, hoaFee: 0.00, lotAcres: 0.00 }
     },
     appraisal: {
-        label: '⚖️ Low Appraisal Risk',
+        label: 'Low Appraisal Risk',
         desc: 'Prioritizes properties priced farthest under Redfin valuation estimate',
         weights: { redfinDeltaPct: 0.55, ppsqft: 0.30, domDays: 0.15, hoaFee: 0.00, lotAcres: 0.00 }
     },
@@ -341,13 +341,13 @@ function updatePresetButtonUI() {
     const possCount = eligibleProperties().filter(p => getPropertyReviewStatus(p) === 'possibility').length;
 
     if (btnFav) {
-        const favLabel = isRealtor ? `❤️ Loved (${favCount})` : `⭐ Favorites (${favCount})`;
+        const favLabel = isRealtor ? `Loved (${favCount})` : `Favorites (${favCount})`;
         btnFav.innerHTML = activePreset === 'favorites' ? `<i data-lucide="check-circle-2"></i> ${favLabel}` : `<i data-lucide="star"></i> ${favLabel}`;
         btnFav.classList.toggle('btn-preset-active', activePreset === 'favorites');
     }
 
     if (btnPoss) {
-        const possLabel = isRealtor ? `+ ⭐ Shortlisted (+${possCount})` : `+ ❓ Possibilities (+${possCount})`;
+        const possLabel = isRealtor ? `+ Shortlisted (+${possCount})` : `+ Possibilities (+${possCount})`;
         btnPoss.innerHTML = (activePreset === 'possibilities') ? `<i data-lucide="check-circle-2"></i> ${possLabel}` : `<i data-lucide="circle-help"></i> ${possLabel}`;
         btnPoss.classList.toggle('btn-preset-active', activePreset === 'possibilities');
     }

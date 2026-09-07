@@ -1168,11 +1168,21 @@ function attachInputListeners() {
     });
   });
 
+  // Helper to dynamically adjust slider max when numeric inputs exceed standard bounds
+  const syncSliderMax = (sliderEl, val, minVal, defaultMax) => {
+    if (!sliderEl) return;
+    const num = parseFloat(val) || 0;
+    const targetMax = Math.max(defaultMax, num);
+    sliderEl.max = targetMax;
+    sliderEl.min = Math.min(minVal, num);
+    sliderEl.value = num;
+  };
+
   // Biweekly extra slider & input sync
   if (domRefs.biweeklyExtraInput && domRefs.biweeklyExtraSlider) {
     domRefs.biweeklyExtraInput.addEventListener('input', () => {
       const val = parseFloat(domRefs.biweeklyExtraInput.value) || 0;
-      domRefs.biweeklyExtraSlider.value = clamp(val, 0, 1000);
+      syncSliderMax(domRefs.biweeklyExtraSlider, val, 0, 1000);
       debouncedCalculate();
     });
 
@@ -1200,7 +1210,7 @@ function attachInputListeners() {
   // Home price syncing
   domRefs.homePriceInput.addEventListener('input', () => {
     const val = parseFloat(domRefs.homePriceInput.value) || 0;
-    domRefs.homePriceSlider.value = clamp(val, CONFIG.MIN_HOME_PRICE, CONFIG.MAX_HOME_PRICE);
+    syncSliderMax(domRefs.homePriceSlider, val, CONFIG.MIN_HOME_PRICE, CONFIG.MAX_HOME_PRICE);
 
     // Hide Redfin badge when manually edited
     const badge = getElement('badge-redfin-price');
@@ -1248,7 +1258,8 @@ function attachInputListeners() {
 
   // Additional payment syncing
   domRefs.additionalPaymentInput.addEventListener('input', () => {
-    domRefs.additionalPaymentSlider.value = parseFloat(domRefs.additionalPaymentInput.value) || 0;
+    const val = parseFloat(domRefs.additionalPaymentInput.value) || 0;
+    syncSliderMax(domRefs.additionalPaymentSlider, val, 0, 3000);
     debouncedCalculate();
   });
 
@@ -1694,32 +1705,38 @@ function attachActionListeners() {
   // Fetch Property Data
   domRefs.btnSearchMls.addEventListener('click', handleSearchMls);
 
+  // Modal Helpers
+  const showModal = (modalEl) => {
+    if (!modalEl) return;
+    modalEl.style.display = 'flex';
+    modalEl.classList.remove('hidden');
+    modalEl.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    const focusable = modalEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (focusable.length > 0) focusable[0].focus();
+  };
+
+  const hideModal = (modalEl) => {
+    if (!modalEl) return;
+    modalEl.style.display = 'none';
+    modalEl.classList.add('hidden');
+    modalEl.setAttribute('aria-hidden', 'true');
+    const openModals = document.querySelectorAll('.modal-overlay:not(.hidden)');
+    if (openModals.length === 0) {
+      document.body.classList.remove('modal-open');
+    }
+  };
+
   // Quick Start Modal Toggle
   const btnOpenQuickstart = document.getElementById('btn-open-quickstart');
   const quickstartModal = document.getElementById('quickstart-modal');
   const btnCloseQuickstart = document.getElementById('btn-close-quickstart');
 
   if (btnOpenQuickstart && quickstartModal) {
-    const openQsModal = () => {
-      quickstartModal.style.display = 'flex';
-      quickstartModal.classList.remove('hidden');
-      quickstartModal.setAttribute('aria-hidden', 'false');
-    };
-    const closeQsModal = () => {
-      quickstartModal.style.display = 'none';
-      quickstartModal.classList.add('hidden');
-      quickstartModal.setAttribute('aria-hidden', 'true');
-    };
-
-    btnOpenQuickstart.addEventListener('click', openQsModal);
-    if (btnCloseQuickstart) btnCloseQuickstart.addEventListener('click', closeQsModal);
+    btnOpenQuickstart.addEventListener('click', () => showModal(quickstartModal));
+    if (btnCloseQuickstart) btnCloseQuickstart.addEventListener('click', () => hideModal(quickstartModal));
     quickstartModal.addEventListener('click', (e) => {
-      if (e.target === quickstartModal) closeQsModal();
-    });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !quickstartModal.classList.contains('hidden')) {
-        closeQsModal();
-      }
+      if (e.target === quickstartModal) hideModal(quickstartModal);
     });
   }
 
@@ -1729,64 +1746,24 @@ function attachActionListeners() {
   const btnCloseFeatures = document.getElementById('btn-close-features');
 
   if (btnOpenFeatures && featuresModal) {
-    const openFeaturesModal = () => {
-      featuresModal.style.display = 'flex';
-      featuresModal.classList.remove('hidden');
-      featuresModal.setAttribute('aria-hidden', 'false');
-    };
-    const closeFeaturesModal = () => {
-      featuresModal.style.display = 'none';
-      featuresModal.classList.add('hidden');
-      featuresModal.setAttribute('aria-hidden', 'true');
-    };
-
-    btnOpenFeatures.addEventListener('click', openFeaturesModal);
-    if (btnCloseFeatures) btnCloseFeatures.addEventListener('click', closeFeaturesModal);
+    btnOpenFeatures.addEventListener('click', () => showModal(featuresModal));
+    if (btnCloseFeatures) btnCloseFeatures.addEventListener('click', () => hideModal(featuresModal));
     featuresModal.addEventListener('click', (e) => {
-      if (e.target === featuresModal) closeFeaturesModal();
-    });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !featuresModal.classList.contains('hidden')) {
-        closeFeaturesModal();
-      }
+      if (e.target === featuresModal) hideModal(featuresModal);
     });
   }
 
-  // "Copy Link" — opens an explainer modal (share-link-modal) aimed at
-  // non-technical users, with the actual copy action as a CTA button at
-  // the bottom of that modal. The copy itself encodes the current
-  // calculator state into a "?share=..." URL query param, the same shape
-  // initializeApp() decodes back out on load (see
-  // encodeStateForSharing()/decodeStateFromSharing() in storage.js).
-  // Nothing is sent to a server; the numbers live entirely in the copied
-  // link, so this doesn't compromise the "100% Private & Local" promise
-  // shown in the trust banner.
+  // "Copy Link" Modal
   const btnOpenShareLink = document.getElementById('btn-open-share-link');
   const shareLinkModal = document.getElementById('share-link-modal');
   const btnCloseShareLink = document.getElementById('btn-close-share-link');
   const btnCopyShareLink = document.getElementById('btn-copy-share-link');
 
   if (btnOpenShareLink && shareLinkModal) {
-    const openShareLinkModal = () => {
-      shareLinkModal.style.display = 'flex';
-      shareLinkModal.classList.remove('hidden');
-      shareLinkModal.setAttribute('aria-hidden', 'false');
-    };
-    const closeShareLinkModal = () => {
-      shareLinkModal.style.display = 'none';
-      shareLinkModal.classList.add('hidden');
-      shareLinkModal.setAttribute('aria-hidden', 'true');
-    };
-
-    btnOpenShareLink.addEventListener('click', openShareLinkModal);
-    if (btnCloseShareLink) btnCloseShareLink.addEventListener('click', closeShareLinkModal);
+    btnOpenShareLink.addEventListener('click', () => showModal(shareLinkModal));
+    if (btnCloseShareLink) btnCloseShareLink.addEventListener('click', () => hideModal(shareLinkModal));
     shareLinkModal.addEventListener('click', (e) => {
-      if (e.target === shareLinkModal) closeShareLinkModal();
-    });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !shareLinkModal.classList.contains('hidden')) {
-        closeShareLinkModal();
-      }
+      if (e.target === shareLinkModal) hideModal(shareLinkModal);
     });
   }
 
@@ -1837,11 +1814,6 @@ function attachActionListeners() {
     bookmarkletModal.addEventListener('click', (e) => {
       if (e.target === bookmarkletModal) closeBookmarkletModal();
     });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !bookmarkletModal.classList.contains('hidden')) {
-        closeBookmarkletModal();
-      }
-    });
   }
 
   // Bookmarklet Needed Modal Toggle & Action Listeners
@@ -1861,11 +1833,6 @@ function attachActionListeners() {
     domRefs.bookmarkletNeededModal.addEventListener('click', (e) => {
       if (e.target === domRefs.bookmarkletNeededModal) closeBookmarkletNeededModal();
     });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !domRefs.bookmarkletNeededModal.classList.contains('hidden')) {
-        closeBookmarkletNeededModal();
-      }
-    });
   }
 
   if (btnCopyBookmarkletCode && bookmarkletCodeText) {
@@ -1877,6 +1844,33 @@ function attachActionListeners() {
       });
     });
   }
+
+  // Global keydown handler for Escape key dismissal & Focus Trapping across all modals
+  document.addEventListener('keydown', (e) => {
+    const visibleModals = Array.from(document.querySelectorAll('.modal-overlay:not(.hidden)'));
+    if (visibleModals.length === 0) return;
+    const activeModal = visibleModals[visibleModals.length - 1];
+
+    if (e.key === 'Escape') {
+      hideModal(activeModal);
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      const focusables = Array.from(activeModal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(el => el.offsetWidth > 0 || el.offsetHeight > 0);
+      if (focusables.length === 0) return;
+      const firstEl = focusables[0];
+      const lastEl = focusables[focusables.length - 1];
+
+      if (e.shiftKey && document.activeElement === firstEl) {
+        e.preventDefault();
+        lastEl.focus();
+      } else if (!e.shiftKey && document.activeElement === lastEl) {
+        e.preventDefault();
+        firstEl.focus();
+      }
+    }
+  });
 }
 
 /**
@@ -1888,6 +1882,7 @@ function openBookmarkletModal() {
     bookmarkletModal.style.display = 'flex';
     bookmarkletModal.classList.remove('hidden');
     bookmarkletModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
   }
 }
 
@@ -1900,6 +1895,10 @@ function closeBookmarkletModal() {
     bookmarkletModal.style.display = 'none';
     bookmarkletModal.classList.add('hidden');
     bookmarkletModal.setAttribute('aria-hidden', 'true');
+    const openModals = document.querySelectorAll('.modal-overlay:not(.hidden)');
+    if (openModals.length === 0) {
+      document.body.classList.remove('modal-open');
+    }
   }
 }
 
@@ -1915,6 +1914,22 @@ function openBookmarkletNeededModal(messageText) {
     domRefs.bookmarkletNeededModal.style.display = 'flex';
     domRefs.bookmarkletNeededModal.classList.remove('hidden');
     domRefs.bookmarkletNeededModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+  }
+}
+
+/**
+ * Closes the "Bookmarklet Ingestion Required" popup modal
+ */
+function closeBookmarkletNeededModal() {
+  if (domRefs.bookmarkletNeededModal) {
+    domRefs.bookmarkletNeededModal.style.display = 'none';
+    domRefs.bookmarkletNeededModal.classList.add('hidden');
+    domRefs.bookmarkletNeededModal.setAttribute('aria-hidden', 'true');
+    const openModals = document.querySelectorAll('.modal-overlay:not(.hidden)');
+    if (openModals.length === 0) {
+      document.body.classList.remove('modal-open');
+    }
   }
 }
 

@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - Notifications Module
+ * Nycto's MLS Property Scout - Notifications Module
  * Handles fetching, rendering, unread count badge updates, and mark-as-read for notifications.
  */
 import { apiFetch } from './api.js';

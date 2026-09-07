@@ -1,6 +1,6 @@
 <?php
 /**
- * MLS & Redfin Property Scout - Property Data Pipeline
+ * Nycto's MLS Property Scout - Property Data Pipeline
  * Listing list/sync/update/delete, deep-scrape status, and local photo caching. Requires
  * backend/bootstrap.php to already be included (uses $pdo and MEDIA_DIR set up there).
  */
@@ -907,6 +907,11 @@ function handleUpdateUserData(PDO $pdo) {
 
     $userId = (int)$_SESSION['user_id'];
     $role = $_SESSION['role'] ?? 'client';
+    $isAdmin = !empty($_SESSION['is_admin']) || $role === 'admin';
+
+    if (($role === 'realtor' || $isAdmin) && !empty($data['client_id'])) {
+        $userId = (int)$data['client_id'];
+    }
 
     // Ensure row exists
     $pdo->prepare("INSERT OR IGNORE INTO user_metadata (user_id, mls_id) VALUES (:user_id, :mls_id)")
@@ -1075,6 +1080,9 @@ function handleUpdateCoordinates(PDO $pdo) {
 function handleAdminCleanupPreview(PDO $pdo) {
     requireAdmin();
     try {
+        $staleDays = isset($_GET['stale_days']) ? max(1, (int)$_GET['stale_days']) : 14;
+        $staleSeconds = $staleDays * 86400;
+
         // Status counts for overview
         $statusStmt = $pdo->query("SELECT status, COUNT(*) as cnt FROM properties GROUP BY status ORDER BY cnt DESC");
         $statusCounts = [];
@@ -1093,27 +1101,37 @@ function handleAdminCleanupPreview(PDO $pdo) {
             }
         }
 
-        // Fetch off-market / non-Active properties
-        $stmt = $pdo->query("
+        // Fetch off-market AND stale active properties (not synced in X days)
+        $stmt = $pdo->prepare("
             SELECT
                 p.mls_id, p.address, p.city, p.state, p.zip, p.price, p.status,
-                p.main_image_url, p.gallery_images, p.photo_count, p.updated_at,
+                p.main_image_url, p.gallery_images, p.photo_count, p.updated_at, p.price_checked_at,
                 MAX(COALESCE(u.favorite, 0)) as favorite,
                 MAX(COALESCE(u.rating, 0)) as rating,
                 GROUP_CONCAT(u.user_notes, ' ') as user_notes,
-                GROUP_CONCAT(u.realtor_notes, ' ') as realtor_notes
+                GROUP_CONCAT(u.realtor_notes, ' ') as realtor_notes,
+                CAST((strftime('%s', 'now') - strftime('%s', COALESCE(p.price_checked_at, p.updated_at, p.created_at))) / 86400 AS INTEGER) as days_since_sync
             FROM properties p
             LEFT JOIN user_metadata u ON p.mls_id = u.mls_id
             WHERE LOWER(p.status) != 'active' OR p.status IS NULL
+               OR (LOWER(p.status) = 'active' AND (
+                   COALESCE(p.price_checked_at, p.updated_at) IS NULL 
+                   OR (strftime('%s', 'now') - strftime('%s', COALESCE(p.price_checked_at, p.updated_at))) >= :stale_seconds
+               ))
             GROUP BY p.mls_id
-            ORDER BY p.status ASC, p.updated_at DESC
+            ORDER BY CASE WHEN LOWER(p.status) = 'active' THEN 1 ELSE 0 END ASC, p.status ASC, days_since_sync DESC
         ");
-        $offMarketRows = $stmt->fetchAll();
+        $stmt->execute([':stale_seconds' => $staleSeconds]);
+        $offMarketRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Index off-market properties by mls_id for media stats enrichment
+        // Index off-market and stale properties by mls_id for media stats enrichment
         $propertiesMap = [];
         foreach ($offMarketRows as $row) {
             $mId = (string)$row['mls_id'];
+            $statusStr = $row['status'] ?? 'Unknown';
+            $daysSinceSync = max(0, (int)($row['days_since_sync'] ?? 0));
+            $isStaleActive = (strtolower($statusStr) === 'active' && $daysSinceSync >= $staleDays);
+
             $propertiesMap[$mId] = [
                 'mls_id' => $mId,
                 'address' => $row['address'] ?? '',
@@ -1121,7 +1139,7 @@ function handleAdminCleanupPreview(PDO $pdo) {
                 'state' => $row['state'] ?? 'CO',
                 'zip' => $row['zip'] ?? '',
                 'price' => (float)($row['price'] ?? 0),
-                'status' => $row['status'] ?? 'Unknown',
+                'status' => $statusStr,
                 'main_image_url' => $row['main_image_url'] ?? '',
                 'favorite' => (int)$row['favorite'],
                 'rating' => (int)$row['rating'],
@@ -1132,7 +1150,10 @@ function handleAdminCleanupPreview(PDO $pdo) {
                 'photo_count_db' => (int)($row['photo_count'] ?? 0),
                 'media_files_count' => 0,
                 'media_bytes' => 0,
-                'updated_at' => $row['updated_at'] ?? ''
+                'updated_at' => $row['updated_at'] ?? '',
+                'price_checked_at' => $row['price_checked_at'] ?? '',
+                'is_stale_active' => $isStaleActive,
+                'days_since_sync' => $daysSinceSync
             ];
         }
 
@@ -1164,7 +1185,7 @@ function handleAdminCleanupPreview(PDO $pdo) {
                         $propertiesMap[$realMlsId]['media_files_count']++;
                         $propertiesMap[$realMlsId]['media_bytes'] += $size;
                     } else {
-                        // Belongs to an Active listing in database (not an orphan)
+                        // Belongs to a fresh Active listing in database (not an orphan)
                         $activePhotosCount++;
                         $activePhotosBytes += $size;
                     }
@@ -1188,11 +1209,23 @@ function handleAdminCleanupPreview(PDO $pdo) {
         $propertiesList = array_values($propertiesMap);
         $orphansList = array_values($orphansBySafeId);
 
+        $offMarketCount = 0;
         $offMarketPhotosCount = 0;
         $offMarketPhotosBytes = 0;
+        $staleActiveCount = 0;
+        $staleActivePhotosCount = 0;
+        $staleActivePhotosBytes = 0;
+
         foreach ($propertiesList as $p) {
-            $offMarketPhotosCount += $p['media_files_count'];
-            $offMarketPhotosBytes += $p['media_bytes'];
+            if (!empty($p['is_stale_active'])) {
+                $staleActiveCount++;
+                $staleActivePhotosCount += $p['media_files_count'];
+                $staleActivePhotosBytes += $p['media_bytes'];
+            } else {
+                $offMarketCount++;
+                $offMarketPhotosCount += $p['media_files_count'];
+                $offMarketPhotosBytes += $p['media_bytes'];
+            }
         }
 
         $orphanFilesCount = 0;
@@ -1216,9 +1249,13 @@ function handleAdminCleanupPreview(PDO $pdo) {
             'success' => true,
             'summary' => [
                 'total_properties_in_db' => count($allMlsIds),
-                'off_market_count' => count($propertiesList),
+                'off_market_count' => $offMarketCount,
                 'off_market_photos_count' => $offMarketPhotosCount,
                 'off_market_photos_bytes' => $offMarketPhotosBytes,
+                'stale_active_count' => $staleActiveCount,
+                'stale_active_photos_count' => $staleActivePhotosCount,
+                'stale_active_photos_bytes' => $staleActivePhotosBytes,
+                'stale_days_threshold' => $staleDays,
                 'active_photos_count' => $activePhotosCount,
                 'active_photos_bytes' => $activePhotosBytes,
                 'orphan_files_count' => $orphanFilesCount,
@@ -1243,7 +1280,7 @@ function handleAdminCleanupPreview(PDO $pdo) {
 
 /**
  * Executes property and/or media cleanup action for Admin.
- * Deletes files from media/ and removes DB rows or clears image fields.
+ * Deletes files from media/ and removes DB rows, updates status, or clears image fields.
  */
 function handleAdminCleanupExecute(PDO $pdo) {
     requireAdmin();
@@ -1251,7 +1288,9 @@ function handleAdminCleanupExecute(PDO $pdo) {
 
     $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
     $targetMlsIds = is_array($input['target_mls_ids'] ?? null) ? $input['target_mls_ids'] : [];
-    $cleanupMode = in_array($input['cleanup_mode'] ?? '', ['full_delete', 'media_only'], true) ? $input['cleanup_mode'] : 'full_delete';
+    $cleanupMode = in_array($input['cleanup_mode'] ?? '', ['full_delete', 'media_only', 'mark_stale'], true) ? $input['cleanup_mode'] : 'full_delete';
+    $targetStatus = trim((string)($input['target_status'] ?? 'Stale / Unsynced'));
+    if ($targetStatus === '') $targetStatus = 'Stale / Unsynced';
     $cleanOrphans = !empty($input['clean_orphans']);
 
     if (empty($targetMlsIds) && !$cleanOrphans) {
@@ -1273,13 +1312,20 @@ function handleAdminCleanupExecute(PDO $pdo) {
             $stmtDelRedfin = $pdo->prepare("DELETE FROM redfin_data WHERE mls_id = :mls_id");
             $stmtDelUserMeta = $pdo->prepare("DELETE FROM user_metadata WHERE mls_id = :mls_id");
             $stmtClearMedia = $pdo->prepare("UPDATE properties SET main_image_url = '', gallery_images = '[]', photo_count = 0, updated_at = CURRENT_TIMESTAMP WHERE mls_id = :mls_id");
+            $stmtMarkStale = $pdo->prepare("UPDATE properties SET status = :status, updated_at = CURRENT_TIMESTAMP WHERE mls_id = :mls_id");
 
             foreach ($targetMlsIds as $mlsId) {
                 $mlsId = trim((string)$mlsId);
                 $safeId = preg_replace('/[^A-Za-z0-9_-]/', '', $mlsId);
                 if ($safeId === '') continue;
 
-                // Remove files from disk
+                if ($cleanupMode === 'mark_stale') {
+                    $stmtMarkStale->execute([':status' => $targetStatus, ':mls_id' => $mlsId]);
+                    $deletedPropsCount++;
+                    continue;
+                }
+
+                // Remove files from disk for full_delete or media_only
                 if ($realMediaDir && is_dir($realMediaDir)) {
                     $patterns = [
                         $realMediaDir . '/' . $safeId . '.*',
@@ -1536,6 +1582,10 @@ function handleGetClientMatrix(PDO $pdo) {
         }
     }
 
+    $actStmt = $pdo->prepare("SELECT COUNT(*) FROM property_activity WHERE subject_user_id = :cid AND created_at >= datetime('now', '-48 hours')");
+    $actStmt->execute([':cid' => $clientId]);
+    $recentActivityCount = (int)$actStmt->fetchColumn();
+
     echo json_encode([
         'success' => true,
         'clients' => $clients,
@@ -1545,7 +1595,8 @@ function handleGetClientMatrix(PDO $pdo) {
             'shortlisted' => $shortlisted,
             'disliked' => $disliked,
             'in_discussion' => $inDiscussion,
-            'unreviewed' => $unreviewed
+            'unreviewed' => $unreviewed,
+            'recent_activity_count' => $recentActivityCount
         ]
     ]);
 }
@@ -1561,9 +1612,9 @@ function handleGetRealtorOverview(PDO $pdo) {
     $clientStmt->execute($params);
     $clientCount = (int)$clientStmt->fetchColumn();
 
-    $reviewStmt = $pdo->prepare("SELECT COUNT(*) FROM properties p JOIN users c ON $clientClause LEFT JOIN property_visibility v ON p.mls_id = v.mls_id LEFT JOIN user_metadata m ON m.user_id = c.id AND m.mls_id = p.mls_id WHERE COALESCE(v.is_hidden, 0) = 0 AND (m.user_id IS NULL OR (COALESCE(m.favorite, 0) = 0 AND COALESCE(m.hidden, 0) = 0 AND COALESCE(m.rating, 0) = 0))");
+    $reviewStmt = $pdo->prepare("SELECT COUNT(DISTINCT c.id) FROM users c JOIN properties p ON 1=1 LEFT JOIN property_visibility v ON p.mls_id = v.mls_id LEFT JOIN user_metadata m ON m.user_id = c.id AND m.mls_id = p.mls_id WHERE $clientClause AND COALESCE(v.is_hidden, 0) = 0 AND (m.user_id IS NULL OR (COALESCE(m.favorite, 0) = 0 AND COALESCE(m.hidden, 0) = 0 AND COALESCE(m.rating, 0) = 0 AND COALESCE(m.shared_with_realtor, 0) = 0 AND TRIM(COALESCE(m.user_notes, '')) = ''))");
     $reviewStmt->execute($params);
-    $reviewNeeded = (int)$reviewStmt->fetchColumn();
+    $clientsNeedingCuration = (int)$reviewStmt->fetchColumn();
 
     $showingStmt = $pdo->prepare("SELECT COUNT(*) FROM showing_itinerary si JOIN users c ON si.client_id = c.id WHERE $clientClause AND TRIM(si.showing_time) != ''");
     $showingStmt->execute($params);
@@ -1572,7 +1623,7 @@ function handleGetRealtorOverview(PDO $pdo) {
     $unreadStmt = $pdo->prepare('SELECT COUNT(*) FROM notifications WHERE user_id = :user_id AND is_read = 0');
     $unreadStmt->execute([':user_id' => $currentUserId]);
 
-    echo json_encode(['success' => true, 'overview' => ['active_clients' => $clientCount, 'homes_awaiting_review' => $reviewNeeded, 'scheduled_showings' => $showingCount, 'unread_notifications' => (int)$unreadStmt->fetchColumn()]]);
+    echo json_encode(['success' => true, 'overview' => ['active_clients' => $clientCount, 'clients_needing_curation' => $clientsNeedingCuration, 'homes_awaiting_review' => $clientsNeedingCuration, 'scheduled_showings' => $showingCount, 'unread_notifications' => (int)$unreadStmt->fetchColumn()]]);
 }
 
 function handleGetClientActivity(PDO $pdo) {

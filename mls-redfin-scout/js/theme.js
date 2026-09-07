@@ -1,5 +1,5 @@
 /**
- * MLS & Redfin Property Scout - Theme Switcher
+ * Nycto's MLS Property Scout - Theme Switcher
  */
 import { elements, mapState } from './state.js';
 import { updateMapTileLayer } from './map.js';
