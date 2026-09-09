@@ -375,6 +375,7 @@ function handleList(PDO $pdo) {
             $row['year_built'] = (int)$row['year_built'];
             $row['hoa_fee'] = (float)$row['hoa_fee'];
             $row['annual_tax'] = (float)$row['annual_tax'];
+            $row['original_price'] = isset($row['original_price']) ? (float)$row['original_price'] : 0;
             $row['favorite'] = (int)$row['favorite'];
             $row['hidden'] = (int)$row['hidden'];
             $row['shared_with_realtor'] = (int)$row['shared_with_realtor'];
@@ -526,13 +527,13 @@ function handleSync(PDO $pdo) {
             sqft_total, sqft_finished, lot_sqft, lot_acres, year_built, property_type,
             school_district, parking_total, garage_spaces, hoa_exists, hoa_fee,
             annual_tax, tax_year, list_date, mls_url, main_image_url, gallery_images,
-            raw_mls_json, latitude, longitude, full_scrape_completed_at, price_checked_at, updated_at
+            raw_mls_json, latitude, longitude, full_scrape_completed_at, price_checked_at, original_price, updated_at
         ) VALUES (
             :mls_id, :address, :city, :state, :zip, :price, :status, :beds, :baths, :levels,
             :sqft_total, :sqft_finished, :lot_sqft, :lot_acres, :year_built, :property_type,
             :school_district, :parking_total, :garage_spaces, :hoa_exists, :hoa_fee,
             :annual_tax, :tax_year, :list_date, :mls_url, :main_image_url, :gallery_images,
-            :raw_mls_json, :latitude, :longitude, :full_scrape_completed_at, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            :raw_mls_json, :latitude, :longitude, :full_scrape_completed_at, CURRENT_TIMESTAMP, :original_price, CURRENT_TIMESTAMP
         )
         ON CONFLICT(mls_id) DO UPDATE SET
             address = excluded.address,
@@ -566,6 +567,7 @@ function handleSync(PDO $pdo) {
             longitude = COALESCE(excluded.longitude, properties.longitude),
             full_scrape_completed_at = COALESCE(excluded.full_scrape_completed_at, properties.full_scrape_completed_at),
             price_checked_at = CURRENT_TIMESTAMP,
+            original_price = COALESCE(properties.original_price, excluded.original_price),
             updated_at = CURRENT_TIMESTAMP
     ");
 
@@ -630,10 +632,13 @@ function handleSync(PDO $pdo) {
         $sharedMlsData = $item;
         unset($sharedMlsData['matrix_review_status'], $sharedMlsData['portal_notes']);
         $incomingStatus = trim((string)($item['status'] ?? 'Active'));
-        $existingPropertyStmt = $pdo->prepare('SELECT status FROM properties WHERE mls_id = :mls_id');
+        $incomingPrice = (float)($item['price'] ?? 0);
+        $existingPropertyStmt = $pdo->prepare('SELECT status, price FROM properties WHERE mls_id = :mls_id');
         $existingPropertyStmt->execute([':mls_id' => $mlsId]);
-        $existingStatus = $existingPropertyStmt->fetchColumn();
-        $isNewProperty = $existingStatus === false;
+        $existingPropertyRow = $existingPropertyStmt->fetch(PDO::FETCH_ASSOC);
+        $isNewProperty = $existingPropertyRow === false;
+        $existingStatus = $isNewProperty ? false : $existingPropertyRow['status'];
+        $existingPrice = $isNewProperty ? null : (float)$existingPropertyRow['price'];
 
         // Upsert MLS property details if present
         if (isset($item['address']) || isset($item['price'])) {
@@ -668,13 +673,54 @@ function handleSync(PDO $pdo) {
                 ':raw_mls_json' => json_encode($sharedMlsData, JSON_INVALID_UTF8_SUBSTITUTE),
                 ':latitude' => (isset($item['latitude']) && (float)$item['latitude'] >= 24 && (float)$item['latitude'] <= 50) ? (float)$item['latitude'] : null,
                 ':longitude' => (isset($item['longitude']) && (float)$item['longitude'] >= -125 && (float)$item['longitude'] <= -65) ? (float)$item['longitude'] : null,
-                ':full_scrape_completed_at' => !empty($item['full_scrape']) ? date('Y-m-d H:i:s') : null
+                ':full_scrape_completed_at' => !empty($item['full_scrape']) ? date('Y-m-d H:i:s') : null,
+                ':original_price' => $incomingPrice
             ]);
             $syncedCount++;
             if ($isNewProperty) {
                 recordPropertyActivity($pdo, $mlsId, 'listing_imported', 'public', 'Listing added from Matrix MLS.');
             } elseif (strcasecmp(trim((string)$existingStatus), $incomingStatus) !== 0) {
                 recordPropertyActivity($pdo, $mlsId, 'listing_status_changed', 'public', "MLS status changed from " . trim((string)$existingStatus) . " to $incomingStatus.", ['previous_status' => $existingStatus, 'status' => $incomingStatus]);
+            }
+
+            // Price-drop tracking: compare against the price this listing had *before* this sync
+            // (not original_price, which is frozen at first-seen) so every individual change gets
+            // its own activity entry. Only reductions notify users who favorited the listing —
+            // increases still get logged to the timeline, just silently.
+            if (!$isNewProperty && $existingPrice !== null && $existingPrice > 0 && $incomingPrice > 0 && abs($incomingPrice - $existingPrice) >= 0.01) {
+                $priceDelta = $incomingPrice - $existingPrice;
+                $pricePct = round(($priceDelta / $existingPrice) * 100, 1);
+                $isDrop = $priceDelta < 0;
+                $activityMessage = sprintf(
+                    'Price %s from $%s to $%s (%s%s%%).',
+                    $isDrop ? 'dropped' : 'increased',
+                    number_format($existingPrice),
+                    number_format($incomingPrice),
+                    $isDrop ? '-' : '+',
+                    number_format(abs($pricePct), 1)
+                );
+                recordPropertyActivity($pdo, $mlsId, $isDrop ? 'price_reduced' : 'price_increased', 'public', $activityMessage, [
+                    'old_price' => $existingPrice,
+                    'new_price' => $incomingPrice,
+                    'delta' => $priceDelta,
+                    'pct' => $pricePct,
+                ]);
+
+                if ($isDrop) {
+                    $addressLabel = trim((string)($item['address'] ?? '')) ?: "MLS #$mlsId";
+                    $favoritedStmt = $pdo->prepare("SELECT user_id FROM user_metadata WHERE mls_id = :mls_id AND favorite = 1");
+                    $favoritedStmt->execute([':mls_id' => $mlsId]);
+                    foreach ($favoritedStmt->fetchAll(PDO::FETCH_COLUMN) as $favUserId) {
+                        createNotification(
+                            $pdo,
+                            (int)$favUserId,
+                            'price_drop',
+                            'Price drop',
+                            "$addressLabel dropped " . number_format(abs($pricePct), 1) . "% to $" . number_format($incomingPrice) . ".",
+                            "#detail-{$mlsId}"
+                        );
+                    }
+                }
             }
         }
 

@@ -20,6 +20,7 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
 
         localStorage.removeItem('scout_filter_status');
         localStorage.removeItem('scout_filter_matrix_status');
+        localStorage.removeItem('scout_user_search_filters');
 
         if (elements.filterSearch) elements.filterSearch.value = '';
         if (elements.filterPriceMin) elements.filterPriceMin.value = '';
@@ -31,6 +32,21 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         syncDrawerInputsFromState();
         applyFiltersAndRender();
     }
+
+    export function restoreUserFiltersFromLocalStorage() {
+        try {
+            const savedRaw = localStorage.getItem('scout_user_search_filters');
+            if (savedRaw) {
+                const savedObj = JSON.parse(savedRaw);
+                if (savedObj && typeof savedObj === 'object') {
+                    state.filters = { ...state.filters, ...savedObj };
+                    syncTopBarFromState();
+                    syncDrawerInputsFromState();
+                }
+            }
+        } catch(e){}
+    }
+
     export function applyFiltersAndRender() {
         const f = state.filters;
         state.filteredProperties = state.allProperties.filter(p => {
@@ -388,10 +404,12 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
 
         if (f.status) localStorage.setItem('scout_filter_status', f.status);
         if (f.matrixStatus) localStorage.setItem('scout_filter_matrix_status', f.matrixStatus);
+        try { localStorage.setItem('scout_user_search_filters', JSON.stringify(f)); } catch(e){}
 
         syncTopBarFromState();
     }
     export function setupFilterConsoleDrawer() {
+        restoreUserFiltersFromLocalStorage();
         const modalDrawer = document.getElementById('modal-filter-console');
         const btnOpen = document.getElementById('btn-open-filter-console');
         const btnClose = document.getElementById('btn-close-filter-console');

@@ -6,9 +6,21 @@ import { apiFetch } from './api.js';
 import { CONFIG, state, elements } from './state.js';
 import { showToast } from './toast.js';
 import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG, getStatusBadgeClass } from './properties.js';
+import { applyCustomOrder } from './realtorView.js';
 
 let rpProperties = [];
 let rpFilteredProperties = [];
+let rpViewMode = localStorage.getItem('rp_view_mode') || 'card';
+
+export function setRpViewMode(mode) {
+    rpViewMode = mode;
+    try { localStorage.setItem('rp_view_mode', mode); } catch(e){}
+    document.querySelectorAll('.rp-view-btn').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.getElementById(mode === 'compact' ? 'rp-view-compact' : 'rp-view-card');
+    if (activeBtn) activeBtn.classList.add('active');
+    renderRealtorPortalList(rpFilteredProperties);
+}
+window.setRpViewMode = setRpViewMode;
 
 export async function populatePortalClientDropdown() {
     const clientContainer = document.getElementById('rp-client-filter-container');
@@ -34,7 +46,8 @@ export async function populatePortalClientDropdown() {
         clientContainer.style.display = (isRealtor || isAdmin) ? 'flex' : 'none';
     }
 
-    const currentVal = clientSelect.value || 'all';
+    const cachedClientId = localStorage.getItem('active_realtor_client_id');
+    const currentVal = (clientSelect.value && clientSelect.value !== 'all') ? clientSelect.value : (cachedClientId || 'all');
     clientSelect.innerHTML = `<option value="all">All Clients (${clients.length})</option>` +
         clients.map(c => `<option value="${c.id}">${escapeHtml(c.full_name || c.username)}</option>`).join('');
 
@@ -201,6 +214,18 @@ export function renderRealtorPortalList(properties) {
     const container = document.getElementById('rp-list-container');
     if (!container) return;
 
+    if (rpViewMode === 'compact') {
+        container.className = 'realtor-compact-container';
+        renderCompactRealtorTable(container, properties);
+    } else {
+        container.className = 'realtor-grid-container';
+        renderRealtorCards(container, properties);
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+}
+
+function renderRealtorCards(container, properties) {
     if (!properties.length) {
         container.innerHTML = `
             <div style="grid-column: 1/-1; text-align:center; padding: 3rem; color: var(--text-muted); background: var(--bg-card); border-radius: 12px;">
@@ -242,7 +267,7 @@ export function renderRealtorPortalList(properties) {
         return `
             <div class="realtor-card">
                 <div class="realtor-media">
-                    <img src="${p.main_image_url || NO_PHOTO_IMG}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="realtor-img" alt="Property Thumbnail">
+                    <img src="${p.main_image_url || NO_PHOTO_IMG}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="realtor-img" alt="Property Thumbnail" onclick="window.openDetailModal('${p.mls_id}')" style="cursor:pointer;">
                     <div class="realtor-card-badges-overlay">
                         <span class="card-status-badge ${getStatusBadgeClass(p.status)}">${escapeHtml(p.status || 'Active')}</span>
                         ${revBadgeHtml}
@@ -254,17 +279,25 @@ export function renderRealtorPortalList(properties) {
 
                 <div class="realtor-info">
                     <div class="realtor-card-header">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.5rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.5rem; width:100%;">
                             <div>
                                 <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
                                     <h2 style="color: var(--accent-gold); font-weight:800; font-size:1.4rem; margin:0;">$${p.price.toLocaleString()}</h2>
                                     ${rfDiffBadge}
                                     ${ppsqft ? `<span style="font-size:0.78rem; font-weight:700; color:var(--text-muted);">$${ppsqft}/SqFt</span>` : ''}
                                 </div>
-                                <h3 style="margin-top:4px; font-size:1.05rem; line-height:1.3; margin-bottom:2px;">${escapeHtml(displayAddr)}</h3>
+                                <h3 style="margin-top:4px; font-size:1.05rem; line-height:1.3; margin-bottom:2px; cursor:pointer;" onclick="window.openDetailModal('${p.mls_id}')">${escapeHtml(displayAddr)}</h3>
                                 <div style="color: var(--text-muted); font-size:0.8rem;">
                                     ${p.city || ''}, ${p.state || 'CO'} ${p.zip || ''} | <strong>MLS #${p.mls_id}</strong>
                                 </div>
+                            </div>
+
+                            <div class="rp-quick-actions" style="display:flex; gap:4px; align-items:center;">
+                                <button class="matrix-icon-btn" onclick="window.openDetailModal('${p.mls_id}')" title="Photos Gallery & Full Details"><i data-lucide="image"></i></button>
+                                <button class="matrix-icon-btn" onclick="window.openPropertyMapModal('${p.mls_id}')" title="Property Location Map Modal"><i data-lucide="map-pin"></i></button>
+                                <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddr + ', ' + (p.city || '') + ' ' + (p.state || 'CO') + ' ' + (p.zip || ''))}" target="_blank" class="matrix-icon-btn" title="Google Maps Directions"><i data-lucide="map"></i></a>
+                                ${p.virtual_tour_url ? `<a href="${escapeHtml(p.virtual_tour_url)}" target="_blank" class="matrix-icon-btn" title="Virtual Tour"><i data-lucide="video"></i></a>` : ''}
+                                <a href="${mlsUrl}" target="_blank" class="matrix-icon-btn" title="Matrix MLS Portal"><i data-lucide="external-link"></i></a>
                             </div>
                         </div>
                     </div>
@@ -301,7 +334,7 @@ export function renderRealtorPortalList(properties) {
 
                             <div style="display:flex; gap:0.4rem;">
                                 <a href="${mlsUrl}" target="_blank" class="btn btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.55rem; text-decoration:none;">
-                                    <i data-lucide="link"></i> Matrix
+                                    <i data-lucide="link"></i> Matrix MLS
                                 </a>
                             </div>
                         </div>
@@ -310,13 +343,132 @@ export function renderRealtorPortalList(properties) {
             </div>
         `;
     }).join('');
+}
 
-    if (window.lucide) window.lucide.createIcons();
+function renderCompactRealtorTable(container, properties) {
+    if (!properties.length) {
+        container.innerHTML = `
+            <div style="text-align:center; padding: 3rem; color: var(--text-muted); background: var(--bg-card); border-radius: 12px;">
+                <h3>No matching properties found</h3>
+                <p style="margin-top: 0.5rem;">Try adjusting your filters or clearing your search term.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const activeClientId = localStorage.getItem('active_realtor_client_id');
+    const sortedProps = applyCustomOrder(properties, activeClientId);
+
+    const rowsHtml = sortedProps.map(p => {
+        const ppsqft = p.sqft_finished ? Math.round(p.price / p.sqft_finished) : 0;
+        const revStatus = getPropertyReviewStatus(p);
+        let revBadgeHtml = '';
+        if (revStatus === 'favorite') revBadgeHtml = `<span class="badge-matrix-review badge-matrix-fav" title="Client Liked"><i data-lucide="star"></i> Liked</span>`;
+        else if (revStatus === 'possibility') revBadgeHtml = `<span class="badge-matrix-review badge-matrix-possibility" title="Client Possibility"><i data-lucide="circle-help"></i> Maybe</span>`;
+        else if (revStatus === 'dislike') revBadgeHtml = `<span class="badge-matrix-review badge-matrix-dislike" title="Client Disliked"><i data-lucide="ban"></i> Passed</span>`;
+        else revBadgeHtml = `<span class="badge-matrix-review badge-matrix-unreviewed" title="Unreviewed"><i data-lucide="minus"></i> Unreviewed</span>`;
+
+        const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
+        const mlsUrl = p.mls_url || `https://matrix.recolorado.com/Matrix/Public/Portal.aspx`;
+
+        return `
+            <tr class="rp-compact-row" data-mls="${p.mls_id}" draggable="true"
+                ondragstart="window.handleTableRowDragStart(event, '${p.mls_id}')"
+                ondragover="window.handleTableRowDragOver(event)"
+                ondragleave="window.handleTableRowDragLeave(event)"
+                ondrop="window.handleTableRowDrop(event, '${p.mls_id}', ${activeClientId || 'null'})"
+                ondragend="window.handleTableRowDragEnd(event)">
+                <td class="table-drag-handle" style="padding:0.5rem 0.35rem; width:30px;" title="Drag row to reorder">
+                    <i data-lucide="grip-vertical" style="width:14px; height:14px;"></i>
+                </td>
+                <td style="padding:0.5rem 0.35rem; width:28px; text-align:center;">
+                    <input type="checkbox" class="rp-table-select-chk" data-mls="${p.mls_id}" onchange="window.updateRealtorTableSelection()" onclick="event.stopPropagation()">
+                </td>
+                <td style="padding:0.5rem 0.6rem; font-weight:700; white-space:nowrap;">
+                    <a href="javascript:void(0)" onclick="window.openDetailModal('${p.mls_id}')" style="color:var(--accent-blue); text-decoration:none;">#${p.mls_id}</a>
+                </td>
+                <td style="padding:0.5rem 0.6rem; white-space:nowrap;">
+                    ${revBadgeHtml}
+                </td>
+                <td style="padding:0.5rem 0.6rem; white-space:nowrap;">
+                    <span class="card-status-badge ${getStatusBadgeClass(p.status)}" style="font-size:0.7rem; padding:2px 6px;">${escapeHtml(p.status || 'Active')}</span>
+                </td>
+                <td style="padding:0.5rem 0.6rem; white-space:nowrap;">
+                    <div class="rp-quick-actions" style="display:flex; gap:3px; align-items:center;">
+                        <button class="matrix-icon-btn" onclick="window.openDetailModal('${p.mls_id}')" title="Photos Gallery & Full Details"><i data-lucide="image"></i></button>
+                        <button class="matrix-icon-btn" onclick="window.openPropertyMapModal('${p.mls_id}')" title="Property Location Map Modal"><i data-lucide="map-pin"></i></button>
+                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddr + ', ' + (p.city || '') + ' ' + (p.state || 'CO') + ' ' + (p.zip || ''))}" target="_blank" class="matrix-icon-btn" title="Google Maps Directions"><i data-lucide="map"></i></a>
+                        ${p.virtual_tour_url ? `<a href="${escapeHtml(p.virtual_tour_url)}" target="_blank" class="matrix-icon-btn" title="Virtual Tour"><i data-lucide="video"></i></a>` : ''}
+                        <a href="${mlsUrl}" target="_blank" class="matrix-icon-btn" title="Matrix MLS Portal"><i data-lucide="external-link"></i></a>
+                    </div>
+                </td>
+                <td style="padding:0.5rem 0.6rem;">
+                    <div style="font-weight:700; font-size:0.85rem; color:var(--text-primary); cursor:pointer;" onclick="window.openDetailModal('${p.mls_id}')">
+                        ${escapeHtml(displayAddr)}
+                    </div>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(p.city || '')}, ${escapeHtml(p.state || 'CO')} ${escapeHtml(p.zip || '')}</div>
+                </td>
+                <td style="padding:0.5rem 0.6rem; font-weight:800; color:var(--accent-gold); white-space:nowrap; font-size:0.9rem;">
+                    $${(p.price || 0).toLocaleString()}
+                </td>
+                <td style="padding:0.5rem 0.6rem; white-space:nowrap;">
+                    ${p.beds || 0}bd / ${p.baths || 0}ba
+                </td>
+                <td style="padding:0.5rem 0.6rem; white-space:nowrap;">
+                    ${(p.sqft_finished || 0).toLocaleString()}
+                </td>
+                <td style="padding:0.5rem 0.6rem; white-space:nowrap; color:var(--text-muted);">
+                    ${ppsqft ? `$${ppsqft}` : '-'}
+                </td>
+                <td style="padding:0.5rem 0.6rem; min-width:260px;">
+                    <div class="rp-compact-note-cell" style="display:flex; gap:4px; align-items:center;">
+                        <input type="text" class="input-text rp-compact-note-input" value="${escapeHtml(p.realtor_notes || '')}" placeholder="Add showing note..." style="font-size:0.78rem; padding:0.25rem 0.5rem; height:28px; flex:1; border-radius:4px;">
+                        <button class="btn btn-primary" style="padding:0.2rem 0.5rem; font-size:0.72rem; height:28px; white-space:nowrap;" onclick="savePortalAgentNote('${p.mls_id}', this)" title="Save Agent Note">
+                            <i data-lucide="save"></i> Save
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div class="rp-compact-table-wrapper" style="width:100%; overflow-x:auto; background:var(--bg-card); border-radius:10px; border:1px solid var(--border-color);">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:0.55rem 0.85rem; border-bottom:1px solid var(--border-color); background:var(--bg-input); font-size:0.78rem; color:var(--text-muted);">
+                <span><i data-lucide="grip-vertical" style="width:14px; height:14px; vertical-align:middle; color:var(--accent-gold);"></i> Drag row handles to custom-sort property order.</span>
+                <button class="btn btn-sm btn-secondary" style="font-size:0.75rem; padding:0.2rem 0.55rem;" onclick="window.resetRealtorTableOrder(${activeClientId || 'null'})"><i data-lucide="rotate-ccw"></i> Reset Order</button>
+            </div>
+            <table class="rp-compact-table" style="width:100%; border-collapse:collapse; font-size:0.83rem; text-align:left;">
+                <thead>
+                    <tr style="background:var(--bg-input); border-bottom:2px solid var(--border-color); color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.04em;">
+                        <th style="padding:0.6rem; width:30px; text-align:center;" title="Drag handle"><i data-lucide="grip-vertical" style="width:13px; height:13px;"></i></th>
+                        <th style="padding:0.6rem; width:28px; text-align:center;">
+                            <input type="checkbox" id="rp-modal-select-all" onclick="window.toggleRealtorTableSelectAll(this)" title="Select / Deselect All">
+                        </th>
+                        <th style="padding:0.6rem;">MLS ID</th>
+                        <th style="padding:0.6rem;">Client Reaction</th>
+                        <th style="padding:0.6rem;">Status</th>
+                        <th style="padding:0.6rem;">Quick Actions</th>
+                        <th style="padding:0.6rem;">Address</th>
+                        <th style="padding:0.6rem;">Price</th>
+                        <th style="padding:0.6rem;">Bds/Ba</th>
+                        <th style="padding:0.6rem;">SqFt</th>
+                        <th style="padding:0.6rem;">$/SqFt</th>
+                        <th style="padding:0.6rem;">Agent Showing Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+        </div>
+    `;
 }
 
 export async function savePortalAgentNote(mlsId, btn) {
-    const textarea = btn.closest('.realtor-notes-box').querySelector('textarea');
-    const noteText = textarea ? textarea.value : '';
+    const parent = btn.closest('.realtor-notes-box') || btn.closest('.rp-compact-note-cell');
+    const inputEl = parent ? parent.querySelector('textarea, input[type="text"]') : null;
+    const noteText = inputEl ? inputEl.value : '';
 
     btn.disabled = true;
     btn.innerHTML = 'Saving... <i data-lucide="hourglass"></i>';
@@ -337,17 +489,17 @@ export async function savePortalAgentNote(mlsId, btn) {
             const prop = state.allProperties.find(item => String(item.mls_id) === String(mlsId));
             if (prop) prop.realtor_notes = noteText;
             setTimeout(() => {
-                btn.innerHTML = '<i data-lucide="save"></i> Save Agent Note';
+                btn.innerHTML = (parent && parent.classList.contains('rp-compact-note-cell')) ? '<i data-lucide="save"></i> Save' : '<i data-lucide="save"></i> Save Agent Note';
                 if (window.lucide) window.lucide.createIcons();
                 btn.style.backgroundColor = '';
             }, 2000);
         } else {
-            btn.innerText = 'Failed to Save';
+            btn.innerText = 'Failed';
             showToast(res.error || 'Could not save note.', 'error');
         }
     } catch (err) {
         btn.disabled = false;
-        btn.innerText = 'Error Saving';
+        btn.innerText = 'Error';
         showToast('Error saving note', 'error');
     }
 }

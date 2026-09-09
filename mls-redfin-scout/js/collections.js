@@ -69,31 +69,31 @@ window.renderInlineCarouselSlide = function() {
     
     let revStatusBadge = '';
     const rawStatus = getPropertyReviewStatus(p);
-    if (rawStatus === 'favorite') revStatusBadge = `<span style="font-size:0.75rem; background:#d97706; color:#fff; padding:2px 8px; border-radius:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,0.15);"><i data-lucide="star"></i> Liked</span>`;
-    else if (rawStatus === 'possibility') revStatusBadge = `<span style="font-size:0.75rem; background:#0284c7; color:#fff; padding:2px 8px; border-radius:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,0.15);"><i data-lucide="circle-help"></i> Possibility</span>`;
+    if (rawStatus === 'favorite') revStatusBadge = `<span style="font-size:0.72rem; background:#d97706; color:#fff; padding:2px 7px; border-radius:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,0.15); display:inline-flex; align-items:center; gap:3px;"><i data-lucide="star"></i> Liked</span>`;
+    else if (rawStatus === 'possibility') revStatusBadge = `<span style="font-size:0.72rem; background:#0284c7; color:#fff; padding:2px 7px; border-radius:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,0.15); display:inline-flex; align-items:center; gap:3px;"><i data-lucide="circle-help"></i> Possibility</span>`;
 
     container.innerHTML = `
-        <div style="width:105px; height:68px; border-radius:6px; overflow:hidden; border:1px solid var(--border-color); flex-shrink:0; position:relative; background:var(--bg-card); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.08);" onclick="window.goToPropertyCard('${p.mls_id}')" title="Click to view house details">
+        <div class="inline-carousel-thumb" style="width:90px; height:68px; border-radius:6px; overflow:hidden; border:1px solid var(--border-color); flex-shrink:0; position:relative; background:var(--bg-card); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.08);" onclick="window.goToPropertyCard('${p.mls_id}')" title="Click to view house details">
             <img src="${imgUrl}" alt="${displayAddr}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s ease;" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" onmouseenter="this.style.transform='scale(1.06)'" onmouseleave="this.style.transform='scale(1)'">
         </div>
-        <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:3px; cursor:pointer;" onclick="window.goToPropertyCard('${p.mls_id}')" title="Click to view house details">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem;">
-                <span style="font-size:1.15rem; font-weight:800; color:var(--accent-gold); white-space:nowrap; letter-spacing:-0.01em;">$${(p.price || 0).toLocaleString()}</span>
+        <div class="inline-carousel-info" style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px; cursor:pointer;" onclick="window.goToPropertyCard('${p.mls_id}')" title="Click to view house details">
+            <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+                <span style="font-size:1.1rem; font-weight:800; color:var(--accent-gold); white-space:nowrap; letter-spacing:-0.01em;">$${(p.price || 0).toLocaleString()}</span>
                 ${revStatusBadge}
             </div>
-            <div style="font-size:0.95rem; font-weight:700; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2;" title="${displayAddr}">
+            <div style="font-size:0.9rem; font-weight:700; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2;" title="${displayAddr}">
                 ${displayAddr}
             </div>
-            <div style="font-size:0.82rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;">
+            <div style="font-size:0.78rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;">
                 ${p.beds || 0} Bed • ${p.baths || 0} Bath • ${(p.sqft_finished || 0).toLocaleString()} SqFt ${ppsqft ? `($${ppsqft}/sqft)` : ''}
             </div>
         </div>
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; flex-shrink:0; margin-left:0.25rem;">
-            <div style="display:flex; gap:4px;">
-                <button type="button" class="btn btn-secondary" style="padding:4px 8px; font-size:0.78rem; border-radius:4px;" onclick="event.stopPropagation(); window.stepInlineCarousel(-1);" title="Previous house"><i data-lucide="chevron-left"></i></button>
-                <button type="button" class="btn btn-gold" style="padding:4px 8px; font-size:0.78rem; border-radius:4px;" onclick="event.stopPropagation(); window.stepInlineCarousel(1);" title="Next house"><i data-lucide="chevron-right"></i></button>
+        <div class="inline-carousel-nav" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; flex-shrink:0; margin-left:0.25rem;">
+            <div style="display:flex; gap:3px;">
+                <button type="button" class="btn btn-secondary" style="padding:0; font-size:0.75rem; border-radius:4px; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center;" onclick="event.stopPropagation(); window.stepInlineCarousel(-1);" title="Previous house"><i data-lucide="chevron-left"></i></button>
+                <button type="button" class="btn btn-gold" style="padding:0; font-size:0.75rem; border-radius:4px; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center;" onclick="event.stopPropagation(); window.stepInlineCarousel(1);" title="Next house"><i data-lucide="chevron-right"></i></button>
             </div>
-            <span style="font-size:0.75rem; color:var(--accent-emerald); font-weight:800; letter-spacing:0.04em;">${idx + 1} / ${props.length}</span>
+            <span style="font-size:0.72rem; color:var(--accent-emerald); font-weight:800; letter-spacing:0.04em;">${idx + 1} / ${props.length}</span>
         </div>
     `;
     if (window.lucide) window.lucide.createIcons();
@@ -208,18 +208,40 @@ export function renderClientPlaylistBanner(collections) {
 
     const activeToken = myCollections[0].share_token;
 
+    const isCollapsed = localStorage.getItem('playlist_banner_collapsed') === 'true';
+
+    if (isCollapsed) {
+        bannerContainer.innerHTML = `
+            <div class="playlist-banner-box playlist-banner-collapsed" style="background: transparent; border: 1px solid var(--accent-gold); border-radius: 8px; padding: 0.5rem 1rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; cursor: pointer;" onclick="window.togglePlaylistBanner(false)" title="Click to expand curated playlist banner">
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                    <span class="badge" style="background:var(--accent-gold); color:#000; font-weight:800; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em;"><i data-lucide="folder-heart" style="width:12px; height:12px; margin-right:3px;"></i> Curated Client Playlist</span>
+                    <span style="font-weight:700; font-size:0.9rem; color:var(--text-primary);">${escapeHtml(myCollections[0].title)} (${myCollections[0].item_count || 0} Homes)</span>
+                    <span style="font-size:0.8rem; color:var(--accent-blue); font-weight:600;">Agent: ${escapeHtml(myCollections[0].realtor_display_name || myCollections[0].realtor_username || 'Your Realtor')}</span>
+                </div>
+                <button type="button" class="btn-dashboard-collapse" onclick="event.stopPropagation(); window.togglePlaylistBanner(false);" title="Expand Playlist Banner">
+                    <i data-lucide="chevron-down"></i> Expand Playlist
+                </button>
+            </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+        return;
+    }
+
     bannerContainer.innerHTML = `
-        <div style="background: transparent; border: 1px solid var(--accent-gold); border-radius: 8px; padding: 0.85rem 1.15rem; margin-bottom: 1.25rem;">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+        <div class="playlist-banner-box" style="background: transparent; border: 1px solid var(--accent-gold); border-radius: 8px; padding: 0.85rem 1.15rem; margin-bottom: 1.25rem;">
+            <div class="playlist-banner-inner" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
                 <!-- Left: Playlist Selector & Meta -->
-                <div style="flex-shrink:0;">
-                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                <div class="playlist-banner-left" style="flex:0 0 auto; min-width:0;">
+                    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
                         <span class="badge" style="background:var(--accent-gold); color:#000; font-weight:800; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em;">Curated Client Playlist</span>
                         <span style="font-size:0.8rem; color:var(--text-muted);">${myCollections.length} Playlist${myCollections.length > 1 ? 's' : ''} Available</span>
+                        <button type="button" class="btn-dashboard-collapse" onclick="window.togglePlaylistBanner(true)" title="Collapse playlist banner" style="padding:0.2rem 0.5rem; font-size:0.72rem; margin-left:0.25rem;">
+                            <i data-lucide="chevron-up"></i> Collapse
+                        </button>
                     </div>
-                    <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-top:0.3rem;">
+                    <div class="playlist-select-row" style="display:flex; align-items:center; gap:0.68rem; flex-wrap:wrap; margin-top:0.35rem;">
                         ${avatarHtml}
-                        <select id="select-active-client-playlist" class="select-input" style="font-weight:700; font-size:1.05rem; padding:0.4rem 0.75rem; max-width:320px;">
+                        <select id="select-active-client-playlist" class="select-input" style="font-weight:700; font-size:0.95rem; padding:0.4rem 0.65rem; width:auto; max-width:100%; flex:0 1 auto; text-overflow:ellipsis;">
                             ${myCollections.map(c => `<option value="${c.share_token}">${escapeHtml(c.title)} (${c.item_count} Homes)</option>`).join('')}
                         </select>
                         <span id="playlist-banner-meta" style="font-size:0.85rem; color:var(--accent-blue); font-weight:600;">
@@ -229,14 +251,14 @@ export function renderClientPlaylistBanner(collections) {
                 </div>
 
                 <!-- Middle: Auto-Rotating Mini Property Preview Banner Carousel -->
-                <div id="inline-playlist-carousel" style="flex:1; min-width:320px; max-width:680px; background:linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(250, 244, 235, 0.78) 100%); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--border-color); border-radius:8px; padding:0.55rem 1rem; display:flex; align-items:center; gap:0.85rem; box-shadow:0 4px 16px rgba(58, 52, 42, 0.12);"
+                <div id="inline-playlist-carousel" style="flex:1 1 300px; min-width:0; max-width:680px; background:linear-gradient(135deg, rgba(255, 255, 255, 0.88) 0%, rgba(250, 244, 235, 0.78) 100%); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--border-color); border-radius:8px; padding:0.55rem 0.85rem; display:flex; align-items:center; gap:0.65rem; box-shadow:0 4px 16px rgba(58, 52, 42, 0.12);"
                      onmouseenter="window.inlineCarouselState.isPaused = true;" 
                      onmouseleave="window.inlineCarouselState.isPaused = false;">
                     <span style="font-size:0.85rem; color:var(--text-muted);"><i data-lucide="loader" class="spin"></i> Loading home preview...</span>
                 </div>
 
                 <!-- Right: Action Buttons -->
-                <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; flex-shrink:0;">
+                <div class="playlist-banner-actions" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; flex-shrink:0;">
                     <button id="playlist-banner-view-btn" class="btn btn-gold" style="font-size:0.85rem; padding:0.45rem 1rem;" onclick="window.viewPlaylistPortal(document.getElementById('select-active-client-playlist')?.value)">
                         <i data-lucide="eye"></i> Open Playlist View
                     </button>
@@ -269,6 +291,19 @@ export function renderClientPlaylistBanner(collections) {
 
     if (window.lucide) window.lucide.createIcons();
 }
+
+window.togglePlaylistBanner = function(collapse) {
+    let newState = collapse;
+    if (typeof newState !== 'boolean') {
+        const isCollapsed = localStorage.getItem('playlist_banner_collapsed') === 'true';
+        newState = !isCollapsed;
+    }
+    localStorage.setItem('playlist_banner_collapsed', newState ? 'true' : 'false');
+    const cols = state.collections || cachedCollections;
+    if (cols && cols.length) {
+        renderClientPlaylistBanner(cols);
+    }
+};
 
 window.clientPreviewState = { token: null, mode: 'carousel', carouselIndex: 0, autoRotateInterval: null, isPaused: false };
 

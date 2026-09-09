@@ -41,6 +41,9 @@ import {
     openRealtorPortalModal, closeRealtorPortalModal, applyRealtorPortalFilters
 } from './js/realtorPortalModal.js';
 import {
+    openPropertyMapModal, closePropertyMapModal
+} from './js/propertyMapModal.js';
+import {
     toggleNotificationDropdown, closeNotificationDropdown, markAllNotificationsAsRead
 } from './js/notifications.js';
 import { renderRealtorView } from './js/realtorView.js';
@@ -374,7 +377,17 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('modal-realtor-portal-close')?.addEventListener('click', closeRealtorPortalModal);
         document.getElementById('rp-search')?.addEventListener('input', applyRealtorPortalFilters);
         document.getElementById('rp-mls-status')?.addEventListener('change', applyRealtorPortalFilters);
-        document.getElementById('rp-client-select')?.addEventListener('change', applyRealtorPortalFilters);
+        document.getElementById('rp-client-select')?.addEventListener('change', (e) => {
+            const val = e.target.value;
+            try {
+                if (val && val !== 'all') {
+                    localStorage.setItem('active_realtor_client_id', val);
+                } else {
+                    localStorage.removeItem('active_realtor_client_id');
+                }
+            } catch(err){}
+            applyRealtorPortalFilters();
+        });
         document.getElementById('rp-review-status')?.addEventListener('change', applyRealtorPortalFilters);
         document.getElementById('rp-sort')?.addEventListener('change', applyRealtorPortalFilters);
 

@@ -346,6 +346,11 @@ try {
     runMigration($pdo, "ALTER TABLE properties ADD COLUMN full_scrape_completed_at DATETIME", 'properties.full_scrape_completed_at');
     runMigration($pdo, "ALTER TABLE properties ADD COLUMN photo_count INTEGER DEFAULT 0", 'properties.photo_count');
     runMigration($pdo, "ALTER TABLE properties ADD COLUMN price_checked_at DATETIME", 'properties.price_checked_at');
+    // Price-drop tracking: the first price ever recorded for a listing, frozen once set (see the
+    // COALESCE(properties.original_price, ...) in handleSync's upsert) so later syncs never move
+    // it. Powers the existing "Price Drops" dashboard stat card in js/views.js, which already
+    // checked for this exact column name but had nothing populating it.
+    runMigration($pdo, "ALTER TABLE properties ADD COLUMN original_price REAL", 'properties.original_price');
     runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN realtor_private_notes TEXT DEFAULT ''", 'user_metadata.realtor_private_notes');
     runMigration($pdo, "ALTER TABLE event_log ADD COLUMN username TEXT", 'event_log.username');
     // Role-based admin and realtor assignment columns

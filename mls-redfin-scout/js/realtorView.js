@@ -16,15 +16,24 @@ let realtorData = {
     matrix: { loved: [], shortlisted: [], disliked: [], in_discussion: [], unreviewed: [] }
 };
 let realtorOverview = { active_clients: 0, homes_awaiting_review: 0, scheduled_showings: 0, unread_notifications: 0 };
-let activeSubTab = 'matrix'; // 'matrix' | 'chat' | 'tour'
-let activeChatMlsId = null;
+let activeSubTab = localStorage.getItem('realtor_active_subtab') || 'matrix'; // 'matrix' | 'chat' | 'activity' | 'tour' | 'playlists'
+let activeChatMlsId = localStorage.getItem('realtor_chat_mls_id') || null;
 let globalPropertyVisibility = [];
 let globalPropertySearch = '';
 let globalPropertyStatusFilter = 'all';
 let globalPropertyVisibilityFilter = 'all';
-let realtorFilterStatus = 'all'; // 'all' | 'loved' | 'shortlisted' | 'disliked' | 'unreviewed' | 'discussion'
+let realtorFilterStatus = localStorage.getItem('realtor_reaction_filter') || 'all'; // 'all' | 'loved' | 'shortlisted' | 'disliked' | 'unreviewed' | 'in_discussion'
 let realtorSearchQuery = '';
-let realtorMlsStatusFilter = 'all'; // 'all' | 'Active' | 'Pending' | 'Closed'
+let realtorMlsStatusFilter = localStorage.getItem('realtor_mls_status_filter') || 'all'; // 'all' | 'Active' | 'Pending' | 'Closed'
+let realtorCcLayout = localStorage.getItem('realtor_cc_layout') || 'grid'; // 'grid' | 'table'
+
+export function setRealtorCcLayout(mode) {
+    realtorCcLayout = mode;
+    try { localStorage.setItem('realtor_cc_layout', mode); } catch(e){}
+    const container = document.getElementById('view-realtor-container');
+    if (container) buildRealtorDom(container);
+}
+window.setRealtorCcLayout = setRealtorCcLayout;
 
 export function calculateFitScore(p, client) {
     if (!client) return null;
@@ -111,15 +120,32 @@ export async function renderRealtorView(clientId = null) {
     const container = document.getElementById('view-realtor-container');
     if (!container) return;
 
+    if (!state.authenticated) {
+        container.innerHTML = `
+            <div class="empty-state-box" style="text-align:center; padding:4rem; background:var(--bg-card); border-radius:12px; margin-top:2rem;">
+                <i data-lucide="lock" style="width:48px; height:48px; color:var(--accent-gold);"></i>
+                <h3 style="margin-top:1rem;">Realtor Authentication Required</h3>
+                <p style="color:var(--text-muted); margin-top:0.5rem; max-width:480px; margin-left:auto; margin-right:auto;">You are currently signed out. Please click <strong>Sign in</strong> in the top-right corner to log in as a Realtor and access client portfolios.</p>
+                <button class="btn btn-gold" style="margin-top:1.25rem; padding:0.5rem 1.25rem;" onclick="if(window.openLoginModal){window.openLoginModal();}"><i data-lucide="log-in"></i> Sign In to Realtor Workspace</button>
+            </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+        return;
+    }
+
     renderSkeletonLoader(container);
 
+    const cachedClientId = localStorage.getItem('active_realtor_client_id');
+    const effectiveClientId = clientId || cachedClientId || activeClientId;
+
     try {
-        const url = clientId ? `backend/api.php?action=get_client_matrix&client_id=${clientId}` : 'backend/api.php?action=get_client_matrix';
+        const url = effectiveClientId ? `backend/api.php?action=get_client_matrix&client_id=${effectiveClientId}` : 'backend/api.php?action=get_client_matrix';
         const res = await apiFetch(url);
         if (res && res.success) {
             realtorData = res;
             if (res.selected_client) {
                 activeClientId = res.selected_client.id;
+                try { localStorage.setItem('active_realtor_client_id', activeClientId); } catch(e){}
             }
             if (activeSubTab === 'activity' && activeClientId) {
                 await loadClientActivity(activeClientId);
@@ -343,7 +369,7 @@ function buildRealtorDom(container) {
                             <i data-lucide="map-pin"></i> Showing & Tour Itinerary (${(matrix.loved.length + matrix.shortlisted.length)})
                         </button>
                         <button class="realtor-tab-btn ${activeSubTab === 'playlists' ? 'active' : ''}" onclick="window.switchRealtorSubTab('playlists')">
-                            <i data-lucide="music"></i> Curated Playlists
+                            <i data-lucide="folder-heart"></i> Curated Playlists
                         </button>
                     </div>
                 </div>
@@ -433,9 +459,22 @@ function renderStatusMatrixContent(matrix, client) {
                 ${(realtorFilterStatus !== 'all' || realtorSearchQuery !== '' || realtorMlsStatusFilter !== 'all') ? `
                     <button class="btn btn-sm" style="font-size: 0.78rem; padding: 0.35rem 0.6rem;" onclick="window.resetRealtorFilters()"><i data-lucide="rotate-ccw"></i> Reset</button>
                 ` : ''}
+
+                <div style="display: flex; align-items: center; gap: 0.35rem; margin-left: auto;">
+                    <span style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); white-space:nowrap;">LAYOUT:</span>
+                    <div style="display:flex; gap:3px;">
+                        <button class="btn btn-secondary rp-view-btn ${realtorCcLayout === 'grid' ? 'active' : ''}" onclick="window.setRealtorCcLayout('grid')" style="padding:0.35rem 0.65rem; font-size:0.78rem;" title="4-Column Kanban Grid">
+                            <i data-lucide="layout-grid"></i> Columns
+                        </button>
+                        <button class="btn btn-secondary rp-view-btn ${realtorCcLayout === 'table' ? 'active' : ''}" onclick="window.setRealtorCcLayout('table')" style="padding:0.35rem 0.65rem; font-size:0.78rem;" title="Matrix Single-Line Table View">
+                            <i data-lucide="list"></i> Matrix Table
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
+        ${realtorCcLayout === 'table' ? renderRealtorTableBoard(matrix, client.id) : `
         <div class="status-matrix-grid" style="${gridStyle}">
             ${showLoved ? `
                 <div class="matrix-column matrix-col-loved"
@@ -504,6 +543,186 @@ function renderStatusMatrixContent(matrix, client) {
                 </div>
             ` : ''}
         </div>
+        `}
+    `;
+}
+
+export function applyCustomOrder(properties, clientId) {
+    if (!properties || !properties.length) return properties;
+    const key = clientId ? `realtor_table_order_${clientId}` : `realtor_table_order_default`;
+    try {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+            const savedOrder = JSON.parse(raw);
+            if (Array.isArray(savedOrder) && savedOrder.length > 0) {
+                const orderMap = new Map();
+                savedOrder.forEach((id, idx) => orderMap.set(String(id), idx));
+                return [...properties].sort((a, b) => {
+                    const idxA = orderMap.has(String(a.mls_id)) ? orderMap.get(String(a.mls_id)) : 9999;
+                    const idxB = orderMap.has(String(b.mls_id)) ? orderMap.get(String(b.mls_id)) : 9999;
+                    return idxA - idxB;
+                });
+            }
+        }
+    } catch(e){}
+    return properties;
+}
+
+function renderRealtorTableBoard(matrix, clientId) {
+    let allProps = [];
+    const loved = matrix.loved || [];
+    const shortlisted = matrix.shortlisted || [];
+    const disliked = matrix.disliked || [];
+    const unreviewed = matrix.unreviewed || [];
+    const inDiscussion = matrix.in_discussion || [];
+
+    if (realtorFilterStatus === 'loved') allProps = loved;
+    else if (realtorFilterStatus === 'shortlisted') allProps = shortlisted;
+    else if (realtorFilterStatus === 'disliked') allProps = disliked;
+    else if (realtorFilterStatus === 'unreviewed') allProps = unreviewed;
+    else if (realtorFilterStatus === 'in_discussion') allProps = inDiscussion;
+    else {
+        const map = new Map();
+        [...loved, ...shortlisted, ...unreviewed, ...disliked, ...inDiscussion].forEach(p => {
+            if (!map.has(p.mls_id)) map.set(p.mls_id, p);
+        });
+        allProps = Array.from(map.values());
+    }
+
+    if (realtorSearchQuery) {
+        const q = realtorSearchQuery.toLowerCase().trim();
+        allProps = allProps.filter(p => {
+            const haystack = `${p.address || ''} ${p.city || ''} ${p.mls_id || ''} ${p.user_notes || ''} ${p.realtor_private_notes || ''}`.toLowerCase();
+            return haystack.includes(q);
+        });
+    }
+
+    if (realtorMlsStatusFilter !== 'all') {
+        allProps = allProps.filter(p => (p.status || 'Active').toLowerCase() === realtorMlsStatusFilter.toLowerCase());
+    }
+
+    allProps = applyCustomOrder(allProps, clientId);
+
+    if (!allProps.length) {
+        return `
+            <div style="text-align:center; padding:3rem; background:var(--bg-card); border-radius:12px; margin-top:1rem;">
+                <i data-lucide="search-x" style="width:36px; height:36px; color:var(--text-muted);"></i>
+                <h3 style="margin-top:0.5rem;">No matching properties found</h3>
+                <p style="color:var(--text-muted); font-size:0.85rem;">Try clearing your search query or status filter.</p>
+            </div>
+        `;
+    }
+
+    const rowsHtml = allProps.map(p => {
+        const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
+        const ppsqft = p.sqft_finished ? `$${Math.round(p.price / p.sqft_finished)}` : '-';
+        const fitScore = calculateFitScore(p, realtorData.selected_client);
+        const mlsUrl = p.mls_url || `https://matrix.recolorado.com/Matrix/Public/Portal.aspx`;
+
+        let revBadgeHtml = '';
+        if (loved.some(item => String(item.mls_id) === String(p.mls_id))) {
+            revBadgeHtml = `<span class="badge-matrix-review badge-matrix-fav"><i data-lucide="star"></i> Loved</span>`;
+        } else if (shortlisted.some(item => String(item.mls_id) === String(p.mls_id))) {
+            revBadgeHtml = `<span class="badge-matrix-review badge-matrix-possibility"><i data-lucide="circle-help"></i> Shortlist</span>`;
+        } else if (disliked.some(item => String(item.mls_id) === String(p.mls_id))) {
+            revBadgeHtml = `<span class="badge-matrix-review badge-matrix-dislike"><i data-lucide="ban"></i> Disliked</span>`;
+        } else {
+            revBadgeHtml = `<span class="badge-matrix-review badge-matrix-unreviewed"><i data-lucide="minus"></i> Unreviewed</span>`;
+        }
+
+        return `
+            <tr class="rp-compact-row" data-mls="${p.mls_id}" draggable="true"
+                ondragstart="window.handleTableRowDragStart(event, '${p.mls_id}')"
+                ondragover="window.handleTableRowDragOver(event)"
+                ondragleave="window.handleTableRowDragLeave(event)"
+                ondrop="window.handleTableRowDrop(event, '${p.mls_id}', ${clientId})"
+                ondragend="window.handleTableRowDragEnd(event)">
+                <td class="table-drag-handle" style="padding:0.55rem 0.35rem; width:30px;" title="Drag row to reorder">
+                    <i data-lucide="grip-vertical" style="width:14px; height:14px;"></i>
+                </td>
+                <td style="padding:0.55rem 0.35rem; width:28px; text-align:center;">
+                    <input type="checkbox" class="rp-table-select-chk" data-mls="${p.mls_id}" onchange="window.updateRealtorTableSelection()" onclick="event.stopPropagation()">
+                </td>
+                <td style="padding:0.55rem 0.6rem; font-weight:700; white-space:nowrap;">
+                    <a href="javascript:void(0)" onclick="window.openDetailModal('${p.mls_id}')" style="color:var(--accent-blue); text-decoration:none;">#${p.mls_id}</a>
+                </td>
+                <td style="padding:0.55rem 0.6rem; white-space:nowrap;">
+                    ${revBadgeHtml}
+                </td>
+                <td style="padding:0.55rem 0.6rem; white-space:nowrap;">
+                    <span class="realtor-card-status-badge" style="font-size:0.68rem; padding:0.15rem 0.45rem; border-radius:4px; text-transform:uppercase; font-weight:800; background:rgba(0,0,0,0.1); border:1px solid var(--border-color);">
+                        ${escapeHtml(p.status || 'Active')}
+                    </span>
+                </td>
+                <td style="padding:0.55rem 0.6rem; white-space:nowrap;">
+                    <div class="rp-quick-actions" style="display:flex; gap:3px; align-items:center;">
+                        <button class="matrix-icon-btn" onclick="event.stopPropagation(); window.openDetailModal('${p.mls_id}')" title="Photos Gallery & Details"><i data-lucide="image"></i></button>
+                        <button class="matrix-icon-btn" onclick="event.stopPropagation(); window.openPropertyMapModal('${p.mls_id}')" title="Property Location Map Modal"><i data-lucide="map-pin"></i></button>
+                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddr + ', ' + (p.city || '') + ' ' + (p.state || 'CO') + ' ' + (p.zip || ''))}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Google Maps Directions"><i data-lucide="map"></i></a>
+                        ${p.virtual_tour_url ? `<a href="${escapeHtml(p.virtual_tour_url)}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Virtual Tour"><i data-lucide="video"></i></a>` : ''}
+                        ${mlsUrl ? `<a href="${escapeHtml(mlsUrl)}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Matrix MLS Portal"><i data-lucide="external-link"></i></a>` : ''}
+                        <button class="matrix-icon-btn" onclick="event.stopPropagation(); window.openPropertyChat('${p.mls_id}', ${clientId})" title="Discussion Thread"><i data-lucide="message-square"></i></button>
+                    </div>
+                </td>
+                <td style="padding:0.55rem 0.6rem;">
+                    <div style="font-weight:700; font-size:0.85rem; color:var(--text-primary); cursor:pointer;" onclick="window.openDetailModal('${p.mls_id}')">
+                        ${escapeHtml(displayAddr)}
+                    </div>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(p.city || '')}, ${escapeHtml(p.state || 'CO')} ${escapeHtml(p.zip || '')}</div>
+                </td>
+                <td style="padding:0.55rem 0.6rem; font-weight:800; color:var(--accent-gold); white-space:nowrap; font-size:0.9rem;">
+                    $${(p.price || 0).toLocaleString()}
+                </td>
+                <td style="padding:0.55rem 0.6rem; white-space:nowrap;">
+                    ${p.beds || 0}bd / ${p.baths || 0}ba
+                </td>
+                <td style="padding:0.55rem 0.6rem; white-space:nowrap;">
+                    ${(p.sqft_finished || 0).toLocaleString()}
+                </td>
+                <td style="padding:0.55rem 0.6rem; white-space:nowrap; color:var(--text-muted);">
+                    ${ppsqft}
+                </td>
+                <td style="padding:0.55rem 0.6rem; white-space:nowrap;">
+                    ${fitScore ? `<span class="fit-score-badge ${fitScore.class}" style="font-size:0.7rem;"><i data-lucide="sparkles" style="width:10px; height:10px;"></i> ${fitScore.label}</span>` : '-'}
+                </td>
+                <td style="padding:0.55rem 0.6rem; min-width:240px;">
+                    <input type="text" class="input-text" value="${escapeHtml(p.realtor_private_notes || '')}" placeholder="Add private realtor note..." style="font-size:0.78rem; padding:0.25rem 0.5rem; height:28px; width:100%; border-radius:4px;" onblur="window.saveRealtorPrivateNote('${p.mls_id}', ${clientId}, this.value)">
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    return `
+        <div class="rp-compact-table-wrapper" style="width:100%; overflow-x:auto; background:var(--bg-card); border-radius:10px; border:1px solid var(--border-color); margin-top:1rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:0.55rem 0.85rem; border-bottom:1px solid var(--border-color); background:var(--bg-input); font-size:0.78rem; color:var(--text-muted);">
+                <span><i data-lucide="grip-vertical" style="width:14px; height:14px; vertical-align:middle; color:var(--accent-gold);"></i> Drag row handles to custom-sort property order.</span>
+                <button class="btn btn-sm btn-secondary" style="font-size:0.75rem; padding:0.2rem 0.55rem;" onclick="window.resetRealtorTableOrder(${clientId})"><i data-lucide="rotate-ccw"></i> Reset Order</button>
+            </div>
+            <table class="rp-compact-table" style="width:100%; border-collapse:collapse; font-size:0.83rem; text-align:left;">
+                <thead>
+                    <tr style="background:var(--bg-input); border-bottom:2px solid var(--border-color); color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.04em;">
+                        <th style="padding:0.6rem; width:30px; text-align:center;" title="Drag handle"><i data-lucide="grip-vertical" style="width:13px; height:13px;"></i></th>
+                        <th style="padding:0.6rem; width:28px; text-align:center;">
+                            <input type="checkbox" id="rp-table-select-all" onclick="window.toggleRealtorTableSelectAll(this)" title="Select / Deselect All">
+                        </th>
+                        <th style="padding:0.6rem;">MLS ID</th>
+                        <th style="padding:0.6rem;">Client Reaction</th>
+                        <th style="padding:0.6rem;">Status</th>
+                        <th style="padding:0.6rem;">Quick Actions</th>
+                        <th style="padding:0.6rem;">Address</th>
+                        <th style="padding:0.6rem;">Price</th>
+                        <th style="padding:0.6rem;">Bds/Ba</th>
+                        <th style="padding:0.6rem;">SqFt</th>
+                        <th style="padding:0.6rem;">$/SqFt</th>
+                        <th style="padding:0.6rem;">Fit Score</th>
+                        <th style="padding:0.6rem;">Confidential Realtor Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+        </div>
     `;
 }
 
@@ -562,8 +781,16 @@ function renderRealtorPropertyCard(p, clientId) {
                     </div>
                 </div>
 
-                <div style="display:flex; gap:0.4rem; align-items:center; margin-top:0.35rem;">
+                <div style="display:flex; gap:0.4rem; align-items:center; justify-content:space-between; margin-top:0.35rem; flex-wrap:wrap;">
                     <button type="button" class="btn btn-secondary" style="font-size:0.78rem;" onclick="event.stopPropagation(); window.requestClientFeedback('${p.mls_id}', ${clientId})"><i data-lucide="message-circle-question"></i> Request Feedback</button>
+
+                    <div class="rp-quick-actions" style="display:flex; gap:4px; align-items:center;">
+                        <button class="matrix-icon-btn" onclick="event.stopPropagation(); window.openDetailModal('${p.mls_id}')" title="Photos Gallery & Details"><i data-lucide="image"></i></button>
+                        <button class="matrix-icon-btn" onclick="event.stopPropagation(); window.openPropertyMapModal('${p.mls_id}')" title="Property Location Map Modal"><i data-lucide="map-pin"></i></button>
+                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddr + ', ' + (p.city || '') + ' ' + (p.state || 'CO') + ' ' + (p.zip || ''))}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Google Maps Directions"><i data-lucide="map"></i></a>
+                        ${p.virtual_tour_url ? `<a href="${escapeHtml(p.virtual_tour_url)}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Virtual Tour"><i data-lucide="video"></i></a>` : ''}
+                        ${p.mls_url ? `<a href="${escapeHtml(p.mls_url)}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Matrix MLS Portal"><i data-lucide="external-link"></i></a>` : ''}
+                    </div>
                 </div>
 
                 <!-- Client Notes Box -->
@@ -882,6 +1109,7 @@ window.openClientTourDossierModal = function() {
 // Window Globals for Interactive Controls
 window.selectRealtorClient = function(clientId) {
     activeClientId = clientId;
+    try { localStorage.setItem('active_realtor_client_id', clientId); } catch(e){}
     renderRealtorView(clientId);
 };
 
@@ -1053,6 +1281,7 @@ function renderGlobalPropertyManagementModal() {
 
 window.switchRealtorSubTab = async function(tabName) {
     activeSubTab = tabName;
+    try { localStorage.setItem('realtor_active_subtab', tabName); } catch(e){}
     if (tabName === 'activity' && activeClientId) {
         await loadClientActivity(activeClientId);
     }
@@ -1276,6 +1505,10 @@ window.sendRealtorChatMessage = async function(clientId) {
 window.openPropertyChat = function(mlsId, clientId) {
     activeChatMlsId = mlsId;
     activeSubTab = 'chat';
+    try {
+        if (mlsId) localStorage.setItem('realtor_chat_mls_id', mlsId);
+        localStorage.setItem('realtor_active_subtab', 'chat');
+    } catch(e){}
     buildRealtorDom(document.getElementById('view-realtor-container'));
 };
 
@@ -1305,7 +1538,7 @@ function renderPlaylistsTabContent(client) {
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
                 <div>
                     <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem;">
-                        <i data-lucide="music"></i> Curated Playlists for ${escapeHtml(client.full_name || client.username)}
+                        <i data-lucide="folder-heart"></i> Curated Playlists for ${escapeHtml(client.full_name || client.username)}
                     </h3>
                     <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--text-muted);">
                         Create, edit, and share custom property collections with your client.
@@ -1364,6 +1597,7 @@ window.openCreatePlaylistForClient = function(clientId) {
 
 window.setRealtorStatusFilter = function(val) {
     realtorFilterStatus = val;
+    try { localStorage.setItem('realtor_reaction_filter', val); } catch(e){}
     const container = document.getElementById('view-realtor-container');
     if (container) buildRealtorDom(container);
 };
@@ -1376,6 +1610,7 @@ window.setRealtorSearchQuery = function(val) {
 
 window.setRealtorMlsFilter = function(val) {
     realtorMlsStatusFilter = val;
+    try { localStorage.setItem('realtor_mls_status_filter', val); } catch(e){}
     const container = document.getElementById('view-realtor-container');
     if (container) buildRealtorDom(container);
 };
@@ -1384,6 +1619,10 @@ window.resetRealtorFilters = function() {
     realtorFilterStatus = 'all';
     realtorSearchQuery = '';
     realtorMlsStatusFilter = 'all';
+    try {
+        localStorage.setItem('realtor_reaction_filter', 'all');
+        localStorage.setItem('realtor_mls_status_filter', 'all');
+    } catch(e){}
     const container = document.getElementById('view-realtor-container');
     if (container) buildRealtorDom(container);
 };
@@ -1395,7 +1634,9 @@ window.handleKpiCardClick = function(action) {
         } else {
             realtorFilterStatus = action;
         }
+        try { localStorage.setItem('realtor_reaction_filter', realtorFilterStatus); } catch(e){}
         activeSubTab = 'matrix';
+        try { localStorage.setItem('realtor_active_subtab', 'matrix'); } catch(e){}
         const container = document.getElementById('view-realtor-container');
         if (container) buildRealtorDom(container);
 
@@ -1420,4 +1661,204 @@ window.getRealtorActiveClientData = function() {
 };
 
 window.renderRealtorView = renderRealtorView;
+
+let draggedRowMlsId = null;
+
+window.handleTableRowDragStart = function(e, mlsId) {
+    draggedRowMlsId = mlsId;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', mlsId);
+    const row = e.currentTarget.closest('tr');
+    if (row) row.classList.add('is-dragging');
+};
+
+window.handleTableRowDragOver = function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const row = e.currentTarget.closest('tr');
+    if (!row || row.dataset.mls === draggedRowMlsId) return;
+
+    const rect = row.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    if (e.clientY < midY) {
+        row.classList.add('drag-over-above');
+        row.classList.remove('drag-over-below');
+    } else {
+        row.classList.add('drag-over-below');
+        row.classList.remove('drag-over-above');
+    }
+};
+
+window.handleTableRowDragLeave = function(e) {
+    const row = e.currentTarget.closest('tr');
+    if (row) {
+        row.classList.remove('drag-over-above', 'drag-over-below');
+    }
+};
+
+window.handleTableRowDrop = function(e, targetMlsId, clientId) {
+    e.preventDefault();
+    const row = e.currentTarget.closest('tr');
+    if (row) row.classList.remove('drag-over-above', 'drag-over-below');
+
+    if (!draggedRowMlsId || draggedRowMlsId === targetMlsId) return;
+
+    const rect = row.getBoundingClientRect();
+    const placeAbove = e.clientY < (rect.top + rect.height / 2);
+
+    const tableBody = row.closest('tbody');
+    if (!tableBody) return;
+
+    const currentRows = Array.from(tableBody.querySelectorAll('tr[data-mls]'));
+    const currentMlsIds = currentRows.map(r => r.dataset.mls);
+
+    const fromIdx = currentMlsIds.indexOf(draggedRowMlsId);
+    let toIdx = currentMlsIds.indexOf(targetMlsId);
+
+    if (fromIdx === -1 || toIdx === -1) return;
+
+    currentMlsIds.splice(fromIdx, 1);
+    if (!placeAbove) toIdx++;
+    if (fromIdx < toIdx) toIdx--;
+    currentMlsIds.splice(toIdx, 0, draggedRowMlsId);
+
+    const effectiveClientId = clientId || localStorage.getItem('active_realtor_client_id');
+    const key = effectiveClientId ? `realtor_table_order_${effectiveClientId}` : `realtor_table_order_default`;
+    try {
+        localStorage.setItem(key, JSON.stringify(currentMlsIds));
+    } catch(err){}
+
+    const container = document.getElementById('view-realtor-container');
+    if (container) {
+        buildRealtorDom(container);
+    }
+    const portalContainer = document.getElementById('rp-property-list');
+    if (portalContainer && window.applyRealtorPortalFilters) {
+        window.applyRealtorPortalFilters();
+    }
+};
+
+window.handleTableRowDragEnd = function(e) {
+    draggedRowMlsId = null;
+    document.querySelectorAll('.rp-compact-row').forEach(row => {
+        row.classList.remove('is-dragging', 'drag-over-above', 'drag-over-below');
+    });
+};
+
+window.resetRealtorTableOrder = function(clientId) {
+    const effectiveClientId = clientId || localStorage.getItem('active_realtor_client_id');
+    const key = effectiveClientId ? `realtor_table_order_${effectiveClientId}` : `realtor_table_order_default`;
+    try { localStorage.removeItem(key); } catch(e){}
+    showToast('Table row order reset', 'info');
+    const container = document.getElementById('view-realtor-container');
+    if (container) buildRealtorDom(container);
+    if (document.getElementById('rp-property-list') && window.applyRealtorPortalFilters) {
+        window.applyRealtorPortalFilters();
+    }
+};
+
+let selectedTableMlsIds = new Set();
+
+window.updateRealtorTableSelection = function() {
+    selectedTableMlsIds.clear();
+    document.querySelectorAll('.rp-table-select-chk:checked').forEach(chk => {
+        if (chk.dataset.mls) selectedTableMlsIds.add(chk.dataset.mls);
+    });
+
+    const countNum = document.getElementById('bulk-count-num');
+    const bulkBar = document.getElementById('realtor-bulk-action-bar');
+
+    if (countNum) countNum.innerText = selectedTableMlsIds.size;
+    if (bulkBar) {
+        if (selectedTableMlsIds.size > 0) {
+            bulkBar.classList.add('active');
+        } else {
+            bulkBar.classList.remove('active');
+        }
+    }
+};
+
+window.toggleRealtorTableSelectAll = function(headerChk) {
+    const isChecked = headerChk.checked;
+    document.querySelectorAll('.rp-table-select-chk').forEach(chk => {
+        chk.checked = isChecked;
+    });
+    window.updateRealtorTableSelection();
+};
+
+window.clearRealtorTableSelection = function() {
+    selectedTableMlsIds.clear();
+    document.querySelectorAll('.rp-table-select-chk').forEach(chk => {
+        chk.checked = false;
+    });
+    const headerChk1 = document.getElementById('rp-table-select-all');
+    const headerChk2 = document.getElementById('rp-modal-select-all');
+    if (headerChk1) headerChk1.checked = false;
+    if (headerChk2) headerChk2.checked = false;
+    window.updateRealtorTableSelection();
+};
+
+window.handleRealtorBulkAction = async function(action) {
+    const mlsIds = Array.from(selectedTableMlsIds);
+    if (!mlsIds.length) return showToast('No properties selected', 'info');
+
+    const clientId = localStorage.getItem('active_realtor_client_id');
+    showToast(`Processing bulk action for ${mlsIds.length} properties...`, 'info');
+
+    try {
+        if (action === 'loved') {
+            await Promise.all(mlsIds.map(id => apiFetch('backend/api.php?action=update_user_data', {
+                method: 'POST',
+                body: JSON.stringify({ mls_id: id, client_id: clientId, favorite: 1, hidden: 0, rating: 5 })
+            })));
+            showToast(`Marked ${mlsIds.length} properties as Loved`, 'success');
+        } else if (action === 'shortlisted' || action === 'add_to_tour') {
+            await Promise.all(mlsIds.map(id => apiFetch('backend/api.php?action=update_user_data', {
+                method: 'POST',
+                body: JSON.stringify({ mls_id: id, client_id: clientId, favorite: 0, hidden: 0, rating: 4, shared_with_realtor: 1 })
+            })));
+            showToast(`Added ${mlsIds.length} properties to Shortlist / Tour Itinerary`, 'success');
+            if (action === 'add_to_tour') {
+                window.switchRealtorSubTab('tour');
+            }
+        } else if (action === 'disliked') {
+            await Promise.all(mlsIds.map(id => apiFetch('backend/api.php?action=update_user_data', {
+                method: 'POST',
+                body: JSON.stringify({ mls_id: id, client_id: clientId, favorite: 0, hidden: 1, rating: 1 })
+            })));
+            showToast(`Marked ${mlsIds.length} properties as Passed`, 'info');
+        } else if (action === 'request_feedback') {
+            if (!clientId) return showToast('Please select a client to request feedback', 'error');
+            await Promise.all(mlsIds.map(id => apiFetch('backend/api.php?action=send_property_message', {
+                method: 'POST',
+                body: JSON.stringify({ client_id: clientId, mls_id: id, message: 'Could you share your thoughts on this home when you have a moment?' })
+            })));
+            showToast(`Sent feedback request for ${mlsIds.length} properties`, 'success');
+        } else if (action === 'add_to_playlist') {
+            if (window.openPlaylistsModal) window.openPlaylistsModal();
+            setTimeout(() => {
+                const clientEl = document.getElementById('playlist-client-select');
+                if (clientEl && clientId) clientEl.value = clientId;
+            }, 150);
+        } else if (action === 'hide') {
+            await Promise.all(mlsIds.map(id => apiFetch('backend/api.php?action=update_global_property_visibility', {
+                method: 'POST',
+                body: JSON.stringify({ mls_id: id, is_hidden: true })
+            })));
+            showToast(`Hidden ${mlsIds.length} properties globally`, 'info');
+        }
+
+        window.clearRealtorTableSelection();
+
+        const container = document.getElementById('view-realtor-container');
+        if (container) buildRealtorDom(container);
+        if (document.getElementById('rp-property-list') && window.applyRealtorPortalFilters) {
+            window.applyRealtorPortalFilters();
+        }
+    } catch(err) {
+        showToast('Error executing bulk action', 'error');
+    }
+};
+
+
 

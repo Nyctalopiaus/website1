@@ -5,10 +5,10 @@ import { escapeHtml } from './properties.js';
 import { openAdminCleanupModal } from './adminCleanup.js';
 import { openEventLogModal, openUserMgmtModal } from './auth.js';
 
-let activeTab = 'overview';
-let autoRefreshActive = false;
+let activeTab = localStorage.getItem('admin_active_tab') || 'overview';
+let autoRefreshActive = localStorage.getItem('admin_auto_refresh') === 'true';
 let autoRefreshTimer = null;
-let scrapeFilter = 'all';
+let scrapeFilter = localStorage.getItem('admin_scrape_filter') || 'all';
 let scrapeSearchQuery = '';
 let qualitySearchQuery = '';
 
@@ -355,6 +355,7 @@ export async function renderAdminView() {
                 const tab = e.currentTarget.dataset.tab;
                 if (tab) {
                     activeTab = tab;
+                    try { localStorage.setItem('admin_active_tab', tab); } catch(e){}
                     renderAdminView();
                     if (tab === 'cleanup') openAdminCleanupModal();
                     else if (tab === 'users') openUserMgmtModal();
@@ -378,6 +379,7 @@ export async function renderAdminView() {
         if (autoToggleBtn) {
             autoToggleBtn.addEventListener('click', () => {
                 autoRefreshActive = !autoRefreshActive;
+                try { localStorage.setItem('admin_auto_refresh', autoRefreshActive ? 'true' : 'false'); } catch(e){}
                 if (autoRefreshActive) {
                     showToast('Auto-refresh enabled (30s interval)', 'info');
                     if (autoRefreshTimer) clearInterval(autoRefreshTimer);
@@ -387,6 +389,7 @@ export async function renderAdminView() {
                         } else {
                             clearInterval(autoRefreshTimer);
                             autoRefreshActive = false;
+                            try { localStorage.setItem('admin_auto_refresh', 'false'); } catch(e){}
                         }
                     }, 30000);
                 } else {
@@ -409,6 +412,7 @@ export async function renderAdminView() {
         container.querySelectorAll('[data-scrape-filter]').forEach(chip => {
             chip.addEventListener('click', (e) => {
                 scrapeFilter = e.currentTarget.dataset.scrapeFilter;
+                try { localStorage.setItem('admin_scrape_filter', scrapeFilter); } catch(e){}
                 renderAdminView();
             });
         });

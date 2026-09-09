@@ -1504,6 +1504,124 @@
         </div>
     </div>
 
+    <!-- Dedicated Single-Property Location Map Modal -->
+    <div class="modal-overlay" id="modal-property-map">
+        <div class="modal-content modal-lg" style="max-width: 1120px; width: 95vw; max-height: 90vh; display: flex; flex-direction: column;">
+            <button class="modal-close" aria-label="Close" id="modal-property-map-close" onclick="if(window.closePropertyMapModal){window.closePropertyMapModal();}"><i data-lucide="x"></i></button>
+            <div class="modal-header" style="padding-right: 3rem;">
+                <div>
+                    <h2 class="font-serif" style="font-size: 1.35rem; margin-bottom: 0.2rem;" id="prop-map-modal-title"><i data-lucide="map-pin" style="color:var(--accent-gold);"></i> Property Location Map</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);" id="prop-map-modal-subtitle">Interactive location view, neighborhood indicators, and navigation tools.</p>
+                </div>
+            </div>
+            <div class="modal-body" style="padding: 1.25rem; overflow-y: auto; flex: 1;">
+                <div class="prop-map-grid" style="display: grid; grid-template-columns: 1fr 340px; gap: 1.25rem; min-height: 480px;">
+                    <!-- Left: Interactive Leaflet Map -->
+                    <div style="display: flex; flex-direction: column; height: 100%;">
+                        <div id="property-map-canvas" style="width: 100%; height: 100%; min-height: 450px; border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-md);"></div>
+                    </div>
+
+                    <!-- Right: Location Details & Action Tools -->
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="location-card" style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                            <h3 style="font-size: 1.3rem; color: var(--accent-gold); font-weight: 800; margin-bottom: 0.35rem;" id="prop-map-price">$0</h3>
+                            <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 0.2rem;" id="prop-map-address">Address Loading...</div>
+                            <div style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 0.85rem;" id="prop-map-city">City, State Zip</div>
+
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                <a id="prop-map-btn-gmaps" href="#" target="_blank" class="btn btn-primary" style="justify-content: center; font-size: 0.85rem;">
+                                    <i data-lucide="map"></i> Open in Google Maps
+                                </a>
+                                <a id="prop-map-btn-streetview" href="#" target="_blank" class="btn btn-secondary" style="justify-content: center; font-size: 0.85rem;">
+                                    <i data-lucide="camera"></i> View Google Street View
+                                </a>
+                                <button id="prop-map-btn-copy" type="button" class="btn btn-secondary" style="justify-content: center; font-size: 0.85rem;" onclick="window.copyPropertyAddressToClipboard()">
+                                    <i data-lucide="copy"></i> Copy Full Address
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Location & Neighborhood Specs -->
+                        <div class="location-specs-card" style="background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 0.65rem;">
+                            <div style="font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);"><i data-lucide="compass"></i> Location & Overview</div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                <span style="color: var(--text-muted);">MLS ID:</span>
+                                <strong id="prop-map-mls-id">-</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                <span style="color: var(--text-muted);">MLS Status:</span>
+                                <strong id="prop-map-status">-</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                <span style="color: var(--text-muted);">Beds / Baths:</span>
+                                <strong id="prop-map-beds-baths">-</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                <span style="color: var(--text-muted);">Finished Living Area:</span>
+                                <strong id="prop-map-sqft">-</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                <span style="color: var(--text-muted);">Price / SqFt:</span>
+                                <strong id="prop-map-ppsqft">-</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                                <span style="color: var(--text-muted);">Walk Score:</span>
+                                <strong id="prop-map-walkscore">-</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Matrix MLS Physical Land & Parcel Description Table -->
+                <div style="margin-top: 1.25rem; background: var(--bg-card); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--accent-gold); margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.4rem;">
+                        <i data-lucide="file-text"></i> General Description & Physical Land Specs
+                    </h3>
+                    <div style="overflow-x: auto;">
+                        <table class="prop-land-specs-table" style="width: 100%; border-collapse: collapse; font-size: 0.83rem; text-align: left;">
+                            <tbody>
+                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                    <td style="padding: 0.5rem; font-weight: 700; color: var(--text-muted); width: 20%;">Parcel Number:</td>
+                                    <td style="padding: 0.5rem; font-weight: 600; width: 30%;" id="prop-land-parcel">-</td>
+                                    <td style="padding: 0.5rem; font-weight: 700; color: var(--text-muted); width: 20%;">Property Type:</td>
+                                    <td style="padding: 0.5rem; font-weight: 600; width: 30%;" id="prop-land-type">Residential</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                    <td style="padding: 0.5rem; font-weight: 700; color: var(--text-muted);">Tax Legal Description:</td>
+                                    <td style="padding: 0.5rem; font-weight: 600;" id="prop-land-legal" colspan="3">-</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                    <td style="padding: 0.5rem; font-weight: 700; color: var(--text-muted);">Subdivision Name:</td>
+                                    <td style="padding: 0.5rem; font-weight: 600;" id="prop-land-subdivision">-</td>
+                                    <td style="padding: 0.5rem; font-weight: 700; color: var(--text-muted);">Property Sub Type:</td>
+                                    <td style="padding: 0.5rem; font-weight: 600;" id="prop-land-subtype">Single Family Residence</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                    <td style="padding: 0.5rem; font-weight: 700; color: var(--text-muted);">Lot Size (Acres / SqFt):</td>
+                                    <td style="padding: 0.5rem; font-weight: 600;" id="prop-land-lot-size">-</td>
+                                    <td style="padding: 0.5rem; font-weight: 700; color: var(--text-muted);">Structure Type & Style:</td>
+                                    <td style="padding: 0.5rem; font-weight: 600;" id="prop-land-style">House / Contemporary</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid var(--border-color);">
+                                    <td style="padding: 0.5rem; font-weight: 700; color: var(--text-muted);">Levels & Basement:</td>
+                                    <td style="padding: 0.5rem; font-weight: 600;" id="prop-land-levels">-</td>
+                                    <td style="padding: 0.5rem; font-weight: 700; color: var(--text-muted);">Year Built:</td>
+                                    <td style="padding: 0.5rem; font-weight: 600;" id="prop-land-year">-</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 0.5rem; font-weight: 700; color: var(--text-muted);">Original List Price:</td>
+                                    <td style="padding: 0.5rem; font-weight: 600; color: var(--accent-gold);" id="prop-land-orig-price">-</td>
+                                    <td style="padding: 0.5rem; font-weight: 700; color: var(--text-muted);">Listing Office Name:</td>
+                                    <td style="padding: 0.5rem; font-weight: 600;" id="prop-land-office">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Realtor Collaboration Portal Modal -->
     <div class="modal-overlay" id="modal-realtor-portal">
         <div class="modal-content modal-lg" style="max-width: 1240px; width: 95vw; max-height: 90vh; display: flex; flex-direction: column;">
@@ -1590,6 +1708,17 @@
                                 <option value="walkscore-desc">WalkScore: Highest First</option>
                             </select>
                         </div>
+                        <div style="display:flex; align-items:center; gap:0.35rem; margin-left:auto;">
+                            <span style="font-size:0.75rem; font-weight:800; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); white-space:nowrap;">LAYOUT</span>
+                            <div class="rp-view-toggle-group" style="display:flex; gap:3px;">
+                                <button class="btn btn-secondary rp-view-btn active" id="rp-view-card" title="Grid Card View" onclick="window.setRpViewMode('card')" style="padding:0.3rem 0.6rem; font-size:0.78rem;">
+                                    <i data-lucide="layout-grid"></i> Grid
+                                </button>
+                                <button class="btn btn-secondary rp-view-btn" id="rp-view-compact" title="Matrix Single-Line Table View" onclick="window.setRpViewMode('compact')" style="padding:0.3rem 0.6rem; font-size:0.78rem;">
+                                    <i data-lucide="list"></i> Matrix Table
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1616,6 +1745,23 @@
             <button class="modal-close modal-close--accent" aria-label="Close" id="modal-client-preview-close" onclick="window.closeClientPreviewModal()"><i data-lucide="x"></i></button>
             <div class="modal-body" style="padding: 0; flex: 1; overflow: hidden;" id="client-preview-body">
                 <!-- Dynamically populated by renderClientPreviewModal() -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Realtor Bulk Action Bar -->
+    <div id="realtor-bulk-action-bar" class="realtor-bulk-action-bar">
+        <div class="bulk-action-content">
+            <span class="bulk-select-count"><i data-lucide="check-square"></i> <strong id="bulk-count-num">0</strong> Selected</span>
+            <div class="bulk-action-buttons">
+                <button type="button" class="btn btn-sm bulk-btn-gold" onclick="window.handleRealtorBulkAction('loved')"><i data-lucide="star"></i> Loved</button>
+                <button type="button" class="btn btn-sm bulk-btn" onclick="window.handleRealtorBulkAction('shortlisted')"><i data-lucide="circle-help"></i> Shortlist</button>
+                <button type="button" class="btn btn-sm bulk-btn" onclick="window.handleRealtorBulkAction('disliked')"><i data-lucide="ban"></i> Pass</button>
+                <button type="button" class="btn btn-sm bulk-btn" onclick="window.handleRealtorBulkAction('add_to_tour')"><i data-lucide="car"></i> Add to Tour</button>
+                <button type="button" class="btn btn-sm bulk-btn" onclick="window.handleRealtorBulkAction('add_to_playlist')"><i data-lucide="folder-plus"></i> Add to Playlist</button>
+                <button type="button" class="btn btn-sm bulk-btn" onclick="window.handleRealtorBulkAction('request_feedback')"><i data-lucide="message-circle-question"></i> Request Feedback</button>
+                <button type="button" class="btn btn-sm bulk-btn" onclick="window.handleRealtorBulkAction('hide')"><i data-lucide="eye-off"></i> Hide</button>
+                <button type="button" class="btn btn-sm bulk-btn-clear" style="margin-left:0.35rem;" onclick="window.clearRealtorTableSelection()"><i data-lucide="x"></i> Clear</button>
             </div>
         </div>
     </div>

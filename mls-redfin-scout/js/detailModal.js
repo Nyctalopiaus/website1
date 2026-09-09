@@ -169,6 +169,16 @@ window.deleteCustomReactionChip = function(event, chipText) {
         const p = state.allProperties.find(item => item.mls_id === mlsId);
         if (!p) return;
 
+        // Track recently viewed home in localStorage
+        try {
+            let recent = JSON.parse(localStorage.getItem('scout_recently_viewed_homes') || '[]');
+            if (!Array.isArray(recent)) recent = [];
+            recent = recent.filter(id => String(id) !== String(mlsId));
+            recent.unshift(String(mlsId));
+            if (recent.length > 15) recent = recent.slice(0, 15);
+            localStorage.setItem('scout_recently_viewed_homes', JSON.stringify(recent));
+        } catch(e){}
+
         const ppsqft = p.sqft_finished ? Math.round(p.price / p.sqft_finished) : (p.sqft_total ? Math.round(p.price / p.sqft_total) : 0);
         const rfDelta = p.redfin_estimate ? Math.round(((p.price - p.redfin_estimate) / p.redfin_estimate) * 100) : null;
         let rfDiffText = 'N/A';

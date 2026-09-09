@@ -74,6 +74,7 @@ export function renderNotificationDropdown() {
         if (n.type === 'playlist') iconName = 'bookmark';
         else if (n.type === 'realtor_note') iconName = 'message-square';
         else if (n.type === 'favorite') iconName = 'star';
+        else if (n.type === 'price_drop') iconName = 'trending-down';
 
         return `
             <div class="notification-item ${isUnread ? 'unread' : ''}" data-id="${n.id}" style="padding:0.75rem 1rem; border-bottom:1px solid var(--border-color); display:flex; gap:0.75rem; align-items:flex-start; cursor:pointer; background:${isUnread ? 'var(--bg-input)' : 'transparent'};">

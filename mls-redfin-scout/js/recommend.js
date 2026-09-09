@@ -622,7 +622,7 @@ function renderResultsPanel(ranking) {
             </div>
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 <button type="button" class="btn btn-emerald btn-sm" onclick="window.transferRankedToTour()"><i data-lucide="map-pin"></i> Build Showing Tour from Top Picks</button>
-                <button type="button" class="btn btn-gold btn-sm" onclick="window.saveRankedPicksAsPlaylist()"><i data-lucide="music"></i> Save Top Picks as Client Playlist</button>
+                <button type="button" class="btn btn-gold btn-sm" onclick="window.saveRankedPicksAsPlaylist()"><i data-lucide="folder-heart"></i> Save Top Picks as Client Playlist</button>
             </div>
         </div>
     ` : '';

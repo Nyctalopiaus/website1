@@ -52,16 +52,31 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './p
         if (typeof L === 'undefined') return;
 
         if (!mapState.leafletMap) {
+            let initialCenter = [39.65, -104.82];
+            let initialZoom = 11;
+            try {
+                const savedCenter = localStorage.getItem('scout_map_center');
+                const savedZoom = localStorage.getItem('scout_map_zoom');
+                if (savedCenter) initialCenter = JSON.parse(savedCenter);
+                if (savedZoom) initialZoom = parseInt(savedZoom, 10);
+            } catch(e){}
+
             mapState.leafletMap = L.map('map-element', {
                 zoomControl: true,
                 fadeAnimation: false,
                 markerZoomAnimation: true,
                 preferCanvas: true
-            }).setView([39.65, -104.82], 11);
+            }).setView(initialCenter, initialZoom);
             updateMapTileLayer();
 
-            mapState.leafletMap.on('zoomstart dragstart', () => {
+            mapState.leafletMap.on('zoomstart dragstart moveend zoomend', () => {
                 mapState.leafletMap._userHasInteracted = true;
+                try {
+                    const c = mapState.leafletMap.getCenter();
+                    const z = mapState.leafletMap.getZoom();
+                    localStorage.setItem('scout_map_center', JSON.stringify([c.lat, c.lng]));
+                    localStorage.setItem('scout_map_zoom', z);
+                } catch(e){}
             });
 
             // Popup content includes icon markup that only enters the DOM once Leaflet
@@ -248,9 +263,18 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './p
         cards.forEach(card => card.classList.add('is-map-hovered'));
     }
 
-    function unhighlightCardInGrid(mlsId) {
-        const cards = document.querySelectorAll(`.property-card[data-mls="${mlsId}"]`);
-        cards.forEach(card => card.classList.remove('is-map-hovered'));
+    export function focusPropertyOnMap(mlsId) {
+        if (!mlsId) return;
+        if (typeof window.switchView === 'function') {
+            window.switchView('map');
+        }
+        setTimeout(() => {
+            const marker = mapState.markerMap[String(mlsId)];
+            if (marker && mapState.leafletMap) {
+                const latLng = marker.getLatLng();
+                mapState.leafletMap.setView(latLng, 16, { animate: true });
+                marker.openPopup();
+            }
+        }, 300);
     }
-
-    // Command Palette Logic
+    window.focusPropertyOnMap = focusPropertyOnMap;
