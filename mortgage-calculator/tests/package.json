@@ -1,0 +1,8 @@
+{
+  "name": "mortgage-calculator-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node regression-suite.mjs"
+  }
+}

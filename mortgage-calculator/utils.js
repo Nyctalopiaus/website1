@@ -139,7 +139,14 @@ export function clamp(value, min, max) {
  * @returns {number} Parsed float or default
  */
 export function parseFloatSafe(value, defaultValue = 0) {
-  const parsed = parseFloat(value);
+  // Defense in depth: native parseFloat tolerates trailing junk ("650000abc"
+  // -> 650000) but not a leading "$" or thousands commas ("$650,000" -> NaN).
+  // The one entry path that could carry those (paste into a currency field)
+  // is already intercepted and stripped in app.js before it reaches here,
+  // but strip them here too so this function is safe to call directly from
+  // anywhere else in the app or in future code, not just today's paste path.
+  const cleaned = typeof value === 'string' ? value.replace(/[$,]/g, '') : value;
+  const parsed = parseFloat(cleaned);
   return isNaN(parsed) ? defaultValue : parsed;
 }
 

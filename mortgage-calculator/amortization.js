@@ -16,7 +16,7 @@
  */
 
 import { CONFIG } from './config.js';
-import { calcPIPayment, calculateSaleProceeds, calculateRecast } from './calculator.js';
+import { calcPIPayment, calculateSaleProceeds, calculateRecast, applyCappedPeriodPayment } from './calculator.js';
 import { formatCurrency } from './utils.js';
 
 /**
@@ -108,25 +108,60 @@ export function runAmortizationSchedule(p) {
   while (balance > CONFIG.LOAN_BALANCE_THRESHOLD && month < CONFIG.MAX_MONTHS) {
     month++;
 
+    const balanceAtMonthStart = balance;
+    const isBiweeklyMode = paymentFrequency === 'biweekly' || paymentFrequency === 'accelerated';
     let requiredPiThisMonth = currentRegularPi;
     let biweeklyExtraThisMonth = 0;
-    if (paymentFrequency === 'biweekly' || paymentFrequency === 'accelerated') {
+    let interestThisMonth = 0;
+
+    if (isBiweeklyMode) {
+      // True per-period compounding: run each of this month's actual
+      // biweekly payments (2, or 3 in months 6 & 12 — 26/year total) against
+      // interest accrued on the then-current balance, one period at a time,
+      // instead of a single monthly-bucketed lump payment vs. one monthly
+      // interest charge. Bucketing understated the required payment in 10 of
+      // every 12 months (each bucket ~7.7% below a full month's P&I), which
+      // could let accrued interest exceed that bucket's payment purely as a
+      // bucketing artifact — see applyRequiredPayment()'s negative-
+      // amortization handling and the audit note in calculator.js's
+      // simulatePayoff() for the full explanation.
       const numPayments = (month % 6 === 0) ? 3 : 2;
       requiredPiThisMonth = numPayments * currentBiweeklyPi;
       biweeklyExtraThisMonth = numPayments * biweeklyExtra;
+      const periodRate = (r * CONFIG.MONTHS_PER_YEAR) / 26; // = activeRate/100/26, same convention as calculator.js
+      for (let k = 0; k < numPayments; k++) {
+        // Cap this sub-period's principal at its own (post-accrual) balance —
+        // the loan can pay off partway through a month's 2-3 biweekly
+        // sub-periods (this is the last month of the whole schedule, not just
+        // this loop), and without this cap the final sub-period's payment
+        // could "overpay" past zero, driving balance negative and then
+        // producing NEGATIVE interest on the next sub-period's accrual step.
+        // Found via live browser testing: showed up as a negative Interest
+        // Component ($-1.42) on the schedule's final row. applyCappedPeriodPayment()
+        // (shared with the plain-monthly branch below) is the fix.
+        const step = applyCappedPeriodPayment(balance, periodRate, currentBiweeklyPi);
+        interestThisMonth += step.interestPaid;
+        balance = step.balanceAfter;
+      }
+    } else {
+      const step = applyCappedPeriodPayment(balance, r, requiredPiThisMonth);
+      interestThisMonth = step.interestPaid;
+      balance = step.balanceAfter;
     }
 
-    const interestThisMonth = balance * r;
-    const requiredPrincipal = Math.max(0, requiredPiThisMonth - interestThisMonth);
     const extraPaid = additional + biweeklyExtraThisMonth;
     let bonusPayment = 0;
     if (lumpSumAmt > 0 && month % lumpSumFreq === 0) { bonusPayment = lumpSumAmt; }
-    const totalPrincipal = requiredPrincipal + extraPaid + bonusPayment;
+    const extraAndBonusApplied = Math.min(Math.max(0, balance), extraPaid + bonusPayment);
+    balance -= extraAndBonusApplied;
 
-    const actualPrincipalPaid = Math.min(balance, totalPrincipal);
+    // Total principal actually reduced this month (required + extra + lump
+    // sum, net of any negative-amortization capitalization above) — derived
+    // from the balance delta so it's correct in every case, including one
+    // where the required payment alone didn't cover interest.
+    const actualPrincipalPaid = Math.max(0, balanceAtMonthStart - balance);
     const actualInterestPaid = interestThisMonth;
 
-    balance -= actualPrincipalPaid;
     totalInterest += actualInterestPaid;
 
     const currentEquityPercent = 1 - (balance / price);

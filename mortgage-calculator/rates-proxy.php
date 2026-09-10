@@ -1,4 +1,6 @@
 <?php
+header('Content-Type: application/json');
+
 $ratesUrl = "https://widgets.mortgagenewsdaily.com/widget/rates";
 
 $options = [

@@ -29,6 +29,86 @@ export function calcPIPayment(principal, annualRate, years) {
 }
 
 /**
+ * Applies one period's required payment against accrued interest on a
+ * balance, handling negative amortization explicitly rather than silently
+ * clamping it away. This is the single place simulatePayoff() decides
+ * whether a period's payment covers its interest — extracted as a pure,
+ * independently-testable function per the negative-amortization audit
+ * finding (payment < accrued interest must capitalize onto the balance,
+ * never just freeze it or get silently dropped).
+ * @param {number} balance - Balance at the start of the period
+ * @param {number} periodRate - Interest rate for this one period (e.g. monthlyRate)
+ * @param {number} requiredPayment - The period's required P&I payment (before any extra/lump sum)
+ * @returns {{ interestThisPeriod: number, requiredPrincipalPaid: number, unpaidInterest: number, balanceAfterAccrual: number }}
+ *   requiredPrincipalPaid is 0 and unpaidInterest > 0 exactly when
+ *   requiredPayment < interestThisPeriod (negative amortization); in that
+ *   case balanceAfterAccrual is the ORIGINAL balance plus the capitalized
+ *   shortfall (i.e. it can be greater than the input balance) — callers
+ *   should use it as the new balance, not add anything further to it for
+ *   this period's interest.
+ * @example
+ * // $100,000 balance, 10% APR monthly interest ($833.33), $700 payment:
+ * applyRequiredPayment(100000, 0.10 / 12, 700)
+ * // => { interestThisPeriod: 833.33, requiredPrincipalPaid: 0, unpaidInterest: 133.33, balanceAfterAccrual: 100133.33 }
+ */
+export function applyRequiredPayment(balance, periodRate, requiredPayment) {
+  const interestThisPeriod = balance * periodRate;
+  const grossPrincipalAttempt = requiredPayment - interestThisPeriod;
+
+  if (grossPrincipalAttempt >= 0) {
+    return {
+      interestThisPeriod,
+      requiredPrincipalPaid: grossPrincipalAttempt,
+      unpaidInterest: 0,
+      balanceAfterAccrual: balance
+    };
+  }
+
+  // The required payment doesn't even cover this period's interest. Model
+  // negative amortization correctly instead of silently freezing the
+  // balance: the shortfall capitalizes onto the loan, same as a real
+  // negatively-amortizing loan would. This should never trigger for a
+  // normal fully-amortizing scenario in this app (regularPi is solved to
+  // always exceed interest-on-principal by construction) — it exists as a
+  // safety net, not a supported everyday path.
+  const shortfall = -grossPrincipalAttempt;
+  return {
+    interestThisPeriod,
+    requiredPrincipalPaid: 0,
+    unpaidInterest: shortfall,
+    balanceAfterAccrual: balance + shortfall
+  };
+}
+
+/**
+ * Applies one period's required payment AND caps the resulting principal
+ * paid at that period's own (post-accrual) balance, so a single sub-period
+ * step can never drive the balance negative. This is the exact "step, then
+ * cap, then reduce balance" sequence that used to be hand-written twice in
+ * amortization.js's runAmortizationSchedule() (once for the biweekly
+ * sub-period loop, once for the plain-monthly branch) — extracted here as a
+ * single shared primitive so a future fix to this logic (like the negative-
+ * interest-near-payoff bug this cap itself fixes) only needs to happen once.
+ * Not used by simulatePayoff() above, which folds extra/lump-sum payments
+ * into its own single capping step and has no separate "required payment
+ * only" cap to share.
+ * @param {number} balance - Balance at the start of the period
+ * @param {number} periodRate - Interest rate for this one period
+ * @param {number} requiredPayment - The period's required P&I payment
+ * @returns {{ interestPaid: number, principalPaid: number, balanceAfter: number, unpaidInterest: number }}
+ */
+export function applyCappedPeriodPayment(balance, periodRate, requiredPayment) {
+  const step = applyRequiredPayment(balance, periodRate, requiredPayment);
+  const principalPaid = Math.min(step.balanceAfterAccrual, step.requiredPrincipalPaid);
+  return {
+    interestPaid: step.interestThisPeriod,
+    principalPaid,
+    balanceAfter: step.balanceAfterAccrual - principalPaid,
+    unpaidInterest: step.unpaidInterest
+  };
+}
+
+/**
  * Simulates full loan payoff including extra monthly payments and lump sums
  * Generates yearly snapshots of remaining balance, cumulative interest, and cumulative principal
  * @param {number} principal - Initial loan amount
@@ -51,7 +131,7 @@ export function simulatePayoff(
 ) {
   const monthlyRate = annualRate / 12 / 100;
   const originalMonths = years * CONFIG.MONTHS_PER_YEAR;
-  
+
   // Calculate regular monthly P&I
   let regularPi = 0;
   if (annualRate > 0) {
@@ -70,10 +150,39 @@ export function simulatePayoff(
     biweeklyPi = regularPi / 2;
   }
 
+  // Biweekly/accelerated modes run a TRUE per-period simulation (26 periods
+  // a year, interest accrued and principal reduced every period) instead of
+  // aggregating payments into monthly buckets. Bucketing by month (the old
+  // approach) meant 10 of every 12 months carried only 2 biweekly payments
+  // — a required amount ~7.7% SMALLER than a normal month's P&I — so in the
+  // early, interest-heavy months of a loan that smaller bucketed payment
+  // could dip below that month's accrued interest purely as an artifact of
+  // the bucketing, not anything the user configured. That's why the old
+  // "biweekly" mode could show MORE total interest and a LONGER payoff than
+  // plain monthly, which is financially backwards: paying the same annual
+  // total more often can never make a loan worse. Running true 26x/year
+  // periods removes that artifact and lets true biweekly show its real
+  // (small) edge over monthly from resetting the balance more often.
+  const isBiweeklyMode = paymentFrequency === 'biweekly' || paymentFrequency === 'accelerated';
+  const periodsPerYear = isBiweeklyMode ? 26 : CONFIG.MONTHS_PER_YEAR;
+  // Nominal per-period rate: annual rate split evenly across the periods in
+  // a year (industry-standard "APR / N" convention for a biweekly schedule).
+  const periodRate = isBiweeklyMode ? (annualRate / 100) / 26 : monthlyRate;
+  const periodPayment = isBiweeklyMode ? biweeklyPi : regularPi;
+  // additionalPayment is a monthly concept and biweeklyExtra a per-biweekly-
+  // payment concept — only the one matching the active period length applies.
+  const periodExtra = isBiweeklyMode ? biweeklyExtra : additionalPayment;
+  // lumpSumFreq is expressed in months everywhere in the app (the UI's
+  // "every N months" picker); convert it to a period count so
+  // `period % lumpSumPeriod === 0` still means "every N months" regardless
+  // of whether this engine is stepping in monthly or biweekly periods.
+  const lumpSumPeriod = Math.max(1, Math.round((lumpSumFreq || 12) * periodsPerYear / CONFIG.MONTHS_PER_YEAR));
+  const maxPeriods = Math.round(CONFIG.MAX_MONTHS * periodsPerYear / CONFIG.MONTHS_PER_YEAR);
+
   let balance = principal;
   let totalInterest = 0;
-  let monthsCount = 0;
-  
+  let period = 0;
+
   const yearlyBalances = [principal];
   const yearlyInterest = [0];
   const yearlyPayments = [0];
@@ -83,73 +192,94 @@ export function simulatePayoff(
   let totalExtraMonthly = 0;
   let totalBiweeklyExtra = 0;
   let totalLumpsum = 0;
+  // Negative amortization: total interest that a period's required payment
+  // didn't cover, and that therefore capitalized onto the balance instead of
+  // being collected. Should be 0 for every normal (positive-amortizing)
+  // scenario in this app; tracked so callers/tests can detect if it isn't.
+  let unpaidInterestCapitalized = 0;
 
-  // Month-by-month simulation
-  while (balance > CONFIG.LOAN_BALANCE_THRESHOLD && monthsCount < CONFIG.MAX_MONTHS) {
-    monthsCount++;
-    
-    // Interest accrual this month
-    const interestThisMonth = balance * monthlyRate;
-    
-    let requiredPiThisMonth = regularPi;
-    let biweeklyExtraThisMonth = 0;
-    
-    if (paymentFrequency === 'biweekly' || paymentFrequency === 'accelerated') {
-      // 26 biweekly payments per year: 10 months have 2 payments, 2 months (months 6 & 12) have 3 payments
-      const numPayments = (monthsCount % 6 === 0) ? 3 : 2;
-      requiredPiThisMonth = numPayments * biweeklyPi;
-      biweeklyExtraThisMonth = numPayments * biweeklyExtra;
+  // Period-by-period simulation (monthly for 'monthly' mode, biweekly for
+  // 'biweekly'/'accelerated' modes — see periodsPerYear/periodRate above).
+  while (balance > CONFIG.LOAN_BALANCE_THRESHOLD && period < maxPeriods) {
+    period++;
+
+    // Interest accrual this period + apply the period's required payment
+    // against it (see applyRequiredPayment() below for the negative-
+    // amortization safety net this delegates to).
+    const step = applyRequiredPayment(balance, periodRate, periodPayment);
+    const interestThisPeriod = step.interestThisPeriod;
+    const requiredPrincipalPaid = step.requiredPrincipalPaid;
+    balance = step.balanceAfterAccrual;
+    unpaidInterestCapitalized += step.unpaidInterest;
+
+    const maxExtra = Math.max(0, balance - requiredPrincipalPaid);
+
+    // Apply the extra payment for this period's frequency mode (capped by
+    // remaining balance)
+    const actualExtra = Math.min(Math.max(0, periodExtra || 0), maxExtra);
+    if (isBiweeklyMode) {
+      totalBiweeklyExtra += actualExtra;
+    } else {
+      totalExtraMonthly += actualExtra;
     }
 
-    const regularPrincipalPaid = Math.max(0, requiredPiThisMonth - interestThisMonth);
-    const maxExtra = Math.max(0, balance - regularPrincipalPaid);
-
-    // Apply biweekly extra payment (capped by remaining balance)
-    const actualBiweeklyExtra = Math.min(biweeklyExtraThisMonth, maxExtra);
-    totalBiweeklyExtra += actualBiweeklyExtra;
-    
-    // Apply extra monthly payment (capped by remaining balance)
-    const maxMonthlyExtra = Math.max(0, maxExtra - actualBiweeklyExtra);
-    const actualExtraMonthly = Math.min(additionalPayment, maxMonthlyExtra);
-    totalExtraMonthly += actualExtraMonthly;
-    
-    // Apply lump sum if it's the right month
+    // Apply lump sum if it's the right period
     let actualLumpSum = 0;
-    if (lumpSumAmount > 0 && monthsCount % lumpSumFreq === 0) {
-      actualLumpSum = Math.min(lumpSumAmount, Math.max(0, maxMonthlyExtra - actualExtraMonthly));
+    if (lumpSumAmount > 0 && period % lumpSumPeriod === 0) {
+      actualLumpSum = Math.min(lumpSumAmount, Math.max(0, maxExtra - actualExtra));
     }
     totalLumpsum += actualLumpSum;
-    
-    // Total principal paid this month
+
+    // Total principal paid this period
     const actualPrincipalPaid = Math.min(
       balance,
-      regularPrincipalPaid + actualBiweeklyExtra + actualExtraMonthly + actualLumpSum
+      requiredPrincipalPaid + actualExtra + actualLumpSum
     );
-    
+
     // Update running totals
-    totalInterest += interestThisMonth;
-    cumInterest += interestThisMonth;
+    totalInterest += interestThisPeriod;
+    cumInterest += interestThisPeriod;
     cumPrincipal += actualPrincipalPaid;
     balance -= actualPrincipalPaid;
 
-    // Snapshot at end of each year
-    if (monthsCount % CONFIG.MONTHS_PER_YEAR === 0) {
+    // Snapshot at the end of each year (every periodsPerYear periods, so
+    // this lands on the same yearly cadence for monthly and biweekly modes)
+    if (period % periodsPerYear === 0) {
       yearlyBalances.push(Math.max(0, balance));
       yearlyInterest.push(cumInterest);
       yearlyPayments.push(cumPrincipal);
     }
   }
 
-  // Ensure final balance is exactly zero
-  if (yearlyBalances[yearlyBalances.length - 1] > CONFIG.LOAN_BALANCE_THRESHOLD) {
-    yearlyBalances.push(0);
-    yearlyInterest.push(cumInterest);
-    yearlyPayments.push(cumPrincipal);
+  // True only when the loan actually amortized to zero within MAX_MONTHS —
+  // never assumed. A loan that exhausted MAX_MONTHS without reaching zero
+  // (only possible via the negative-amortization safety net above) must
+  // NEVER be reported as paid off, so the "force a final zero" step below
+  // only fires for a genuine payoff.
+  const paidOff = balance <= CONFIG.LOAN_BALANCE_THRESHOLD;
+  // Convert elapsed periods back to an approximate month count — exact for
+  // monthly mode (1 period = 1 month), a close approximation for biweekly
+  // modes (26 periods ≈ 12 months) good enough for "X years, Y months" display.
+  const monthsCount = Math.round(period * CONFIG.MONTHS_PER_YEAR / periodsPerYear);
+
+  if (paidOff) {
+    // Ensure final balance is exactly zero — only legitimate when payoff
+    // actually happened (e.g. the loan cleared mid-year, between two yearly
+    // snapshots). This used to run unconditionally, which meant a loan that
+    // never amortized (negative-amortization runaway hitting MAX_MONTHS)
+    // could have a fabricated zero balance appended, falsely reporting a
+    // payoff that never occurred.
+    if (yearlyBalances[yearlyBalances.length - 1] > CONFIG.LOAN_BALANCE_THRESHOLD) {
+      yearlyBalances.push(0);
+      yearlyInterest.push(cumInterest);
+      yearlyPayments.push(cumPrincipal);
+    }
   }
 
-  // Pad remaining years with final cumulative values
+  // Pad remaining years with final cumulative values (real balance if the
+  // loan never actually paid off, zero otherwise)
   while (yearlyBalances.length <= years) {
-    yearlyBalances.push(0);
+    yearlyBalances.push(paidOff ? 0 : Math.max(0, balance));
     yearlyInterest.push(cumInterest);
     yearlyPayments.push(cumPrincipal);
   }
@@ -159,13 +289,20 @@ export function simulatePayoff(
     biweeklyPi,
     totalInterest,
     monthsToPayoff: monthsCount,
-    monthsSaved: Math.max(0, originalMonths - monthsCount),
+    monthsSaved: paidOff ? Math.max(0, originalMonths - monthsCount) : 0,
     yearlyBalances,
     yearlyInterest,
     yearlyPayments,
     totalExtraMonthly,
     totalBiweeklyExtra,
-    totalLumpsum
+    totalLumpsum,
+    // True only for a genuine payoff — see comment above. Callers should
+    // treat monthsToPayoff/monthsSaved as meaningless (and warn the user)
+    // whenever this is false.
+    paidOff,
+    // Real remaining balance when the loan didn't pay off (0 when it did).
+    finalBalance: Math.max(0, balance),
+    unpaidInterestCapitalized
   };
 }
 
@@ -807,6 +944,28 @@ export function performCalculations(inputs) {
   const loanAmount = Math.max(0, homePrice - downPayment);
   const downPercent = homePrice > 0 ? (downPayment / homePrice) * 100 : 0;
 
+  // performCalculations() calls memoSimulatePayoff() up to 8 times per pass (30yr
+  // and 15yr, each with a "combined" scenario plus "monthly extra only" /
+  // "biweekly-frequency only" comparison runs, plus a shared zero-extra chart
+  // baseline for each term). Several of these end up with IDENTICAL
+  // arguments in common cases — e.g. when paymentFrequency is 'monthly' and
+  // biweeklyExtra is 0 (the default), the "biweekly-only" comparison run and
+  // the zero-extra chart baseline run are the exact same zero-extra monthly
+  // simulation. memoSimulatePayoff() is a pure function of its arguments, so
+  // memoizing by argument tuple for the lifetime of this one
+  // performCalculations() call is always safe (never returns a stale result)
+  // and cuts real, measurable redundant work per keystroke.
+  const _payoffCache = new Map();
+  function memoSimulatePayoff(principal, annualRate, years, extra, lumpSum, lumpSumFreq, freq, biweekly) {
+    const key = `${principal}|${annualRate}|${years}|${extra}|${lumpSum}|${lumpSumFreq}|${freq}|${biweekly}`;
+    let result = _payoffCache.get(key);
+    if (!result) {
+      result = simulatePayoff(principal, annualRate, years, extra, lumpSum, lumpSumFreq, freq, biweekly);
+      _payoffCache.set(key, result);
+    }
+    return result;
+  }
+
   // Monthly costs
   const monthlyTax = (homePrice * (taxRate / 100)) / 12;
   const monthlyInsurance = homeInsurance / 12;
@@ -817,7 +976,7 @@ export function performCalculations(inputs) {
   // 30-Year Calculations
   const baselinePi30 = calcPIPayment(loanAmount, interest30, CONFIG.LOAN_TERM_30);
   const baselineInterest30 = Math.max(0, (baselinePi30 * 360) - loanAmount);
-  const amort30 = simulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, additionalPayment, lumpSumAmount, lumpSumFrequency, paymentFrequency, biweeklyExtra);
+  const amort30 = memoSimulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, additionalPayment, lumpSumAmount, lumpSumFrequency, paymentFrequency, biweeklyExtra);
   
   // Effective regular monthly payment display
   let regularMonthlyPI30 = amort30.regularPi;
@@ -836,8 +995,8 @@ export function performCalculations(inputs) {
     (lumpSumAmount > 0 && lumpSumFrequency > 0 ? (lumpSumAmount / lumpSumFrequency) : 0);
   const effectiveMonthlyTotal30 = bankMonthlyTotal30 + extraMonthlyOutlay30;
 
-  const amort30Monthly = simulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, additionalPayment, 0, 12, 'monthly', 0);
-  const amort30BiweeklyOnly = simulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, 0, 0, 12, paymentFrequency, biweeklyExtra);
+  const amort30Monthly = memoSimulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, additionalPayment, 0, 12, 'monthly', 0);
+  const amort30BiweeklyOnly = memoSimulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, 0, 0, 12, paymentFrequency, biweeklyExtra);
   
   const biweeklySaved30 = (paymentFrequency !== 'monthly' || biweeklyExtra > 0)
     ? Math.max(0, baselineInterest30 - amort30BiweeklyOnly.totalInterest)
@@ -849,7 +1008,7 @@ export function performCalculations(inputs) {
   // 15-Year Calculations
   const baselinePi15 = calcPIPayment(loanAmount, interest15, CONFIG.LOAN_TERM_15);
   const baselineInterest15 = Math.max(0, (baselinePi15 * 180) - loanAmount);
-  const amort15 = simulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, additionalPayment, lumpSumAmount, lumpSumFrequency, paymentFrequency, biweeklyExtra);
+  const amort15 = memoSimulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, additionalPayment, lumpSumAmount, lumpSumFrequency, paymentFrequency, biweeklyExtra);
   
   let regularMonthlyPI15 = amort15.regularPi;
   if (paymentFrequency === 'biweekly') {
@@ -867,8 +1026,8 @@ export function performCalculations(inputs) {
     (lumpSumAmount > 0 && lumpSumFrequency > 0 ? (lumpSumAmount / lumpSumFrequency) : 0);
   const effectiveMonthlyTotal15 = bankMonthlyTotal15 + extraMonthlyOutlay15;
 
-  const amort15Monthly = simulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, additionalPayment, 0, 12, 'monthly', 0);
-  const amort15BiweeklyOnly = simulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, 0, 0, 12, paymentFrequency, biweeklyExtra);
+  const amort15Monthly = memoSimulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, additionalPayment, 0, 12, 'monthly', 0);
+  const amort15BiweeklyOnly = memoSimulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, 0, 0, 12, paymentFrequency, biweeklyExtra);
   
   const biweeklySaved15 = (paymentFrequency !== 'monthly' || biweeklyExtra > 0)
     ? Math.max(0, baselineInterest15 - amort15BiweeklyOnly.totalInterest)
@@ -915,10 +1074,10 @@ export function performCalculations(inputs) {
     
     // For chart baselines (no extra payments)
     baseline30: (additionalPayment > 0 || lumpSumAmount > 0 || biweeklyExtra > 0 || paymentFrequency !== 'monthly')
-      ? simulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, 0, 0, 12, 'monthly', 0)
+      ? memoSimulatePayoff(loanAmount, interest30, CONFIG.LOAN_TERM_30, 0, 0, 12, 'monthly', 0)
       : null,
     baseline15: (additionalPayment > 0 || lumpSumAmount > 0 || biweeklyExtra > 0 || paymentFrequency !== 'monthly')
-      ? simulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, 0, 0, 12, 'monthly', 0)
+      ? memoSimulatePayoff(loanAmount, interest15, CONFIG.LOAN_TERM_15, 0, 0, 12, 'monthly', 0)
       : null
   };
 }

@@ -54,13 +54,26 @@ export async function fetchPropertyData(inputUrl, domRefs, callbacks = {}) {
     try {
       const fetchUrl = `${CONFIG.API_MLS}?url=${encodeUrlParam(inputUrl)}`;
       const response = await fetch(fetchUrl);
-      const text = await response.text();
-
-      if (!text.trim().startsWith('<?php') && !text.includes('<?php')) {
-        data = JSON.parse(text);
+      // Prefer explicit HTTP semantics over sniffing the response body: a
+      // real backend replies with an application/json body on both success
+      // AND a structured error (still parsed below so data.error can
+      // surface), regardless of status code. Anything else — including the
+      // local static dev server, which has no PHP runtime and serves this
+      // endpoint's raw .php source back as plain text with a 200 status —
+      // is left as `data = null` and falls through to the address-parsing
+      // fallback / generic error further down, rather than risking
+      // JSON.parse on non-JSON content.
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const text = await response.text();
+        try {
+          data = JSON.parse(text);
+        } catch (parseErr) {
+          console.error('[ERROR] Property lookup returned malformed JSON:', parseErr);
+        }
       }
     } catch (e) {
-      // Local static server fallback
+      // Network failure / local static server fallback
     }
 
     if (data && data.price) {
@@ -204,12 +217,15 @@ export async function fetchRedfinValueOnly(inputUrl, force = false) {
   try {
     const fetchUrl = `${CONFIG.API_MLS}?url=${encodeUrlParam(inputUrl)}${force ? '&force=1' : ''}`;
     const response = await fetch(fetchUrl);
-    const text = await response.text();
-
-    if (text.trim().startsWith('<?php') || text.includes('<?php')) {
-      return null; // Local static dev server with no PHP runtime
+    // Same explicit-content-type check as fetchPropertyData() above — see
+    // that function's comment for why this replaced sniffing the body text
+    // for a literal "<?php" marker.
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return null; // Local static dev server with no PHP runtime, or a non-JSON error page
     }
 
+    const text = await response.text();
     const data = JSON.parse(text);
     if (data && data.price) {
       return {
