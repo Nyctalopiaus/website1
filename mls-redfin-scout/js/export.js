@@ -161,4 +161,5 @@ export function downloadTourCalendarICS(properties, client) {
     showToast('Calendar Itinerary (.ics) Exported', 'success');
 }
 
-
+window.exportFavoritesToHomeward = exportFavoritesToHomeward;
+window.sendPropertiesToHomeward = sendPropertiesToHomeward;

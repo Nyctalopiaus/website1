@@ -112,6 +112,7 @@
         modalExport: document.getElementById('modal-export'),
         modalExportClose: document.getElementById('modal-export-close'),
         btnExportModal: document.getElementById('btn-export-modal'),
+        btnTopMapHomeward: document.getElementById('btn-top-map-homeward'),
         btnExportHomeward: document.getElementById('btn-export-homeward'),
         btnExportModalHomeward: document.getElementById('btn-export-modal-homeward'),
         btnExportCsv: document.getElementById('btn-export-csv'),

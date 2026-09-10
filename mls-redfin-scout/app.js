@@ -277,6 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (elements.btnExportModal) elements.btnExportModal.addEventListener('click', () => elements.modalExport.classList.add('active'));
         if (elements.modalExportClose) elements.modalExportClose.addEventListener('click', () => elements.modalExport.classList.remove('active'));
+        if (elements.btnTopMapHomeward) elements.btnTopMapHomeward.addEventListener('click', exportFavoritesToHomeward);
         if (elements.btnExportHomeward) elements.btnExportHomeward.addEventListener('click', exportFavoritesToHomeward);
         if (elements.btnExportModalHomeward) elements.btnExportModalHomeward.addEventListener('click', () => {
             elements.modalExport.classList.remove('active');

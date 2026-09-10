@@ -1934,17 +1934,6 @@ function closeBookmarkletNeededModal() {
 }
 
 /**
- * Closes the "Bookmarklet Ingestion Required" popup modal
- */
-function closeBookmarkletNeededModal() {
-  if (domRefs.bookmarkletNeededModal) {
-    domRefs.bookmarkletNeededModal.style.display = 'none';
-    domRefs.bookmarkletNeededModal.classList.add('hidden');
-    domRefs.bookmarkletNeededModal.setAttribute('aria-hidden', 'true');
-  }
-}
-
-/**
  * Handles errors occurring during property fetching, showing a useful modal popup
  * when a URL needs to be ingested by the bookmarklet first.
  * @param {string|Object} error - Error message string or object
