@@ -255,9 +255,9 @@ function buildRealtorDom(container) {
                             <div class="kpi-value">${lovedCount}</div>
                             <div class="kpi-sub">Favorites</div>
                         </div>
-                        <div class="kpi-card interactive-kpi kpi-card-shortlisted ${realtorFilterStatus === 'shortlisted' ? 'active-kpi-filter' : ''}" onclick="window.handleKpiCardClick('shortlisted')" title="Click to filter board to Shortlisted">
+                        <div class="kpi-card interactive-kpi kpi-card-shortlisted ${realtorFilterStatus === 'shortlisted' ? 'active-kpi-filter' : ''}" onclick="window.handleKpiCardClick('shortlisted')" title="Click to filter board to Possibilities">
                             <div class="kpi-card-header">
-                                <span class="kpi-label">Shortlisted</span>
+                                <span class="kpi-label">Possibilities</span>
                                 <span class="kpi-card-icon"><i data-lucide="star" class="icon-star"></i></span>
                             </div>
                             <div class="kpi-value">${shortlistCount}</div>
@@ -439,7 +439,7 @@ function renderStatusMatrixContent(matrix, client) {
                 <select class="input-select" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;" onchange="window.setRealtorStatusFilter(this.value)">
                     <option value="all" ${realtorFilterStatus === 'all' ? 'selected' : ''}>All Status Columns (${totalCount})</option>
                     <option value="loved" ${realtorFilterStatus === 'loved' ? 'selected' : ''}>Loved / Favorites (${(matrix.loved || []).length})</option>
-                    <option value="shortlisted" ${realtorFilterStatus === 'shortlisted' ? 'selected' : ''}>Shortlisted / Top Picks (${(matrix.shortlisted || []).length})</option>
+                    <option value="shortlisted" ${realtorFilterStatus === 'shortlisted' ? 'selected' : ''}>Possibilities / Top Picks (${(matrix.shortlisted || []).length})</option>
                     <option value="disliked" ${realtorFilterStatus === 'disliked' ? 'selected' : ''}>Disliked / Passed (${(matrix.disliked || []).length})</option>
                     <option value="unreviewed" ${realtorFilterStatus === 'unreviewed' ? 'selected' : ''}>Unreviewed Homes (${(matrix.unreviewed || []).length})</option>
                     <option value="in_discussion" ${realtorFilterStatus === 'in_discussion' ? 'selected' : ''}>In Discussion Thread (${(matrix.in_discussion || []).length})</option>
@@ -496,10 +496,10 @@ function renderStatusMatrixContent(matrix, client) {
                      ondragleave="window.handleRealtorColDragLeave(event)"
                      ondrop="window.handleRealtorColDrop(event, 'shortlisted', ${client.id})">
                     <div class="matrix-col-header">
-                        <h4><i data-lucide="star" class="icon-star"></i> Shortlisted (${shortlisted.length})</h4>
+                        <h4><i data-lucide="star" class="icon-star"></i> Possibilities (${shortlisted.length})</h4>
                     </div>
                     <div class="matrix-col-body" style="${singleCol ? 'display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;' : ''}">
-                        ${shortlisted.length === 0 ? '<div class="matrix-empty-pill">No shortlisted properties match (drag card here)</div>' : shortlisted.map(p => renderRealtorPropertyCard(p, client.id)).join('')}
+                        ${shortlisted.length === 0 ? '<div class="matrix-empty-pill">No possibilities match (drag card here)</div>' : shortlisted.map(p => renderRealtorPropertyCard(p, client.id)).join('')}
                     </div>
                 </div>
             ` : ''}
@@ -623,7 +623,7 @@ function renderRealtorTableBoard(matrix, clientId) {
         if (loved.some(item => String(item.mls_id) === String(p.mls_id))) {
             revBadgeHtml = `<span class="badge-matrix-review badge-matrix-fav"><i data-lucide="star"></i> Loved</span>`;
         } else if (shortlisted.some(item => String(item.mls_id) === String(p.mls_id))) {
-            revBadgeHtml = `<span class="badge-matrix-review badge-matrix-possibility"><i data-lucide="circle-help"></i> Shortlist</span>`;
+            revBadgeHtml = `<span class="badge-matrix-review badge-matrix-possibility"><i data-lucide="circle-help"></i> Possibility</span>`;
         } else if (disliked.some(item => String(item.mls_id) === String(p.mls_id))) {
             revBadgeHtml = `<span class="badge-matrix-review badge-matrix-dislike"><i data-lucide="ban"></i> Disliked</span>`;
         } else {
@@ -840,7 +840,7 @@ function renderTourPlannerContent(matrix, client) {
             <div class="tour-planner-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
                 <div>
                     <h3><i data-lucide="map-pin"></i> Showing & Tour Itinerary Builder</h3>
-                    <p style="color:var(--text-muted); font-size:0.88rem;">Curated shortlist of houses to show ${escapeHtml(client.full_name || client.username)}.</p>
+                    <p style="color:var(--text-muted); font-size:0.88rem;">Curated list of possibilities to show ${escapeHtml(client.full_name || client.username)}.</p>
                 </div>
                 <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                     <button class="btn btn-secondary" onclick="window.exportShowingCalendar()"><i data-lucide="calendar"></i> Export Calendar (.ics)</button>
@@ -851,7 +851,7 @@ function renderTourPlannerContent(matrix, client) {
 
             ${tourProps.length === 0 ? `
                 <div class="empty-state-box" style="text-align:center; padding:3rem;">
-                    <p style="color:var(--text-muted);">No loved or shortlisted properties available to build a tour for this client.</p>
+                    <p style="color:var(--text-muted);">No loved or possibility properties available to build a tour for this client.</p>
                 </div>
             ` : `
                 <div class="tour-list-wrapper">
@@ -1011,7 +1011,8 @@ window.handleRealtorColDrop = async function(e, targetStatus, clientId) {
             body: JSON.stringify(payload)
         });
         if (res && res.success) {
-            showToast(`Moved property to ${targetStatus.toUpperCase()}`, 'success');
+            const statusDisplayLabel = targetStatus === 'shortlisted' ? 'POSSIBILITY' : targetStatus.toUpperCase();
+            showToast(`Moved property to ${statusDisplayLabel}`, 'success');
             renderRealtorView(clientId);
         } else {
             showToast(res?.error || 'Failed to update property status', 'error');
@@ -1121,7 +1122,7 @@ window.openHomewardTourRoute = function() {
     const tourProps = getActiveClientTourProperties();
     sendPropertiesToHomeward(tourProps, {
         emptyMessage: client
-            ? `No loved or shortlisted properties available to build a tour for ${client.full_name || client.username}.`
+            ? `No loved or possibility properties available to build a tour for ${client.full_name || client.username}.`
             : 'No client selected to build a tour for.'
     });
 };
@@ -1817,7 +1818,7 @@ window.handleRealtorBulkAction = async function(action) {
                 method: 'POST',
                 body: JSON.stringify({ mls_id: id, client_id: clientId, favorite: 0, hidden: 0, rating: 4, shared_with_realtor: 1 })
             })));
-            showToast(`Added ${mlsIds.length} properties to Shortlist / Tour Itinerary`, 'success');
+            showToast(`Added ${mlsIds.length} properties to Possibilities / Tour Itinerary`, 'success');
             if (action === 'add_to_tour') {
                 window.switchRealtorSubTab('tour');
             }

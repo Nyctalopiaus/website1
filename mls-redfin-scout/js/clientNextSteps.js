@@ -35,7 +35,7 @@ export async function renderClientNextSteps() {
             <div class="user-top-panel-header">
                 <div>
                     <h2 class="user-top-panel-title"><i data-lucide="circle-check"></i> My Next Steps</h2>
-                    <p class="user-top-panel-sub">Keep your shortlist current and share your reactions with your realtor.</p>
+                    <p class="user-top-panel-sub">Keep your possibilities current and share your reactions with your realtor.</p>
                 </div>
                 <button class="btn-dashboard-collapse" onclick="if(window.toggleUserDashboard) window.toggleUserDashboard(true);" title="Collapse Dashboard Metrics" type="button">
                     <i data-lucide="chevron-up"></i> Collapse

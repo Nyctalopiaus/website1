@@ -347,7 +347,7 @@ function updatePresetButtonUI() {
     }
 
     if (btnPoss) {
-        const possLabel = isRealtor ? `+ Shortlisted (+${possCount})` : `+ Possibilities (+${possCount})`;
+        const possLabel = `+ Possibilities (+${possCount})`;
         btnPoss.innerHTML = (activePreset === 'possibilities') ? `<i data-lucide="check-circle-2"></i> ${possLabel}` : `<i data-lucide="circle-help"></i> ${possLabel}`;
         btnPoss.classList.toggle('btn-preset-active', activePreset === 'possibilities');
     }
@@ -421,7 +421,7 @@ export function selectRecommendAddPossibilities() {
     poss.forEach(id => selectedIds.add(id));
     activePreset = 'possibilities';
     renderSelectionPanel();
-    const label = state.activeView === 'realtor' ? 'Shortlisted' : 'Possibility';
+    const label = 'Possibility';
     showToast(`✓ Included ${poss.length} ${label} properties (Total: ${selectedIds.size})`, 'info');
 }
 
