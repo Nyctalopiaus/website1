@@ -1,7 +1,7 @@
 <?php
 /**
  * RETIRED 2026-08-22 — superseded by the shared /backend/property-lookup.php
- * endpoint's own server-side 7-day cache (used by both mortgage-calculator
+ * endpoint's own server-side 7-day cache (used by both housenomics
  * and homeward). homeward's client-side cache (js/storage.js) now keeps a
  * local-only per-browser mirror and no longer round-trips here. See
  * MEMORY.md for the full history and the current Scrape.do budget status.

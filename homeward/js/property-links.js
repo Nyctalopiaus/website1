@@ -501,7 +501,7 @@ class PropertyLinks {
   }
 
   // Fetch listing specs, price & high-res photo via the shared
-  // backend/property-lookup.php endpoint (used by mortgage-calculator too).
+  // backend/property-lookup.php endpoint (used by housenomics too).
   // That endpoint holds its own 7-day server-side cache.
   async fetchRedfinMetadata(redfinUrlOrAddress, force = false, attempt = 1) {
     if (!redfinUrlOrAddress) return null;

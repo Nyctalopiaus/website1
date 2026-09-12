@@ -1,6 +1,6 @@
 <?php
 // Same-origin proxy for gas price lookups, following the exact convention
-// already established by mortgage-calculator/rates-proxy.php and
+// already established by housenomics/rates-proxy.php and
 // mls-proxy.php: credentials live server-side in /home/nyctltlc/api.env,
 // never in front-end JS, and this script is the only thing that talks to
 // the upstream API. Called by advisor.js as: fuel-price-proxy.php?state=CO&grade=regular

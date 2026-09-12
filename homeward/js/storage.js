@@ -98,7 +98,7 @@ class StorageManager {
   // NOT the source of truth for avoiding duplicate Redfin/Scrape.do calls.
   // That job belongs to the shared server-side 7-day cache in
   // backend/property-lookup.php (used by both homeward and
-  // mortgage-calculator), which property-links.js's fetchRedfinMetadata()
+  // housenomics), which property-links.js's fetchRedfinMetadata()
   // calls directly — that endpoint checks its own DB before ever spending
   // a Scrape.do pull, regardless of what's (or isn't) in this local
   // mirror. This local cache used to also round-trip to a homeward-only

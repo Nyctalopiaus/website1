@@ -54,8 +54,8 @@ app.use(express.json());
 // NOTE ON DATA STORAGE
 // ==========================================
 // This backend intentionally does not persist any user-submitted data. Every
-// front-end tool that talks to this server (game-rating-log, mortgage-
-// calculator, cism-training) advertises a "100% Private / Local Storage"
+// front-end tool that talks to this server (game-rating-log, housenomics,
+// certforge) advertises a "100% Private / Local Storage"
 // guarantee in its UI, meaning form inputs must live only in the visitor's
 // own browser (localStorage). This backend previously exposed unauthenticated
 // /api/games, /api/calculator, /api/cism/*, and /api/telemetry/analyze routes
@@ -163,11 +163,11 @@ app.get('/api/rates', async (req, res) => {
 // ==========================================
 // REMOVED: Mortgage Calculator MLS Redfin Proxy (2026-08-18 security fix)
 // ==========================================
-// This route used to duplicate mortgage-calculator/mls-proxy.php with a
-// hardcoded Scrape.do API token in plaintext and no host allowlist/SSRF
-// protection (it would fetch any ?url= a caller supplied). The real,
-// hardened implementation is the PHP file at
-// mortgage-calculator/mls-proxy.php, which restricts fetches to
+// This route used to duplicate housenomics/mls-proxy.php (then still named
+// mortgage-calculator) with a hardcoded Scrape.do API token in plaintext and
+// no host allowlist/SSRF protection (it would fetch any ?url= a caller
+// supplied). The real, hardened implementation is the PHP file at
+// housenomics/mls-proxy.php, which restricts fetches to
 // redfin.com, rejects DNS-rebinding to private/reserved IPs, verifies TLS,
 // and reads its Scrape.do/ScraperAPI credentials from /home/nyctltlc/api.env
 // via getenv() rather than hardcoding them. That file already serves this

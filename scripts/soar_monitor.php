@@ -22,6 +22,11 @@ if (!file_exists($dataDir)) {
 $dbFile = $dataDir . '/monitoring.db';
 $jsonFile = $dataDir . '/status-data.json';
 
+// Per-tool app_name lives in tools_config.php, shared with generate_sitemap.php,
+// so a rename only needs one entry updated there instead of editing every
+// endpoint row below by hand.
+$toolsConfig = require __DIR__ . '/tools_config.php';
+
 // Admin Verification Helper (Authenticates against nyctos-gig-grid admin_users & active sessions)
 function verifyAdminAuth() {
     // If run from CLI (Cron), automatically authorized
@@ -182,22 +187,22 @@ $monitoredEndpoints = [
         'type' => 'outbound'
     ],
     [
-        'app_key' => 'relocation-assessment',
-        'app_name' => 'Relocation Assessment',
+        'app_key' => 'greener-grass',
+        'app_name' => 'Greener Grass',
         'name' => 'Nominatim OSM Geocoder',
         'url' => 'https://nominatim.openstreetmap.org/search?format=json&q=Seattle',
         'type' => 'outbound'
     ],
     [
-        'app_key' => 'relocation-assessment',
-        'app_name' => 'Relocation Assessment',
+        'app_key' => 'greener-grass',
+        'app_name' => 'Greener Grass',
         'name' => 'Open-Meteo Geocoding API',
         'url' => 'https://geocoding-api.open-meteo.com/v1/search?name=Seattle',
         'type' => 'outbound'
     ],
     [
-        'app_key' => 'mortgage-calculator',
-        'app_name' => 'Housing Cost Calculator',
+        'app_key' => 'housenomics',
+        'app_name' => 'Housenomics',
         'name' => 'Mortgage News Daily Provider',
         // FIXED (this audit): was checking the bare www.mortgagenewsdaily.com homepage, which
         // isn't what the app actually calls. rates-proxy.php's real dependency is this widget
@@ -211,13 +216,13 @@ $monitoredEndpoints = [
     // rate source used when rates-proxy.php itself fails (see MEMORY.md "Shared Backend
     // Service"). Real, live, unauthenticated dependency that was never monitored.
     [
-        'app_key' => 'mortgage-calculator',
-        'app_name' => 'Housing Cost Calculator',
+        'app_key' => 'housenomics',
+        'app_name' => 'Housenomics',
         'name' => 'FRED Mortgage Rate Fallback',
         'url' => 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=MORTGAGE30US',
         'type' => 'outbound'
     ],
-    // NOTE: property-lookup.php (shared by mortgage-calculator and homeward) does NOT get a
+    // NOTE: property-lookup.php (shared by housenomics and homeward) does NOT get a
     // monitored entry. This audit traced its actual code path: it's cache-lookup + bookmarklet
     // -import only now (no live server-side Scrape.do/Redfin fetch remains in property-lookup.php
     // itself - see backend/import-property.php). mls-proxy.php in both apps is a 410 stub. So
@@ -261,8 +266,8 @@ $monitoredEndpoints = [
     // Hub API being this app's core, load-bearing dependency (backend/hf_client.py calls it live,
     // server-side, on every recommendation request).
     [
-        'app_key' => 'hf-model-matcher',
-        'app_name' => 'HF Model Matcher',
+        'app_key' => 'fitstack',
+        'app_name' => 'Fitstack',
         'name' => 'Hugging Face Hub API',
         'url' => 'https://huggingface.co/api/models/gpt2',
         'type' => 'outbound'
@@ -453,10 +458,10 @@ $monitoredEndpoints = [
     // what's shown on the dashboard - it just stops the hourly cron from making two outbound
     // calls that were never standing in for anything real.
     [
-        'app_key' => 'cism-training',
-        'app_name' => 'CISM Exam Prep',
+        'app_key' => 'certforge',
+        'app_name' => 'Certforge',
         'name' => 'Local CISM Platform',
-        'url' => 'https://nycto.ninja/cism-training/',
+        'url' => 'https://nycto.ninja/certforge/',
         'type' => 'internal'
     ],
         [
@@ -795,7 +800,7 @@ function checkEndpoint($url, $opts = []) {
         // NOTE (this audit): dropped the old strpos($url, 'mortgagenewsdaily') branch here. It
         // existed to HEAD-request the bare www.mortgagenewsdaily.com homepage cheaply, but that
         // URL has been corrected to the real widgets.mortgagenewsdaily.com/widget/rates JSON
-        // endpoint (see the mortgage-calculator entry above), which rates-proxy.php always GETs -
+        // endpoint (see the housenomics entry above), which rates-proxy.php always GETs -
         // forcing HEAD here would test a request shape the real app never makes and risks a false
         // 405 if the widget API doesn't support HEAD.
         if ($path === '/' || strpos($host, 'ticketmaster.com') !== false) {
@@ -990,7 +995,7 @@ foreach ($monitoredEndpoints as $ep) {
 
     $currentResults[] = [
         'app_key' => $ep['app_key'],
-        'app_name' => $ep['app_name'],
+        'app_name' => $toolsConfig[$ep['app_key']]['app_name'] ?? $ep['app_name'],
         'endpoint_name' => $ep['name'],
         'endpoint_url' => $ep['url'],
         'type' => $ep['type'],

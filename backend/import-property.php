@@ -72,7 +72,7 @@ function respondPayload($payload, $httpCode = 200) {
     $sqft = isset($payload['sqft']) && $payload['sqft'] ? number_format($payload['sqft']) . ' sqft' : '';
     $specs = implode(' • ', array_filter([$beds, $baths, $sqft]));
 
-    $calcUrl = 'https://nycto.ninja/mortgage-calculator/?url=' . urlencode($url);
+    $calcUrl = 'https://nycto.ninja/housenomics/?url=' . urlencode($url);
     $homewardUrl = 'https://nycto.ninja/homeward/?url=' . urlencode($url);
     ?>
 <!DOCTYPE html>

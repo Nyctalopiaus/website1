@@ -488,7 +488,7 @@ def fetch_via_scrape_do(url: str, timeout: int = 20) -> Optional[bytes]:
     """Fallback fetch through Scrape.do's proxy network for sources that block direct
     automated requests outright (e.g. CISA's advisories feed, which returns a blanket 403
     to non-browser clients regardless of source IP -- verified from two unrelated networks).
-    Reuses SCRAPE_DO_TOKEN, the same shared credential already used by the mortgage-calculator
+    Reuses SCRAPE_DO_TOKEN, the same shared credential already used by the housenomics
     project's Redfin proxy (set once in the shared api.env, read by both). Uses the cheapest
     tier (datacenter proxy, no JS render/super-proxy) since these are static RSS/XML feeds,
     not JS-rendered pages -- keeps credit usage minimal. Returns the raw response content, or

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- NOTE: widgets.mortgagenewsdaily.com and router.project-osrm.org were allowlisted
+       here but are never referenced by this app's JS (likely copied from a sibling tool
+       in the shared vm_code suite) -- trimmed to keep the allowlist matched to what this
+       page actually loads. Leaflet is loaded from cdn.jsdelivr.net rather than unpkg.com:
+       unpkg's own docs say it isn't meant for production hotlinking, and in practice it
+       was intermittently 503-ing on this page specifically (see 2026-08 incident) while
+       jsDelivr -- built for exactly this use case -- served it reliably. connect-src no
+       longer needs a CDN entry: Leaflet's tiles load as <img> (covered by img-src), not
+       via fetch/XHR. nominatim.openstreetmap.org was dropped from connect-src 2026-08-29:
+       lookup logging showed every request to it from this domain was CORS-blocked (dead,
+       not occasional), so the app no longer calls it at all -- see relocation-assessment
+       project memory. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com https://cdn.jsdelivr.net; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://photon.komoot.io https://overpass-api.de https://overpass.kumi.systems https://overpass.private.coffee https://maps.mail.ru https://overpass.osm.ch; object-src 'none'; base-uri 'self'; form-action 'self';" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Greener Grass — Relocation Analytics</title>
+  <meta name="description" content="Greener Grass — real-time relocation analytics: climate comparisons, transit-radius scoring, and geocoded neighborhood data to test whether a new city actually beats your current one." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css?v=124" />
+</head>
+<body>
+
+  <header class="header">
+    <div class="logo">
+      <a href="../" class="btn-back">← BACK TO LAB</a>
+      <span class="logo-text">Greener Grass</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-left: auto;">
+      <button type="button" id="btn-open-quickstart" class="btn-quickstart-relo" title="Show Quick Start Guide">
+        <span>ℹ️</span> <span>Quick Start</span>
+      </button>
+      <button type="button" id="btn-open-features" class="btn-feature-relo" title="View Dashboard Capabilities">
+        <span>📍</span> <span>Features</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="dashboard-grid">
+
+      <!-- Start With A Street Address & Preferences Hero -->
+      <section class="search-hero panel-card">
+        <div class="search-hero-header">
+          <div class="search-hero-copy">
+            <h1>Start With A Street Address</h1>
+            <p>Define what matters most to you, set your transit radius, and evaluate any location in real time.</p>
+          </div>
+          <button id="btn-clear-search" type="button" class="btn-clear-search">Clear Search</button>
+        </div>
+
+        <div class="search-console">
+          <form id="location-search-form" class="search-form" autocomplete="off">
+            <label for="location-search-input" class="sr-only">Search home or apartment street address</label>
+            <div class="search-input-wrap">
+              <input id="location-search-input" class="search-input" type="text" placeholder="Try: 1313 Disneyland Dr, Anaheim, CA 92802" autocomplete="off" />
+              <div id="autocomplete-list" class="autocomplete-list" hidden></div>
+            </div>
+            <button id="btn-main-action" type="submit" class="search-btn">Search</button>
+          </form>
+
+          <div class="compare-toggle-row">
+            <label class="compare-toggle-label" for="compare-toggle">
+              <input id="compare-toggle" type="checkbox" />
+              Compare with a second location
+            </label>
+          </div>
+          <div id="compare-input-row" class="compare-input-row" hidden>
+            <div class="search-input-wrap">
+              <input id="location-compare-input" class="search-input" type="text" placeholder="Second address to compare (e.g. 5578 S Telluride St, Centennial, CO)" autocomplete="off" />
+            </div>
+          </div>
+
+          <!-- Embedded Preferences Section -->
+          <div class="embedded-preferences-wrap border-top-divider">
+            <div class="preferences-grid">
+              <div class="input-group">
+                <div class="slider-header">
+                  <span>What should count toward your score?</span>
+                </div>
+                <div class="pref-check-grid" id="pref-check-grid">
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-trails" type="checkbox" checked /> Cycling &amp; Trail Networks</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-trails" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-trails-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-trails" type="number" min="0.5" max="50" step="0.5" value="2" class="pref-target-input" /><span>mi</span></label>
+                    </div>
+                  </div>
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-grocery" type="checkbox" checked /> Grocery Stores</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-grocery" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-grocery-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-grocery" type="number" min="1" max="30" step="1" value="3" class="pref-target-input" /></label>
+                    </div>
+                  </div>
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-fitness" type="checkbox" checked /> Fitness &amp; Athletics</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-fitness" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-fitness-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-fitness" type="number" min="1" max="30" step="1" value="4" class="pref-target-input" /></label>
+                    </div>
+                  </div>
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-cuisine" type="checkbox" checked /> Cuisine Matches</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-cuisine" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-cuisine-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-cuisine" type="number" min="1" max="30" step="1" value="6" class="pref-target-input" /></label>
+                    </div>
+                  </div>
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-gas" type="checkbox" /> Gas Stations</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-gas" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-gas-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-gas" type="number" min="1" max="30" step="1" value="3" class="pref-target-input" /></label>
+                    </div>
+                  </div>
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-parks" type="checkbox" /> Parks</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-parks" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-parks-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-parks" type="number" min="1" max="30" step="1" value="3" class="pref-target-input" /></label>
+                    </div>
+                  </div>
+                  <div class="pref-check-row">
+                    <label class="pref-check"><input id="pref-pharmacy" type="checkbox" /> Pharmacies</label>
+                    <div class="pref-tune-row">
+                      <label class="pref-tune-field"><span>Priority</span><input id="weight-pharmacy" type="range" min="1" max="5" step="1" value="3" class="terminal-slider slider-orange pref-weight-slider" /><span id="weight-pharmacy-val" class="pref-weight-val">3</span></label>
+                      <label class="pref-tune-field pref-target-field"><span>Target</span><input id="target-pharmacy" type="number" min="1" max="30" step="1" value="2" class="pref-target-input" /></label>
+                    </div>
+                  </div>
+                </div>
+                <span class="slider-desc">Only checked categories count toward your score. Priority controls how much each one is weighted; Target is how many (or how many miles of trail) count as "fully met."</span>
+              </div>
+
+              <div class="preferences-subcol">
+                <div class="input-group">
+                  <div class="slider-header">
+                    <span>Maximum Desired Radius (~13 mph pace)</span>
+                    <span id="val-transit-radius" class="slider-val text-orange">10 min</span>
+                  </div>
+                  <input id="transit-radius" type="range" min="2" max="30" step="1" value="10" class="terminal-slider slider-orange" />
+                  <span class="slider-desc">All counts and score logic use this universal radius, converted from minutes at a fixed ~13 mph pace (faster than walking, slower than driving).</span>
+                </div>
+
+                <div class="input-group border-top-divider">
+                  <div class="slider-header">
+                    <span>Cuisine Filters</span>
+                    <span id="cuisine-tags-active" class="slider-val">thai, vietnamese</span>
+                  </div>
+                  <div class="cuisine-input-row">
+                    <input id="cuisine-tags-input" class="cuisine-tags-input" type="text" placeholder="thai, vietnamese, korean, indian" />
+                    <button id="btn-apply-cuisines" type="button" class="ghost-btn">Update</button>
+                    <button id="btn-clear-cuisines" type="button" class="ghost-btn">Clear</button>
+                  </div>
+                  <span class="slider-desc">Use comma-separated cuisines to personalize dining relevance.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="search-actions border-top-divider">
+            <button id="btn-use-current" type="button" class="ghost-btn">Use Last Search</button>
+            <button id="btn-save-shortlist" type="button" class="ghost-btn">☆ Save to Shortlist</button>
+            <button id="btn-export-report" type="button" class="ghost-btn">Export Report</button>
+          </div>
+
+          <div id="form-notice" class="form-notice" hidden role="status" aria-live="polite"></div>
+
+          <div id="location-status-container" class="location-status-container">
+            <div id="primary-status-wrap" class="status-pill-wrap">
+              <div id="primary-status-pill" class="status-pill status-ready">
+                <span class="status-pulse"></span>
+                <span id="primary-status-text" class="status-text">Ready for primary street address search</span>
+              </div>
+              <button type="button" id="btn-retry-primary" class="btn-retry-pill" aria-label="Retry primary location search" title="Retry primary location lookup" hidden>🔄 Retry</button>
+            </div>
+
+            <div id="compare-status-wrap" class="status-pill-wrap" hidden>
+              <div id="compare-status-pill" class="status-pill status-ready">
+                <span class="status-pulse"></span>
+                <span id="compare-status-text" class="status-text">Ready for second street address search</span>
+              </div>
+              <button type="button" id="btn-retry-compare" class="btn-retry-pill" aria-label="Retry compare location search" title="Retry compare location lookup" hidden>🔄 Retry</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Saved Shortlist (multiple candidate addresses, not just Primary/Compare) -->
+      <section class="panel-card shortlist-panel" id="shortlist-panel" hidden>
+        <div class="panel-header">
+          <span class="panel-icon">⭐</span>
+          <h2>Saved Shortlist</h2>
+        </div>
+        <div class="shortlist-list" id="shortlist-list">
+          <!-- Dynamic shortlist rows -->
+        </div>
+      </section>
+
+      <!-- Side-by-Side Results Row: Match Score (Left) & Map (Right) -->
+      <div class="results-hero-grid">
+        <!-- Match Score Panel (Left Column) -->
+        <section class="panel-card stats-panel">
+          <div class="panel-header">
+            <span class="panel-icon">🎯</span>
+            <h2>Location Match Score</h2>
+          </div>
+
+          <div id="match-score-summary" class="match-score-summary">
+            <div class="top-neighborhood-card">
+              <span class="card-label">PRIMARY LOCATION</span>
+              <h3 id="top-neighborhood-name">Waiting for search...</h3>
+              <div class="card-score-box">
+                <span id="top-neighborhood-score" class="score-val">--</span>
+                <span class="score-label">Match Score</span>
+              </div>
+            </div>
+
+            <div id="compare-score-card" class="top-neighborhood-card" hidden>
+              <span class="card-label">COMPARE LOCATION</span>
+              <h3 id="compare-neighborhood-name">Waiting for compare...</h3>
+              <div class="card-score-box">
+                <span id="compare-neighborhood-score" class="score-val">--</span>
+                <span class="score-label">Match Score</span>
+              </div>
+            </div>
+          </div>
+          <div id="match-score-explain" class="match-score-explain">Select preferences and run a search to see what this location matches well. Your 100-point Match Score is calculated by comparing nearby live amenities against the target goals shown below.</div>
+
+          <div id="related-tools-row" class="related-tools-row" hidden>
+            <a href="../housenomics/" class="related-tool-link">🏠 Estimate the mortgage for this move →</a>
+          </div>
+
+          <div class="scoreboard-inline-wrap">
+            <div class="scoreboard-inline-header">Selected Category Snapshot</div>
+            <div class="scoreboard-list scoreboard-inline" id="scoreboard-list">
+              <!-- Dynamic location summary rows -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Map Panel (Right Column) -->
+        <section class="panel-card route-panel">
+          <div class="panel-header">
+            <span class="panel-icon">🗺️</span>
+            <h2>What&apos;s Around You Map</h2>
+          </div>
+          <div class="map-grid" id="around-map-grid">
+            <div class="route-preview-wrap">
+              <div id="route-preview-map" aria-label="primary location map preview"></div>
+              <div id="route-preview-empty" class="route-preview-empty">Search a location to map nearby places that match your preferences.</div>
+              <div id="route-preview-meta" class="route-preview-meta"></div>
+            </div>
+            <div id="compare-map-card" class="route-preview-wrap" hidden>
+              <div id="route-preview-map-compare" aria-label="compare location map preview"></div>
+              <div id="route-preview-empty-compare" class="route-preview-empty">Run compare to render the second map.</div>
+              <div id="route-preview-meta-compare" class="route-preview-meta"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+
+
+    </div>
+  </main>
+
+  <footer class="main-footer">
+    <p>&copy; 2026 Greener Grass</p>
+  </footer>
+
+  <!-- Quick Start Modal -->
+  <div id="quickstart-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="quickstart-modal-title">
+      <button id="btn-close-quickstart" class="modal-close-button" aria-label="Close Quick Start guide">&times;</button>
+      <h2 id="quickstart-modal-title" class="feature-modal-title" style="color: var(--accent-cyan, #06b6d4);">📍 RELOCATION ANALYTICS QUICK START</h2>
+      <p class="feature-modal-intro">Follow these 4 steps to evaluate street address livability and compare target locations.</p>
+      <ol class="quickstart-steps-list">
+        <li><strong>1) Enter Target Address</strong> Type any candidate street address or city to trigger real-time spatial geocoding.</li>
+        <li><strong>2) Define Priority Weights &amp; Targets</strong> Check the categories you care about, set a 1-5 priority slider for how much each should count, and adjust its target (e.g. how many grocery stores, or how many miles of trail, counts as "fully met").</li>
+        <li><strong>3) Set Transit Radius</strong> Adjust your transit time radius (2 to 30 minutes) to recalculate amenity counts instantly.</li>
+        <li><strong>4) Compare Livability Scores</strong> Review the 100-point match scorecard and side-by-side comparison against alternative locations.</li>
+      </ol>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon">🔒</span>
+        <div>
+          <strong>100% PRIVATE SPATIAL PROCESSING</strong>
+          All address searches and location calculations run strictly inside your browser sandbox.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features Modal -->
+  <div id="features-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="feature-modal-title">
+      <button id="btn-close-features" class="modal-close-button" aria-label="Close feature overview">&times;</button>
+      <h2 id="feature-modal-title" class="feature-modal-title">Greener Grass Features</h2>
+      <p class="feature-modal-intro">A spatial analytics & livability assessment tool designed to evaluate street addresses against custom transit radii and real-world amenities.</p>
+      <ul class="feature-modal-list">
+        <li><strong>Street Address Geocoding:</strong> Real-time location lookup with automatic address autocomplete and spatial coordinate mapping.</li>
+        <li><strong>100-Point Match Score Engine:</strong> Custom scoring matrix comparing nearby amenities (grocery stores, cycling trails, gyms, parks, pharmacies) against your own per-category priority weight and target goal.</li>
+        <li><strong>Side-by-Side Location Comparison:</strong> Compare two street addresses simultaneously to evaluate relative livability scores and amenity density.</li>
+        <li><strong>Dynamic Transit Radius:</strong> Adjust transit time boundaries (2 to 30 minutes) to recalculate amenity counts instantly.</li>
+        <li><strong>Cuisine Matching:</strong> Specify custom cuisine tags (e.g. Thai, Vietnamese, Indian) to evaluate dining relevance.</li>
+        <li><strong>Interactive GIS Map:</strong> View surrounding POIs (Points of Interest) mapped on interactive Leaflet tile previews.</li>
+      </ul>
+      <div class="modal-privacy-notice">
+        <span class="modal-privacy-icon">🔒</span>
+        <div>
+          <strong>100% Private Spatial Processing</strong>
+          All address searches, amenity scoring, and location comparisons run entirely inside your browser. No addresses or search histories are stored on external servers.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="keywords.js?v=141"></script>
+  <script src="logger.js?v=1"></script>
+  <script src="geocoder.js?v=151"></script>
+  <script src="autocomplete.js?v=143"></script>
+  <script src="spatial.js?v=149"></script>
+  <script src="scoring.js?v=143"></script>
+  <script src="app.js?v=211"></script>
+</body>
+</html>

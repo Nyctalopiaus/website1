@@ -2,7 +2,7 @@
 /**
  * Shared Enterprise Admin Security & Authentication Module
  * Enterprise Security Edition (BCRYPT + CSRF + Centralized SQLite User DB + Audit Logging)
- * Shared across homeward, mortgage-calculator, and nyctos-gig-grid backend services.
+ * Shared across homeward, housenomics, and nyctos-gig-grid backend services.
  */
 
 /**

@@ -1,8 +1,8 @@
 <?php
 /**
- * Shared Redfin property lookup + 7-day cache, used by mortgage-calculator
+ * Shared Redfin property lookup + 7-day cache, used by housenomics
  * and homeward. Consolidates what used to be two separate, drifting
- * implementations (mortgage-calculator/mls-proxy.php and
+ * implementations (housenomics/mls-proxy.php and
  * homeward/api/mls-proxy.php + homeward/api/property-cache.php) into one
  * scrape + one cache, so the same property looked up from either site only
  * ever costs one Scrape.do call per 7-day window instead of up to four

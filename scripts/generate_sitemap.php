@@ -13,6 +13,11 @@ $baseDir = dirname(__DIR__);
 $sitemapXmlPath = $baseDir . '/sitemap.xml';
 $baseUrl = 'https://nycto.ninja';
 
+// Per-tool metadata (slug, sitemap changefreq/priority) lives in tools_config.php,
+// shared with soar_monitor.php, so a rename only needs one entry updated there
+// instead of two separate hardcoded arrays kept in sync by hand.
+$toolsConfig = require __DIR__ . '/tools_config.php';
+
 // Define monitored pages & app subdirectories
 $pages = [
     [
@@ -29,89 +34,26 @@ $pages = [
         'priority' => '0.9',
         'is_root' => false
     ],
-    [
-        'loc' => $baseUrl . '/threatpulse/',
-        'dir' => $baseDir . '/threatpulse',
-        'changefreq' => 'hourly',
-        'priority' => '0.9',
-        'is_root' => false
-    ],
-    [
-        'loc' => $baseUrl . '/nyctos-gig-grid/',
-        'dir' => $baseDir . '/nyctos-gig-grid',
-        'changefreq' => 'daily',
-        'priority' => '0.9',
-        'is_root' => false,
-        'check_db' => true
-    ],
-    [
-        'loc' => $baseUrl . '/hf-model-matcher/',
-        'dir' => $baseDir . '/hf-model-matcher',
-        'changefreq' => 'weekly',
-        'priority' => '0.9',
-        'is_root' => false
-    ],
-    [
-        'loc' => $baseUrl . '/cism-training/',
-        'dir' => $baseDir . '/cism-training',
-        'changefreq' => 'monthly',
-        'priority' => '0.9',
-        'is_root' => false
-    ],
-    [
-        'loc' => $baseUrl . '/mortgage-calculator/',
-        'dir' => $baseDir . '/mortgage-calculator',
-        'changefreq' => 'weekly',
-        'priority' => '0.9',
-        'is_root' => false
-    ],
-    [
-        'loc' => $baseUrl . '/open-road-advisor/',
-        'dir' => $baseDir . '/open-road-advisor',
-        'changefreq' => 'weekly',
-        'priority' => '0.9',
-        'is_root' => false
-    ],
-    [
-        'loc' => $baseUrl . '/relocation-assessment/',
-        'dir' => $baseDir . '/relocation-assessment',
-        'changefreq' => 'weekly',
-        'priority' => '0.9',
-        'is_root' => false
-    ],
-    [
-        'loc' => $baseUrl . '/retirement-forecaster/',
-        'dir' => $baseDir . '/retirement-forecaster',
-        'changefreq' => 'weekly',
-        'priority' => '0.9',
-        'is_root' => false
-    ],
-    [
-        'loc' => $baseUrl . '/homeward/',
-        'dir' => $baseDir . '/homeward',
-        'changefreq' => 'weekly',
-        'priority' => '0.9',
-        'is_root' => false
-    ]
-
-    // NOTE: crypto-game and game-rating-log are intentionally NOT listed above.
-    // Both are marked <article hidden> on the hub (Beta, not yet linked from the project grid) as of 2026-08-18.
-    // Once either is unhidden/launched on the hub, uncomment its block below to include it in sitemap.xml.
-    // ,[
-    //     'loc' => $baseUrl . '/crypto-game/',
-    //     'dir' => $baseDir . '/crypto-game',
-    //     'changefreq' => 'monthly',
-    //     'priority' => '0.6',
-    //     'is_root' => false
-    // ],
-    // [
-    //     'loc' => $baseUrl . '/game-rating-log/',
-    //     'dir' => $baseDir . '/game-rating-log',
-    //     'changefreq' => 'monthly',
-    //     'priority' => '0.6',
-    //     'is_root' => false
-    // ]
 ];
+
+foreach ($toolsConfig as $slug => $tool) {
+    if (empty($tool['sitemap'])) continue;
+    $sm = $tool['sitemap'];
+    $pages[] = [
+        'loc' => $baseUrl . '/' . $slug . '/',
+        'dir' => $baseDir . '/' . $slug,
+        'changefreq' => $sm['changefreq'],
+        'priority' => $sm['priority'],
+        'is_root' => false,
+        'check_db' => $sm['check_db'] ?? false
+    ];
+}
+
+// NOTE: crypto-game and game-rating-log are intentionally NOT in tools_config.php's
+// sitemap entries. Both are marked <article hidden> on the hub (Beta, not yet linked
+// from the project grid) as of 2026-08-18. Once either is unhidden/launched on the
+// hub, add a 'sitemap' key to its tools_config.php entry (changefreq: monthly,
+// priority: 0.6) to include it here.
 
 // Setup Logs Directory & 7-Day Log Rotation
 $logsDir = __DIR__ . '/logs';

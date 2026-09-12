@@ -10,7 +10,7 @@
 // a short, random code; pull reads it back by that code. No accounts, no
 // login — the code itself is the only credential, same trust model as a
 // shared link. Follows the same flat-file, no-framework convention as
-// open-road-advisor/fuel-price-proxy.php and mortgage-calculator's proxies
+// open-road-advisor/fuel-price-proxy.php and housenomics's proxies
 // (file cache under __DIR__, JSON in/out, no external dependencies).
 //
 // Wire format:

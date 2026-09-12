@@ -638,9 +638,9 @@ document.addEventListener('DOMContentLoaded', () => {
       endpoints: [
         { app_key: 'open-road-advisor', app_name: 'Open Road Advisor', endpoint_name: 'Open-Meteo Weather API', endpoint_url: 'https://api.open-meteo.com', type: 'outbound', latency_ms: 118, http_code: 200, is_success: true, status: 'OPERATIONAL' },
         { app_key: 'open-road-advisor', app_name: 'Open Road Advisor', endpoint_name: 'OSRM Driving Router', endpoint_url: 'https://router.project-osrm.org', type: 'outbound', latency_ms: 210, http_code: 200, is_success: true, status: 'OPERATIONAL' },
-        { app_key: 'relocation-assessment', app_name: 'Relocation Assessment', endpoint_name: 'Nominatim Geocoder', endpoint_url: 'https://nominatim.openstreetmap.org', type: 'outbound', latency_ms: 165, http_code: 200, is_success: true, status: 'OPERATIONAL' },
-        { app_key: 'mortgage-calculator', app_name: 'Housing Cost Calculator', endpoint_name: 'Mortgage News Daily Widget', endpoint_url: 'https://widgets.mortgagenewsdaily.com', type: 'outbound', latency_ms: 142, http_code: 200, is_success: true, status: 'OPERATIONAL' },
-        { app_key: 'retirement-forecaster', app_name: 'Retirement Forecaster', endpoint_name: 'SSA.gov Quick Calculator', endpoint_url: 'https://www.ssa.gov', type: 'outbound', latency_ms: 235, http_code: 200, is_success: true, status: 'OPERATIONAL' }
+        { app_key: 'greener-grass', app_name: 'Greener Grass', endpoint_name: 'Nominatim Geocoder', endpoint_url: 'https://nominatim.openstreetmap.org', type: 'outbound', latency_ms: 165, http_code: 200, is_success: true, status: 'OPERATIONAL' },
+        { app_key: 'housenomics', app_name: 'Housenomics', endpoint_name: 'Mortgage News Daily Widget', endpoint_url: 'https://widgets.mortgagenewsdaily.com', type: 'outbound', latency_ms: 142, http_code: 200, is_success: true, status: 'OPERATIONAL' },
+        { app_key: 'sunset-clause', app_name: 'Sunset Clause', endpoint_name: 'SSA.gov Quick Calculator', endpoint_url: 'https://www.ssa.gov', type: 'outbound', latency_ms: 235, http_code: 200, is_success: true, status: 'OPERATIONAL' }
       ]
     });
   }

@@ -172,7 +172,7 @@ $parsedDim = parsePropertyHtmlByUrl($zillowDimHtml, 'https://www.zillow.com/home
 check('zillow lot dimensions (45x100)', $parsedDim['lotSqFt'], 4500.0);
 
 // --- rentalEstimate now flows through every per-site parser, not just Redfin ---
-// Regression coverage for the rent-vs-sell "Auto-Fetch" bug: rentalEstimate
+// Regression coverage for the sunk-or-swim (formerly rent-vs-sell) "Auto-Fetch" bug: rentalEstimate
 // used to be extracted only inside parsePropertyHtml (Redfin) — Zillow,
 // Realtor.com, Homes.com and the generic LD+JSON path never set the key at
 // all, so any caller reading $data['rentalEstimate'] silently got null for
