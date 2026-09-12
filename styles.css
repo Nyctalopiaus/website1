@@ -232,6 +232,17 @@ a.system-status:hover {
   text-decoration: underline;
 }
 
+.contact-link-email {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.contact-link-email:hover {
+  text-decoration: underline;
+}
+
 .about-card {
   padding: 2.5rem;
 }
