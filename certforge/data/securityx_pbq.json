@@ -1,0 +1,4030 @@
+{
+  "source": "Converted from Josh's personal Dion Training SecurityX course notes PDF, pages 122-132 (securityx-raw-source-pbq.json): 9 worked CertMaster PBQ scenarios, converted into the PBQ engine schema per certforge-securityx-pbq-engine-plan.md section 4.",
+  "exam": "CompTIA SecurityX (CAS-005)",
+  "conversion_note": "Every field flagged in the raw source as having an answer-key-vs-rationale discrepancy was individually researched (WebSearch/WebFetch against GitLab, Microsoft Purview, and Microsoft WDAC documentation) before conversion. Fully resolved: PBQ D3-PBQ-01's CI_COMMIT_SHA field (confirmed via GitLab docs) and PBQ D3-PBQ-03's install-target field (resolved via the source's own unambiguous rationale text). Still flagged needs_verification pending an authoritative source: PBQ D1-PBQ-02's second BC/DR guideline (HIPAA is confirmed; FERPA is Claude's plausible-but-unconfirmed inference), PBQ D2-PBQ-02's DLP sensitive-info-type group membership (ITIN/Passport Number), and PBQ D3-PBQ-05's WDAC policy-rules list (the most consequential one -- Microsoft's own docs don't enumerate the exact default rule set for the Default Windows Mode template in text form). Domain 4 PBQs (D4-PBQ-01 through 05) authored from scratch on 2026-09-19 to close the previously all-Domain-4-empty PBQ gap, grounded directly in Section 26/28/29/30/31 course notes (STRIDE, SIEM alert triage, NIST SP 800-61 IR lifecycle, threat-hunting TTPs/tooling, forensic order of volatility) rather than converted from an existing worked example. Second authoring pass (2026-09-19) closed the remaining ~18-24 scenario floor across Domains 1, 2, and 3: 4 new Domain 1 PBQs (D1-PBQ-03 through 06, Sections 2/3), 6 new Domain 2 PBQs (D2-PBQ-03 through 08, Sections 5/8/9/18/19), and 6 new Domain 3 PBQs (D3-PBQ-06 through 11, Sections 13/15/17/20/22/23), all authored from scratch and grounded directly in the course notes rather than converted from an existing worked example, following the same pattern used for the earlier Domain 4 authoring pass.",
+  "pbqs": [
+    {
+      "pbq_id": "D1-PBQ-01",
+      "domain": 1,
+      "section_number": 4,
+      "section_title": "Compliance",
+      "layout": "table",
+      "title": "World Map of Encryption Laws and Policies -- Restriction Assessment",
+      "scenario_context": "Global Partners Digital's World Map of Encryption Laws and Policies: Restriction Assessment Research Chart. A VPN company is evaluating expansion into countries with varying cryptography laws.",
+      "time_estimate_seconds": 240,
+      "fields": [
+        {
+          "field_id": "client_contract_type",
+          "type": "select",
+          "prompt": "Clients may require what type of contract to guarantee privacy services with the VPN company?",
+          "options": [
+            "SLA (Service Level Agreement)",
+            "ISA (Interconnection Security Agreement)",
+            "MSA (Master Service Agreement)",
+            "NDA (Non-Disclosure Agreement)"
+          ],
+          "correct": "SLA (Service Level Agreement)"
+        },
+        {
+          "field_id": "govt_contract_type",
+          "type": "select",
+          "prompt": "The VPN company and a government entity may use what type of contract to ensure the government can retrieve data when necessary?",
+          "options": [
+            "SLA (Service Level Agreement)",
+            "ISA (Interconnection Security Agreement)",
+            "MSA (Master Service Agreement)",
+            "NDA (Non-Disclosure Agreement)"
+          ],
+          "correct": "ISA (Interconnection Security Agreement)"
+        },
+        {
+          "field_id": "esi_notification",
+          "type": "select",
+          "prompt": "A government entity will commonly require a company to preserve electronically stored information (ESI) with what type of notification protocol?",
+          "options": [
+            "Export control notice",
+            "Legal hold",
+            "Data subject access request",
+            "Breach notification"
+          ],
+          "correct": "Legal hold"
+        },
+        {
+          "field_id": "expansion_country",
+          "type": "select",
+          "prompt": "Based on the risk assessment, which country should the VPN company expand services to?",
+          "options": [
+            "Canada",
+            "Algeria",
+            "Morocco",
+            "India",
+            "S. Africa",
+            "Pakistan",
+            "Ecuador"
+          ],
+          "correct": "Canada"
+        }
+      ],
+      "rows": [
+        {
+          "row_id": "canada",
+          "label": "Canada",
+          "detail": "Charter provides that, 'Everyone has the right to be secure against unreasonable search or seizure.'",
+          "fields": [
+            {
+              "field_id": "canada_rating",
+              "type": "select",
+              "prompt": "Restriction rating",
+              "options": [
+                "Green",
+                "Yellow",
+                "Red"
+              ],
+              "correct": "Green"
+            }
+          ]
+        },
+        {
+          "row_id": "algeria",
+          "label": "Algeria",
+          "detail": "Laws contain provisions to decrypt data when subject to judicial authorization for criminal activity.",
+          "fields": [
+            {
+              "field_id": "algeria_rating",
+              "type": "select",
+              "prompt": "Restriction rating",
+              "options": [
+                "Green",
+                "Yellow",
+                "Red"
+              ],
+              "correct": "Green"
+            }
+          ]
+        },
+        {
+          "row_id": "morocco",
+          "label": "Morocco",
+          "detail": "The supply or use of cryptography without prior declaration or authorization is a criminal offence.",
+          "fields": [
+            {
+              "field_id": "morocco_rating",
+              "type": "select",
+              "prompt": "Restriction rating",
+              "options": [
+                "Green",
+                "Yellow",
+                "Red"
+              ],
+              "correct": "Red"
+            }
+          ]
+        },
+        {
+          "row_id": "india",
+          "label": "India",
+          "detail": "Information Technology Act 2000 allows the government to set 'modes or methods' for encryption.",
+          "fields": [
+            {
+              "field_id": "india_rating",
+              "type": "select",
+              "prompt": "Restriction rating",
+              "options": [
+                "Green",
+                "Yellow",
+                "Red"
+              ],
+              "correct": "Red"
+            }
+          ]
+        },
+        {
+          "row_id": "s_africa",
+          "label": "S. Africa",
+          "detail": "Cryptography providers must be registered, but only a judge can approve a 'decryption direction.'",
+          "fields": [
+            {
+              "field_id": "s_africa_rating",
+              "type": "select",
+              "prompt": "Restriction rating",
+              "options": [
+                "Green",
+                "Yellow",
+                "Red"
+              ],
+              "correct": "Yellow"
+            }
+          ]
+        },
+        {
+          "row_id": "pakistan",
+          "label": "Pakistan",
+          "detail": "Pakistan Telecommunication Authority requires prior approval for using a VPN service.",
+          "fields": [
+            {
+              "field_id": "pakistan_rating",
+              "type": "select",
+              "prompt": "Restriction rating",
+              "options": [
+                "Green",
+                "Yellow",
+                "Red"
+              ],
+              "correct": "Red"
+            }
+          ]
+        },
+        {
+          "row_id": "ecuador",
+          "label": "Ecuador",
+          "detail": "Service providers comply with court orders to decrypt info, but legal safeguards exist. No registration.",
+          "fields": [
+            {
+              "field_id": "ecuador_rating",
+              "type": "select",
+              "prompt": "Restriction rating",
+              "options": [
+                "Green",
+                "Yellow",
+                "Red"
+              ],
+              "correct": "Green"
+            }
+          ]
+        }
+      ],
+      "rationale": "Clients may require a Service Level Agreement (SLA) with the VPN company to ensure the VPN services guarantee privacy and even uptime. The company may establish an Interconnection Security Agreement (ISA) when another entity, like the government, needs to share data via an interface. When a government entity requires a company to preserve electronically stored information (ESI), the government will issue a 'legal hold' notification for that information. Canada is the best expansion candidate: its Charter explicitly protects against unreasonable search or seizure, giving the strongest legal footing for a privacy-focused VPN service among the countries assessed.",
+      "source": "Dion Training SecurityX (CAS-005) Course Notes / CertMaster PBQ, page 122",
+      "weak_spot": false,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D1-PBQ-02",
+      "domain": 1,
+      "section_number": 3,
+      "section_title": "Risk Management",
+      "layout": "wizard",
+      "title": "BCDR Tabletop Exercise Facilitation",
+      "scenario_context": "You are facilitating a roleplay-style BCDR (Business Continuity/Disaster Recovery) tabletop exercise for a university.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "scope_participants",
+          "type": "multiselect",
+          "prompt": "Scope -- which groups should be gathered to participate in the exercise?",
+          "options": [
+            "IT staff",
+            "Executive and administrative staff",
+            "Senior leadership",
+            "Vendors",
+            "Students (general population)"
+          ],
+          "correct": [
+            "IT staff",
+            "Executive and administrative staff",
+            "Senior leadership",
+            "Vendors"
+          ],
+          "note": "The on-page checkboxes appeared to mark 'Call vendors' and 'Include leadership' as not needed, but the written rationale explicitly says vendors and leadership should also be included. Resolved via rationale, consistent with standard BC/DR tabletop best practice of including all stakeholders."
+        },
+        {
+          "field_id": "cloud_pii_suggestion",
+          "type": "select",
+          "prompt": "Pre-Emergency Mitigation -- despite a secure solution already being in place, cloud database storage for PII is suggested. Based on liability best practices, should you take the suggestion?",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "correct": "No"
+        },
+        {
+          "field_id": "preparedness_actions",
+          "type": "multiselect",
+          "prompt": "Pre-Emergency Preparedness -- what can be done to prepare for an event like this scenario?",
+          "options": [
+            "All staff know their roles and responsibilities",
+            "Study emergency map routes to meeting places",
+            "Regular database backups",
+            "Campus-wide drills"
+          ],
+          "correct": [
+            "All staff know their roles and responsibilities",
+            "Study emergency map routes to meeting places",
+            "Regular database backups"
+          ],
+          "note": "Campus-wide drills was NOT selected/needed for this particular preparedness step in the source material."
+        },
+        {
+          "field_id": "relevant_guidelines",
+          "type": "multiselect",
+          "prompt": "Select the guideline set(s) relevant to being prepared for this scenario.",
+          "options": [
+            "HIPAA",
+            "FERPA",
+            "NIST SP 800-88",
+            "GLBA"
+          ],
+          "correct": [
+            "HIPAA",
+            "FERPA"
+          ],
+          "needs_verification": true,
+          "verification_note": "Only HIPAA is explicitly confirmed correct in the source material (NIST SP 800-88 was marked incorrect). FERPA is included here as a reasonable inference -- it's the standard US law governing student educational-record privacy at a university -- but this specific pairing is NOT confirmed by Dion's source and should be verified before treating it as definitively graded."
+        },
+        {
+          "field_id": "emergency_response_lookfor",
+          "type": "multiselect",
+          "prompt": "Emergency Response phase -- what are you, as facilitator, looking for in the team's responses?",
+          "options": [
+            "Multiple solution paths",
+            "Staff feedback",
+            "Impracticable plan steps"
+          ],
+          "correct": [
+            "Multiple solution paths",
+            "Staff feedback"
+          ],
+          "note": "'Impracticable plan steps' is something to IDENTIFY as a problem during this phase, not a positive outcome you're looking for."
+        },
+        {
+          "field_id": "post_emergency_lookfor",
+          "type": "text",
+          "prompt": "Post-Emergency Recovery phase -- what are you looking for in staff responses to the recovery phase?",
+          "correct": "Staff knowledge of recovery steps and processes"
+        }
+      ],
+      "rationale": "A tabletop exercise (also called a role-play exercise) should include all staff involved in recovery efforts -- IT staff, executive and administrative staff, senior leadership, and it is also appropriate to call vendors and allow them to participate. While third-party storage services may offer contractual guarantees, legal responsibility for PII/PHI falls on the organization that collects the data (the university), not a cloud service provider -- so sensitive data should stay in a private/on-premises cloud rather than a suggested third-party option. Before the simulation, a facilitator should gauge staff's knowledge of their roles/responsibilities, the need for campus-wide drills, routes to emergency meeting places, and the need for regular backups. During the emergency response (simulation) phase, staff responses should be used to develop new solution paths and integrate staff feedback, and to identify plan steps that may be impracticable or infeasible. In the recovery phase, staff responses should demonstrate knowledge of recovery steps and processes.",
+      "source": "Dion Training SecurityX (CAS-005) Course Notes / CertMaster PBQ, page 123",
+      "weak_spot": true,
+      "verification_status": "needs_verification"
+    },
+    {
+      "pbq_id": "D3-PBQ-01",
+      "domain": 3,
+      "section_number": 21,
+      "section_title": "Integrated Security and Automation",
+      "layout": "wizard",
+      "title": "GitLab CI YAML Config + OWASP Secure Coding Practices",
+      "scenario_context": "A company needs to configure a GitLab Continuous Integration YAML pipeline securely and apply OWASP secure coding practices to protect proprietary code (containers/microservices).",
+      "time_estimate_seconds": 360,
+      "fields": [
+        {
+          "field_id": "image_variable",
+          "type": "select",
+          "prompt": "Build > variables > IMAGE: $CI_REGISTRY_IMAGE/[?] -- which variable uniquely and traceably tags each build?",
+          "options": [
+            "$AWS_SECRET_ACCESS_KEY",
+            "$CI_COMMIT_REF_SLUG",
+            "$CI_COMMIT_SHA",
+            "$CI_PROJECT_ID"
+          ],
+          "correct": "$CI_COMMIT_SHA",
+          "note": "Verified against GitLab's own predefined-variables documentation: CI_COMMIT_SHA is the full commit hash and uniquely identifies each build; CI_COMMIT_REF_SLUG only varies by branch/tag name, so multiple commits on the same branch would share the same tag, defeating traceability."
+        },
+        {
+          "field_id": "docker_login_password_flag",
+          "type": "select",
+          "prompt": "script > docker login -u \"$CI_REGISTRY_USER\" [?]",
+          "options": [
+            "-p \"$CI_REGISTRY_PASSWORD\"",
+            "-p \"$CI_JOB_TOKEN\"",
+            "-p \"$AWS_SECRET_ACCESS_KEY\""
+          ],
+          "correct": "-p \"$CI_REGISTRY_PASSWORD\""
+        },
+        {
+          "field_id": "include_template",
+          "type": "select",
+          "prompt": "Include > template -- which GitLab CI/CD template should be included for container security scanning?",
+          "options": [
+            "Security/Container-Scanning.gitlab-ci.yml",
+            "Security/SAST.gitlab-ci.yml",
+            "Security/DAST.gitlab-ci.yml"
+          ],
+          "correct": "Security/Container-Scanning.gitlab-ci.yml"
+        },
+        {
+          "field_id": "cs_docker_insecure",
+          "type": "select",
+          "prompt": "Variables > CS_DOCKER_INSECURE",
+          "options": [
+            "true",
+            "false"
+          ],
+          "correct": "false"
+        },
+        {
+          "field_id": "cs_registry_insecure",
+          "type": "select",
+          "prompt": "Variables > CS_REGISTRY_INSECURE",
+          "options": [
+            "true",
+            "false"
+          ],
+          "correct": "false"
+        },
+        {
+          "field_id": "extra_config_field",
+          "type": "text",
+          "prompt": "Extra blank hardening config field -- what should be entered (if anything)?",
+          "correct": "Leave unset / not applicable"
+        },
+        {
+          "field_id": "microservice_protocol",
+          "type": "select",
+          "prompt": "Which security protocol would provide the maximum security benefit for communication between microservices?",
+          "options": [
+            "Secure TLS tunnel",
+            "IPsec",
+            "SSL",
+            "Plaintext HTTP"
+          ],
+          "correct": "Secure TLS tunnel",
+          "note": "IPsec is also an appropriate answer; SSL is obsolete and not recommended."
+        },
+        {
+          "field_id": "software_legitimacy_assurance",
+          "type": "text",
+          "prompt": "How can assurance be provided to future users that they are using a legitimate copy of the software?",
+          "correct": "Code signing"
+        },
+        {
+          "field_id": "owasp_data_protection_enable",
+          "type": "multiselect",
+          "prompt": "OWASP Secure Coding -- Data Protection: which should be ENABLED?",
+          "options": [
+            "Least privilege",
+            "Disable auto-complete",
+            "Disable client-side caching",
+            "Access controls",
+            "Store passwords in API code",
+            "Keep data indefinitely"
+          ],
+          "correct": [
+            "Least privilege",
+            "Disable auto-complete",
+            "Disable client-side caching",
+            "Access controls"
+          ]
+        },
+        {
+          "field_id": "owasp_data_protection_never",
+          "type": "multiselect",
+          "prompt": "OWASP Secure Coding -- Data Protection: which should NEVER be done?",
+          "options": [
+            "Store passwords in API code",
+            "Keep data indefinitely (should be scheduled for deletion instead)",
+            "Use access controls",
+            "Enable least privilege"
+          ],
+          "correct": [
+            "Store passwords in API code",
+            "Keep data indefinitely (should be scheduled for deletion instead)"
+          ]
+        },
+        {
+          "field_id": "owasp_logging_enable",
+          "type": "multiselect",
+          "prompt": "OWASP Secure Coding -- Logging: which should be ENABLED?",
+          "options": [
+            "Log all TLS failures",
+            "Log all auth attempts",
+            "Deny access by default",
+            "Include session IDs in error logs"
+          ],
+          "correct": [
+            "Log all TLS failures",
+            "Log all auth attempts",
+            "Deny access by default"
+          ]
+        },
+        {
+          "field_id": "owasp_logging_never",
+          "type": "multiselect",
+          "prompt": "OWASP Secure Coding -- Logging: which should NEVER be done?",
+          "options": [
+            "Include session IDs in error logs",
+            "Allow executable code in logs",
+            "Open access to logs",
+            "Log all auth attempts"
+          ],
+          "correct": [
+            "Include session IDs in error logs",
+            "Allow executable code in logs",
+            "Open access to logs"
+          ]
+        },
+        {
+          "field_id": "owasp_db_enable",
+          "type": "multiselect",
+          "prompt": "OWASP Secure Coding -- Database Security: which should be ENABLED?",
+          "options": [
+            "Use input validation",
+            "Disable unneeded DB functions",
+            "Hard-code connection strings",
+            "Use default admin passwords"
+          ],
+          "correct": [
+            "Use input validation",
+            "Disable unneeded DB functions"
+          ]
+        },
+        {
+          "field_id": "owasp_db_never",
+          "type": "multiselect",
+          "prompt": "OWASP Secure Coding -- Database Security: which should NEVER be done?",
+          "options": [
+            "Hard-code connection strings",
+            "Use default admin passwords",
+            "Use input validation",
+            "Disable unneeded DB functions"
+          ],
+          "correct": [
+            "Hard-code connection strings",
+            "Use default admin passwords"
+          ]
+        }
+      ],
+      "rationale": "$CI_COMMIT_SHA stores the SHA hash representing the exact commit revision, giving each build a unique, traceable tag. Under Build > script, $CI_REGISTRY_PASSWORD holds the password for pushing containers to the project's GitLab Container Registry via the -p parameter. GitLab CI/CD config templates are added under Include:, and Security/Container-Scanning.gitlab-ci.yml enables container image scanning. CS_DOCKER_INSECURE and CS_REGISTRY_INSECURE should be left at their default (false) values, since enabling them allows access to Docker registries without certificate validation or to unsecured registries, respectively. Per OWASP Secure Coding Practices: Data Protection should enable least privilege, disabling autocomplete/client-side caching, and access controls, and should never hard-code passwords or retain data indefinitely (schedule deletion instead). Logging should enable logging of TLS failures and auth attempts and deny access by default, and should never include session IDs in error logs, allow executable code in logs, or leave logs openly accessible. Database Security should enable input validation and disabling of unused DB functions, and should never hard-code connection strings or use default admin passwords. For inter-container/microservice communication, use a secure TLS tunnel at minimum (IPsec is also appropriate; SSL is obsolete). Code signing uses hashing to compare a user's software copy against the original signer's, guaranteeing legitimacy (ensure timestamping is enabled).",
+      "source": "Dion Training SecurityX (CAS-005) Course Notes / CertMaster PBQ, page 124",
+      "weak_spot": false,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D2-PBQ-01",
+      "domain": 2,
+      "section_number": 9,
+      "section_title": "Zero Trust Design",
+      "layout": "diagram",
+      "title": "Network Segmentation / VLAN Design",
+      "scenario_context": "Design a segmented network with an external AWS zone, a perimeter/DMZ, an internal/intranet zone, and an office zone, assigning devices, network names, and VLANs correctly.",
+      "time_estimate_seconds": 300,
+      "zones": [
+        {
+          "zone_id": "network_1",
+          "label": "Network #1 (external/Internet)",
+          "accepts": [
+            "device_token"
+          ],
+          "fields": [
+            {
+              "field_id": "n1_network_name",
+              "type": "select",
+              "prompt": "Network name",
+              "options": [
+                "AWS",
+                "Perimeter",
+                "Intranet",
+                "Office"
+              ],
+              "correct": "AWS"
+            },
+            {
+              "field_id": "n1_vlan",
+              "type": "select",
+              "prompt": "VLAN",
+              "options": [
+                "100",
+                "110",
+                "120",
+                "200"
+              ],
+              "correct": "100"
+            }
+          ]
+        },
+        {
+          "zone_id": "network_2",
+          "label": "Network #2 (perimeter/DMZ)",
+          "accepts": [
+            "device_token"
+          ],
+          "fields": [
+            {
+              "field_id": "n2_network_name",
+              "type": "select",
+              "prompt": "Network name",
+              "options": [
+                "AWS",
+                "Perimeter",
+                "Intranet",
+                "Office"
+              ],
+              "correct": "Perimeter"
+            },
+            {
+              "field_id": "n2_vlan",
+              "type": "select",
+              "prompt": "VLAN",
+              "options": [
+                "100",
+                "110",
+                "120",
+                "200"
+              ],
+              "correct": "100"
+            }
+          ]
+        },
+        {
+          "zone_id": "network_3",
+          "label": "Network #3 (internal/Intranet, via Layer 3 Switch)",
+          "accepts": [
+            "device_token"
+          ],
+          "fields": [
+            {
+              "field_id": "n3_network_name",
+              "type": "select",
+              "prompt": "Network name",
+              "options": [
+                "AWS",
+                "Perimeter",
+                "Intranet",
+                "Office"
+              ],
+              "correct": "Intranet"
+            },
+            {
+              "field_id": "n3_vlan",
+              "type": "select",
+              "prompt": "VLAN",
+              "options": [
+                "100",
+                "110",
+                "120",
+                "200"
+              ],
+              "correct": "110"
+            }
+          ]
+        },
+        {
+          "zone_id": "network_4",
+          "label": "Network #4 (Office)",
+          "accepts": [
+            "device_token"
+          ],
+          "fields": [
+            {
+              "field_id": "n4_network_name",
+              "type": "select",
+              "prompt": "Network name",
+              "options": [
+                "AWS",
+                "Perimeter",
+                "Intranet",
+                "Office"
+              ],
+              "correct": "Office"
+            },
+            {
+              "field_id": "n4_vlan",
+              "type": "select",
+              "prompt": "VLAN",
+              "options": [
+                "100",
+                "110",
+                "120",
+                "200"
+              ],
+              "correct": "120"
+            }
+          ]
+        }
+      ],
+      "drag_tokens": [
+        {
+          "token_id": "firewall_ingress",
+          "label": "Firewall (ingress)",
+          "correct_zone": "network_2"
+        },
+        {
+          "token_id": "firewall_egress",
+          "label": "Firewall (egress)",
+          "correct_zone": "network_2"
+        },
+        {
+          "token_id": "proxy_servers",
+          "label": "Proxy Servers",
+          "correct_zone": "network_2"
+        },
+        {
+          "token_id": "web_servers",
+          "label": "Web Servers",
+          "correct_zone": "network_2"
+        },
+        {
+          "token_id": "vdi",
+          "label": "VDI (Virtual Desktop Infrastructure)",
+          "correct_zone": "network_3"
+        },
+        {
+          "token_id": "file_servers",
+          "label": "File Servers",
+          "correct_zone": "network_3"
+        },
+        {
+          "token_id": "workstations",
+          "label": "Workstations",
+          "correct_zone": "network_4"
+        }
+      ],
+      "rationale": "Network #1 (external) is the AWS zone and uses VLAN 100 to communicate with web services in the perimeter network. Network #2 is the perimeter network (also VLAN 100), hosting Proxy Servers (secure web browsing/caching for employees) plus Firewalls on both ingress and egress to form a screened subnet (DMZ) separating internal and external networks -- customers reach the company website via ingress but cannot traverse further inward. Network #3 hosts File Servers and VDI, making up the internal Intranet zone, using VLAN 110. Network #4 is the Office zone (VLAN 120), hosting the remaining devices -- employee Workstations -- since it serves a single, distinct purpose separate from the other zones.",
+      "source": "Dion Training SecurityX (CAS-005) Course Notes / CertMaster PBQ, page 125-126",
+      "weak_spot": false,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D3-PBQ-02",
+      "domain": 3,
+      "section_number": 21,
+      "section_title": "Integrated Security and Automation",
+      "layout": "wizard",
+      "title": "Virtualization/Containerization Security Design for 3 Engineering Groups",
+      "scenario_context": "Design security, provisioning, and deployment options for three engineering groups: Group 1 needs bare-metal/Type 1 hypervisors with zero (thin) clients running a variety of OSes; Group 2 uses their own existing high-performance desktop machines with self-contained VMs (Type 2 hypervisor); Group 3 requires containerization (data lakes, Docker/Kubernetes) rather than standard virtualization.",
+      "time_estimate_seconds": 420,
+      "groups": [
+        {
+          "group_label": "Group 1 (bare-metal, zero clients)",
+          "fields": [
+            {
+              "field_id": "g1_tpm",
+              "type": "select",
+              "prompt": "Hardware TPM",
+              "options": [
+                "Enabled",
+                "Disabled"
+              ],
+              "correct": "Enabled"
+            },
+            {
+              "field_id": "g1_storage",
+              "type": "select",
+              "prompt": "Cloud Storage Type",
+              "options": [
+                "HDD or SSD (not both)",
+                "HDD and SSD both",
+                "N/A"
+              ],
+              "correct": "HDD or SSD (not both)"
+            },
+            {
+              "field_id": "g1_hypervisor",
+              "type": "select",
+              "prompt": "Hypervisor",
+              "options": [
+                "Type 1 / bare-metal (Hyper-V, Xen, KVM, ESXi, Oracle VM Server, XCP-ng)",
+                "Type 2 (VirtualBox, QEMU)",
+                "Kubernetes"
+              ],
+              "correct": "Type 1 / bare-metal (Hyper-V, Xen, KVM, ESXi, Oracle VM Server, XCP-ng)"
+            },
+            {
+              "field_id": "g1_provisioning",
+              "type": "select",
+              "prompt": "Provisioning",
+              "options": [
+                "Thin Provision",
+                "Thick Provision"
+              ],
+              "correct": "Thin Provision"
+            },
+            {
+              "field_id": "g1_automation_tool",
+              "type": "select",
+              "prompt": "Provisioning Automation Tool",
+              "options": [
+                "Ansible (or Puppet)",
+                "N/A",
+                "Docker Swarm"
+              ],
+              "correct": "Ansible (or Puppet)"
+            },
+            {
+              "field_id": "g1_auth_settings",
+              "type": "multiselect",
+              "prompt": "Authentication/hardening settings to apply",
+              "options": [
+                "Allow root access",
+                "Use IPsec encrypted VPN",
+                "Use remote attestation",
+                "Use Terra TVMM/TCCP",
+                "Encrypt provisioning commands",
+                "Segment VPC with NAT gateway",
+                "Check controller firmware",
+                "Disable time sync between host OS and VM",
+                "Enable Secure Boot",
+                "Disable unneeded shared folders",
+                "Limit access to host",
+                "Avoid patching guest OS",
+                "Rebuild image on changes"
+              ],
+              "correct": [
+                "Allow root access",
+                "Use IPsec encrypted VPN",
+                "Use remote attestation",
+                "Use Terra TVMM/TCCP",
+                "Encrypt provisioning commands",
+                "Segment VPC with NAT gateway",
+                "Check controller firmware",
+                "Disable time sync between host OS and VM",
+                "Enable Secure Boot",
+                "Disable unneeded shared folders",
+                "Limit access to host",
+                "Avoid patching guest OS",
+                "Rebuild image on changes"
+              ]
+            }
+          ]
+        },
+        {
+          "group_label": "Group 2 (existing high-performance desktops)",
+          "fields": [
+            {
+              "field_id": "g2_tpm",
+              "type": "select",
+              "prompt": "Hardware TPM",
+              "options": [
+                "Enabled",
+                "Disabled"
+              ],
+              "correct": "Enabled"
+            },
+            {
+              "field_id": "g2_storage",
+              "type": "select",
+              "prompt": "Cloud Storage Type",
+              "options": [
+                "HDD or SSD (not both)",
+                "HDD and SSD both",
+                "N/A"
+              ],
+              "correct": "N/A"
+            },
+            {
+              "field_id": "g2_hypervisor",
+              "type": "select",
+              "prompt": "Hypervisor",
+              "options": [
+                "Type 1 / bare-metal",
+                "Type 2 (VirtualBox or QEMU)",
+                "Kubernetes"
+              ],
+              "correct": "Type 2 (VirtualBox or QEMU)"
+            },
+            {
+              "field_id": "g2_provisioning",
+              "type": "select",
+              "prompt": "Provisioning",
+              "options": [
+                "Thin Provision (preferred if underlying OS still in use)",
+                "Thick Provision"
+              ],
+              "correct": "Thin Provision (preferred if underlying OS still in use)"
+            },
+            {
+              "field_id": "g2_automation_tool",
+              "type": "select",
+              "prompt": "Provisioning Automation Tool",
+              "options": [
+                "Ansible (or Puppet)",
+                "N/A -- each engineer spins up their own VMs",
+                "Docker Swarm"
+              ],
+              "correct": "N/A -- each engineer spins up their own VMs"
+            },
+            {
+              "field_id": "g2_auth_settings",
+              "type": "multiselect",
+              "prompt": "Authentication/hardening settings to apply",
+              "options": [
+                "Allow root access",
+                "Use IPsec encrypted VPN",
+                "Use remote attestation",
+                "Use Terra TVMM/TCCP",
+                "Encrypt provisioning commands",
+                "Segment VPC with NAT gateway",
+                "Check controller firmware",
+                "Disable time sync between host OS and VM",
+                "Enable Secure Boot",
+                "Disable unneeded shared folders",
+                "Limit access to host",
+                "Avoid patching guest OS",
+                "Rebuild image on changes"
+              ],
+              "correct": [
+                "Allow root access",
+                "Use IPsec encrypted VPN",
+                "Use remote attestation",
+                "Use Terra TVMM/TCCP",
+                "Encrypt provisioning commands",
+                "Segment VPC with NAT gateway",
+                "Check controller firmware",
+                "Disable time sync between host OS and VM",
+                "Enable Secure Boot",
+                "Disable unneeded shared folders",
+                "Limit access to host",
+                "Avoid patching guest OS",
+                "Rebuild image on changes"
+              ]
+            }
+          ]
+        },
+        {
+          "group_label": "Group 3 (containerization)",
+          "fields": [
+            {
+              "field_id": "g3_tpm",
+              "type": "select",
+              "prompt": "Hardware TPM",
+              "options": [
+                "Enabled",
+                "Disabled"
+              ],
+              "correct": "Enabled"
+            },
+            {
+              "field_id": "g3_storage",
+              "type": "select",
+              "prompt": "Cloud Storage Type",
+              "options": [
+                "HDD or SSD",
+                "HDD and SSD both",
+                "N/A"
+              ],
+              "correct": "HDD or SSD"
+            },
+            {
+              "field_id": "g3_hypervisor",
+              "type": "select",
+              "prompt": "Hypervisor",
+              "options": [
+                "Type 1 / bare-metal",
+                "Type 2 (VirtualBox or QEMU)",
+                "Kubernetes (or Docker/KVM)"
+              ],
+              "correct": "Kubernetes (or Docker/KVM)"
+            },
+            {
+              "field_id": "g3_provisioning",
+              "type": "select",
+              "prompt": "Provisioning",
+              "options": [
+                "Thin Provision",
+                "Thick Provision"
+              ],
+              "correct": "Thick Provision"
+            },
+            {
+              "field_id": "g3_automation_tool",
+              "type": "select",
+              "prompt": "Provisioning Automation Tool",
+              "options": [
+                "Ansible (or Docker/Puppet)",
+                "N/A"
+              ],
+              "correct": "Ansible (or Docker/Puppet)"
+            },
+            {
+              "field_id": "g3_auth_settings",
+              "type": "multiselect",
+              "prompt": "Authentication/hardening settings to apply",
+              "options": [
+                "Allow root access",
+                "Use IPsec encrypted VPN",
+                "Use remote attestation",
+                "Use Terra TVMM/TCCP",
+                "Encrypt provisioning commands",
+                "Segment VPC with NAT gateway",
+                "Check controller firmware",
+                "Disable time sync between host OS and VM",
+                "Enable Secure Boot",
+                "Disable unneeded shared folders",
+                "Limit access to host",
+                "Avoid patching guest OS",
+                "Rebuild image on changes"
+              ],
+              "correct": [
+                "Allow root access",
+                "Use IPsec encrypted VPN",
+                "Use remote attestation",
+                "Use Terra TVMM/TCCP",
+                "Encrypt provisioning commands",
+                "Segment VPC with NAT gateway",
+                "Check controller firmware",
+                "Disable time sync between host OS and VM",
+                "Enable Secure Boot",
+                "Disable unneeded shared folders",
+                "Avoid patching guest OS",
+                "Rebuild image on changes"
+              ],
+              "note": "'Limit access to host' is NOT required for Group 3 since trusted hosts are used."
+            }
+          ]
+        }
+      ],
+      "rationale": "Group 1 requires Type 1 (bare-metal) hypervisors with zero/thin clients, supporting a variety of OSes via Xen, Hyper-V, KVM, ESXi, Oracle VM Server, or XCP-ng; Cloud Storage should be HDD or SSD (not both, to avoid idiosyncratic VM behavior); Ansible/Puppet can clone/run/update VMs from a template. Group 2 uses existing high-performance desktops with Type 2 hypervisors (QEMU/VirtualBox); thin provisioning is preferred when the underlying OS is still in use, and automatic provisioning isn't essential since each engineer spins up their own VMs. Group 3 requires containerization (data lakes, independent of guest OS images); Docker/Puppet/Ansible can provision containers, and KVM/Kubernetes are common containerization hypervisors. Across all groups: root access inside VMs/containers is advisable (the safest place to use it in this scenario -- notably the OPPOSITE of the general instinct to disable/limit root access), use IPsec VPNs, remote attestation, the Terra TVMM/TCCP framework (not required for containers), encrypted provisioning commands, VPC segmentation with NAT gateways, controller firmware checks, disabled time sync between host and VM, Secure Boot, disabled unneeded shared folders, avoiding guest-OS patching (rebuild images instead), and NOT syncing time between host and VM. Group 3 alone does not need to limit host access, since trusted hosts are used.",
+      "source": "Dion Training SecurityX (CAS-005) Course Notes / CertMaster PBQ, page 126-127",
+      "weak_spot": false,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D3-PBQ-03",
+      "domain": 3,
+      "section_number": 14,
+      "section_title": "PKI Architecture",
+      "layout": "wizard",
+      "title": "SharePoint Web Server SSL Certificate Request",
+      "scenario_context": "Request a new web server SSL certificate for a SharePoint server (SP01) that must be trusted across two domains (abctax123.net and abctax123.org) for company ABCTax123, IT department, Thousand Oaks, CA, US, using internal Microsoft CA services.",
+      "time_estimate_seconds": 360,
+      "fields": [
+        {
+          "field_id": "cert_template",
+          "type": "select",
+          "prompt": "Certificate Template",
+          "options": [
+            "Web Server",
+            "User",
+            "Computer",
+            "Code Signing"
+          ],
+          "correct": "Web Server"
+        },
+        {
+          "field_id": "cert_name",
+          "type": "text",
+          "prompt": "Name",
+          "correct": "SharePoint Certificate"
+        },
+        {
+          "field_id": "cert_email",
+          "type": "text",
+          "prompt": "Email",
+          "correct": "itsupport@abctax123.com"
+        },
+        {
+          "field_id": "cert_company",
+          "type": "text",
+          "prompt": "Company",
+          "correct": "ABCTax123"
+        },
+        {
+          "field_id": "cert_department",
+          "type": "text",
+          "prompt": "Department",
+          "correct": "IT"
+        },
+        {
+          "field_id": "cert_city",
+          "type": "text",
+          "prompt": "City",
+          "correct": "Thousand Oaks"
+        },
+        {
+          "field_id": "cert_state_country",
+          "type": "text",
+          "prompt": "State / Country",
+          "correct": "CA / US"
+        },
+        {
+          "field_id": "cert_key_option",
+          "type": "select",
+          "prompt": "Key Options",
+          "options": [
+            "Create new key set",
+            "Use existing key set"
+          ],
+          "correct": "Create new key set"
+        },
+        {
+          "field_id": "cert_csp",
+          "type": "select",
+          "prompt": "Cryptographic Service Provider",
+          "options": [
+            "Microsoft RSA SChannel Cryptographic Provider",
+            "Microsoft Enhanced RSA and AES Cryptographic Provider",
+            "Microsoft Base Cryptographic Provider"
+          ],
+          "correct": "Microsoft RSA SChannel Cryptographic Provider"
+        },
+        {
+          "field_id": "cert_key_usage_size",
+          "type": "text",
+          "prompt": "Key Usage / Key Size",
+          "correct": "Exchange / 2048"
+        },
+        {
+          "field_id": "cert_key_container",
+          "type": "select",
+          "prompt": "Key Container Name",
+          "options": [
+            "Automatic Key Container Name",
+            "User Specified"
+          ],
+          "correct": "Automatic Key Container Name"
+        },
+        {
+          "field_id": "cert_mark_exportable",
+          "type": "select",
+          "prompt": "Mark Keys as Exportable",
+          "options": [
+            "Checked",
+            "Unchecked"
+          ],
+          "correct": "Checked",
+          "note": "Checked per the company's certificate policy."
+        },
+        {
+          "field_id": "cert_strong_key_protection",
+          "type": "select",
+          "prompt": "Enable strong private key protection",
+          "options": [
+            "Checked",
+            "Unchecked"
+          ],
+          "correct": "Unchecked",
+          "note": "Not required -- does not need password protection for this key."
+        },
+        {
+          "field_id": "cert_san_attribute",
+          "type": "text",
+          "prompt": "Additional Options > Attributes (SAN field)",
+          "correct": "san:dns=abctax123.net&dns=abctax123.org"
+        },
+        {
+          "field_id": "cert_install_target",
+          "type": "multiselect",
+          "prompt": "Install this certificate onto which server(s)?",
+          "options": [
+            "SP01",
+            "FP01",
+            "FP02"
+          ],
+          "correct": [
+            "SP01"
+          ],
+          "note": "The answer-key screenshot also showed FP01 and FP02 checked alongside SP01, which conflicts with the written rationale's explicit 'SP01 only' statement. Resolved in favor of the rationale, which is unambiguous ('You will install this certificate only on the SharePoint server or SP01') -- this is internal scenario logic, not an externally-verifiable fact."
+        },
+        {
+          "field_id": "cert_trust_component",
+          "type": "text",
+          "prompt": "What component of this certificate allows users to trust both domains of the server?",
+          "correct": "Attributes (making this a SAN / multidomain certificate)"
+        }
+      ],
+      "rationale": "Use the internal Microsoft CA to create a Web Server certificate named 'SharePoint Certificate' (per naming convention). Email itsupport@abctax123.com routes communication issues to the IT Support distribution list. Company/Department/City/State/Country identify the certificate as ABCTax123, IT, Thousand Oaks, CA, US. Select Create new key set (this is a new certificate), with default Microsoft RSA SChannel Cryptographic Provider and 2048-bit key size, Automatic Key Container Name, and Mark Keys as Exportable checked per company policy -- strong private key protection is not required. The Attributes field must list both domains (san:dns=abctax123.net&dns=abctax123.org) so users trust both the .net and .org domains -- this makes it a SAN (subject alternative name)/multidomain certificate. Install this certificate only on the SharePoint server (SP01).",
+      "source": "Dion Training SecurityX (CAS-005) Course Notes / CertMaster PBQ, page 128-129",
+      "weak_spot": true,
+      "verification_status": "resolved_via_rationale"
+    },
+    {
+      "pbq_id": "D2-PBQ-02",
+      "domain": 2,
+      "section_number": 6,
+      "section_title": "Secure Architecture Design",
+      "layout": "wizard",
+      "title": "Microsoft 365 DLP Policy for PII",
+      "scenario_context": "A company migrated to Microsoft 365 and needs to create a DLP (Data Loss Prevention) policy to protect Personally Identifiable Information (PII) across Exchange, SharePoint, OneDrive, and Teams.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "dlp_template",
+          "type": "select",
+          "prompt": "Select a Policy Template",
+          "options": [
+            "U.S. Personally Identifiable Information (PII) Data",
+            "U.S. Financial Data",
+            "U.S. Health Insurance Act (HIPAA)",
+            "GDPR"
+          ],
+          "correct": "U.S. Personally Identifiable Information (PII) Data"
+        },
+        {
+          "field_id": "dlp_locations",
+          "type": "multiselect",
+          "prompt": "Choose locations to apply the policy",
+          "options": [
+            "Exchange Email",
+            "SharePoint Sites",
+            "OneDrive Accounts",
+            "Teams Chat and Channel Messages"
+          ],
+          "correct": [
+            "Exchange Email",
+            "SharePoint Sites",
+            "OneDrive Accounts",
+            "Teams Chat and Channel Messages"
+          ]
+        },
+        {
+          "field_id": "dlp_sit_types",
+          "type": "multiselect",
+          "prompt": "Choose sensitive information types to monitor",
+          "options": [
+            "U.S. Individual Taxpayer Identification Number (ITIN)",
+            "U.S. Social Security Number (SSN)",
+            "U.S. and U.K. Passport Number",
+            "U.S. Driver's License",
+            "U.S. Bank Account Number"
+          ],
+          "correct": [
+            "U.S. Individual Taxpayer Identification Number (ITIN)",
+            "U.S. Social Security Number (SSN)",
+            "U.S. and U.K. Passport Number",
+            "U.S. Driver's License",
+            "U.S. Bank Account Number"
+          ],
+          "note": "The on-page checkbox screenshot showed ITIN and Passport Number as unchecked/X, conflicting with the written rationale, which explicitly lists them as part of the PII to monitor.",
+          "needs_verification": true,
+          "verification_note": "Confirmed ITIN and U.S./U.K. Passport Number are both real, valid Microsoft Purview sensitive information types (via learn.microsoft.com/purview), but could not locate a public Microsoft page enumerating the exact member list of the 'U.S. Personally Identifiable Information (PII) Data' policy TEMPLATE specifically -- Microsoft doesn't publish that composition as flat text. Kept the rationale's explicit list as the working answer, but the template-membership claim itself is not independently confirmed."
+        },
+        {
+          "field_id": "dlp_user_notifications",
+          "type": "select",
+          "prompt": "User Notifications",
+          "options": [
+            "Enable",
+            "Disable"
+          ],
+          "correct": "Enable"
+        },
+        {
+          "field_id": "dlp_email_notifications",
+          "type": "multiselect",
+          "prompt": "Email Notifications -- who should be notified?",
+          "options": [
+            "The person who sent/shared/last modified the content",
+            "Owner of the SharePoint site or OneDrive account",
+            "Owner of the SharePoint or OneDrive content",
+            "Other email: dlpsupport@abctech1234.com"
+          ],
+          "correct": [
+            "The person who sent/shared/last modified the content",
+            "Owner of the SharePoint site or OneDrive account",
+            "Owner of the SharePoint or OneDrive content",
+            "Other email: dlpsupport@abctech1234.com"
+          ]
+        },
+        {
+          "field_id": "dlp_detect_scope",
+          "type": "select",
+          "prompt": "Detect when content is shared from Microsoft 365...",
+          "options": [
+            "with people inside my organization",
+            "with people outside my organization"
+          ],
+          "correct": "with people inside my organization",
+          "note": "Since these policies will first monitor internal communication."
+        },
+        {
+          "field_id": "dlp_rollout_mode",
+          "type": "select",
+          "prompt": "Do you want to turn on the policy or test it out first?",
+          "options": [
+            "Turn it on right away",
+            "I'd like to test it out first"
+          ],
+          "correct": "I'd like to test it out first"
+        }
+      ],
+      "rationale": "The U.S. Personally Identifiable Information (PII) Data template provides an appropriate baseline. Apply it to all available locations (Exchange, SharePoint, OneDrive, Teams) since the company fully migrated to Microsoft 365. Monitor U.S. ITIN, SSN, U.S./U.K. Passport Number, U.S. Driver's License, and U.S. Bank Account information. Enable User Notifications so users are alerted to policy violations. For Email Notifications, choose 'Notify these people' and select the person who sent/shared/modified the content plus an 'Other email' entry for the DLP support team (dlpsupport@abctech1234.com). Detect sharing 'only with people inside my organization' first, since these policies begin by monitoring internal communication. Test the policy out first before turning it on in production.",
+      "source": "Dion Training SecurityX (CAS-005) Course Notes / CertMaster PBQ, page 129-130",
+      "weak_spot": true,
+      "verification_status": "needs_verification"
+    },
+    {
+      "pbq_id": "D3-PBQ-04",
+      "domain": 3,
+      "section_number": 16,
+      "section_title": "Troubleshooting IAM",
+      "layout": "wizard",
+      "title": "PAM Platform Account Onboarding",
+      "scenario_context": "Onboard three types of accounts (an administrator, a VMware service account, and an automation service account) onto a PAM (Privileged Access Management) platform for domain seccorp.local, plus configure password rotation and authentication requirements.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "password_rotation_days",
+          "type": "select",
+          "prompt": "The PAM application must change a managed account's password every:",
+          "options": [
+            "30 days",
+            "59 days",
+            "60 days",
+            "90 days"
+          ],
+          "correct": "59 days",
+          "note": "59 days meets privileged credential requirements while avoiding account expiration on day 60."
+        },
+        {
+          "field_id": "admin_auth_method",
+          "type": "multiselect",
+          "prompt": "Administrators will use which of the following when authenticating to a remote server?",
+          "options": [
+            "Username",
+            "Password",
+            "Smart Card",
+            "PIN",
+            "Biometric"
+          ],
+          "correct": [
+            "Username",
+            "Password",
+            "Smart Card"
+          ]
+        },
+        {
+          "field_id": "fallback_auth_method",
+          "type": "select",
+          "prompt": "What other method would provide user authentication if 2FA does not work?",
+          "options": [
+            "Multifactor authentication",
+            "2-step verification (push notification)",
+            "Security questions",
+            "Backup codes only"
+          ],
+          "correct": "2-step verification (push notification)"
+        }
+      ],
+      "groups": [
+        {
+          "group_label": "Administrator account (admjohnbenson)",
+          "fields": [
+            {
+              "field_id": "admin_safe",
+              "type": "text",
+              "prompt": "Safe",
+              "correct": "john-benson-accts"
+            },
+            {
+              "field_id": "admin_device_type",
+              "type": "select",
+              "prompt": "Device type",
+              "options": [
+                "Directory",
+                "Application",
+                "Security Appliance"
+              ],
+              "correct": "Directory"
+            },
+            {
+              "field_id": "admin_platform",
+              "type": "select",
+              "prompt": "Platform name",
+              "options": [
+                "Windows Domain Account",
+                "Unix via SSH",
+                "Web Application"
+              ],
+              "correct": "Windows Domain Account"
+            },
+            {
+              "field_id": "admin_address",
+              "type": "text",
+              "prompt": "Address",
+              "correct": "seccorp.local"
+            },
+            {
+              "field_id": "admin_username",
+              "type": "text",
+              "prompt": "Username",
+              "correct": "admjohnbenson"
+            }
+          ]
+        },
+        {
+          "group_label": "VMware service account",
+          "fields": [
+            {
+              "field_id": "vmware_safe",
+              "type": "text",
+              "prompt": "Safe",
+              "correct": "vmware-accts"
+            },
+            {
+              "field_id": "vmware_device_type",
+              "type": "select",
+              "prompt": "Device type",
+              "options": [
+                "Directory",
+                "Application",
+                "Security Appliance"
+              ],
+              "correct": "Directory"
+            },
+            {
+              "field_id": "vmware_platform",
+              "type": "select",
+              "prompt": "Platform name",
+              "options": [
+                "Windows Domain Account",
+                "Unix via SSH",
+                "Web Application"
+              ],
+              "correct": "Windows Domain Account"
+            },
+            {
+              "field_id": "vmware_address",
+              "type": "text",
+              "prompt": "Address",
+              "correct": "seccorp.local"
+            },
+            {
+              "field_id": "vmware_username",
+              "type": "text",
+              "prompt": "Username",
+              "correct": "virtualsvc"
+            }
+          ]
+        },
+        {
+          "group_label": "Automation service account",
+          "fields": [
+            {
+              "field_id": "automation_safe",
+              "type": "text",
+              "prompt": "Safe",
+              "correct": "automation-accts"
+            },
+            {
+              "field_id": "automation_device_type",
+              "type": "select",
+              "prompt": "Device type",
+              "options": [
+                "Directory",
+                "Application",
+                "Security Appliance"
+              ],
+              "correct": "Directory"
+            },
+            {
+              "field_id": "automation_platform",
+              "type": "select",
+              "prompt": "Platform name",
+              "options": [
+                "Windows Domain Account",
+                "Unix via SSH",
+                "Web Application"
+              ],
+              "correct": "Windows Domain Account"
+            },
+            {
+              "field_id": "automation_address",
+              "type": "text",
+              "prompt": "Address",
+              "correct": "seccorp.local"
+            },
+            {
+              "field_id": "automation_username",
+              "type": "text",
+              "prompt": "Username",
+              "correct": "autosvc"
+            }
+          ]
+        }
+      ],
+      "rationale": "Add admjohnbenson to the john-benson-accts safe (specific to that administrator's privileged accounts), device type Directory, platform Windows Domain Account, address seccorp.local, username admjohnbenson. Add the VMware service account to the vmware-accts safe (same Directory/Windows Domain Account/seccorp.local pattern), username virtualsvc. Add the automation service account to the automation-accts safe (same pattern), username autosvc. All are domain accounts, so Directory/Windows Domain Account lets the PAM application update passwords using the correct mechanism. Change domain account passwords every 59 days to meet privileged credential requirements and avoid account expiration on day 60. Administrator accounts require 2FA: username+password plus a smart card (PIN/biometric not used in this scenario). If 2FA does not work, fall back to 2-step verification (also known as a push notification).",
+      "source": "Dion Training SecurityX (CAS-005) Course Notes / CertMaster PBQ, page 130",
+      "weak_spot": false,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D3-PBQ-05",
+      "domain": 3,
+      "section_number": 24,
+      "section_title": "Detection and Mitigation",
+      "layout": "wizard",
+      "title": "Windows Application Control Policy Wizard (Base Policy)",
+      "scenario_context": "Configure a baseline (Base Policy) Windows Defender Application Control policy for company workstations that allows PowerShell script restrictions, Microsoft Store apps, Microsoft Endpoint Configuration Manager-managed installs, and WHQL-signed drivers, plus a custom trusted-executable folder path.",
+      "time_estimate_seconds": 360,
+      "fields": [
+        {
+          "field_id": "wdac_policy_type",
+          "type": "select",
+          "prompt": "Policy Type",
+          "options": [
+            "Base Policy",
+            "Supplemental Policy"
+          ],
+          "correct": "Base Policy"
+        },
+        {
+          "field_id": "wdac_policy_template",
+          "type": "select",
+          "prompt": "Policy Template",
+          "options": [
+            "Default Windows Mode",
+            "Signed and Reputable",
+            "Allow Microsoft Mode"
+          ],
+          "correct": "Default Windows Mode"
+        },
+        {
+          "field_id": "wdac_policy_rules",
+          "type": "multiselect",
+          "prompt": "Policy Rules to enable",
+          "options": [
+            "Advanced Boot Options Menu",
+            "Allow Supplemental Policies",
+            "Disable Script Enforcement",
+            "Enforce Store Applications",
+            "Hypervisor-protected Code Integrity",
+            "Intelligent Security Graph",
+            "Managed Installer",
+            "Require WHQL",
+            "Update Policy without Rebooting",
+            "Unsigned System Integrity Policy",
+            "User Mode Code Integrity"
+          ],
+          "correct": [
+            "Disable Script Enforcement",
+            "Enforce Store Applications",
+            "Managed Installer",
+            "Require WHQL"
+          ],
+          "note": "IMPORTANT DISCREPANCY in the source material: the written rationale explicitly justifies only these 4 rules and states 'All other rules are not applicable to the base policy requirements' -- but the source's answer-key screenshot shows ALL rules checked/enabled.",
+          "needs_verification": true,
+          "verification_note": "Attempted verification against Microsoft's own WDAC documentation (learn.microsoft.com Design/wdac-wizard-create-base-policy, and the WDAC-Toolkit GitHub docs) -- neither source enumerates the exact default rule set for the 'Default Windows Mode' template in text form; both only confirm 'Audit Mode is enabled by default for all templates.' Separately, User Mode Code Integrity (UMCI) is arguably foundational to any functioning WDAC policy (not truly optional), which could explain why the screenshot shows it checked even though the rationale doesn't call it out -- but this reasoning isn't from an authoritative citation. Kept the rationale's 4-rule list as the default 'correct' answer per this project's standing convention (written rationale is authoritative over an inconsistent screenshot), but this field should be double-checked against the actual WDAC Wizard UI or a CompTIA-authoritative reference before being treated as fully settled."
+        },
+        {
+          "field_id": "wdac_enforcement_mode",
+          "type": "select",
+          "prompt": "Enforcement Mode",
+          "options": [
+            "Audit Only",
+            "Enforced"
+          ],
+          "correct": "Audit Only",
+          "note": "Audit Only lets you verify the policy works before enforcing in production; it's changed to Enforced later."
+        },
+        {
+          "field_id": "wdac_signing_rule_type",
+          "type": "select",
+          "prompt": "Signing Rules > Rule Type",
+          "options": [
+            "Path",
+            "Publisher",
+            "File Hash"
+          ],
+          "correct": "Path"
+        },
+        {
+          "field_id": "wdac_signing_allow_deny",
+          "type": "select",
+          "prompt": "Signing Rules > Allow vs Deny",
+          "options": [
+            "Allow",
+            "Deny"
+          ],
+          "correct": "Allow"
+        },
+        {
+          "field_id": "wdac_reference_path",
+          "type": "text",
+          "prompt": "Reference File/Path",
+          "correct": "C:\\special_auth"
+        },
+        {
+          "field_id": "wdac_custom_path",
+          "type": "select",
+          "prompt": "Use Custom Path vs default",
+          "options": [
+            "Use Custom Path",
+            "Use default path"
+          ],
+          "correct": "Use Custom Path"
+        },
+        {
+          "field_id": "wdac_file_or_folder",
+          "type": "select",
+          "prompt": "File vs Folder",
+          "options": [
+            "File",
+            "Folder"
+          ],
+          "correct": "Folder"
+        },
+        {
+          "field_id": "wdac_supplemental_requirement",
+          "type": "text",
+          "prompt": "What policy rule is required on this base policy to combine it with another policy that has Intelligent Security Graph enabled?",
+          "correct": "Allow Supplemental Policies"
+        }
+      ],
+      "rationale": "Create a Base Policy using the Default Windows Mode template, which provides basic starting rules. Select Disable Script Enforcement (base policy doesn't allow PowerShell scripts), Enforce Store Applications (allows Microsoft Store apps), Managed Installer (allows Microsoft Endpoint Configuration Manager-driven installs), and Require WHQL (validates WHQL driver signatures) -- all other rules are not applicable to the base policy requirements per the written rationale. Select Audit Only for enforcement mode (verify before enforcing in production; changed to Enforced later). For the trusted executable folder, add a signing rule with Rule Type = Path, Allow, Reference Path C:\\special_auth, Use Custom Path, and Folder (not File). To later combine this base policy with a supplemental policy that has Intelligent Security Graph enabled, the base policy must have Allow Supplemental Policies enabled.",
+      "source": "Dion Training SecurityX (CAS-005) Course Notes / CertMaster PBQ, page 131-132",
+      "weak_spot": true,
+      "verification_status": "needs_verification"
+    },
+    {
+      "pbq_id": "D4-PBQ-01",
+      "domain": 4,
+      "section_number": 30,
+      "section_title": "Indication Analysis",
+      "layout": "table",
+      "title": "Digital Forensics -- Order of Volatility and Evidence Acquisition",
+      "scenario_context": "A production server is suspected of being compromised. The incident response team must collect evidence in the correct order of volatility before any of it degrades or is overwritten, then create a forensically sound image of the disk for later analysis.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "imaging_tool",
+          "type": "select",
+          "prompt": "Which tool is a purpose-built forensic enhancement of the standard Unix/Linux `dd` command, adding on-the-fly hashing and progress indicators during acquisition?",
+          "options": [
+            "dd",
+            "dcfldd",
+            "Forensic Toolkit (FTK) Imager",
+            "robocopy"
+          ],
+          "correct": "dcfldd"
+        },
+        {
+          "field_id": "write_blocker",
+          "type": "text",
+          "prompt": "Before imaging the suspect's local disk drive, what hardware device should be attached to guarantee the original media cannot be modified during acquisition?",
+          "correct": "write blocker",
+          "note": "Accepts \"write blocker\" or \"hardware write blocker\"."
+        }
+      ],
+      "rows": [
+        {
+          "row_id": "registers_cache",
+          "label": "CPU Registers and Cache",
+          "detail": "The fastest-changing data on the system -- contents can be overwritten in nanoseconds.",
+          "fields": [
+            {
+              "field_id": "registers_cache_order",
+              "type": "select",
+              "prompt": "Collection order",
+              "options": [
+                "1st (collect first)",
+                "2nd",
+                "3rd",
+                "4th",
+                "5th",
+                "6th",
+                "7th (collect last)"
+              ],
+              "correct": "1st (collect first)"
+            }
+          ]
+        },
+        {
+          "row_id": "ram_arp_routing",
+          "label": "RAM, ARP Cache, Routing Tables, Running Process List",
+          "detail": "Volatile memory and in-memory network/process state that is lost the moment the system loses power.",
+          "fields": [
+            {
+              "field_id": "ram_arp_routing_order",
+              "type": "select",
+              "prompt": "Collection order",
+              "options": [
+                "1st (collect first)",
+                "2nd",
+                "3rd",
+                "4th",
+                "5th",
+                "6th",
+                "7th (collect last)"
+              ],
+              "correct": "2nd"
+            }
+          ]
+        },
+        {
+          "row_id": "swap_space",
+          "label": "Swap Space / Temporary File Systems",
+          "detail": "Semi-volatile -- persists briefly across reboots in some configurations but changes constantly during normal operation.",
+          "fields": [
+            {
+              "field_id": "swap_space_order",
+              "type": "select",
+              "prompt": "Collection order",
+              "options": [
+                "1st (collect first)",
+                "2nd",
+                "3rd",
+                "4th",
+                "5th",
+                "6th",
+                "7th (collect last)"
+              ],
+              "correct": "3rd"
+            }
+          ]
+        },
+        {
+          "row_id": "local_disks",
+          "label": "Local Disk Drives (HDD/SSD)",
+          "detail": "Non-volatile storage that survives a power-off, but still changes as the OS and applications continue writing to it.",
+          "fields": [
+            {
+              "field_id": "local_disks_order",
+              "type": "select",
+              "prompt": "Collection order",
+              "options": [
+                "1st (collect first)",
+                "2nd",
+                "3rd",
+                "4th",
+                "5th",
+                "6th",
+                "7th (collect last)"
+              ],
+              "correct": "4th"
+            }
+          ]
+        },
+        {
+          "row_id": "remote_logging",
+          "label": "Remote Logging and Monitoring Data (SIEM / Syslog Server)",
+          "detail": "Held on a separate system from the one under investigation, so it is less likely to be altered by the incident itself, but still an active, changing data store.",
+          "fields": [
+            {
+              "field_id": "remote_logging_order",
+              "type": "select",
+              "prompt": "Collection order",
+              "options": [
+                "1st (collect first)",
+                "2nd",
+                "3rd",
+                "4th",
+                "5th",
+                "6th",
+                "7th (collect last)"
+              ],
+              "correct": "5th"
+            }
+          ]
+        },
+        {
+          "row_id": "physical_topology",
+          "label": "Physical Configurations and Network Topology Records",
+          "detail": "Documentation and configuration state that changes only when the network itself is reconfigured.",
+          "fields": [
+            {
+              "field_id": "physical_topology_order",
+              "type": "select",
+              "prompt": "Collection order",
+              "options": [
+                "1st (collect first)",
+                "2nd",
+                "3rd",
+                "4th",
+                "5th",
+                "6th",
+                "7th (collect last)"
+              ],
+              "correct": "6th"
+            }
+          ]
+        },
+        {
+          "row_id": "archival_media",
+          "label": "Backup Tapes / Archival Media",
+          "detail": "The most stable and least time-sensitive evidence source -- effectively static until a new backup job overwrites it.",
+          "fields": [
+            {
+              "field_id": "archival_media_order",
+              "type": "select",
+              "prompt": "Collection order",
+              "options": [
+                "1st (collect first)",
+                "2nd",
+                "3rd",
+                "4th",
+                "5th",
+                "6th",
+                "7th (collect last)"
+              ],
+              "correct": "7th (collect last)"
+            }
+          ]
+        }
+      ],
+      "rationale": "Order of volatility runs from the fastest-changing data to the most stable: (1) CPU registers and cache, (2) RAM plus in-memory network/process state (ARP cache, routing tables, running processes), (3) swap space/temporary file systems, (4) local disks, (5) remote logging and monitoring data, (6) physical configuration and network topology records, and (7) archival media such as backup tapes. Collecting in this order preserves the evidence that would otherwise be lost first. `dcfldd` is the forensic variant of `dd` specifically built to add on-the-fly hashing and progress indicators during acquisition, and a hardware write blocker must be attached to the original media before imaging so the acquisition process itself cannot alter the evidence.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 30 (Indication Analysis), pages 113-115",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D4-PBQ-02",
+      "domain": 4,
+      "section_number": 28,
+      "section_title": "Monitoring and Response",
+      "layout": "wizard",
+      "title": "SIEM Alert Triage and Prioritization",
+      "scenario_context": "The SOC's SIEM has generated four alerts overnight. For each one, classify whether it represents a real threat and assign a priority level, weighing alert criticality, asset value, data classification, and threat intelligence context.",
+      "time_estimate_seconds": 360,
+      "fields": [
+        {
+          "field_id": "correlation_fn",
+          "type": "select",
+          "prompt": "If Alert 1's login event and Alert 3's DNS activity turn out to originate from the same compromised host, which SIEM function is responsible for linking those two events together into a single incident view?",
+          "options": [
+            "Correlation",
+            "Event parsing",
+            "Retention",
+            "Event deduplication"
+          ],
+          "correct": "Correlation"
+        },
+        {
+          "field_id": "fp_term",
+          "type": "text",
+          "prompt": "What is the general SIEM term for a benign event, like Alert 2, that gets incorrectly flagged as malicious?",
+          "correct": "false positive"
+        }
+      ],
+      "groups": [
+        {
+          "group_label": "Alert 1 -- Regulated database server, after-hours privileged login",
+          "fields": [
+            {
+              "field_id": "a1_class",
+              "type": "select",
+              "prompt": "A production database server handling regulated financial records logs an after-hours privileged login from an unrecognized IP address, and threat intelligence confirms that IP is a known C2 relay. Classification:",
+              "options": [
+                "True Positive",
+                "False Positive",
+                "False Negative",
+                "True Negative"
+              ],
+              "correct": "True Positive"
+            },
+            {
+              "field_id": "a1_priority",
+              "type": "select",
+              "prompt": "Priority level:",
+              "options": [
+                "Critical",
+                "High",
+                "Medium",
+                "Low"
+              ],
+              "correct": "Critical"
+            }
+          ]
+        },
+        {
+          "group_label": "Alert 2 -- Repeated failed logins from own workstation",
+          "fields": [
+            {
+              "field_id": "a2_class",
+              "type": "select",
+              "prompt": "An internal file server logs repeated failed login attempts from an employee's own workstation IP during business hours; the employee had just reset their password and mistyped it, and the account locked per policy after 5 attempts. Classification:",
+              "options": [
+                "True Positive",
+                "False Positive",
+                "False Negative",
+                "True Negative"
+              ],
+              "correct": "False Positive"
+            },
+            {
+              "field_id": "a2_priority",
+              "type": "select",
+              "prompt": "Priority level:",
+              "options": [
+                "Critical",
+                "High",
+                "Medium",
+                "Low"
+              ],
+              "correct": "Low"
+            }
+          ]
+        },
+        {
+          "group_label": "Alert 3 -- Non-production server, DGA-style DNS traffic",
+          "fields": [
+            {
+              "field_id": "a3_class",
+              "type": "select",
+              "prompt": "A marketing team's non-production test server (no real data) shows a spike in outbound DNS queries to a domain generation algorithm (DGA)-style domain that the threat intelligence feed classifies as malicious C2 infrastructure. Classification:",
+              "options": [
+                "True Positive",
+                "False Positive",
+                "False Negative",
+                "True Negative"
+              ],
+              "correct": "True Positive"
+            },
+            {
+              "field_id": "a3_priority",
+              "type": "select",
+              "prompt": "Priority level:",
+              "options": [
+                "Critical",
+                "High",
+                "Medium",
+                "Low"
+              ],
+              "correct": "Medium",
+              "note": "Real malicious activity (so not Low), but the affected asset is non-production with no real data, which keeps it below the Critical regulated-database case."
+            }
+          ]
+        },
+        {
+          "group_label": "Alert 4 -- Branch firewall stops reporting to the SIEM",
+          "fields": [
+            {
+              "field_id": "a4_cause",
+              "type": "select",
+              "prompt": "The SIEM shows zero logs from a branch office's core firewall for the past 6 hours while every other branch device reports normally. Most likely cause category:",
+              "options": [
+                "Misconfiguration or connectivity issue",
+                "Guaranteed active compromise erasing logs",
+                "Scheduled maintenance downtime",
+                "Normal, expected behavior"
+              ],
+              "correct": "Misconfiguration or connectivity issue"
+            },
+            {
+              "field_id": "a4_priority",
+              "type": "select",
+              "prompt": "Priority level:",
+              "options": [
+                "Critical",
+                "High",
+                "Medium",
+                "Low"
+              ],
+              "correct": "High",
+              "note": "A total logging blackout from a security device is a red flag that needs immediate investigation even before compromise is confirmed."
+            }
+          ]
+        }
+      ],
+      "rationale": "Alert 1 is a True Positive and Critical: a regulated, high-value production asset plus external threat-intel confirmation of a known C2 IP. Alert 2 is a False Positive and Low priority: an internal, benign, explainable cause (a forgotten new password) with no external indicators. Alert 3 is a True Positive (confirmed malicious C2 traffic) but only Medium priority, since the asset is non-production and holds no real data -- alert impact and asset value both factor into prioritization alongside whether the activity is real. Alert 4 is not itself an attack alert; a security device going silent is categorized among the standard non-reporting-device causes (misconfiguration, connectivity issues, hardware failures, or logging gaps), but a total blackout from a firewall still warrants High priority investigation, since it could also be masking something worse. Correlation is the SIEM function that links related events from different sources into one incident, and a benign event wrongly flagged as malicious is, by definition, a false positive.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 28 (Monitoring and Response), pages 105-108",
+      "weak_spot": false,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D4-PBQ-03",
+      "domain": 4,
+      "section_number": 31,
+      "section_title": "Incident Response",
+      "layout": "wizard",
+      "title": "Incident Response Lifecycle Phase Mapping (NIST SP 800-61)",
+      "scenario_context": "A ransomware incident is underway. Map each response activity to the correct NIST SP 800-61 incident response phase, then identify the correct preparedness exercise types by their cadence and format.",
+      "time_estimate_seconds": 360,
+      "fields": [
+        {
+          "field_id": "act_1",
+          "type": "select",
+          "prompt": "Training staff to recognize phishing attempts and pre-staging incident response tooling before any incident occurs.",
+          "options": [
+            "Preparation",
+            "Detection and Analysis",
+            "Containment, Eradication, and Recovery",
+            "Post-Incident Activity"
+          ],
+          "correct": "Preparation"
+        },
+        {
+          "field_id": "act_2",
+          "type": "select",
+          "prompt": "Establishing and testing a clear, pre-arranged crisis communication plan with stakeholders in advance of any incident.",
+          "options": [
+            "Preparation",
+            "Detection and Analysis",
+            "Containment, Eradication, and Recovery",
+            "Post-Incident Activity"
+          ],
+          "correct": "Preparation"
+        },
+        {
+          "field_id": "act_3",
+          "type": "select",
+          "prompt": "Reviewing SIEM alerts and correlating logs to determine whether suspicious activity actually constitutes a security incident.",
+          "options": [
+            "Preparation",
+            "Detection and Analysis",
+            "Containment, Eradication, and Recovery",
+            "Post-Incident Activity"
+          ],
+          "correct": "Detection and Analysis"
+        },
+        {
+          "field_id": "act_4",
+          "type": "select",
+          "prompt": "Assessing the severity of a confirmed incident to guide how the response effort is scaled.",
+          "options": [
+            "Preparation",
+            "Detection and Analysis",
+            "Containment, Eradication, and Recovery",
+            "Post-Incident Activity"
+          ],
+          "correct": "Detection and Analysis"
+        },
+        {
+          "field_id": "act_5",
+          "type": "select",
+          "prompt": "Isolating the compromised host from the network to stop further damage from spreading.",
+          "options": [
+            "Preparation",
+            "Detection and Analysis",
+            "Containment, Eradication, and Recovery",
+            "Post-Incident Activity"
+          ],
+          "correct": "Containment, Eradication, and Recovery"
+        },
+        {
+          "field_id": "act_6",
+          "type": "select",
+          "prompt": "Removing malware from infected systems and restoring them from clean backups.",
+          "options": [
+            "Preparation",
+            "Detection and Analysis",
+            "Containment, Eradication, and Recovery",
+            "Post-Incident Activity"
+          ],
+          "correct": "Containment, Eradication, and Recovery"
+        },
+        {
+          "field_id": "act_7",
+          "type": "select",
+          "prompt": "Conducting a root cause analysis by repeatedly asking \"why\" the incident was able to occur.",
+          "options": [
+            "Preparation",
+            "Detection and Analysis",
+            "Containment, Eradication, and Recovery",
+            "Post-Incident Activity"
+          ],
+          "correct": "Post-Incident Activity"
+        },
+        {
+          "field_id": "act_8",
+          "type": "select",
+          "prompt": "Feeding lessons learned back into the security planning process to prevent recurrence.",
+          "options": [
+            "Preparation",
+            "Detection and Analysis",
+            "Containment, Eradication, and Recovery",
+            "Post-Incident Activity"
+          ],
+          "correct": "Post-Incident Activity"
+        },
+        {
+          "field_id": "exercise_1",
+          "type": "select",
+          "prompt": "Which preparedness exercise type is discussion-based, reviews potential incident scenarios, and should be conducted at least twice a year?",
+          "options": [
+            "Tabletop",
+            "Walkthrough",
+            "Parallel",
+            "Simulation"
+          ],
+          "correct": "Tabletop"
+        },
+        {
+          "field_id": "exercise_2",
+          "type": "select",
+          "prompt": "Which preparedness exercise type replicates a real-world attack in a live, monitored production environment and typically runs annually on a rotation?",
+          "options": [
+            "Tabletop",
+            "Walkthrough",
+            "Parallel",
+            "Simulation"
+          ],
+          "correct": "Simulation"
+        }
+      ],
+      "rationale": "NIST SP 800-61 defines four phases: Preparation covers everything done before an incident (training, tooling, and a pre-arranged communication plan); Detection and Analysis covers identifying suspicious activity and assessing severity; Containment, Eradication, and Recovery covers isolating, cleaning, and restoring affected systems; and Post-Incident Activity covers root cause analysis and feeding lessons learned back into planning. Separately, Tabletop exercises are discussion-based and run at least twice a year, Walkthroughs are procedure run-throughs done quarterly, Parallel exercises run in a staging environment annually on a rotation, and Simulations replicate a real attack in live production, also annually on a rotation.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 31 (Incident Response), pages 116-117",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D4-PBQ-04",
+      "domain": 4,
+      "section_number": 29,
+      "section_title": "Threat-hunting",
+      "layout": "wizard",
+      "title": "Threat Hunting -- TTP Identification and Detection Tool Selection",
+      "scenario_context": "A threat hunter is investigating a suspected intrusion. For each observed behavior, identify the attacker's TTP category, then select the correct detection tool or rule language for each stated use case.",
+      "time_estimate_seconds": 360,
+      "fields": [
+        {
+          "field_id": "ttp_1",
+          "type": "select",
+          "prompt": "An attacker sends a phishing email with a malicious attachment that, once opened, grants their first foothold on the network.",
+          "options": [
+            "Initial Access",
+            "Privilege Escalation",
+            "Lateral Movement",
+            "Exfiltration",
+            "Command and Control",
+            "Persistence"
+          ],
+          "correct": "Initial Access"
+        },
+        {
+          "field_id": "ttp_2",
+          "type": "select",
+          "prompt": "After gaining a foothold, the attacker exploits an unpatched local service to obtain SYSTEM-level privileges on the host.",
+          "options": [
+            "Initial Access",
+            "Privilege Escalation",
+            "Lateral Movement",
+            "Exfiltration",
+            "Command and Control",
+            "Persistence"
+          ],
+          "correct": "Privilege Escalation"
+        },
+        {
+          "field_id": "ttp_3",
+          "type": "select",
+          "prompt": "Using stolen credentials, the attacker connects from the initially compromised workstation to a finance department file server elsewhere on the network.",
+          "options": [
+            "Initial Access",
+            "Privilege Escalation",
+            "Lateral Movement",
+            "Exfiltration",
+            "Command and Control",
+            "Persistence"
+          ],
+          "correct": "Lateral Movement"
+        },
+        {
+          "field_id": "ttp_4",
+          "type": "select",
+          "prompt": "The attacker compresses a large batch of stolen financial records and uploads it to an external cloud storage bucket.",
+          "options": [
+            "Initial Access",
+            "Privilege Escalation",
+            "Lateral Movement",
+            "Exfiltration",
+            "Command and Control",
+            "Persistence"
+          ],
+          "correct": "Exfiltration"
+        },
+        {
+          "field_id": "ttp_5",
+          "type": "select",
+          "prompt": "The compromised host periodically resolves a random-looking subdomain to receive new instructions from the attacker's infrastructure.",
+          "options": [
+            "Initial Access",
+            "Privilege Escalation",
+            "Lateral Movement",
+            "Exfiltration",
+            "Command and Control",
+            "Persistence"
+          ],
+          "correct": "Command and Control"
+        },
+        {
+          "field_id": "ttp_6",
+          "type": "select",
+          "prompt": "The attacker creates a new administrative account and installs a backdoor service to keep access even if the original entry point is discovered and closed.",
+          "options": [
+            "Initial Access",
+            "Privilege Escalation",
+            "Lateral Movement",
+            "Exfiltration",
+            "Command and Control",
+            "Persistence"
+          ],
+          "correct": "Persistence"
+        },
+        {
+          "field_id": "tool_1",
+          "type": "select",
+          "prompt": "Which tool would best help identify a malware family by matching strings, file sizes, and byte sequences within a suspicious binary?",
+          "options": [
+            "Sigma",
+            "YARA",
+            "RITA",
+            "Snort"
+          ],
+          "correct": "YARA"
+        },
+        {
+          "field_id": "tool_2",
+          "type": "select",
+          "prompt": "Which open-source framework analyzes network flow data to detect long-running connections and DNS tunneling that may indicate C2 activity?",
+          "options": [
+            "Sigma",
+            "YARA",
+            "RITA",
+            "Snort"
+          ],
+          "correct": "RITA"
+        },
+        {
+          "field_id": "tool_3",
+          "type": "select",
+          "prompt": "Which open-source, real-time network IDS/IPS analyzes traffic against rules covering things like port scans and malware payload signatures?",
+          "options": [
+            "Sigma",
+            "YARA",
+            "RITA",
+            "Snort"
+          ],
+          "correct": "Snort"
+        },
+        {
+          "field_id": "tool_4",
+          "type": "select",
+          "prompt": "Which generic, YAML-based rule language lets a team define detection patterns that can be translated across multiple SIEM/EDR platforms?",
+          "options": [
+            "Sigma",
+            "YARA",
+            "RITA",
+            "Snort"
+          ],
+          "correct": "Sigma"
+        }
+      ],
+      "rationale": "The six observed behaviors map to Initial Access (first foothold via phishing), Privilege Escalation (exploiting a flaw to gain SYSTEM rights), Lateral Movement (using stolen credentials to reach another host within the same network), Exfiltration (moving stolen data out of the network), Command and Control (ongoing communication with attacker infrastructure), and Persistence (creating accounts/backdoors to survive remediation of the original entry point). For tooling: YARA matches strings/byte sequences/file sizes to identify malware; RITA analyzes network flow data for anomalies like long connections and DNS tunneling; Snort is a real-time network IDS/IPS matching traffic against signature rules; and Sigma is the generic, YAML-based rule language portable across different SIEM/EDR platforms.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 29 (Threat-hunting), pages 109-112",
+      "weak_spot": false,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D4-PBQ-05",
+      "domain": 4,
+      "section_number": 26,
+      "section_title": "Threat Modeling Frameworks",
+      "layout": "wizard",
+      "title": "STRIDE Threat Modeling and Framework Identification",
+      "scenario_context": "During a design-phase security review of a new web application, the team is threat-modeling using STRIDE and needs to also correctly identify which broader threat modeling framework applies to several follow-up review questions.",
+      "time_estimate_seconds": 360,
+      "fields": [
+        {
+          "field_id": "stride_1",
+          "type": "select",
+          "prompt": "An attacker uses a stolen session cookie to impersonate a legitimate administrator and log into the management console.",
+          "options": [
+            "Spoofing",
+            "Tampering",
+            "Repudiation",
+            "Information Disclosure",
+            "Denial of Service",
+            "Elevation of Privilege"
+          ],
+          "correct": "Spoofing"
+        },
+        {
+          "field_id": "stride_2",
+          "type": "select",
+          "prompt": "An attacker intercepts and modifies an API request in transit to change the price of an item before the backend processes it.",
+          "options": [
+            "Spoofing",
+            "Tampering",
+            "Repudiation",
+            "Information Disclosure",
+            "Denial of Service",
+            "Elevation of Privilege"
+          ],
+          "correct": "Tampering"
+        },
+        {
+          "field_id": "stride_3",
+          "type": "select",
+          "prompt": "After completing a fraudulent transaction, a user later denies having made it, and the system has no way to prove otherwise.",
+          "options": [
+            "Spoofing",
+            "Tampering",
+            "Repudiation",
+            "Information Disclosure",
+            "Denial of Service",
+            "Elevation of Privilege"
+          ],
+          "correct": "Repudiation"
+        },
+        {
+          "field_id": "stride_4",
+          "type": "select",
+          "prompt": "A misconfigured cloud storage bucket exposes customer records containing personally identifiable information to the public internet.",
+          "options": [
+            "Spoofing",
+            "Tampering",
+            "Repudiation",
+            "Information Disclosure",
+            "Denial of Service",
+            "Elevation of Privilege"
+          ],
+          "correct": "Information Disclosure"
+        },
+        {
+          "field_id": "stride_5",
+          "type": "select",
+          "prompt": "An attacker floods a web application's login endpoint with automated requests until legitimate users can no longer access the site.",
+          "options": [
+            "Spoofing",
+            "Tampering",
+            "Repudiation",
+            "Information Disclosure",
+            "Denial of Service",
+            "Elevation of Privilege"
+          ],
+          "correct": "Denial of Service"
+        },
+        {
+          "field_id": "stride_6",
+          "type": "select",
+          "prompt": "A standard user exploits a flaw in a poorly-secured API endpoint to gain administrator-level permissions.",
+          "options": [
+            "Spoofing",
+            "Tampering",
+            "Repudiation",
+            "Information Disclosure",
+            "Denial of Service",
+            "Elevation of Privilege"
+          ],
+          "correct": "Elevation of Privilege"
+        },
+        {
+          "field_id": "framework_1",
+          "type": "select",
+          "prompt": "Which framework, developed by Lockheed Martin, breaks an attack into 7 sequential phases such that disrupting any single phase forces the attacker to restart?",
+          "options": [
+            "Cyber Kill Chain",
+            "MITRE ATT&CK",
+            "Diamond Model of Intrusion Analysis",
+            "CAPEC"
+          ],
+          "correct": "Cyber Kill Chain"
+        },
+        {
+          "field_id": "framework_2",
+          "type": "select",
+          "prompt": "Which framework documents adversary tactics, techniques, and procedures in a matrix and is most useful for mapping specific detection/mitigation coverage against real-world adversary behavior?",
+          "options": [
+            "Cyber Kill Chain",
+            "MITRE ATT&CK",
+            "Diamond Model of Intrusion Analysis",
+            "CAPEC"
+          ],
+          "correct": "MITRE ATT&CK"
+        },
+        {
+          "field_id": "framework_3",
+          "type": "select",
+          "prompt": "Which framework's four core components are Adversary, Infrastructure, Capability, and Victim?",
+          "options": [
+            "Cyber Kill Chain",
+            "MITRE ATT&CK",
+            "Diamond Model of Intrusion Analysis",
+            "CAPEC"
+          ],
+          "correct": "Diamond Model of Intrusion Analysis"
+        },
+        {
+          "field_id": "kill_chain_phase",
+          "type": "select",
+          "prompt": "During which Cyber Kill Chain phase does the attacker establish a backdoor or other persistence mechanism for continued access?",
+          "options": [
+            "Reconnaissance",
+            "Weaponization",
+            "Delivery",
+            "Exploitation",
+            "Installation",
+            "Command and Control",
+            "Actions on Objectives"
+          ],
+          "correct": "Installation"
+        }
+      ],
+      "rationale": "STRIDE stands for Spoofing (impersonating a user/system), Tampering (unauthorized modification of data or processes), Repudiation (denying an action with no way to prove otherwise), Information Disclosure (unauthorized release of sensitive data), Denial of Service (disrupting availability), and Elevation of Privilege (gaining higher access rights than granted). Separately, the Cyber Kill Chain (Lockheed Martin) is the 7-phase sequential framework where breaking any link disrupts the attack; MITRE ATT&CK documents real-world adversary TTPs in a matrix for detection/mitigation mapping; and the Diamond Model of Intrusion Analysis is built around exactly four components: Adversary, Infrastructure, Capability, and Victim. Within the Cyber Kill Chain, the Installation phase is specifically where the attacker establishes a backdoor or other persistence mechanism, distinct from the later Command and Control phase where that access is actively used.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 26 (Threat Modeling Frameworks), pages 98-100",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D1-PBQ-03",
+      "domain": 1,
+      "section_number": 2,
+      "section_title": "Governance",
+      "layout": "table",
+      "title": "Data Lifecycle Stage Ordering & Governance Fundamentals",
+      "scenario_context": "A new data governance policy requires staff to understand the correct sequence of the organizational data lifecycle, plus two foundational governance/asset-management concepts, before rolling out a new CMDB.",
+      "time_estimate_seconds": 240,
+      "fields": [
+        {
+          "field_id": "cmdb_purpose",
+          "type": "select",
+          "prompt": "What is the name of the centralized database that keeps track of all Configuration Items (CIs) and their current setup/connections?",
+          "options": [
+            "Configuration Management Database (CMDB)",
+            "RACI Matrix",
+            "Asset Management Lifecycle Log",
+            "GRC Tool"
+          ],
+          "correct": "Configuration Management Database (CMDB)"
+        },
+        {
+          "field_id": "raci_accountable",
+          "type": "text",
+          "prompt": "In a RACI matrix, which single role has final authority over a task's outcome and is typically assigned to only one person?",
+          "correct": "Accountable"
+        }
+      ],
+      "rows": [
+        {
+          "row_id": "creation",
+          "label": "Creation",
+          "detail": "Data is acquired, entered, or captured for the first time.",
+          "fields": [
+            {
+              "field_id": "creation_order",
+              "type": "select",
+              "prompt": "Data lifecycle order",
+              "options": [
+                "1st",
+                "2nd",
+                "3rd",
+                "4th",
+                "5th",
+                "6th"
+              ],
+              "correct": "1st"
+            }
+          ]
+        },
+        {
+          "row_id": "use",
+          "label": "Use",
+          "detail": "Data is accessed, processed, or modified.",
+          "fields": [
+            {
+              "field_id": "use_order",
+              "type": "select",
+              "prompt": "Data lifecycle order",
+              "options": [
+                "1st",
+                "2nd",
+                "3rd",
+                "4th",
+                "5th",
+                "6th"
+              ],
+              "correct": "2nd"
+            }
+          ]
+        },
+        {
+          "row_id": "sharing",
+          "label": "Sharing",
+          "detail": "Data is made available to others.",
+          "fields": [
+            {
+              "field_id": "sharing_order",
+              "type": "select",
+              "prompt": "Data lifecycle order",
+              "options": [
+                "1st",
+                "2nd",
+                "3rd",
+                "4th",
+                "5th",
+                "6th"
+              ],
+              "correct": "3rd"
+            }
+          ]
+        },
+        {
+          "row_id": "storage",
+          "label": "Storage",
+          "detail": "Data is maintained for future use.",
+          "fields": [
+            {
+              "field_id": "storage_order",
+              "type": "select",
+              "prompt": "Data lifecycle order",
+              "options": [
+                "1st",
+                "2nd",
+                "3rd",
+                "4th",
+                "5th",
+                "6th"
+              ],
+              "correct": "4th"
+            }
+          ]
+        },
+        {
+          "row_id": "archival",
+          "label": "Archival",
+          "detail": "Data is moved to long-term storage for recovery at a much later time.",
+          "fields": [
+            {
+              "field_id": "archival_order",
+              "type": "select",
+              "prompt": "Data lifecycle order",
+              "options": [
+                "1st",
+                "2nd",
+                "3rd",
+                "4th",
+                "5th",
+                "6th"
+              ],
+              "correct": "5th"
+            }
+          ]
+        },
+        {
+          "row_id": "destruction",
+          "label": "Destruction",
+          "detail": "Data is no longer valuable and is securely destroyed to free up space.",
+          "fields": [
+            {
+              "field_id": "destruction_order",
+              "type": "select",
+              "prompt": "Data lifecycle order",
+              "options": [
+                "1st",
+                "2nd",
+                "3rd",
+                "4th",
+                "5th",
+                "6th"
+              ],
+              "correct": "6th"
+            }
+          ]
+        }
+      ],
+      "rationale": "The data lifecycle runs Creation -> Use -> Sharing -> Storage -> Archival -> Destruction (Staging is an intermediate phase that typically sits between Creation and Use, not a numbered stage of its own). A Configuration Management Database (CMDB) is the centralized database that tracks every Configuration Item (CI) and how it is currently set up and connected -- when a CI's configuration changes, the CMDB must be updated to reflect the new status. In a RACI matrix, the Accountable role holds final authority over a task's outcome and, unlike Responsible, is typically assigned to only one person to keep ownership unambiguous.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 2 (Governance)",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D1-PBQ-04",
+      "domain": 1,
+      "section_number": 2,
+      "section_title": "Governance",
+      "layout": "wizard",
+      "title": "GRC Tool Feature Matching & Governance Framework Fundamentals",
+      "scenario_context": "An organization is selecting GRC tooling and reviewing its governance framework knowledge before a compliance audit.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "grc_tool_1",
+          "type": "select",
+          "prompt": "Which GRC tool helps businesses map their internal activities to external regulations like GDPR?",
+          "options": [
+            "SAP GRC",
+            "ServiceNow GRC",
+            "RSA Archer",
+            "Qualys"
+          ],
+          "correct": "SAP GRC"
+        },
+        {
+          "field_id": "grc_tool_2",
+          "type": "select",
+          "prompt": "Which GRC tool tracks a company's compliance status and sends alerts to administrators when reviews or audits are due?",
+          "options": [
+            "SAP GRC",
+            "ServiceNow GRC",
+            "RSA Archer",
+            "Qualys"
+          ],
+          "correct": "ServiceNow GRC"
+        },
+        {
+          "field_id": "grc_tool_3",
+          "type": "select",
+          "prompt": "Which tool provides a centralized place to store and organize policies and procedures, making documentation easy to find when needed?",
+          "options": [
+            "SAP GRC",
+            "ServiceNow GRC",
+            "RSA Archer",
+            "Qualys"
+          ],
+          "correct": "RSA Archer"
+        },
+        {
+          "field_id": "grc_tool_4",
+          "type": "select",
+          "prompt": "Which tool continuously monitors an organization's network for security risks and compliance issues in real time?",
+          "options": [
+            "SAP GRC",
+            "ServiceNow GRC",
+            "RSA Archer",
+            "Qualys"
+          ],
+          "correct": "Qualys"
+        },
+        {
+          "field_id": "cobit_domain_count",
+          "type": "select",
+          "prompt": "COBIT divides IT governance into how many domains?",
+          "options": [
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "correct": "4"
+        },
+        {
+          "field_id": "framework_perspective_1",
+          "type": "select",
+          "prompt": "Which framework focuses on IT governance and management from a manager's perspective (Plan/Organize, Acquire/Implement, Deliver/Support, Monitor/Evaluate)?",
+          "options": [
+            "COBIT",
+            "ITIL",
+            "COSO ERM",
+            "OCTAVE"
+          ],
+          "correct": "COBIT"
+        },
+        {
+          "field_id": "framework_perspective_2",
+          "type": "select",
+          "prompt": "Which framework focuses on IT service management from an operational perspective, centered on how IT services are delivered, and includes information security management as one of its 34 practices?",
+          "options": [
+            "COBIT",
+            "ITIL",
+            "COSO ERM",
+            "OCTAVE"
+          ],
+          "correct": "ITIL"
+        },
+        {
+          "field_id": "raci_responsible",
+          "type": "text",
+          "prompt": "In a RACI matrix, which role is directly in charge of completing the task or deliverable itself (as opposed to holding final authority over its outcome)?",
+          "correct": "Responsible"
+        }
+      ],
+      "rationale": "SAP GRC helps map internal processes to external regulations like GDPR; ServiceNow GRC tracks compliance and alerts administrators when reviews/audits are due; RSA Archer centralizes documentation storage; Qualys continuously monitors the network for security risks and compliance issues in real time. COBIT divides IT into exactly 4 domains (Plan and Organize, Acquire and Implement, Deliver and Support, Monitor and Evaluate) totaling 34 processes, and governs IT from a manager's perspective, while ITIL is the most widely adopted IT service management framework, focused on how services are delivered operationally, and includes information security management as one of its 34 practices. In a RACI matrix, Responsible is the person or team directly doing the work, distinct from Accountable, who holds final authority over the outcome.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 2 (Governance)",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D1-PBQ-05",
+      "domain": 1,
+      "section_number": 3,
+      "section_title": "Risk Management",
+      "layout": "wizard",
+      "title": "Risk Assessment Framework Identification & Biometric Accuracy Metrics",
+      "scenario_context": "A risk manager is selecting the appropriate risk assessment framework for several different organizational contexts and reviewing biometric authentication accuracy concepts for a new privileged access system.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "framework_1",
+          "type": "select",
+          "prompt": "Which risk framework is specifically designed for organizations in critical sectors like defense, healthcare, and federal agencies, and supports FISMA?",
+          "options": [
+            "NIST RMF",
+            "ISO/IEC 27005",
+            "COSO ERM",
+            "OCTAVE",
+            "FAIR"
+          ],
+          "correct": "NIST RMF"
+        },
+        {
+          "field_id": "framework_2",
+          "type": "select",
+          "prompt": "Which framework is a structured, standardized approach specifically for information security risk management, complementing ISO/IEC 27001's ISMS focus?",
+          "options": [
+            "NIST RMF",
+            "ISO/IEC 27005",
+            "COSO ERM",
+            "OCTAVE",
+            "FAIR"
+          ],
+          "correct": "ISO/IEC 27005"
+        },
+        {
+          "field_id": "framework_3",
+          "type": "select",
+          "prompt": "Which framework aligns risk management with overall business strategy, functioning like a strategic planner for risk across the entity?",
+          "options": [
+            "NIST RMF",
+            "ISO/IEC 27005",
+            "COSO ERM",
+            "OCTAVE",
+            "FAIR"
+          ],
+          "correct": "COSO ERM"
+        },
+        {
+          "field_id": "framework_4",
+          "type": "select",
+          "prompt": "Which hands-on framework is focused on assessing risks, threats, and vulnerabilities specific to an organization's IT infrastructure?",
+          "options": [
+            "NIST RMF",
+            "ISO/IEC 27005",
+            "COSO ERM",
+            "OCTAVE",
+            "FAIR"
+          ],
+          "correct": "OCTAVE"
+        },
+        {
+          "field_id": "framework_5",
+          "type": "select",
+          "prompt": "Which framework quantifies risk specifically in financial/monetary terms, so decision-makers can understand the dollar impact of security threats?",
+          "options": [
+            "NIST RMF",
+            "ISO/IEC 27005",
+            "COSO ERM",
+            "OCTAVE",
+            "FAIR"
+          ],
+          "correct": "FAIR"
+        },
+        {
+          "field_id": "analysis_type",
+          "type": "select",
+          "prompt": "Which type of risk analysis uses intuition, experience, brainstorming sessions, and the Delphi method to assign non-numeric values to risk?",
+          "options": [
+            "Qualitative Risk Analysis",
+            "Quantitative Risk Analysis",
+            "Hybrid Approach"
+          ],
+          "correct": "Qualitative Risk Analysis"
+        },
+        {
+          "field_id": "biometric_metric_1",
+          "type": "select",
+          "prompt": "Which biometric accuracy metric measures how often unauthorized individuals are mistakenly identified as legitimate users?",
+          "options": [
+            "False Acceptance Rate (FAR)",
+            "False Rejection Rate (FRR)",
+            "Crossover Error Rate (CER)"
+          ],
+          "correct": "False Acceptance Rate (FAR)"
+        },
+        {
+          "field_id": "biometric_metric_2",
+          "type": "text",
+          "prompt": "What is the name of the point where the False Acceptance Rate and False Rejection Rate curves are equal?",
+          "correct": "Crossover Error Rate (CER)"
+        }
+      ],
+      "rationale": "NIST RMF is purpose-built for critical-sector organizations (defense, healthcare, federal agencies) and supports FISMA. ISO/IEC 27005 is the standardized framework specifically for information security risk management, complementing ISO/IEC 27001's ISMS focus. COSO ERM aligns risk management with overall business strategy across the entity. OCTAVE is a hands-on framework focused on IT-infrastructure-specific risks. FAIR quantifies risk in financial terms so decision-makers understand monetary impact. Qualitative risk analysis relies on intuition, experience, brainstorming, focus groups, surveys, and the Delphi method to assign non-numeric risk values (as opposed to quantitative analysis, which uses numeric/monetary values). For biometrics, the False Acceptance Rate measures how often unauthorized users are wrongly accepted, the False Rejection Rate measures how often legitimate users are wrongly denied, and the Crossover Error Rate is the point where FAR and FRR are equal.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 3 (Risk Management)",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D1-PBQ-06",
+      "domain": 1,
+      "section_number": 3,
+      "section_title": "Risk Management",
+      "layout": "table",
+      "title": "BC/DR Backup Site Selection & Risk Response Terminology",
+      "scenario_context": "A disaster recovery planner must match backup-site descriptions to the correct site type, then confirm two supporting risk-response and backup-strategy concepts.",
+      "time_estimate_seconds": 240,
+      "fields": [
+        {
+          "field_id": "backup_rule",
+          "type": "text",
+          "prompt": "What is the name of the disconnected-backup best practice requiring 3 copies of data, stored across 2 different media types, with 1 copy stored off-site?",
+          "correct": "3-2-1 Backup Rule"
+        },
+        {
+          "field_id": "risk_response_step",
+          "type": "select",
+          "prompt": "Which risk-response step is used to determine whether a potential problem is real or a false alarm?",
+          "options": [
+            "Risk Validation",
+            "Risk Severity Impact",
+            "Risk Remediation"
+          ],
+          "correct": "Risk Validation"
+        }
+      ],
+      "rows": [
+        {
+          "row_id": "hot_site",
+          "label": "Site Description A",
+          "detail": "A fully equipped facility with real-time data replication from the primary site, offering near-zero downtime but at the highest cost.",
+          "fields": [
+            {
+              "field_id": "hot_site_type",
+              "type": "select",
+              "prompt": "Backup site type",
+              "options": [
+                "Hot Site",
+                "Warm Site",
+                "Cold Site",
+                "Cloud Site"
+              ],
+              "correct": "Hot Site"
+            }
+          ]
+        },
+        {
+          "row_id": "warm_site",
+          "label": "Site Description B",
+          "detail": "A partially equipped facility with some hardware and connectivity already in place, but requiring additional setup and data restoration before it is fully operational.",
+          "fields": [
+            {
+              "field_id": "warm_site_type",
+              "type": "select",
+              "prompt": "Backup site type",
+              "options": [
+                "Hot Site",
+                "Warm Site",
+                "Cold Site",
+                "Cloud Site"
+              ],
+              "correct": "Warm Site"
+            }
+          ]
+        },
+        {
+          "row_id": "cold_site",
+          "label": "Site Description C",
+          "detail": "An empty facility with only basic infrastructure (power and space) and no pre-installed equipment -- the cheapest option, but with the longest recovery time.",
+          "fields": [
+            {
+              "field_id": "cold_site_type",
+              "type": "select",
+              "prompt": "Backup site type",
+              "options": [
+                "Hot Site",
+                "Warm Site",
+                "Cold Site",
+                "Cloud Site"
+              ],
+              "correct": "Cold Site"
+            }
+          ]
+        },
+        {
+          "row_id": "sync_backup",
+          "label": "Backup Behavior A",
+          "detail": "Copies data in real time, so every change made on the primary system is instantly mirrored to the backup.",
+          "fields": [
+            {
+              "field_id": "sync_backup_type",
+              "type": "select",
+              "prompt": "Connected backup type",
+              "options": [
+                "Synchronous",
+                "Asynchronous"
+              ],
+              "correct": "Synchronous"
+            }
+          ]
+        },
+        {
+          "row_id": "async_backup",
+          "label": "Backup Behavior B",
+          "detail": "Transmits backup data with a slight delay, allowing changes to accumulate before being sent to the backup system.",
+          "fields": [
+            {
+              "field_id": "async_backup_type",
+              "type": "select",
+              "prompt": "Connected backup type",
+              "options": [
+                "Synchronous",
+                "Asynchronous"
+              ],
+              "correct": "Asynchronous"
+            }
+          ]
+        }
+      ],
+      "rationale": "A Hot Site is fully equipped with real-time replication and near-zero downtime at the highest cost; a Warm Site has some hardware/connectivity in place but needs additional setup and data restoration; a Cold Site has only basic infrastructure and the longest recovery time at the lowest cost (Cloud Sites are the fourth option, spun up on demand). Among connected backups, Synchronous copies data in real time so every primary-system change is instantly mirrored, while Asynchronous introduces a slight delay, letting changes accumulate before transmission. The 3-2-1 Backup Rule (3 copies of data, across 2 different media types, with 1 copy off-site/disconnected) is the standard disconnected-backup best practice. Risk Validation is the risk-response step used to confirm whether a potential problem is a real issue or a false alarm, distinct from Risk Severity Impact (how disruptive it could be) and Risk Remediation (taking action to fix a confirmed risk).",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 3 (Risk Management)",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D2-PBQ-03",
+      "domain": 2,
+      "section_number": 5,
+      "section_title": "Resilient System Design",
+      "layout": "wizard",
+      "title": "Security Device Selection & Traffic Management",
+      "scenario_context": "A network architect must select the correct security device or component for each described capability while hardening a resilient network design.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "device_1",
+          "type": "select",
+          "prompt": "Which firewall type tracks the state of active connections, rather than only inspecting each packet's header in isolation?",
+          "options": [
+            "Packet Filtering Firewall",
+            "Stateful Firewall",
+            "Proxy Firewall",
+            "Web Application Firewall (WAF)"
+          ],
+          "correct": "Stateful Firewall"
+        },
+        {
+          "field_id": "device_2",
+          "type": "select",
+          "prompt": "Which device type detects and logs malicious activity but does NOT take action to stop it?",
+          "options": [
+            "Intrusion Detection System (IDS)",
+            "Intrusion Prevention System (IPS)",
+            "Next Generation Firewall (NGFW)",
+            "Network Access Control (NAC)"
+          ],
+          "correct": "Intrusion Detection System (IDS)"
+        },
+        {
+          "field_id": "device_3",
+          "type": "select",
+          "prompt": "Which device is placed directly in-line with network traffic so it can block an attack in real time?",
+          "options": [
+            "Network IDS",
+            "Network IPS",
+            "Passive TAP",
+            "Reverse Proxy"
+          ],
+          "correct": "Network IPS"
+        },
+        {
+          "field_id": "nac_agent",
+          "type": "select",
+          "prompt": "Which Network Access Control (NAC) deployment method requires no software installation on individual devices, instead running checks from a domain controller?",
+          "options": [
+            "Persistent Agent",
+            "Non-persistent Agent",
+            "Agentless"
+          ],
+          "correct": "Agentless"
+        },
+        {
+          "field_id": "tap_type",
+          "type": "select",
+          "prompt": "Which type of Test Access Point (TAP) physically regenerates and forwards the signal to the monitoring device, and can continue capturing data during a network failure?",
+          "options": [
+            "Passive TAP",
+            "Active TAP"
+          ],
+          "correct": "Active TAP"
+        },
+        {
+          "field_id": "proxy_type",
+          "type": "select",
+          "prompt": "Which proxy type is positioned at the edge of the corporate network, receives connection requests, completes the TCP three-way handshake, and connects the origin server to the end user (providing load balancing, IP masking, and traffic scrubbing)?",
+          "options": [
+            "Forward/Transparent Proxy",
+            "Reverse Proxy",
+            "Circuit-level Proxy"
+          ],
+          "correct": "Reverse Proxy"
+        }
+      ],
+      "rationale": "A Stateful Firewall tracks the state of active connections (unlike Packet Filtering Firewalls, which only inspect packet headers). An IDS detects and logs/alerts on malicious activity without taking action, while an IPS both detects and blocks it. A Network IPS is placed directly in-line with traffic so it can stop attacks in real time. Agentless NAC solutions require no software installation on individual devices and instead run checks from a domain controller, making them well-suited to unmanaged or guest devices. An Active TAP physically regenerates and forwards the signal (and keeps capturing during a failure), unlike a Passive TAP, which is simpler and unpowered but forwards even malformed packets. A Reverse Proxy sits at the network edge, completes the TCP handshake, and connects the origin server to end users, providing content caching, traffic scrubbing, IP masking, and load balancing.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 5 (Resilient System Design)",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D2-PBQ-04",
+      "domain": 2,
+      "section_number": 5,
+      "section_title": "Resilient System Design",
+      "layout": "wizard",
+      "title": "Recovery Strategy, Backup Type & Scaling Selection",
+      "scenario_context": "A resilience architect is finalizing the organization's disaster recovery plan, selecting backup types, failover modes, DR test types, and a scaling strategy for a growing web application.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "backup_type_1",
+          "type": "select",
+          "prompt": "Which backup type creates a complete copy of all data, but takes the longest time and uses the most storage?",
+          "options": [
+            "Full Backup",
+            "Incremental Backup",
+            "Differential Backup",
+            "Synthetic Full Backup"
+          ],
+          "correct": "Full Backup"
+        },
+        {
+          "field_id": "backup_type_2",
+          "type": "select",
+          "prompt": "Which backup type captures all changes made since the last full backup?",
+          "options": [
+            "Full Backup",
+            "Incremental Backup",
+            "Differential Backup",
+            "Synthetic Full Backup"
+          ],
+          "correct": "Differential Backup"
+        },
+        {
+          "field_id": "backup_type_3",
+          "type": "select",
+          "prompt": "Which backup type administratively combines a full backup with incremental backups to create a new, complete backup without having to copy everything again?",
+          "options": [
+            "Full Backup",
+            "Incremental Backup",
+            "Differential Backup",
+            "Synthetic Full Backup"
+          ],
+          "correct": "Synthetic Full Backup"
+        },
+        {
+          "field_id": "failover_type",
+          "type": "select",
+          "prompt": "Which failover mechanism runs both the primary and backup systems at the same time?",
+          "options": [
+            "Active-active Failover",
+            "Active-standby Failover"
+          ],
+          "correct": "Active-active Failover"
+        },
+        {
+          "field_id": "dr_test_type_1",
+          "type": "select",
+          "prompt": "Which DR test activates backup systems alongside the main systems, without taking the main systems offline?",
+          "options": [
+            "Tabletop",
+            "Parallel",
+            "Simulation",
+            "Full Interruption"
+          ],
+          "correct": "Parallel"
+        },
+        {
+          "field_id": "dr_test_type_2",
+          "type": "select",
+          "prompt": "Which DR test takes systems fully offline so backups take over, demonstrating real failover and recovery from an actual disaster?",
+          "options": [
+            "Tabletop",
+            "Parallel",
+            "Simulation",
+            "Full Interruption"
+          ],
+          "correct": "Full Interruption"
+        },
+        {
+          "field_id": "scaling_type",
+          "type": "select",
+          "prompt": "Which scaling approach partitions data across multiple databases, offers near-limitless growth with built-in redundancy, and requires stateless applications?",
+          "options": [
+            "Scaling Up (Vertical)",
+            "Scaling Out (Horizontal)"
+          ],
+          "correct": "Scaling Out (Horizontal)"
+        }
+      ],
+      "rationale": "A Full Backup copies everything (longest time, most storage); a Differential Backup captures all changes since the last full backup; a Synthetic Full Backup administratively combines full and incremental backups into a new complete backup without re-copying everything. Active-active failover runs both primary and backup systems simultaneously, while active-standby keeps the backup idle until needed. A Parallel DR test activates backup systems alongside production without disrupting it, while a Full Interruption test takes production fully offline to prove real failover works. Scaling Out (horizontal scaling) partitions data across multiple databases, offers virtually unlimited growth, built-in redundancy, and per-use cost, but requires the application to be stateless (storing no session data on the server itself).",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 5 (Resilient System Design)",
+      "weak_spot": false,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D2-PBQ-05",
+      "domain": 2,
+      "section_number": 8,
+      "section_title": "Access, Authentication, Authorization",
+      "layout": "wizard",
+      "title": "Access Control Model Identification & Kerberos SSO Flow",
+      "scenario_context": "A security architect is documenting which access control model best fits several organizational scenarios and reviewing the Kerberos SSO ticketing flow used within the corporate Active Directory environment.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "model_1",
+          "type": "select",
+          "prompt": "Which access control model enforces strict access policies based on predefined security classification labels, is common in government/military settings with clearance levels, only allows administrators to set or modify rules, and is supported by SELinux?",
+          "options": [
+            "Mandatory Access Control (MAC)",
+            "Discretionary Access Control (DAC)",
+            "Attribute-Based Access Control (ABAC)",
+            "Role-Based Access Control (RBAC)"
+          ],
+          "correct": "Mandatory Access Control (MAC)"
+        },
+        {
+          "field_id": "model_2",
+          "type": "select",
+          "prompt": "Which access control model gives the resource owner full control over who can access their resource, and is the default access control method in Windows and Linux file systems?",
+          "options": [
+            "Mandatory Access Control (MAC)",
+            "Discretionary Access Control (DAC)",
+            "Attribute-Based Access Control (ABAC)",
+            "Role-Based Access Control (RBAC)"
+          ],
+          "correct": "Discretionary Access Control (DAC)"
+        },
+        {
+          "field_id": "model_3",
+          "type": "select",
+          "prompt": "Which access control model dynamically evaluates attributes of the user, resource, and environment (e.g., role, department, login location) to determine access permissions?",
+          "options": [
+            "Mandatory Access Control (MAC)",
+            "Discretionary Access Control (DAC)",
+            "Attribute-Based Access Control (ABAC)",
+            "Role-Based Access Control (RBAC)"
+          ],
+          "correct": "Attribute-Based Access Control (ABAC)"
+        },
+        {
+          "field_id": "model_4",
+          "type": "select",
+          "prompt": "Which access control model assigns users to specific roles, where those roles determine which resources the user can access?",
+          "options": [
+            "Mandatory Access Control (MAC)",
+            "Discretionary Access Control (DAC)",
+            "Attribute-Based Access Control (ABAC)",
+            "Role-Based Access Control (RBAC)"
+          ],
+          "correct": "Role-Based Access Control (RBAC)"
+        },
+        {
+          "field_id": "kerberos_1",
+          "type": "select",
+          "prompt": "In Kerberos SSO, which component issues a Ticket Granting Ticket (TGT) after verifying a user's identity at login?",
+          "options": [
+            "Key Distribution Center (KDC)",
+            "Ticket Granting Service (TGS)",
+            "Service Provider (SP)",
+            "Identity Provider (IdP)"
+          ],
+          "correct": "Key Distribution Center (KDC)"
+        },
+        {
+          "field_id": "kerberos_2",
+          "type": "select",
+          "prompt": "Which Kerberos component issues a service ticket in response to a presented Ticket Granting Ticket (TGT)?",
+          "options": [
+            "Key Distribution Center (KDC)",
+            "Ticket Granting Service (TGS)",
+            "Service Provider (SP)",
+            "Identity Provider (IdP)"
+          ],
+          "correct": "Ticket Granting Service (TGS)"
+        },
+        {
+          "field_id": "attestation_protocol",
+          "type": "select",
+          "prompt": "Which XML-based protocol is commonly used to transmit an IdP's attestation message (confirming a user has been authenticated) to a Service Provider?",
+          "options": [
+            "SAML",
+            "OpenID",
+            "Kerberos",
+            "JWT"
+          ],
+          "correct": "SAML"
+        },
+        {
+          "field_id": "pep_term",
+          "type": "text",
+          "prompt": "Which access-control component is responsible for actually enforcing (allowing or blocking) the decision made by the Policy Decision Point?",
+          "correct": "Policy Enforcement Point (PEP)"
+        }
+      ],
+      "rationale": "MAC enforces strict, classification-based rules with only administrators able to modify them (SELinux is a common implementation); DAC lets the resource owner control access and is the Windows/Linux file-system default; ABAC dynamically evaluates user/resource/environment attributes; RBAC assigns users to roles that determine access. In Kerberos, the Key Distribution Center (KDC) issues a Ticket Granting Ticket (TGT) after verifying a user's identity, and the KDC's Ticket Granting Service (TGS) then issues a service ticket in response to that TGT, which the client presents to service providers without re-authenticating. SAML is the XML-based protocol commonly used to carry an IdP's attestation message to a Service Provider. The Policy Enforcement Point (PEP) is the gatekeeper that actually allows or blocks access based on what the Policy Decision Point (PDP) has decided.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 8 (Access, Authentication, Authorization)",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D2-PBQ-06",
+      "domain": 2,
+      "section_number": 9,
+      "section_title": "Zero Trust Design",
+      "layout": "wizard",
+      "title": "Zero Trust Segmentation, VPN Architecture & SDN Planes",
+      "scenario_context": "A zero trust architect is documenting network zones, VPN architectures, and SDN concepts as part of a de-perimeterization initiative.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "vpn_type_1",
+          "type": "select",
+          "prompt": "Which VPN architecture connects entire networks together (e.g., a branch office to headquarters), operating at the router level using IPsec?",
+          "options": [
+            "Client-Server VPN",
+            "Site-to-Site VPN",
+            "Always-On VPN"
+          ],
+          "correct": "Site-to-Site VPN"
+        },
+        {
+          "field_id": "vpn_type_2",
+          "type": "select",
+          "prompt": "Which VPN type is always active, automatically establishes a connection when the device powers on, and often integrates with NAC to verify the device's security posture?",
+          "options": [
+            "Client-Server VPN",
+            "Site-to-Site VPN",
+            "Always-On VPN"
+          ],
+          "correct": "Always-On VPN"
+        },
+        {
+          "field_id": "zone_1",
+          "type": "select",
+          "prompt": "Which network zone acts as a buffer between the internal and external networks, often hosting bastion hosts?",
+          "options": [
+            "Trusted Internal Zone",
+            "Untrusted External Zone",
+            "Demilitarized Zone (DMZ) / Screened Subnet",
+            "Air-gapped Network"
+          ],
+          "correct": "Demilitarized Zone (DMZ) / Screened Subnet"
+        },
+        {
+          "field_id": "zone_2",
+          "type": "select",
+          "prompt": "Which hardened host type is specifically used to provide secure administrative access to systems, similar to a bastion host?",
+          "options": [
+            "Jump Box",
+            "Reverse Proxy",
+            "Data Perimeter",
+            "Subzone"
+          ],
+          "correct": "Jump Box"
+        },
+        {
+          "field_id": "sdn_plane",
+          "type": "select",
+          "prompt": "Which SDN layer is responsible for actually moving traffic between devices, as opposed to making routing decisions or providing administrative oversight?",
+          "options": [
+            "Control Plane",
+            "Data Plane",
+            "Management Plane"
+          ],
+          "correct": "Data Plane"
+        },
+        {
+          "field_id": "framework_edge",
+          "type": "select",
+          "prompt": "Which framework combines networking and security into a single, cloud-based service, integrating firewalls, secure web gateways, and Zero Trust Network Access?",
+          "options": [
+            "SD-WAN",
+            "Secure Access Service Edge (SASE)",
+            "Software-Defined Networking (SDN)"
+          ],
+          "correct": "Secure Access Service Edge (SASE)"
+        },
+        {
+          "field_id": "segmentation_type",
+          "type": "select",
+          "prompt": "Which segmentation approach creates smaller, more granular segments within a larger network segment so that a breach in one segment stays confined to it?",
+          "options": [
+            "Region-based Segmentation",
+            "Micro-Segmentation",
+            "Peer-To-Peer Segmentation"
+          ],
+          "correct": "Micro-Segmentation"
+        }
+      ],
+      "rationale": "Site-to-Site VPNs connect entire networks (branch to HQ) at the router level using IPsec, while Always-On VPNs auto-establish on device startup and often pair with NAC to check device posture. A DMZ/screened subnet buffers internal and external networks (often housing bastion hosts), while a Jump Box specifically provides secure administrative access, similar to a bastion host. Within SDN's three layers, the Control Plane makes routing/traffic decisions, the Data Plane actually moves the traffic, and the Management Plane provides administrative oversight. SASE combines networking and security into a single cloud-based service (firewalls, secure web gateways, ZTNA), distinct from SD-WAN, which focuses specifically on optimizing WAN connections. Micro-Segmentation creates granular segments within a larger segment so a breach stays confined to it, supporting zero trust with full accountability and an automatic audit trail.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 9 (Zero Trust Design)",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D2-PBQ-07",
+      "domain": 2,
+      "section_number": 18,
+      "section_title": "Cloud Security",
+      "layout": "wizard",
+      "title": "Cloud Control Strategy, CASB Deployment & CI/CD Tooling",
+      "scenario_context": "A cloud security engineer is classifying cloud control strategies, selecting a CASB deployment model, and identifying CI/CD and Infrastructure-as-Code tooling for a new cloud migration.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "cloud_control",
+          "type": "select",
+          "prompt": "Which cloud control-strategy category includes security assessments, vulnerability scans, penetration testing, and threat intelligence services performed BEFORE a threat ever appears?",
+          "options": [
+            "Preventative Controls",
+            "Detective Controls",
+            "Proactive Controls"
+          ],
+          "correct": "Proactive Controls"
+        },
+        {
+          "field_id": "casb_type_1",
+          "type": "select",
+          "prompt": "Which CASB deployment model integrates directly with cloud services via APIs, monitoring and controlling data flow without affecting the user experience?",
+          "options": [
+            "API-based CASB",
+            "Proxy-based CASB (Forward Proxy)",
+            "Proxy-based CASB (Reverse Proxy)"
+          ],
+          "correct": "API-based CASB"
+        },
+        {
+          "field_id": "casb_type_2",
+          "type": "select",
+          "prompt": "Which CASB proxy deployment positions the CASB at the edge of the user's OWN network?",
+          "options": [
+            "API-based CASB",
+            "Proxy-based CASB (Forward Proxy)",
+            "Proxy-based CASB (Reverse Proxy)"
+          ],
+          "correct": "Proxy-based CASB (Forward Proxy)"
+        },
+        {
+          "field_id": "cicd_phase",
+          "type": "select",
+          "prompt": "In a CI/CD pipeline, which phase involves developers regularly merging new code into a shared repository where automated tests and security scans run?",
+          "options": [
+            "Continuous Integration (CI)",
+            "Continuous Deployment (CD)",
+            "Build and Deployment"
+          ],
+          "correct": "Continuous Integration (CI)"
+        },
+        {
+          "field_id": "iac_tool",
+          "type": "select",
+          "prompt": "Which Infrastructure as Code (IaC) tool automates the provisioning of cloud infrastructure itself, rather than configuration management of existing servers?",
+          "options": [
+            "Terraform",
+            "Ansible",
+            "Kubernetes"
+          ],
+          "correct": "Terraform"
+        },
+        {
+          "field_id": "config_tool",
+          "type": "select",
+          "prompt": "Which agentless automation tool uses YAML-based playbooks for configuration management and application deployment?",
+          "options": [
+            "Terraform",
+            "Ansible",
+            "Kubernetes"
+          ],
+          "correct": "Ansible"
+        },
+        {
+          "field_id": "shared_resp",
+          "type": "select",
+          "prompt": "In the cloud shared responsibility model, which category of control is fully managed by the cloud provider, with no client responsibility at all?",
+          "options": [
+            "Inherited",
+            "Shared",
+            "Customer Specific"
+          ],
+          "correct": "Inherited"
+        }
+      ],
+      "rationale": "Proactive Controls (security assessments, vulnerability scans, penetration testing, threat intelligence) anticipate and address threats before they appear, distinct from Preventative Controls (IAM, MFA) which stop incidents in the moment and Detective Controls (logging/monitoring) which catch breaches after they start. API-based CASBs integrate directly via APIs without affecting user experience, while proxy-based CASBs route traffic through a proxy -- a Forward Proxy CASB sits at the edge of the user's own network, while a Reverse Proxy CASB sits between the user and the cloud service (and only works with services supporting reverse proxy configuration). Continuous Integration (CI) is the phase where code is merged into a shared repository and automated tests/security scans run; Continuous Deployment (CD) then automatically deploys tested code to production. Terraform is an IaC tool for provisioning infrastructure itself, while Ansible is an agentless, YAML-playbook-driven tool for configuration management and application deployment. In the shared responsibility model, Inherited controls are fully managed by the cloud provider, Shared controls are split between provider and client, and Customer Specific controls are the client's sole responsibility.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 18 (Cloud Security)",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D2-PBQ-08",
+      "domain": 2,
+      "section_number": 19,
+      "section_title": "Specialized System Security",
+      "layout": "wizard",
+      "title": "OT/ICS/SCADA Classification & Wireless/Legacy System Identification",
+      "scenario_context": "A specialized-systems security engineer is classifying operational technology components, wireless protocols, and legacy-system risk categories for a manufacturing facility.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "ot_term_1",
+          "type": "select",
+          "prompt": "Which OT category is a subset of ICS specifically used for remote monitoring and control of geographically distributed infrastructure (power plants, water treatment), using communication methods like cellular, satellite, and VPNs?",
+          "options": [
+            "SCADA",
+            "Distributed Control System (DCS)",
+            "Programmable Logic Controller (PLC)",
+            "Data Historian"
+          ],
+          "correct": "SCADA"
+        },
+        {
+          "field_id": "ot_term_2",
+          "type": "select",
+          "prompt": "Which term describes multiple interconnected ICS that together enable more efficient, coordinated control over large-scale operations?",
+          "options": [
+            "SCADA",
+            "Distributed Control System (DCS)",
+            "Programmable Logic Controller (PLC)",
+            "Data Historian"
+          ],
+          "correct": "Distributed Control System (DCS)"
+        },
+        {
+          "field_id": "ot_term_3",
+          "type": "select",
+          "prompt": "Which device is programmed to control a system based on inputs from sensors, commonly found controlling HVAC and industrial automation equipment?",
+          "options": [
+            "SCADA",
+            "Distributed Control System (DCS)",
+            "Programmable Logic Controller (PLC)",
+            "Data Historian"
+          ],
+          "correct": "Programmable Logic Controller (PLC)"
+        },
+        {
+          "field_id": "wireless_1",
+          "type": "select",
+          "prompt": "Which wireless protocol uses a higher 2.4 GHz frequency, enabling faster data transfer and support for more devices, making it good for bigger systems?",
+          "options": [
+            "Zigbee",
+            "Z-Wave",
+            "Wi-Fi"
+          ],
+          "correct": "Zigbee"
+        },
+        {
+          "field_id": "wireless_2",
+          "type": "select",
+          "prompt": "Which wireless protocol uses a lower ~900 MHz frequency, giving better range and wall penetration, making it more reliable in larger homes or buildings?",
+          "options": [
+            "Zigbee",
+            "Z-Wave",
+            "Wi-Fi"
+          ],
+          "correct": "Z-Wave"
+        },
+        {
+          "field_id": "legacy_char",
+          "type": "select",
+          "prompt": "Which legacy-system characteristic describes a system that no longer receives security updates, patches, or technical support from its original vendor?",
+          "options": [
+            "Obsolete Systems",
+            "Unsupported Systems",
+            "Unable to Secure Systems",
+            "Highly Constrained Systems"
+          ],
+          "correct": "Unsupported Systems"
+        },
+        {
+          "field_id": "dam_method",
+          "type": "select",
+          "prompt": "Which Database Activity Monitoring detection method works by reading system tables and analyzing database logs directly, rather than intercepting network traffic or scanning memory?",
+          "options": [
+            "Interception-based",
+            "Memory-based",
+            "Log-based"
+          ],
+          "correct": "Log-based"
+        }
+      ],
+      "rationale": "SCADA is the subset of ICS used for remote monitoring/control of geographically distributed infrastructure using cellular, satellite, and VPN links; a Distributed Control System (DCS) is multiple interconnected ICS enabling coordinated control over large-scale operations; a Programmable Logic Controller (PLC) is the device programmed to control systems based on sensor input, common in HVAC and manufacturing automation. Zigbee's higher 2.4 GHz frequency supports faster transfer and more devices for bigger systems, while Z-Wave's lower ~900 MHz frequency gives better range and wall penetration for larger buildings. Unsupported Systems specifically describes technology that no longer receives updates, patches, or support from its vendor (distinct from Obsolete, Unable to Secure, or Highly Constrained systems, which describe other legacy-risk dimensions). Database Activity Monitoring's log-based method works by reading system tables and analyzing database logs directly, as opposed to interception-based (network sniffing) or memory-based (memory scraping) methods.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 19 (Specialized System Security)",
+      "weak_spot": false,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D3-PBQ-06",
+      "domain": 3,
+      "section_number": 13,
+      "section_title": "Cryptographic Types",
+      "layout": "wizard",
+      "title": "Symmetric & Asymmetric Algorithm Identification",
+      "scenario_context": "A cryptography engineer is reviewing legacy and modern symmetric/asymmetric algorithms to decide which to retire, retain, or recommend for a new IoT-friendly deployment.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "algo_1",
+          "type": "select",
+          "prompt": "Which symmetric algorithm applies DES three times using three different keys (an effective 112-bit key length), but has largely been replaced by AES due to being slower and resource-heavy?",
+          "options": [
+            "Triple DES (3DES)",
+            "Blowfish",
+            "RC4",
+            "ChaCha20"
+          ],
+          "correct": "Triple DES (3DES)"
+        },
+        {
+          "field_id": "algo_2",
+          "type": "select",
+          "prompt": "Which fast stream cipher processes data one bit or byte at a time, was widely used in SSL and WEP, but is now considered outdated and insecure?",
+          "options": [
+            "Triple DES (3DES)",
+            "Blowfish",
+            "RC4 (Rivest Cipher 4)",
+            "ChaCha20"
+          ],
+          "correct": "RC4 (Rivest Cipher 4)"
+        },
+        {
+          "field_id": "algo_3",
+          "type": "select",
+          "prompt": "Which modern stream cipher is a secure, efficient alternative to RC4, balancing strong security with low resource demands, and is popular where low latency matters?",
+          "options": [
+            "Triple DES (3DES)",
+            "Blowfish",
+            "RC4 (Rivest Cipher 4)",
+            "ChaCha20"
+          ],
+          "correct": "ChaCha20"
+        },
+        {
+          "field_id": "algo_4",
+          "type": "select",
+          "prompt": "Which symmetric encryption technique can offer theoretically unbreakable 'perfect secrecy,' but requires a truly random key exactly as long as the message that is never reused?",
+          "options": [
+            "One-Time Pad",
+            "AES-256",
+            "Lightweight Cryptography",
+            "DES"
+          ],
+          "correct": "One-Time Pad"
+        },
+        {
+          "field_id": "asym_1",
+          "type": "select",
+          "prompt": "Which asymmetric algorithm is designed specifically for secure key exchange (rather than data encryption itself), does not provide authentication on its own, and is vulnerable to logjam and on-path/MITM attacks if unauthenticated?",
+          "options": [
+            "RSA",
+            "Diffie-Hellman",
+            "DSA",
+            "ElGamal"
+          ],
+          "correct": "Diffie-Hellman"
+        },
+        {
+          "field_id": "asym_2",
+          "type": "select",
+          "prompt": "Which modern asymmetric algorithm achieves security comparable to a 3072-bit RSA key using only a 256-bit key, making it well-suited for resource-constrained IoT devices?",
+          "options": [
+            "RSA",
+            "Diffie-Hellman",
+            "DSA",
+            "Elliptic Curve Cryptography (ECC)"
+          ],
+          "correct": "Elliptic Curve Cryptography (ECC)"
+        },
+        {
+          "field_id": "block_mode",
+          "type": "text",
+          "prompt": "Which block cipher mode of operation is commonly paired with AES to let it function as both a block and a stream cipher, binding associated data to the encrypted message?",
+          "correct": "Galois/Counter Mode (GCM)"
+        },
+        {
+          "field_id": "cipher_property",
+          "type": "select",
+          "prompt": "Which block-cipher security property spreads the plaintext's information throughout the ciphertext, so a small plaintext change affects many bits of ciphertext?",
+          "options": [
+            "Confusion",
+            "Diffusion",
+            "Salting",
+            "Key Stretching"
+          ],
+          "correct": "Diffusion"
+        }
+      ],
+      "rationale": "Triple DES (3DES) applies DES three times with three keys for a 112-bit effective length but is resource-heavy and superseded by AES. RC4 is a fast but now-insecure stream cipher once used in SSL/WEP, while ChaCha20 is its modern, secure, low-resource replacement. A One-Time Pad can achieve perfect secrecy, but only if its random key is as long as the message and never reused -- the key-distribution problem is what makes it impractical at scale. Diffie-Hellman is built for secure key exchange (not direct encryption), provides no authentication of its own, and is vulnerable to logjam/on-path attacks unless paired with digital certificates. ECC delivers RSA-3072-equivalent security with only a 256-bit key, making it ideal for IoT. AES commonly uses Galois/Counter Mode (GCM) to function as both a block and stream cipher while providing authenticated encryption. Diffusion spreads plaintext information throughout the ciphertext (as opposed to Confusion, which complicates the relationship between key and ciphertext).",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 13 (Cryptographic Types)",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D3-PBQ-07",
+      "domain": 3,
+      "section_number": 23,
+      "section_title": "Vulnerabilities and Attacks",
+      "layout": "wizard",
+      "title": "Web Application Vulnerability Identification from Log/Behavior Snippets",
+      "scenario_context": "A security analyst is reviewing several captured log snippets and browser behaviors to identify the specific web application vulnerability class involved in each case.",
+      "time_estimate_seconds": 360,
+      "fields": [
+        {
+          "field_id": "vuln_1",
+          "type": "select",
+          "prompt": "A URL parameter contains a `<script>` tag that executes immediately and reflects back to the victim the moment they click a crafted link -- no data is ever stored on the server.",
+          "options": [
+            "Reflected XSS",
+            "Stored XSS",
+            "DOM-based XSS",
+            "CSRF"
+          ],
+          "correct": "Reflected XSS"
+        },
+        {
+          "field_id": "vuln_2",
+          "type": "select",
+          "prompt": "A malicious script was saved directly into a forum post's database field, and now silently executes for every visitor who later views that forum post.",
+          "options": [
+            "Reflected XSS",
+            "Stored XSS",
+            "DOM-based XSS",
+            "CSRF"
+          ],
+          "correct": "Stored XSS"
+        },
+        {
+          "field_id": "vuln_3",
+          "type": "select",
+          "prompt": "A script uses `document.write()` to manipulate the page entirely within the victim's browser after the page has already loaded, with no request ever sent back to the server.",
+          "options": [
+            "Reflected XSS",
+            "Stored XSS",
+            "DOM-based XSS",
+            "CSRF"
+          ],
+          "correct": "DOM-based XSS"
+        },
+        {
+          "field_id": "vuln_4",
+          "type": "select",
+          "prompt": "An attacker tricks an authenticated user's browser into silently submitting a funds-transfer request to a banking site, exploiting the browser's automatic inclusion of that user's session cookies.",
+          "options": [
+            "Cross-Site Request Forgery (CSRF)",
+            "Server-Side Request Forgery (SSRF)",
+            "Command Injection",
+            "Code Injection"
+          ],
+          "correct": "Cross-Site Request Forgery (CSRF)"
+        },
+        {
+          "field_id": "vuln_5",
+          "type": "select",
+          "prompt": "An attacker manipulates a public-facing web application into making an unauthorized request to an internal-only administrative endpoint that isn't reachable directly from the internet.",
+          "options": [
+            "Cross-Site Request Forgery (CSRF)",
+            "Server-Side Request Forgery (SSRF)",
+            "Command Injection",
+            "Code Injection"
+          ],
+          "correct": "Server-Side Request Forgery (SSRF)"
+        },
+        {
+          "field_id": "vuln_6",
+          "type": "select",
+          "prompt": "An attacker submits crafted input that gets passed directly to the underlying operating system shell, allowing arbitrary OS-level commands to run.",
+          "options": [
+            "Cross-Site Request Forgery (CSRF)",
+            "Server-Side Request Forgery (SSRF)",
+            "Command Injection",
+            "Code Injection"
+          ],
+          "correct": "Command Injection"
+        },
+        {
+          "field_id": "memory_defect",
+          "type": "select",
+          "prompt": "Which memory vulnerability occurs when a program attempts to access or modify data through a pointer that holds no valid memory address?",
+          "options": [
+            "Buffer Overflow",
+            "Integer Overflow",
+            "Null Pointer Dereference",
+            "Race Condition"
+          ],
+          "correct": "Null Pointer Dereference"
+        },
+        {
+          "field_id": "mitigation_1",
+          "type": "text",
+          "prompt": "What is the name of the security mechanism that randomizes memory addresses to make it harder for an attacker to reliably locate injected code?",
+          "correct": "Address Space Layout Randomization (ASLR)"
+        }
+      ],
+      "rationale": "Reflected XSS executes and reflects back immediately with nothing stored server-side; Stored XSS is saved server-side and served to every future visitor; DOM-based XSS is executed entirely client-side by manipulating the page's Document Object Model (a classic exam tip: anything referencing document.write or document.cookie in a snippet points to DOM-based XSS), with no data sent to the server at all. CSRF abuses a trusted, authenticated session to make the victim's browser submit an unintended request; SSRF abuses server-side trust to make the server itself issue an unauthorized internal request; Command Injection passes attacker input directly to the host OS shell for execution (Code Injection, by contrast, only affects the application itself, not the underlying OS). A Null Pointer Dereference occurs when code accesses or modifies data through a pointer holding no valid address. Address Space Layout Randomization (ASLR) randomizes memory addresses to make it harder for an attacker to reliably locate and execute injected code.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 23 (Vulnerabilities and Attacks) -- grounded directly in the pink-highlighted 'For the exam' XSS-identification tips (page 86)",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D3-PBQ-08",
+      "domain": 3,
+      "section_number": 20,
+      "section_title": "Automated Security Operations",
+      "layout": "wizard",
+      "title": "Scripting Language, Data Structure & Control Structure Matching",
+      "scenario_context": "A security automation engineer is choosing the right scripting language, data structure, and control structure for several automation tasks.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "lang_1",
+          "type": "select",
+          "prompt": "Which scripting language uses zero-based indexed arrays declared like `servers=(\"server1\" \"server2\" \"server3\")` and requires no keyword (such as var or let) to declare a variable?",
+          "options": [
+            "Bash",
+            "PowerShell",
+            "Python"
+          ],
+          "correct": "Bash"
+        },
+        {
+          "field_id": "lang_2",
+          "type": "select",
+          "prompt": "Which scripting language's cmdlets follow a verb-noun naming format (e.g., Get-Process) and typically return a Microsoft .NET object?",
+          "options": [
+            "Bash",
+            "PowerShell",
+            "Python"
+          ],
+          "correct": "PowerShell"
+        },
+        {
+          "field_id": "datastruct_1",
+          "type": "select",
+          "prompt": "Which Python data structure is an ordered collection but is immutable -- its values cannot be changed once created?",
+          "options": [
+            "List",
+            "Tuple",
+            "Dictionary",
+            "Set"
+          ],
+          "correct": "Tuple"
+        },
+        {
+          "field_id": "datastruct_2",
+          "type": "select",
+          "prompt": "Which Python data structure stores unique, unordered elements and cannot contain duplicate values?",
+          "options": [
+            "List",
+            "Tuple",
+            "Dictionary",
+            "Set"
+          ],
+          "correct": "Set"
+        },
+        {
+          "field_id": "control_1",
+          "type": "select",
+          "prompt": "Which Bash control structure offers an efficient alternative to multiple if/elif statements when there are many conditions to evaluate?",
+          "options": [
+            "For loop",
+            "While loop",
+            "Case Statement",
+            "Break Statement"
+          ],
+          "correct": "Case Statement"
+        },
+        {
+          "field_id": "scheduler",
+          "type": "text",
+          "prompt": "What is the name of the Linux time-based job scheduler used to automate repetitive tasks, controlled by a file called the crontab?",
+          "correct": "Cron"
+        },
+        {
+          "field_id": "plan_step",
+          "type": "select",
+          "prompt": "What is the name for a simplified, high-level outline of a script's logic and steps, written as a blueprint before worrying about actual code syntax?",
+          "options": [
+            "Pseudocode",
+            "Control Structure",
+            "Data Structure",
+            "Workflow Automation"
+          ],
+          "correct": "Pseudocode"
+        }
+      ],
+      "rationale": "Bash uses zero-based indexed arrays and requires no keyword to declare a variable, while PowerShell's verb-noun cmdlets (e.g., Get-Process) typically return .NET objects. In Python, a Tuple is ordered but immutable, while a Set stores unique, unordered elements with no duplicates -- distinct from a List (ordered, mutable) and a Dictionary (key-value pairs). Bash's Case Statement is the efficient alternative to chained if/elif blocks when evaluating many conditions. Cron is Linux's time-based job scheduler, controlled by the crontab file. Pseudocode is the high-level, syntax-free blueprint written during the design phase to ensure every step of a script's logic is thought through before implementation.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 20 (Automated Security Operations)",
+      "weak_spot": false,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D3-PBQ-09",
+      "domain": 3,
+      "section_number": 15,
+      "section_title": "Advanced Cryptographic Concepts",
+      "layout": "wizard",
+      "title": "Advanced Cryptography & Post-Quantum Concept Matching",
+      "scenario_context": "A cryptography architect is reviewing advanced encryption techniques, key-management practices, and post-quantum readiness ahead of a security roadmap review.",
+      "time_estimate_seconds": 360,
+      "fields": [
+        {
+          "field_id": "concept_1",
+          "type": "select",
+          "prompt": "Which key-stretching technique enhances password security by combining the input password with a random salt and applying iterative hashing?",
+          "options": [
+            "PBKDF2",
+            "Envelope Encryption",
+            "AEAD",
+            "Key Splitting"
+          ],
+          "correct": "PBKDF2"
+        },
+        {
+          "field_id": "concept_2",
+          "type": "select",
+          "prompt": "Which encryption approach uses a data key to encrypt the actual data, then encrypts that data key with a stronger master key, so the data key can be rotated frequently without touching the master key?",
+          "options": [
+            "PBKDF2",
+            "Envelope Encryption",
+            "AEAD",
+            "Key Splitting"
+          ],
+          "correct": "Envelope Encryption"
+        },
+        {
+          "field_id": "concept_3",
+          "type": "select",
+          "prompt": "Which encryption technique simultaneously provides confidentiality, integrity, AND authenticity, validating both the encrypted data and any associated data (as AES-GCM does)?",
+          "options": [
+            "PBKDF2",
+            "Envelope Encryption",
+            "Authenticated Encryption with Associated Data (AEAD)",
+            "Key Splitting"
+          ],
+          "correct": "Authenticated Encryption with Associated Data (AEAD)"
+        },
+        {
+          "field_id": "concept_4",
+          "type": "select",
+          "prompt": "Which cryptographic property ensures that even if today's session key is compromised, past and future session communications remain secure, since each session key is unique and not derived from a long-term private key?",
+          "options": [
+            "Mutual Authentication",
+            "Forward Secrecy",
+            "Non-repudiation",
+            "Key Stretching"
+          ],
+          "correct": "Forward Secrecy"
+        },
+        {
+          "field_id": "concept_5",
+          "type": "select",
+          "prompt": "Which technique allows a cloud provider to perform computations directly on encrypted data without ever being able to decrypt or read it?",
+          "options": [
+            "Homomorphic Encryption",
+            "Secure Multiparty Computation (SMPC)",
+            "Envelope Encryption",
+            "AEAD"
+          ],
+          "correct": "Homomorphic Encryption"
+        },
+        {
+          "field_id": "mpc_term",
+          "type": "text",
+          "prompt": "What is the name of the technique that lets multiple parties jointly compute a shared result using their own private inputs, without revealing those inputs to each other?",
+          "correct": "Secure Multiparty Computation (SMPC)"
+        },
+        {
+          "field_id": "pqc_type",
+          "type": "select",
+          "prompt": "Which category of post-quantum-resistant algorithm relies on the difficulty of problems within complex, high-dimensional mathematical structures, such as Learning With Errors (LWE)?",
+          "options": [
+            "Lattice-Based Cryptography",
+            "Hash-based Cryptography",
+            "Multivariate Polynomial Cryptography",
+            "Supersingular Isogeny Key Exchange"
+          ],
+          "correct": "Lattice-Based Cryptography"
+        },
+        {
+          "field_id": "pqc_vulnerable",
+          "type": "select",
+          "prompt": "Which widely used asymmetric key-exchange algorithm is considered vulnerable to being broken quickly by a sufficiently powerful quantum computer, and is a primary reason post-quantum cryptography research exists?",
+          "options": [
+            "Diffie-Hellman (DH)",
+            "AES-256",
+            "SHA-3",
+            "ChaCha20"
+          ],
+          "correct": "Diffie-Hellman (DH)"
+        }
+      ],
+      "rationale": "PBKDF2 stretches keys by combining a password with a salt and iterative hashing; Envelope Encryption uses a data key to encrypt data and a master key to encrypt the data key, allowing the data key to rotate independently; AEAD (e.g., AES-GCM) provides confidentiality, integrity, and authenticity together, validating both the encrypted data and any associated data. Forward Secrecy ensures a compromised session key never exposes past or future sessions, since session keys are ephemeral and not derived from a long-term key. Homomorphic Encryption lets a party (like a cloud provider) compute on encrypted data without ever decrypting it, while Secure Multiparty Computation (SMPC) lets multiple parties jointly compute a shared result without revealing their individual private inputs to each other or the computation itself. Lattice-Based Cryptography (e.g., Learning With Errors) is a leading post-quantum-resistant algorithm category, developed because widely used algorithms like Diffie-Hellman and ECC rely on math problems that a sufficiently powerful quantum computer could solve quickly.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 15 (Advanced Cryptographic Concepts)",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D3-PBQ-10",
+      "domain": 3,
+      "section_number": 22,
+      "section_title": "Artificial Intelligence",
+      "layout": "wizard",
+      "title": "AI Model Threat Identification",
+      "scenario_context": "An AI security reviewer is classifying several observed incidents against the recognized categories of threats to AI models, ahead of publishing an internal AI risk assessment.",
+      "time_estimate_seconds": 300,
+      "fields": [
+        {
+          "field_id": "threat_1",
+          "type": "select",
+          "prompt": "Which AI-model threat involves an attacker manipulating the input to an AI model (its prompt) to alter its intended behavior and produce harmful or unintended output?",
+          "options": [
+            "Prompt Injection",
+            "Training Data Poisoning",
+            "Model DoS",
+            "Model Inversion"
+          ],
+          "correct": "Prompt Injection"
+        },
+        {
+          "field_id": "threat_2",
+          "type": "select",
+          "prompt": "Which threat happens when attackers intentionally manipulate an AI model's training data to distort its predictions or functionality?",
+          "options": [
+            "Prompt Injection",
+            "Training Data Poisoning",
+            "Model DoS",
+            "Model Inversion"
+          ],
+          "correct": "Training Data Poisoning"
+        },
+        {
+          "field_id": "threat_3",
+          "type": "select",
+          "prompt": "Which attack aims to overwhelm an AI model with excessive requests, denying access to legitimate users?",
+          "options": [
+            "Prompt Injection",
+            "Training Data Poisoning",
+            "Model DoS",
+            "Model Inversion"
+          ],
+          "correct": "Model DoS"
+        },
+        {
+          "field_id": "threat_4",
+          "type": "select",
+          "prompt": "Which attack lets an adversary reconstruct sensitive data directly from an AI model's outputs, and is best mitigated with differential privacy?",
+          "options": [
+            "Prompt Injection",
+            "Training Data Poisoning",
+            "Model Theft",
+            "Model Inversion"
+          ],
+          "correct": "Model Inversion"
+        },
+        {
+          "field_id": "threat_5",
+          "type": "select",
+          "prompt": "Which threat occurs when an attacker extracts an AI model's intellectual property, allowing unauthorized replication or misuse of the model itself?",
+          "options": [
+            "Model Theft",
+            "Supply Chain Vulnerability",
+            "Unsecure Output Handling",
+            "Model Inversion"
+          ],
+          "correct": "Model Theft"
+        },
+        {
+          "field_id": "threat_6",
+          "type": "select",
+          "prompt": "Which threat arises when third-party components or libraries used to build an AI model are themselves compromised?",
+          "options": [
+            "Model Theft",
+            "Supply Chain Vulnerability",
+            "Unsecure Output Handling",
+            "Model Inversion"
+          ],
+          "correct": "Supply Chain Vulnerability"
+        },
+        {
+          "field_id": "governance_term",
+          "type": "select",
+          "prompt": "Which term describes an AI model whose decision-making process provides clear, understandable reasons for its outputs, helping organizations meet legal transparency requirements?",
+          "options": [
+            "Explainable AI",
+            "Non-Explainable AI",
+            "Generative AI",
+            "Predictive Policing"
+          ],
+          "correct": "Explainable AI"
+        }
+      ],
+      "rationale": "Prompt Injection manipulates an AI model's input to alter its intended behavior; Training Data Poisoning corrupts the data the model learns from; Model DoS overwhelms the model with requests to deny legitimate access; Model Inversion reconstructs sensitive data from the model's own outputs (mitigated with differential privacy); Model Theft extracts the model's intellectual property for unauthorized replication; Supply Chain Vulnerabilities arise from compromised third-party components/libraries used to build the model. Explainable AI models provide clear, interpretable reasoning for their decisions, helping meet legal transparency requirements, unlike non-explainable ('black box') models, which can conflict with those same requirements and risk unintended bias.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 22 (Artificial Intelligence)",
+      "weak_spot": true,
+      "verification_status": "verified"
+    },
+    {
+      "pbq_id": "D3-PBQ-11",
+      "domain": 3,
+      "section_number": 17,
+      "section_title": "Troubleshooting Network Infrastructure",
+      "layout": "wizard",
+      "title": "Email Authentication, DNS Security & Network Error Identification",
+      "scenario_context": "A network security engineer is troubleshooting a series of email spoofing complaints and intermittent switching/routing issues, and must correctly identify each underlying mechanism or failure mode.",
+      "time_estimate_seconds": 360,
+      "fields": [
+        {
+          "field_id": "email_auth_1",
+          "type": "select",
+          "prompt": "Which email authentication mechanism publishes a DNS record listing which mail servers/IP ranges are authorized to send mail on behalf of a domain?",
+          "options": [
+            "Sender Policy Framework (SPF)",
+            "DomainKeys Identified Mail (DKIM)",
+            "DMARC",
+            "S/MIME"
+          ],
+          "correct": "Sender Policy Framework (SPF)"
+        },
+        {
+          "field_id": "email_auth_2",
+          "type": "select",
+          "prompt": "Which mechanism adds a digital signature (created with the sender's private key) to every outgoing email, allowing the receiver to verify authenticity using the sender's public key?",
+          "options": [
+            "Sender Policy Framework (SPF)",
+            "DomainKeys Identified Mail (DKIM)",
+            "DMARC",
+            "S/MIME"
+          ],
+          "correct": "DomainKeys Identified Mail (DKIM)"
+        },
+        {
+          "field_id": "email_auth_3",
+          "type": "select",
+          "prompt": "Which mechanism builds on top of SPF and DKIM results and tells receiving mail servers what policy action to take (reject or quarantine) when those checks fail, while also providing reporting?",
+          "options": [
+            "Sender Policy Framework (SPF)",
+            "DomainKeys Identified Mail (DKIM)",
+            "DMARC",
+            "S/MIME"
+          ],
+          "correct": "DMARC"
+        },
+        {
+          "field_id": "dns_term",
+          "type": "select",
+          "prompt": "Which DNS security extension uses digital signatures and public-key cryptography to authenticate DNS data and protect against cache poisoning?",
+          "options": [
+            "DNSSEC",
+            "Zone Transfer",
+            "TSIG",
+            "Sinkholing"
+          ],
+          "correct": "DNSSEC"
+        },
+        {
+          "field_id": "dns_attack",
+          "type": "select",
+          "prompt": "Which attack injects false DNS data into a resolver's cache so that users are silently redirected to malicious servers?",
+          "options": [
+            "DNS Poisoning (Cache Poisoning)",
+            "DDoS Attack",
+            "Route Flapping",
+            "VLAN Mismatch"
+          ],
+          "correct": "DNS Poisoning (Cache Poisoning)"
+        },
+        {
+          "field_id": "switch_error",
+          "type": "select",
+          "prompt": "Which Layer 2 switching error occurs due to a network loop, typically caused by an improperly configured Spanning Tree Protocol?",
+          "options": [
+            "Broadcast Storm",
+            "VLAN Mismatch",
+            "Duplex Mismatch",
+            "Routing Loop"
+          ],
+          "correct": "Broadcast Storm"
+        },
+        {
+          "field_id": "route_error",
+          "type": "select",
+          "prompt": "Which routing error occurs when a network route frequently changes state, causing instability in routing tables?",
+          "options": [
+            "Routing Loop",
+            "Incorrect Subnet Mask",
+            "Route Flapping",
+            "Broadcast Storm"
+          ],
+          "correct": "Route Flapping"
+        },
+        {
+          "field_id": "defensive_technique",
+          "type": "text",
+          "prompt": "What is the name of the defensive technique that redirects malicious traffic to a controlled server for analysis, instead of letting it reach its intended destination?",
+          "correct": "Sinkholing"
+        }
+      ],
+      "rationale": "SPF publishes a DNS record listing authorized sending mail servers/IPs; DKIM signs outgoing mail with the sender's private key so receivers can verify it with the public key; DMARC layers on top of SPF/DKIM results to dictate the policy action (reject/quarantine) when either check fails, plus reporting. DNSSEC authenticates DNS data with digital signatures and public-key cryptography, protecting against cache/DNS poisoning, where false DNS data is injected into a resolver's cache to redirect users maliciously. A Broadcast Storm is a Layer 2 switching error from a network loop (commonly a Spanning Tree Protocol misconfiguration), while Route Flapping is a routing error where a route repeatedly changes state, destabilizing routing tables. Sinkholing is the defensive technique that redirects malicious traffic to a controlled server rather than its intended destination, allowing safe analysis and containment.",
+      "source": "Authored from Dion Training SecurityX (CAS-005) Course Notes, Section 17 (Troubleshooting Network Infrastructure)",
+      "weak_spot": true,
+      "verification_status": "verified"
+    }
+  ]
+}

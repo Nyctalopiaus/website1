@@ -1,4 +1,63 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // Small inline icon set matching the header SVGs (search/quickstart/
+  // features/AI setup) -- kept here so the handful of dynamically-set
+  // button/badge labels below render the same themed icon instead of an
+  // emoji glyph that'd depend on the OS's own multicolor emoji font.
+  const ICON_SPARKLE = '<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg>';
+  const ICON_TARGET = '<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>';
+  const ICON_REFRESH = '<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>';
+  const ICON_STAR = '<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 2.9 6.9 7.1.6-5.5 4.7 1.7 7.1L12 17.6 5.8 21.3l1.7-7.1L2 9.5l7.1-.6Z"/></svg>';
+  const ICON_CHAT = '<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg>';
+  const ICON_WARN = '<svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+
+  // Focus trap for the six modal dialogs (quickstart/features/ai-settings/
+  // ai-unlock/training-plan/guide-graphic). Each one already toggles
+  // aria-hidden on open/close in its own open/close functions further
+  // down -- rather than editing all six of those individually, this just
+  // observes that one attribute and reacts generically: Tab/Shift+Tab
+  // cycles within whichever modal is currently open instead of leaking
+  // focus out to the page behind it, and focus returns to whatever
+  // triggered the modal once it closes.
+  function attachModalFocusTrap(modalEl) {
+    const FOCUSABLE = 'a[href], button:not([disabled]), textarea, input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    let lastFocused = null;
+
+    function getFocusable() {
+      return Array.from(modalEl.querySelectorAll(FOCUSABLE)).filter((el) => el.offsetParent !== null);
+    }
+
+    function onKeydown(e) {
+      if (e.key !== 'Tab') return;
+      const focusable = getFocusable();
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    new MutationObserver(() => {
+      const isOpen = modalEl.getAttribute('aria-hidden') === 'false';
+      if (isOpen) {
+        lastFocused = document.activeElement;
+        modalEl.addEventListener('keydown', onKeydown);
+        const focusable = getFocusable();
+        setTimeout(() => { (focusable[0] || modalEl).focus(); }, 0);
+      } else {
+        modalEl.removeEventListener('keydown', onKeydown);
+        if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
+        lastFocused = null;
+      }
+    }).observe(modalEl, { attributes: true, attributeFilter: ['aria-hidden'] });
+  }
+
+  document.querySelectorAll('.modal-overlay').forEach(attachModalFocusTrap);
+
   // Navigation Tabs
   const tabButtons = document.querySelectorAll('.tab-btn');
   const tabPanes = document.querySelectorAll('.tab-pane');
@@ -8,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const statAccuracyEl = document.getElementById('stat-accuracy');
   const statFlaggedEl = document.getElementById('stat-flagged');
   const statPassedEl = document.getElementById('stat-passed');
+  const freshStartBannerEl = document.getElementById('fresh-start-banner');
 
   // Circle bars -- built dynamically by renderDomainMasteryGrid() once the
   // active exam's domain count is known (CISM has 4 today; CISSP will have 8).
@@ -188,12 +248,34 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnPrevTrap = document.getElementById('btn-prev-trap');
   const btnNextTrap = document.getElementById('btn-next-trap');
 
+  // PBQ Lab Elements
+  const pbqDomainSelect = document.getElementById('pbq-domain-select');
+  const pbqLayoutTagEl = document.getElementById('pbq-layout-tag');
+  const pbqEmptyStateEl = document.getElementById('pbq-empty-state');
+  const pbqContentEl = document.getElementById('pbq-content');
+  const pbqTitleEl = document.getElementById('pbq-title');
+  const pbqDomainTagEl = document.getElementById('pbq-domain-tag');
+  const pbqVerifyBadgeEl = document.getElementById('pbq-verify-badge');
+  const pbqScenarioContextEl = document.getElementById('pbq-scenario-context');
+  const pbqFieldsContainerEl = document.getElementById('pbq-fields-container');
+  const btnPbqCheck = document.getElementById('btn-pbq-check');
+  const btnPbqRetry = document.getElementById('btn-pbq-retry');
+  const pbqScoreBadgeEl = document.getElementById('pbq-score-badge');
+  const pbqRationaleBoxEl = document.getElementById('pbq-rationale-box');
+  const pbqRationaleStatusEl = document.getElementById('pbq-rationale-status');
+  const pbqRationaleTextEl = document.getElementById('pbq-rationale-text');
+  const pbqCounterEl = document.getElementById('pbq-counter');
+  const btnPrevPbq = document.getElementById('btn-prev-pbq');
+  const btnNextPbq = document.getElementById('btn-next-pbq');
+
   // Mock Elements
   const mockSetup = document.getElementById('mock-setup');
   const mockActive = document.getElementById('mock-active');
   const mockResults = document.getElementById('mock-results');
   const btnStartMock = document.getElementById('btn-start-mock');
   const mockModeButtons = document.querySelectorAll('.mock-mode-btn');
+  const mockFullMockSelectWrap = document.getElementById('mock-fullmock-select');
+  const mockFullMockPicker = document.getElementById('mock-fullmock-picker');
   const mockSpecQuestionsEl = document.getElementById('mock-spec-questions');
   const mockSpecTimeEl = document.getElementById('mock-spec-time');
   const mockSpecPassingEl = document.getElementById('mock-spec-passing');
@@ -201,12 +283,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const mockTimerEl = document.getElementById('mock-timer');
   const mockQuestionEl = document.getElementById('mock-question');
   const mockOptionsList = document.querySelector('#mock-active .quiz-options');
+  const mockBodyEl = document.getElementById('mock-body');
+  const mockFlagGroupEl = document.getElementById('mock-flag-group');
+  // Curated Full Mock PBQ item screen -- a sibling to mock-body, shown in its
+  // place for the exam's PBQ portion, rendered via the same renderPbqLayout()
+  // dispatcher the PBQ Lab tab uses (just under a timer, disabled=false,
+  // no per-item feedback -- matching how Mock Exam already withholds
+  // explanations until the whole attempt is scored).
+  const mockPbqBodyEl = document.getElementById('mock-pbq-body');
+  const mockPbqTitleEl = document.getElementById('mock-pbq-title');
+  const mockPbqDomainTagEl = document.getElementById('mock-pbq-domain-tag');
+  const mockPbqScenarioContextEl = document.getElementById('mock-pbq-scenario-context');
+  const mockPbqFieldsContainerEl = document.getElementById('mock-pbq-fields-container');
   const btnMockPrev = document.getElementById('btn-mock-prev');
   const btnMockNext = document.getElementById('btn-mock-next');
   const btnMockFlag = document.getElementById('btn-mock-flag');
   const btnMockFlagPrev = document.getElementById('btn-mock-flag-prev');
   const btnMockFlagNext = document.getElementById('btn-mock-flag-next');
   const resultsDomainBreakdownEl = document.getElementById('results-domain-breakdown');
+  const mockPbqReviewEl = document.getElementById('mock-pbq-review');
+  const mockPbqReviewListEl = document.getElementById('mock-pbq-review-list');
   const resultsPctEl = document.getElementById('results-pct');
   const resultsStatusEl = document.getElementById('results-status');
   const resultsCorrectEl = document.getElementById('results-correct');
@@ -277,10 +373,40 @@ document.addEventListener('DOMContentLoaded', () => {
   // static markup, not seed-loaded data.
   let guideMastery = {}; // guide_id -> {level, timesReviewed, lastReviewedAt}
 
+  // ==========================================
+  // PBQ LAB STATE
+  // ==========================================
+  // PBQ Lab is untimed practice on the performance-based-question scenarios
+  // (data/securityx_pbq.json today; empty for exams that don't have one yet).
+  // Deliberately kept separate from perfData/questionHistory/domain mastery
+  // for now -- whether PBQ Lab attempts should feed the same mistake-tracking
+  // system as Quiz/Mock Exam is still an open question (see
+  // certforge-securityx-pbq-engine-plan.md §11), so this ships with its own
+  // lightweight, self-contained tracker rather than touching those first.
+  let pbqs = []; // full PBQ scenario list for the active exam
+  let filteredPbqs = [];
+  let currentPbqIndex = 0;
+  // Working answers for whichever PBQ is currently on screen, before Check
+  // Answers is clicked. Keyed by field_id -> string (select/text) or array
+  // of strings (multiselect). Cleared/rebuilt on every navigation.
+  let currentPbqUserAnswers = {};
+  // Diagram layout only: token_id -> zone_id (or undefined if unplaced).
+  let currentPbqTokenPlacement = {};
+  // pbq_id -> { userAnswers, tokenPlacement, results, correctCount, totalCount, scorePct, checkedAt }
+  // Persisted so a graded PBQ stays graded (read-only, showing results) if
+  // you navigate away and back, mirroring how Quiz locks an answered question.
+  let pbqAttemptState = {};
+
   // Mock Exam mode: 'quick' (default, examConfig.mock_exam) or 'full'
   // (examConfig.mock_exam_full, falling back to 'quick' settings if an
   // exam hasn't defined a full-length config yet).
   let selectedMockMode = 'quick';
+
+  // Which of examConfig.full_mock_exams (SecurityX's named, curated,
+  // non-repeating full-length sets) is selected in the setup screen's picker.
+  // Irrelevant for exams using the older single mock_exam_full block (CISM) --
+  // getMockConfig() only consults this when full_mock_exams is actually an array.
+  let selectedFullMockIndex = 0;
 
   // ==========================================
   // MULTI-EXAM CONFIG
@@ -348,6 +474,10 @@ document.addEventListener('DOMContentLoaded', () => {
     guideMastery: examStorageKey('guide_mastery_v1'),
     seedInitialized: examStorageKey('seed_initialized_v1'),
     seedVersion: examStorageKey('seed_version_v1'),
+    pbqs: examStorageKey('pbqs_v1'),
+    pbqInitialized: examStorageKey('pbq_initialized_v1'),
+    pbqVersion: examStorageKey('pbq_version_v1'),
+    pbqAttempts: examStorageKey('pbq_attempts_v1'),
     lastTab: examStorageKey('last_tab_v1'),
     aiCache: examStorageKey('ai_response_cache_v1'),
     aiTutorHistory: examStorageKey('ai_tutor_history_v1')
@@ -477,7 +607,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function buildAiResponseHtml(text, { cached, model, ts }, { calloutMarker, calloutLabel, disclaimer } = {}) {
     const metaLine = cached
       ? `🕓 Cached · asked ${formatRelativeTime(ts)} · ${escapeHtml(model || 'Gemini')}`
-      : `✨ Fresh answer · just now · ${escapeHtml(model || 'Gemini')}`;
+      : `${ICON_SPARKLE} Fresh answer · just now · ${escapeHtml(model || 'Gemini')}`;
 
     const markerIndex = calloutMarker ? text.indexOf(calloutMarker) : -1;
     const mainText = markerIndex === -1 ? text.trim() : text.slice(0, markerIndex).trim();
@@ -598,6 +728,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Mirrors ensureSeedData()'s version-bump pattern, simplified: PBQ Lab has
+  // no Deck-Curator-style authoring UI yet, so there's no "custom items to
+  // preserve" concept -- a version bump just does a full replace. An exam
+  // with no pbq_file (CISM/CISSP today) ends up with an empty pbqs array,
+  // which PBQ Lab's empty-state message already handles the same way
+  // Concept Guides handles an exam with zero guides yet.
+  async function ensurePbqData() {
+    const pbqFile = examConfig?.pbq_file;
+    if (!pbqFile) {
+      saveJson(STORAGE_KEYS.pbqs, []);
+      return;
+    }
+
+    const storedPbqVersion = Number(localStorage.getItem(STORAGE_KEYS.pbqVersion) || 0);
+    const manifestPbqVersion = Number(examConfig?.pbq_version || 1);
+    const alreadyInitialized = localStorage.getItem(STORAGE_KEYS.pbqInitialized) === '1';
+
+    if (alreadyInitialized && manifestPbqVersion <= storedPbqVersion) {
+      return; // local PBQ cache is already current
+    }
+
+    try {
+      const response = await fetch(pbqFile, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`PBQ fetch failed with HTTP ${response.status}`);
+      }
+      const pbqData = await response.json();
+      saveJson(STORAGE_KEYS.pbqs, pbqData?.pbqs ?? []);
+      localStorage.setItem(STORAGE_KEYS.pbqInitialized, '1');
+      localStorage.setItem(STORAGE_KEYS.pbqVersion, String(manifestPbqVersion));
+    } catch (e) {
+      if (!alreadyInitialized) {
+        console.warn('[SYSTEM] PBQ file unavailable. Starting with an empty PBQ Lab.', e);
+        saveJson(STORAGE_KEYS.pbqs, []);
+        localStorage.setItem(STORAGE_KEYS.pbqInitialized, '1');
+      } else {
+        console.warn('[SYSTEM] PBQ upgrade unavailable this load. Keeping existing local PBQ data.', e);
+      }
+    }
+  }
+
   function loadUserStats() {
     const savedPerf = loadJson(STORAGE_KEYS.perf, null);
     if (savedPerf) {
@@ -646,6 +817,32 @@ document.addEventListener('DOMContentLoaded', () => {
   let mockTimeRemaining = 900; // 15 mins
   let mockTimerInterval;
   let mockSecondsElapsed = 0;
+  // Snapshot of getMockConfig(selectedMockMode) taken at startMockExam() time,
+  // so submitMockExam() and friends read the exact config the attempt was
+  // built from even if selectedMockMode/selectedFullMockIndex change later
+  // (e.g. Josh flips the setup screen while a stray old timer is still around).
+  let activeMockCfg = null;
+
+  // ==========================================
+  // CURATED FULL MOCK EXAM -- PBQ STATE
+  // ==========================================
+  // Non-empty only when the active attempt is a curated full mock with a
+  // pbq_ids list (SecurityX's full_mock_exams entries). Empty for Quick
+  // Practice, CISM's mock_exam_full, and any exam/mode without curated PBQs --
+  // every render/submit code path below branches on mockPbqs.length === 0 to
+  // fall back to the exact pre-existing MCQ-only behavior.
+  let mockPbqs = []; // the attempt's fixed PBQ list, resolved from pbq_ids
+  // pbq_id -> { userAnswers, tokenPlacement } -- the in-progress draft for
+  // each PBQ item, captured whenever navigation leaves that item (see
+  // captureCurrentMockPbqDraft()) so answers survive Prev/Next like MCQ
+  // answers already do via mockAnswers.
+  let mockPbqAnswers = {};
+  // pbq_id -> gradePbq() result, populated once at submitMockExam() time and
+  // used immediately to render the results screen's PBQ review section.
+  // Not persisted to localStorage, same as mockQuestions/mockAnswers
+  // themselves -- only the combined score/domain breakdown gets saved into
+  // the attempts history.
+  let mockPbqGradedResults = {};
 
   // Donut circumference (2 * PI * r) where r = 28
   const CIRCUMFERENCE = 2 * Math.PI * 28; // ~175.9
@@ -711,6 +908,7 @@ document.addEventListener('DOMContentLoaded', () => {
     await loadExamManifest();
     renderExamChrome();
     await ensureSeedData();
+    await ensurePbqData();
 
     questions = ensureNumericIds(loadJson(STORAGE_KEYS.questions, []));
     flashcards = ensureNumericIds(loadJson(STORAGE_KEYS.flashcards, []));
@@ -722,6 +920,8 @@ document.addEventListener('DOMContentLoaded', () => {
     flashcardMastery = loadJson(STORAGE_KEYS.flashcardMastery, {});
     guideMastery = loadJson(STORAGE_KEYS.guideMastery, {});
     aiTutorHistory = loadJson(STORAGE_KEYS.aiTutorHistory, []);
+    pbqs = loadJson(STORAGE_KEYS.pbqs, []);
+    pbqAttemptState = loadJson(STORAGE_KEYS.pbqAttempts, {});
 
     initFlashcards();
     initQuiz();
@@ -729,6 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initAiTutor();
     initTrapSpotter();
     initGuides();
+    initPbqLab();
     updateDashboardStats();
     buildSearchIndex();
   }
@@ -769,13 +970,21 @@ document.addEventListener('DOMContentLoaded', () => {
     populateDomainSelect(quizDomainSelect, true);
     populateDomainSelect(trapDomainSelect, true);
     populateDomainSelect(aiTutorDomainSelect, true);
+    populateDomainSelect(pbqDomainSelect, true);
     populateDomainSelect(document.getElementById('curator-flashcard-domain-select'), false);
     populateDomainSelect(document.getElementById('curator-question-domain-select'), false);
     populateResetDomainOptions();
+    populateFullMockPicker();
+    updateFullMockSelectorVisibility();
     updateMockSpecsDisplay();
   }
 
   function updateDashboardStats() {
+    // Nothing answered yet -- a dashboard that's all zeros/0% reads as
+    // broken rather than "you haven't started," so swap in a plain-language
+    // nudge above the stats instead of just a wall of zeroed-out numbers.
+    if (freshStartBannerEl) freshStartBannerEl.hidden = perfData.answered > 0;
+
     // Answered & accuracy
     statAnsweredEl.textContent = perfData.answered;
     const accuracy = perfData.answered > 0 ? Math.round((perfData.correct / perfData.answered) * 100) : 0;
@@ -1128,6 +1337,487 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
+  // PBQ LAB
+  // ==========================================
+  // Untimed practice on performance-based-question scenarios: dropdown/
+  // multiselect/text fields, grouped sub-forms, a per-row classification
+  // table, or a native-HTML5-drag-and-drop network diagram, depending on
+  // each PBQ's `layout`. See certforge-securityx-pbq-engine-plan.md for the
+  // full schema and design rationale.
+
+  function getFilteredPbqs() {
+    const domainFilter = pbqDomainSelect ? pbqDomainSelect.value : 'all';
+    if (domainFilter === 'all') return pbqs;
+    return pbqs.filter(p => String(p.domain) === String(domainFilter));
+  }
+
+  function initPbqLab() {
+    // PBQ Lab only applies to exams that actually have PBQ content (currently
+    // just SecurityX -- CISM/CISSP have no performance-based question format).
+    // Hide the tab entirely rather than showing an empty/broken lab.
+    const pbqTabBtn = document.querySelector('.tab-btn[data-target="tab-pbqlab"]');
+    if (!pbqs || pbqs.length === 0) {
+      if (pbqTabBtn) pbqTabBtn.hidden = true;
+      return;
+    }
+    if (pbqTabBtn) pbqTabBtn.hidden = false;
+
+    filteredPbqs = getFilteredPbqs();
+    currentPbqIndex = 0;
+
+    if (pbqDomainSelect) {
+      pbqDomainSelect.addEventListener('change', () => {
+        filteredPbqs = getFilteredPbqs();
+        currentPbqIndex = 0;
+        renderCurrentPbq();
+      });
+    }
+    if (btnPrevPbq) {
+      btnPrevPbq.addEventListener('click', () => {
+        if (currentPbqIndex > 0) {
+          currentPbqIndex--;
+          renderCurrentPbq();
+        }
+      });
+    }
+    if (btnNextPbq) {
+      btnNextPbq.addEventListener('click', () => {
+        if (currentPbqIndex < filteredPbqs.length - 1) {
+          currentPbqIndex++;
+          renderCurrentPbq();
+        }
+      });
+    }
+    if (btnPbqCheck) {
+      btnPbqCheck.addEventListener('click', checkCurrentPbqAnswers);
+    }
+    if (btnPbqRetry) {
+      btnPbqRetry.addEventListener('click', retryCurrentPbq);
+    }
+
+    renderCurrentPbq();
+  }
+
+  // Every field object across a PBQ's fields/groups/rows/zones, flattened
+  // into one list -- used by both rendering (so group/row/zone-scoped field
+  // lists share one renderer) and grading (so gradePbq() doesn't need to
+  // know about layout-specific containers).
+  function collectAllPbqFields(pbq) {
+    const all = [];
+    (pbq.fields || []).forEach(f => all.push(f));
+    (pbq.groups || []).forEach(g => (g.fields || []).forEach(f => all.push(f)));
+    (pbq.rows || []).forEach(r => (r.fields || []).forEach(f => all.push(f)));
+    (pbq.zones || []).forEach(z => (z.fields || []).forEach(f => all.push(f)));
+    return all;
+  }
+
+  function getPbqSavedAttempt(pbq) {
+    return pbqAttemptState[pbq.pbq_id] || null;
+  }
+
+  // Renders one field's label + input control into a `.pbq-field-row`.
+  // `disabled`/`savedAnswers`/`results` are only set once a PBQ has already
+  // been checked (either just now or restored from a saved attempt) -- in
+  // that state controls lock and a correct/incorrect mark + note appears.
+  function renderPbqFieldRow(field, disabled, savedAnswers, results) {
+    const row = document.createElement('div');
+    row.className = 'pbq-field-row';
+    row.dataset.fieldId = field.field_id;
+
+    const prompt = document.createElement('div');
+    prompt.className = 'pbq-field-prompt';
+    prompt.textContent = field.prompt;
+    row.appendChild(prompt);
+
+    const control = document.createElement('div');
+    control.className = 'pbq-field-control';
+
+    const savedValue = savedAnswers ? savedAnswers[field.field_id] : currentPbqUserAnswers[field.field_id];
+
+    if (field.type === 'select') {
+      const select = document.createElement('select');
+      select.className = 'hud-select';
+      select.disabled = !!disabled;
+      const blankOpt = document.createElement('option');
+      blankOpt.value = '';
+      blankOpt.textContent = '-- choose --';
+      select.appendChild(blankOpt);
+      (field.options || []).forEach(opt => {
+        const optEl = document.createElement('option');
+        optEl.value = opt;
+        optEl.textContent = opt;
+        select.appendChild(optEl);
+      });
+      select.value = savedValue || '';
+      select.addEventListener('change', () => {
+        currentPbqUserAnswers[field.field_id] = select.value;
+      });
+      control.appendChild(select);
+    } else if (field.type === 'multiselect') {
+      const group = document.createElement('div');
+      group.className = 'pbq-check-group';
+      const savedArr = Array.isArray(savedValue) ? savedValue : [];
+      (field.options || []).forEach(opt => {
+        const pill = document.createElement('label');
+        pill.className = `pbq-check-pill${disabled ? ' disabled' : ''}`;
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = opt;
+        cb.disabled = !!disabled;
+        cb.checked = savedArr.includes(opt);
+        cb.addEventListener('change', () => {
+          const current = Array.isArray(currentPbqUserAnswers[field.field_id])
+            ? currentPbqUserAnswers[field.field_id]
+            : [];
+          if (cb.checked) {
+            currentPbqUserAnswers[field.field_id] = [...current, opt];
+          } else {
+            currentPbqUserAnswers[field.field_id] = current.filter(v => v !== opt);
+          }
+        });
+        pill.appendChild(cb);
+        pill.appendChild(document.createTextNode(opt));
+        group.appendChild(pill);
+      });
+      control.appendChild(group);
+    } else { // 'text'
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'pbq-text-input';
+      input.disabled = !!disabled;
+      input.value = savedValue || '';
+      input.placeholder = 'Type your answer...';
+      input.addEventListener('input', () => {
+        currentPbqUserAnswers[field.field_id] = input.value;
+      });
+      control.appendChild(input);
+    }
+
+    row.appendChild(control);
+
+    if (field.note) {
+      const note = document.createElement('div');
+      note.className = 'pbq-field-note';
+      note.textContent = field.note;
+      row.appendChild(note);
+    }
+
+    if (results && results[field.field_id]) {
+      const r = results[field.field_id];
+      row.classList.add(r.correct ? 'pbq-correct' : 'pbq-incorrect');
+      const resultLine = document.createElement('div');
+      resultLine.className = `pbq-field-result ${r.correct ? 'pbq-correct-text' : 'pbq-incorrect-text'}`;
+      resultLine.textContent = r.correct
+        ? '✓ Correct'
+        : `✗ Correct answer: ${Array.isArray(field.correct) ? field.correct.join(', ') : field.correct}`;
+      row.appendChild(resultLine);
+    }
+
+    return row;
+  }
+
+  function renderPbqFieldList(fields, disabled, savedAnswers, results) {
+    const list = document.createElement('div');
+    list.className = 'pbq-field-list';
+    fields.forEach(f => list.appendChild(renderPbqFieldRow(f, disabled, savedAnswers, results)));
+    return list;
+  }
+
+  // Every renderPbq* function below takes an optional `containerEl`
+  // (defaulting to the PBQ Lab's own pbqFieldsContainerEl) so the exact same
+  // renderers can target a different DOM node -- specifically the Mock
+  // Exam's mock-pbq-fields-container during a curated Full Mock's PBQ
+  // portion, and a fresh per-item container on the results screen's PBQ
+  // review -- without duplicating any rendering/grading logic.
+  function renderPbqWizard(pbq, disabled, savedAnswers, results, containerEl = pbqFieldsContainerEl) {
+    containerEl.innerHTML = '';
+    (pbq.groups || []).forEach(group => {
+      const groupEl = document.createElement('div');
+      groupEl.className = 'pbq-group';
+      const label = document.createElement('div');
+      label.className = 'pbq-group-label';
+      label.textContent = group.group_label;
+      groupEl.appendChild(label);
+      groupEl.appendChild(renderPbqFieldList(group.fields || [], disabled, savedAnswers, results));
+      containerEl.appendChild(groupEl);
+    });
+    if (pbq.fields && pbq.fields.length) {
+      containerEl.appendChild(renderPbqFieldList(pbq.fields, disabled, savedAnswers, results));
+    }
+  }
+
+  function renderPbqTable(pbq, disabled, savedAnswers, results, containerEl = pbqFieldsContainerEl) {
+    containerEl.innerHTML = '';
+
+    const matrix = document.createElement('div');
+    matrix.className = 'control-matrix';
+    const table = document.createElement('table');
+    const tbody = document.createElement('tbody');
+    (pbq.rows || []).forEach(row => {
+      const tr = document.createElement('tr');
+      const labelTd = document.createElement('td');
+      labelTd.innerHTML = `<strong>${escapeHtml(row.label)}</strong><br><span style="color: var(--text-dark); font-size: 0.82rem;">${escapeHtml(row.detail || '')}</span>`;
+      const fieldTd = document.createElement('td');
+      const fieldsWrap = document.createElement('div');
+      fieldsWrap.className = 'pbq-table-row-fields';
+      (row.fields || []).forEach(f => fieldsWrap.appendChild(renderPbqFieldRow(f, disabled, savedAnswers, results)));
+      fieldTd.appendChild(fieldsWrap);
+      tr.appendChild(labelTd);
+      tr.appendChild(fieldTd);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    matrix.appendChild(table);
+    containerEl.appendChild(matrix);
+
+    if (pbq.fields && pbq.fields.length) {
+      containerEl.appendChild(renderPbqFieldList(pbq.fields, disabled, savedAnswers, results));
+    }
+  }
+
+  function renderPbqDiagram(pbq, disabled, savedAnswers, results, containerEl = pbqFieldsContainerEl) {
+    containerEl.innerHTML = '';
+    const savedPlacement = savedAnswers ? (savedAnswers.__tokenPlacement || {}) : currentPbqTokenPlacement;
+
+    // Token palette -- draggable chips for any token not yet placed in a zone.
+    const palette = document.createElement('div');
+    palette.className = 'pbq-token-palette';
+    (pbq.drag_tokens || []).forEach(token => {
+      const placedZone = savedPlacement[token.token_id];
+      const chip = document.createElement('div');
+      chip.className = `pbq-token${placedZone ? ' pbq-token-placed' : ''}`;
+      chip.textContent = token.label;
+      chip.draggable = !disabled;
+      chip.dataset.tokenId = token.token_id;
+      if (!disabled) {
+        chip.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('text/plain', token.token_id);
+        });
+      }
+      palette.appendChild(chip);
+    });
+    containerEl.appendChild(palette);
+
+    // Zones -- drop targets, each showing whichever tokens are currently
+    // assigned to it plus that zone's own select fields (network name/VLAN).
+    const grid = document.createElement('div');
+    grid.className = 'pbq-zones-grid';
+    (pbq.zones || []).forEach(zone => {
+      const zoneEl = document.createElement('div');
+      zoneEl.className = 'pbq-zone';
+      zoneEl.dataset.zoneId = zone.zone_id;
+
+      const label = document.createElement('div');
+      label.className = 'pbq-zone-label';
+      label.textContent = zone.label;
+      zoneEl.appendChild(label);
+
+      const tokensWrap = document.createElement('div');
+      tokensWrap.className = 'pbq-zone-tokens';
+      (pbq.drag_tokens || []).filter(t => savedPlacement[t.token_id] === zone.zone_id).forEach(t => {
+        const chip = document.createElement('span');
+        chip.className = 'pbq-zone-token-chip';
+        if (results && results[`token:${t.token_id}`]) {
+          chip.classList.add(results[`token:${t.token_id}`].correct ? 'pbq-correct' : 'pbq-incorrect');
+        }
+        chip.textContent = t.label;
+        if (!disabled) {
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.textContent = '×';
+          removeBtn.title = 'Remove from this zone';
+          removeBtn.addEventListener('click', () => {
+            delete currentPbqTokenPlacement[t.token_id];
+            renderPbqDiagram(pbq, disabled, null, null, containerEl);
+          });
+          chip.appendChild(removeBtn);
+        }
+        tokensWrap.appendChild(chip);
+      });
+      zoneEl.appendChild(tokensWrap);
+
+      if (!disabled) {
+        zoneEl.addEventListener('dragover', e => {
+          e.preventDefault();
+          zoneEl.classList.add('pbq-zone-dragover');
+        });
+        zoneEl.addEventListener('dragleave', () => zoneEl.classList.remove('pbq-zone-dragover'));
+        zoneEl.addEventListener('drop', e => {
+          e.preventDefault();
+          zoneEl.classList.remove('pbq-zone-dragover');
+          const tokenId = e.dataTransfer.getData('text/plain');
+          if (tokenId) {
+            currentPbqTokenPlacement[tokenId] = zone.zone_id;
+            renderPbqDiagram(pbq, disabled, null, null, containerEl);
+          }
+        });
+      }
+
+      zoneEl.appendChild(renderPbqFieldList(zone.fields || [], disabled, savedAnswers, results));
+      grid.appendChild(zoneEl);
+    });
+    containerEl.appendChild(grid);
+  }
+
+  function renderPbqLayout(pbq, disabled, savedAnswers, results, containerEl = pbqFieldsContainerEl) {
+    if (pbq.layout === 'table') {
+      renderPbqTable(pbq, disabled, savedAnswers, results, containerEl);
+    } else if (pbq.layout === 'diagram') {
+      renderPbqDiagram(pbq, disabled, savedAnswers, results, containerEl);
+    } else {
+      renderPbqWizard(pbq, disabled, savedAnswers, results, containerEl);
+    }
+  }
+
+  // Compares a user's answer against a field's `correct` value. multiselect
+  // grades as an exact set match (no partial credit within a single field,
+  // to avoid rewarding "select everything" guessing -- the PBQ's overall
+  // score still averages across every field, so partial PBQ credit still
+  // comes through there). select/text compare case-insensitively, trimmed.
+  function isPbqFieldCorrect(field, userValue) {
+    if (field.type === 'multiselect') {
+      const correctSet = new Set((field.correct || []).map(v => v.toLowerCase()));
+      const userSet = new Set((Array.isArray(userValue) ? userValue : []).map(v => v.toLowerCase()));
+      if (correctSet.size !== userSet.size) return false;
+      for (const v of correctSet) if (!userSet.has(v)) return false;
+      return true;
+    }
+    const correctVal = Array.isArray(field.correct) ? field.correct[0] : field.correct;
+    return String(userValue || '').trim().toLowerCase() === String(correctVal || '').trim().toLowerCase();
+  }
+
+  // Grades every field (fields/groups/rows/zones) plus, for a diagram
+  // layout, every drag token's placed-zone-vs-correct_zone. Returns a flat
+  // results map keyed by field_id (and `token:<token_id>` for drag tokens)
+  // alongside the overall correct/total tally.
+  function gradePbq(pbq, userAnswers, tokenPlacement) {
+    const results = {};
+    let correctCount = 0;
+    let totalCount = 0;
+
+    collectAllPbqFields(pbq).forEach(field => {
+      const userValue = userAnswers[field.field_id];
+      const correct = isPbqFieldCorrect(field, userValue);
+      results[field.field_id] = { correct, userValue };
+      totalCount++;
+      if (correct) correctCount++;
+    });
+
+    (pbq.drag_tokens || []).forEach(token => {
+      const placedZone = tokenPlacement ? tokenPlacement[token.token_id] : undefined;
+      const correct = placedZone === token.correct_zone;
+      results[`token:${token.token_id}`] = { correct, userValue: placedZone };
+      totalCount++;
+      if (correct) correctCount++;
+    });
+
+    const scorePct = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
+    return { results, correctCount, totalCount, scorePct };
+  }
+
+  // Takes the badge element explicitly (rather than always the PBQ Lab's own
+  // singular pbqScoreBadgeEl) so the Mock Exam results screen's PBQ review
+  // can render one badge per curated PBQ, reusing the exact same classing.
+  function applyPbqScoreBadge(el, scorePct) {
+    if (!el) return;
+    el.hidden = false;
+    el.textContent = `${scorePct}%`;
+    el.classList.remove('pbq-score-good', 'pbq-score-mid', 'pbq-score-low');
+    el.classList.add(scorePct >= 80 ? 'pbq-score-good' : scorePct >= 50 ? 'pbq-score-mid' : 'pbq-score-low');
+  }
+
+  function checkCurrentPbqAnswers() {
+    const pbq = filteredPbqs[currentPbqIndex];
+    if (!pbq) return;
+
+    const graded = gradePbq(pbq, currentPbqUserAnswers, currentPbqTokenPlacement);
+    pbqAttemptState[pbq.pbq_id] = {
+      userAnswers: { ...currentPbqUserAnswers, __tokenPlacement: { ...currentPbqTokenPlacement } },
+      results: graded.results,
+      correctCount: graded.correctCount,
+      totalCount: graded.totalCount,
+      scorePct: graded.scorePct,
+      checkedAt: new Date().toISOString()
+    };
+    saveJson(STORAGE_KEYS.pbqAttempts, pbqAttemptState);
+
+    renderCurrentPbq();
+  }
+
+  function retryCurrentPbq() {
+    const pbq = filteredPbqs[currentPbqIndex];
+    if (!pbq) return;
+    delete pbqAttemptState[pbq.pbq_id];
+    saveJson(STORAGE_KEYS.pbqAttempts, pbqAttemptState);
+    currentPbqUserAnswers = {};
+    currentPbqTokenPlacement = {};
+    renderCurrentPbq();
+  }
+
+  function renderCurrentPbq() {
+    if (!pbqContentEl) return; // PBQ Lab markup not present (shouldn't happen, but keep this defensive)
+
+    if (filteredPbqs.length === 0) {
+      pbqContentEl.hidden = true;
+      if (pbqEmptyStateEl) {
+        pbqEmptyStateEl.hidden = false;
+        pbqEmptyStateEl.textContent = pbqs.length === 0
+          ? 'No PBQ Lab scenarios for this exam yet -- check back as new content lands.'
+          : 'No PBQ Lab scenarios in this domain. Try a different filter.';
+      }
+      if (pbqCounterEl) pbqCounterEl.textContent = '0 / 0';
+      if (btnPrevPbq) btnPrevPbq.disabled = true;
+      if (btnNextPbq) btnNextPbq.disabled = true;
+      if (pbqLayoutTagEl) pbqLayoutTagEl.hidden = true;
+      return;
+    }
+
+    pbqContentEl.hidden = false;
+    if (pbqEmptyStateEl) pbqEmptyStateEl.hidden = true;
+
+    const pbq = filteredPbqs[currentPbqIndex];
+    const savedAttempt = getPbqSavedAttempt(pbq);
+    const isChecked = !!savedAttempt;
+
+    // Fresh working state for this PBQ unless we're restoring a graded attempt.
+    currentPbqUserAnswers = isChecked ? { ...savedAttempt.userAnswers } : {};
+    currentPbqTokenPlacement = isChecked ? { ...(savedAttempt.userAnswers.__tokenPlacement || {}) } : {};
+
+    pbqTitleEl.textContent = pbq.title;
+    pbqDomainTagEl.textContent = `Domain ${pbq.domain}: ${getDomainTitle(pbq.domain)} — Section ${pbq.section_number}: ${pbq.section_title}`;
+    pbqScenarioContextEl.textContent = pbq.scenario_context;
+    pbqCounterEl.textContent = `${currentPbqIndex + 1} / ${filteredPbqs.length}`;
+
+    if (pbqLayoutTagEl) {
+      pbqLayoutTagEl.hidden = false;
+      pbqLayoutTagEl.textContent = (pbq.layout || 'wizard').toUpperCase();
+    }
+
+    const needsVerification = pbq.verification_status === 'needs_verification' ||
+      collectAllPbqFields(pbq).some(f => f.needs_verification);
+    if (pbqVerifyBadgeEl) pbqVerifyBadgeEl.hidden = !needsVerification;
+
+    renderPbqLayout(pbq, isChecked, isChecked ? currentPbqUserAnswers : null, isChecked ? savedAttempt.results : null);
+
+    if (btnPbqCheck) btnPbqCheck.hidden = isChecked;
+    if (btnPbqRetry) btnPbqRetry.hidden = !isChecked;
+
+    if (isChecked) {
+      applyPbqScoreBadge(pbqScoreBadgeEl, savedAttempt.scorePct);
+      pbqRationaleBoxEl.style.display = 'block';
+      pbqRationaleBoxEl.className = `quiz-explanation-box ${savedAttempt.scorePct >= 80 ? 'correct' : 'incorrect'}`;
+      pbqRationaleStatusEl.textContent = `SCORE: ${savedAttempt.correctCount} / ${savedAttempt.totalCount} FIELDS CORRECT`;
+      pbqRationaleTextEl.textContent = pbq.rationale;
+    } else {
+      if (pbqScoreBadgeEl) pbqScoreBadgeEl.hidden = true;
+      pbqRationaleBoxEl.style.display = 'none';
+    }
+
+    btnPrevPbq.disabled = currentPbqIndex === 0;
+    btnNextPbq.disabled = currentPbqIndex === filteredPbqs.length - 1;
+  }
+
+  // ==========================================
   // ANSWER OPTION RANDOMIZATION
   // ==========================================
   // Session-scoped cache of a shuffled A/B/C/D display order per question id.
@@ -1285,7 +1975,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const card = filteredCards[currentCardIndex];
-    cardDomainTag.textContent = card.weak_spot ? `Domain ${card.domain} · ⚠ Weak Spot` : `Domain ${card.domain}`;
+    cardDomainTag.innerHTML = card.weak_spot ? `Domain ${card.domain} · ${ICON_WARN} Weak Spot` : `Domain ${card.domain}`;
     cardTermEl.textContent = card.term;
     cardDefinitionEl.textContent = card.definition;
     cardCounterEl.textContent = `${currentCardIndex + 1} / ${filteredCards.length}`;
@@ -1510,8 +2200,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const q = filteredQuestions[currentQuizIndex];
-    quizDomainTag.textContent = q.weak_spot
-      ? `Domain ${q.domain}: ${getDomainTitle(q.domain)} · ⚠ Weak Spot`
+    quizDomainTag.innerHTML = q.weak_spot
+      ? `Domain ${q.domain}: ${getDomainTitle(q.domain)} · ${ICON_WARN} Weak Spot`
       : `Domain ${q.domain}: ${getDomainTitle(q.domain)}`;
     quizQuestionEl.textContent = q.question;
     quizCounterEl.textContent = `${currentQuizIndex + 1} / ${filteredQuestions.length}`;
@@ -2680,20 +3370,80 @@ Give the student a deeper explanation building on this guide: connect it to rela
   // TIMED MOCK EXAM CONSOLE
   // ==========================================
   
-  // Mock Exam mode -- Quick Practice (examConfig.mock_exam) or Full-Length
-  // (examConfig.mock_exam_full, falling back to the quick config for any
-  // exam that hasn't defined a full-length one yet).
+  // Mock Exam mode -- Quick Practice (examConfig.mock_exam) or Full-Length.
+  // Full-Length is either CISM's older single examConfig.mock_exam_full
+  // block, or -- when the active exam defines examConfig.full_mock_exams
+  // (SecurityX's named, curated, non-repeating sets) -- whichever of those
+  // named exams selectedFullMockIndex currently points at. CISM's own
+  // mock_exam_full behavior is completely unchanged: it has no
+  // full_mock_exams array, so it always falls through to the old branch.
   function getMockConfig(mode) {
     const cfg = examConfig || FALLBACK_EXAM_CONFIG;
     if (mode === 'full') {
+      if (Array.isArray(cfg.full_mock_exams) && cfg.full_mock_exams.length > 0) {
+        return cfg.full_mock_exams[selectedFullMockIndex] || cfg.full_mock_exams[0];
+      }
       return cfg.mock_exam_full || cfg.mock_exam || FALLBACK_EXAM_CONFIG.mock_exam;
     }
     return cfg.mock_exam || FALLBACK_EXAM_CONFIG.mock_exam;
   }
 
+  // A curated full_mock_exams entry has no question_count field (it has
+  // question_source_ids/pbq_ids instead) -- this derives the total item
+  // count either way so display code doesn't need to know which shape it got.
+  function getMockConfigItemCount(cfg) {
+    if (Number.isFinite(cfg.question_count)) return cfg.question_count;
+    const q = Array.isArray(cfg.question_source_ids) ? cfg.question_source_ids.length : 0;
+    const p = Array.isArray(cfg.pbq_ids) ? cfg.pbq_ids.length : 0;
+    return q + p;
+  }
+
+  // Shows/hides the "which named Full Mock" picker -- only relevant when
+  // Full-Length mode is selected AND the active exam actually has named,
+  // curated full_mock_exams (SecurityX today; CISM/CISSP never show this).
+  function updateFullMockSelectorVisibility() {
+    if (!mockFullMockSelectWrap) return;
+    const cfg = examConfig || FALLBACK_EXAM_CONFIG;
+    const hasNamed = Array.isArray(cfg.full_mock_exams) && cfg.full_mock_exams.length > 0;
+    // Uses style.display (not the `hidden` attribute) because the element's
+    // own base style is `display: flex` -- toggling `hidden` alone would be
+    // overridden by that inline flex rule and never actually hide it.
+    mockFullMockSelectWrap.style.display = (selectedMockMode === 'full' && hasNamed) ? 'flex' : 'none';
+  }
+
+  // Populates the named-Full-Mock <select> from examConfig.full_mock_exams.
+  // Called once the exam manifest/config is known (see renderExamChrome()) --
+  // a no-op for exams with no full_mock_exams array.
+  function populateFullMockPicker() {
+    if (!mockFullMockPicker) return;
+    const cfg = examConfig || FALLBACK_EXAM_CONFIG;
+    const list = Array.isArray(cfg.full_mock_exams) ? cfg.full_mock_exams : [];
+    mockFullMockPicker.innerHTML = '';
+    list.forEach((m, idx) => {
+      const opt = document.createElement('option');
+      opt.value = String(idx);
+      opt.textContent = m.name || `Full Mock ${idx + 1}`;
+      mockFullMockPicker.appendChild(opt);
+    });
+    selectedFullMockIndex = 0;
+    if (list.length > 0) mockFullMockPicker.value = '0';
+  }
+
+  if (mockFullMockPicker) {
+    mockFullMockPicker.addEventListener('change', () => {
+      selectedFullMockIndex = Number(mockFullMockPicker.value) || 0;
+      updateMockSpecsDisplay();
+    });
+  }
+
   function updateMockSpecsDisplay() {
     const cfg = getMockConfig(selectedMockMode);
-    if (mockSpecQuestionsEl) mockSpecQuestionsEl.textContent = `${cfg.question_count} Questions`;
+    const totalItems = getMockConfigItemCount(cfg);
+    if (mockSpecQuestionsEl) {
+      mockSpecQuestionsEl.textContent = Array.isArray(cfg.pbq_ids) && cfg.pbq_ids.length > 0
+        ? `${(cfg.question_source_ids || []).length} MCQ + ${cfg.pbq_ids.length} PBQ`
+        : `${totalItems} Questions`;
+    }
     if (mockSpecTimeEl) {
       const totalMinutes = Math.round(cfg.time_limit_seconds / 60);
       if (totalMinutes >= 60) {
@@ -2711,6 +3461,7 @@ Give the student a deeper explanation building on this guide: connect it to rela
     btn.addEventListener('click', () => {
       selectedMockMode = btn.dataset.mode;
       mockModeButtons.forEach(b => b.classList.toggle('active', b === btn));
+      updateFullMockSelectorVisibility();
       updateMockSpecsDisplay();
     });
   });
@@ -2742,16 +3493,47 @@ Give the student a deeper explanation building on this guide: connect it to rela
     mockActive.style.display = 'block';
 
     const mockCfg = getMockConfig(selectedMockMode);
+    activeMockCfg = mockCfg;
 
-    // 1. Randomize and extract N questions (or all if less than N) per exam config
-    mockQuestions = [...questions].sort(() => 0.5 - Math.random()).slice(0, mockCfg.question_count);
+    if (Array.isArray(mockCfg.question_source_ids) && mockCfg.question_source_ids.length > 0) {
+      // Curated Full Mock (SecurityX full_mock_exams entry): a fixed,
+      // hand-assembled, non-random item list looked up by source_id/pbq_id --
+      // NEVER by the runtime numeric `id` (ensureNumericIds() assigns that by
+      // array position when the seed has no positive numeric id, which is
+      // the case here, so it isn't stable enough for a curated manifest to
+      // reference). Order is preserved exactly as authored, not reshuffled,
+      // so the attempt is reproducible and reviewable.
+      mockQuestions = mockCfg.question_source_ids
+        .map(sid => questions.find(q => q.source_id === sid))
+        .filter(Boolean);
+      if (mockQuestions.length !== mockCfg.question_source_ids.length) {
+        console.warn(`[MOCK] ${mockCfg.question_source_ids.length - mockQuestions.length} curated question_source_id(s) did not resolve against the loaded question bank; skipped.`);
+      }
+      mockPbqs = (mockCfg.pbq_ids || [])
+        .map(pid => pbqs.find(p => p.pbq_id === pid))
+        .filter(Boolean);
+      if (mockPbqs.length !== (mockCfg.pbq_ids || []).length) {
+        console.warn(`[MOCK] ${(mockCfg.pbq_ids || []).length - mockPbqs.length} curated pbq_id(s) did not resolve against the loaded PBQ bank; skipped.`);
+      }
+    } else {
+      // Existing behavior, completely unchanged: Quick Practice, CISM's
+      // single mock_exam_full block, or any exam/mode with no curated list --
+      // a random sample from the full pool, no PBQs.
+      mockQuestions = [...questions].sort(() => 0.5 - Math.random()).slice(0, mockCfg.question_count);
+      mockPbqs = [];
+    }
+
     mockAnswers = {};
+    mockPbqAnswers = {};
+    mockPbqGradedResults = {};
     mockCurrentIndex = 0;
     mockTimeRemaining = mockCfg.time_limit_seconds;
     mockSecondsElapsed = 0;
     mockTimerEl.textContent = formatMockTime(mockTimeRemaining);
 
-    // Start timer clock
+    // Start timer clock -- runs continuously across both the MCQ and PBQ
+    // portions of a curated Full Mock; nothing below resets/pauses it at
+    // the MCQ->PBQ transition.
     clearInterval(mockTimerInterval);
     mockTimerInterval = setInterval(() => {
       mockTimeRemaining--;
@@ -2764,7 +3546,110 @@ Give the student a deeper explanation building on this guide: connect it to rela
       }
     }, 1000);
 
-    renderMockQuestion();
+    renderMockCurrentItem();
+  }
+
+  // ==========================================
+  // CURATED FULL MOCK -- MCQ/PBQ ITEM DISPATCH
+  // ==========================================
+  // mockCurrentIndex ranges over the WHOLE attempt (MCQ items first, then
+  // PBQ items) whenever mockPbqs is non-empty. These three helpers are the
+  // only place that distinction is made; everything else (renderMockQuestion,
+  // gradePbq, etc.) is unaware of the combined indexing scheme.
+  function totalMockItemCount() {
+    return mockQuestions.length + mockPbqs.length;
+  }
+
+  function isMockIndexPbq(idx) {
+    return mockPbqs.length > 0 && idx >= mockQuestions.length;
+  }
+
+  function currentMockPbq() {
+    if (mockPbqs.length === 0) return null;
+    const pbqIdx = mockCurrentIndex - mockQuestions.length;
+    return pbqIdx >= 0 ? mockPbqs[pbqIdx] : null;
+  }
+
+  // Persists whatever is currently in currentPbqUserAnswers/
+  // currentPbqTokenPlacement into mockPbqAnswers, but only if the item
+  // currently on screen actually is a PBQ -- a no-op otherwise. Called
+  // before every navigation away from the current item (and once at the top
+  // of submitMockExam()) so a PBQ's in-progress answers survive Prev/Next
+  // exactly like MCQ answers already do via mockAnswers.
+  function captureCurrentMockPbqDraft() {
+    if (!isMockIndexPbq(mockCurrentIndex)) return;
+    const pbq = currentMockPbq();
+    if (!pbq) return;
+    mockPbqAnswers[pbq.pbq_id] = {
+      userAnswers: { ...currentPbqUserAnswers },
+      tokenPlacement: { ...currentPbqTokenPlacement }
+    };
+  }
+
+  // Renders whichever item mockCurrentIndex currently points at (MCQ via the
+  // existing renderMockQuestion(), or -- curated Full Mock only -- a PBQ via
+  // renderMockPbqItem()), toggling the two body containers and, only when
+  // mockPbqs.length > 0, overriding the progress/prev/next/flag-nav chrome
+  // to account for the combined MCQ+PBQ item count. When mockPbqs is empty
+  // (every exam/mode except a curated Full Mock), this is a pure passthrough
+  // to renderMockQuestion() with zero behavior change.
+  function renderMockCurrentItem() {
+    const onPbq = isMockIndexPbq(mockCurrentIndex);
+
+    if (mockBodyEl) mockBodyEl.hidden = onPbq;
+    if (mockPbqBodyEl) mockPbqBodyEl.hidden = !onPbq;
+    if (mockFlagGroupEl) mockFlagGroupEl.hidden = onPbq;
+
+    if (onPbq) {
+      renderMockPbqItem();
+    } else {
+      renderMockQuestion();
+    }
+
+    if (mockPbqs.length > 0) {
+      const total = totalMockItemCount();
+      mockProgressEl.textContent = `Item ${mockCurrentIndex + 1} of ${total}`;
+      btnMockPrev.disabled = mockCurrentIndex === 0;
+      if (mockCurrentIndex === total - 1) {
+        btnMockNext.textContent = 'FINISH EXAM';
+        btnMockNext.className = 'btn-hud btn-success';
+        btnMockNext.style.borderColor = 'var(--accent-green)';
+      } else {
+        btnMockNext.textContent = 'Next ▶';
+        btnMockNext.className = 'btn-hud';
+        btnMockNext.style.borderColor = '';
+      }
+      if (onPbq) {
+        if (btnMockFlagPrev) btnMockFlagPrev.disabled = true;
+        if (btnMockFlagNext) btnMockFlagNext.disabled = true;
+      } else {
+        updateMockFlagNav();
+      }
+    }
+  }
+
+  // Renders the current PBQ item into mock-pbq-body via the exact same
+  // renderPbqLayout() dispatcher/gradePbq() the PBQ Lab tab uses -- disabled
+  // is always false here (still editable) and no rationale/feedback is
+  // shown, matching how Mock Exam withholds explanations until the whole
+  // attempt is graded.
+  function renderMockPbqItem() {
+    const pbq = currentMockPbq();
+    if (!pbq) return;
+
+    const draft = mockPbqAnswers[pbq.pbq_id];
+    currentPbqUserAnswers = draft ? { ...draft.userAnswers } : {};
+    currentPbqTokenPlacement = draft ? { ...draft.tokenPlacement } : {};
+
+    if (mockPbqTitleEl) mockPbqTitleEl.textContent = pbq.title;
+    if (mockPbqDomainTagEl) {
+      mockPbqDomainTagEl.textContent = `Domain ${pbq.domain}: ${getDomainTitle(pbq.domain)} — Section ${pbq.section_number}: ${pbq.section_title}`;
+    }
+    if (mockPbqScenarioContextEl) mockPbqScenarioContextEl.textContent = pbq.scenario_context;
+
+    if (mockPbqFieldsContainerEl) {
+      renderPbqLayout(pbq, false, null, null, mockPbqFieldsContainerEl);
+    }
   }
 
   function renderMockQuestion() {
@@ -2776,7 +3661,7 @@ Give the student a deeper explanation building on this guide: connect it to rela
 
     // Bookmarked flag checking
     const isBookmarked = isItemBookmarked('question', q.id);
-    btnMockFlag.textContent = isBookmarked ? '★ Flagged' : 'Flag Question';
+    btnMockFlag.innerHTML = isBookmarked ? (ICON_STAR + ' Flagged') : 'Flag Question';
     btnMockFlag.className = `btn-hud ${isBookmarked ? 'btn-warn active' : 'btn-warn'}`;
 
     // Options rendering -- display order/labels are shuffled per question
@@ -2829,9 +3714,11 @@ Give the student a deeper explanation building on this guide: connect it to rela
 
   // Next / Finish exam trigger
   btnMockNext.addEventListener('click', () => {
-    if (mockCurrentIndex < mockQuestions.length - 1) {
+    const total = totalMockItemCount();
+    if (mockCurrentIndex < total - 1) {
+      captureCurrentMockPbqDraft();
       mockCurrentIndex++;
-      renderMockQuestion();
+      renderMockCurrentItem();
     } else {
       // finish exam confirmation
       if (confirm('Are you sure you want to submit your exam answers?')) {
@@ -2843,8 +3730,9 @@ Give the student a deeper explanation building on this guide: connect it to rela
 
   btnMockPrev.addEventListener('click', () => {
     if (mockCurrentIndex > 0) {
+      captureCurrentMockPbqDraft();
       mockCurrentIndex--;
-      renderMockQuestion();
+      renderMockCurrentItem();
     }
   });
 
@@ -2870,8 +3758,9 @@ Give the student a deeper explanation building on this guide: connect it to rela
     btnMockFlagPrev.addEventListener('click', () => {
       const priorFlagged = getFlaggedMockIndexes().filter(i => i < mockCurrentIndex);
       if (priorFlagged.length === 0) return;
+      captureCurrentMockPbqDraft();
       mockCurrentIndex = priorFlagged[priorFlagged.length - 1];
-      renderMockQuestion();
+      renderMockCurrentItem();
     });
   }
 
@@ -2879,13 +3768,19 @@ Give the student a deeper explanation building on this guide: connect it to rela
     btnMockFlagNext.addEventListener('click', () => {
       const upcomingFlagged = getFlaggedMockIndexes().filter(i => i > mockCurrentIndex);
       if (upcomingFlagged.length === 0) return;
+      captureCurrentMockPbqDraft();
       mockCurrentIndex = upcomingFlagged[0];
-      renderMockQuestion();
+      renderMockCurrentItem();
     });
   }
 
-  // Mock flagging toggle
+  // Mock flagging toggle -- PBQ items have no bookmark concept (bookmarks are
+  // keyed by the numeric question id), so this is a no-op whenever the
+  // current item is a PBQ; the flag control group is hidden for PBQ items
+  // anyway (see renderMockCurrentItem()), but this guard covers any stray
+  // click during the hide/show transition.
   btnMockFlag.addEventListener('click', () => {
+    if (isMockIndexPbq(mockCurrentIndex)) return;
     const q = mockQuestions[mockCurrentIndex];
     const isBookmarked = isItemBookmarked('question', q.id);
 
@@ -2902,6 +3797,8 @@ Give the student a deeper explanation building on this guide: connect it to rela
 
   function submitMockExam() {
     mockActive.style.display = 'none';
+    // In case Finish Exam was clicked while a PBQ item was still on screen.
+    captureCurrentMockPbqDraft();
 
     // Calculate score, per-domain breakdown, and update personal mistake
     // history -- all from a single pass over the attempted questions.
@@ -2955,8 +3852,31 @@ Give the student a deeper explanation building on this guide: connect it to rela
       }
     });
 
-    const totalCount = mockQuestions.length;
-    const scorePct = totalCount > 0 ? (correctCount / totalCount) * 100 : 0;
+    // Grade every curated PBQ (empty loop, pbqPointsSum stays 0, for any
+    // attempt without PBQs -- Quick Practice, CISM's mock_exam_full, etc.).
+    // Each MCQ is worth 1 point (already tallied in correctCount above);
+    // each PBQ contributes its gradePbq() scorePct (0.0-1.0) as fractional
+    // credit toward that PBQ's own 1 point, so the total possible stays
+    // exactly mockQuestions.length + mockPbqs.length (90 for a curated
+    // SecurityX Full Mock) -- matching how the real item-based exam scores.
+    let pbqPointsSum = 0;
+    mockPbqGradedResults = {};
+    mockPbqs.forEach(pbq => {
+      const draft = mockPbqAnswers[pbq.pbq_id] || { userAnswers: {}, tokenPlacement: {} };
+      const graded = gradePbq(pbq, draft.userAnswers, draft.tokenPlacement);
+      mockPbqGradedResults[pbq.pbq_id] = graded;
+      pbqPointsSum += graded.scorePct / 100;
+
+      if (!domainBreakdown[pbq.domain]) {
+        domainBreakdown[pbq.domain] = { correct: 0, answered: 0 };
+      }
+      domainBreakdown[pbq.domain].answered += 1;
+      domainBreakdown[pbq.domain].correct += graded.scorePct / 100;
+    });
+
+    const totalCount = mockQuestions.length + mockPbqs.length;
+    const combinedPoints = correctCount + pbqPointsSum;
+    const scorePct = totalCount > 0 ? (combinedPoints / totalCount) * 100 : 0;
 
     lastMockDiagnostics = {
       mode: selectedMockMode,
@@ -2965,7 +3885,13 @@ Give the student a deeper explanation building on this guide: connect it to rela
       totalCount,
       missedByKs: Object.values(missedByKs).sort((a, b) => b.count - a.count)
     };
-    const passingThreshold = ((examConfig || FALLBACK_EXAM_CONFIG).mock_exam || FALLBACK_EXAM_CONFIG.mock_exam).passing_threshold;
+    // Use the exact config this attempt was started from (covers curated
+    // Full Mocks, each with their own passing_threshold, plus CISM's
+    // mock_exam_full) -- falling back to the Quick Practice threshold only
+    // if activeMockCfg somehow isn't set.
+    const passingThreshold = Number.isFinite(activeMockCfg?.passing_threshold)
+      ? activeMockCfg.passing_threshold
+      : ((examConfig || FALLBACK_EXAM_CONFIG).mock_exam || FALLBACK_EXAM_CONFIG.mock_exam).passing_threshold;
     const passed = scorePct >= passingThreshold;
 
     const savedAttempt = {
@@ -2989,7 +3915,11 @@ Give the student a deeper explanation building on this guide: connect it to rela
     resultsStatusEl.textContent = passed ? 'PASSED' : 'FAILED';
     resultsStatusEl.className = `results-label ${passed ? 'pass' : 'fail'}`;
 
-    resultsCorrectEl.textContent = `${correctCount} / ${totalCount}`;
+    // Curated Full Mocks show fractional credit (PBQ partial scoring), plain
+    // MCQ-only attempts keep the exact original integer "X / Y" format.
+    resultsCorrectEl.textContent = mockPbqs.length > 0
+      ? `${combinedPoints.toFixed(1)} / ${totalCount}`
+      : `${correctCount} / ${totalCount}`;
     resultsDurationEl.textContent = `${Math.floor(mockSecondsElapsed / 60)}m ${mockSecondsElapsed % 60}s`;
 
     if (passed) {
@@ -3001,12 +3931,13 @@ Give the student a deeper explanation building on this guide: connect it to rela
     }
 
     renderResultsDomainBreakdown(domainBreakdown);
+    renderMockPbqReview();
 
-    const hasMisses = correctCount < totalCount;
+    const hasMisses = combinedPoints < totalCount;
     if (btnTrainingPlan) {
       btnTrainingPlan.hidden = !hasMisses;
       btnTrainingPlan.disabled = false;
-      btnTrainingPlan.textContent = '✨ Build My Training Plan';
+      btnTrainingPlan.innerHTML = ICON_SPARKLE + ' Build My Training Plan';
     }
     if (resultsPerfectNoteEl) resultsPerfectNoteEl.hidden = hasMisses;
 
@@ -3028,13 +3959,86 @@ Give the student a deeper explanation building on this guide: connect it to rela
 
       const pct = Math.round((stats.correct / stats.answered) * 100);
       const tier = pct >= 80 ? 'high' : pct >= 60 ? 'mid' : 'low';
+      // A curated Full Mock's PBQ contribution is fractional (partial
+      // credit) -- show one decimal place whenever that's not a whole
+      // number, rather than a misleading unrounded float.
+      const correctDisplay = Number.isInteger(stats.correct) ? stats.correct : stats.correct.toFixed(1);
 
       const item = document.createElement('div');
       item.className = 'results-domain-breakdown-item';
       item.innerHTML = `
         <span class="results-domain-breakdown-title">Domain ${d.id}: ${escapeHtml(d.title || '')}</span>
-        <span class="results-domain-breakdown-score font-mono ${tier}">${pct}% (${stats.correct}/${stats.answered})</span>`;
+        <span class="results-domain-breakdown-score font-mono ${tier}">${pct}% (${correctDisplay}/${stats.answered})</span>`;
       resultsDomainBreakdownEl.appendChild(item);
+    });
+  }
+
+  // Renders the results screen's PBQ review section for a curated Full
+  // Mock -- one card per PBQ, in disabled/graded mode via the exact same
+  // renderPbqLayout()/gradePbq() the PBQ Lab tab uses, so Josh sees per-field
+  // correct/incorrect marks and the scenario's rationale, consistent with
+  // how PBQ Lab review already works. Hidden entirely (and cleared) for any
+  // attempt with no PBQs.
+  function renderMockPbqReview() {
+    if (!mockPbqReviewEl || !mockPbqReviewListEl) return;
+    if (mockPbqs.length === 0) {
+      mockPbqReviewEl.hidden = true;
+      mockPbqReviewListEl.innerHTML = '';
+      return;
+    }
+
+    mockPbqReviewEl.hidden = false;
+    mockPbqReviewListEl.innerHTML = '';
+
+    mockPbqs.forEach(pbq => {
+      const graded = mockPbqGradedResults[pbq.pbq_id] || { results: {}, correctCount: 0, totalCount: 0, scorePct: 0 };
+      const draft = mockPbqAnswers[pbq.pbq_id] || { userAnswers: {}, tokenPlacement: {} };
+
+      const item = document.createElement('div');
+      item.className = 'pbq-content';
+      item.style.marginTop = '20px';
+      item.style.paddingTop = '20px';
+      item.style.borderTop = '1px solid var(--border-color, rgba(255,255,255,0.1))';
+
+      const head = document.createElement('div');
+      head.className = 'pbq-scenario-head';
+      const titleEl = document.createElement('h4');
+      titleEl.className = 'pbq-title';
+      titleEl.textContent = pbq.title;
+      const domTag = document.createElement('span');
+      domTag.className = 'pbq-domain-tag';
+      domTag.textContent = `Domain ${pbq.domain}: ${getDomainTitle(pbq.domain)}`;
+      const scoreBadge = document.createElement('span');
+      scoreBadge.className = 'pbq-score-badge';
+      head.appendChild(titleEl);
+      head.appendChild(domTag);
+      head.appendChild(scoreBadge);
+      item.appendChild(head);
+      applyPbqScoreBadge(scoreBadge, graded.scorePct);
+
+      const ctx = document.createElement('p');
+      ctx.className = 'pbq-scenario-context';
+      ctx.textContent = pbq.scenario_context;
+      item.appendChild(ctx);
+
+      const fieldsContainer = document.createElement('div');
+      fieldsContainer.className = 'pbq-fields-container';
+      item.appendChild(fieldsContainer);
+
+      const answersForRender = { ...draft.userAnswers, __tokenPlacement: draft.tokenPlacement };
+      renderPbqLayout(pbq, true, answersForRender, graded.results, fieldsContainer);
+
+      const rationaleBox = document.createElement('div');
+      rationaleBox.className = `quiz-explanation-box ${graded.scorePct >= 80 ? 'correct' : 'incorrect'}`;
+      const rHeader = document.createElement('h4');
+      rHeader.textContent = `SCORE: ${graded.correctCount} / ${graded.totalCount} FIELDS CORRECT`;
+      const rText = document.createElement('p');
+      rText.textContent = pbq.rationale;
+      rationaleBox.appendChild(rHeader);
+      rationaleBox.appendChild(rText);
+      item.appendChild(rationaleBox);
+
+      mockPbqReviewListEl.appendChild(item);
     });
   }
 
@@ -3249,7 +4253,7 @@ Build a comprehensive, prioritized training plan covering every knowledge area l
     if (trainingPlanActionsEl) trainingPlanActionsEl.hidden = false;
     if (btnTrainingPlanRetry) {
       btnTrainingPlanRetry.hidden = false;
-      btnTrainingPlanRetry.textContent = '🔄 Regenerate';
+      btnTrainingPlanRetry.innerHTML = ICON_REFRESH + ' Regenerate';
     }
   }
 
@@ -3299,7 +4303,7 @@ Build a comprehensive, prioritized training plan covering every knowledge area l
       if (trainingPlanActionsEl) trainingPlanActionsEl.hidden = false;
       if (btnTrainingPlanRetry) {
         btnTrainingPlanRetry.hidden = false;
-        btnTrainingPlanRetry.textContent = '🔁 Try again';
+        btnTrainingPlanRetry.innerHTML = ICON_REFRESH + ' Try again';
       }
     }
   }
@@ -3854,7 +4858,7 @@ Build a comprehensive, prioritized training plan covering every knowledge area l
       // leaving the search box for the tutor tab).
       searchResultsEl.innerHTML = `
         <div class="search-empty-state">No matches found.</div>
-        <button type="button" class="search-ask-tutor-btn" id="search-ask-tutor-btn">💬 Ask the AI Tutor about "${escapeHtml(query)}" instead</button>
+        <button type="button" class="search-ask-tutor-btn" id="search-ask-tutor-btn">${ICON_CHAT} Ask the AI Tutor about "${escapeHtml(query)}" instead</button>
       `;
       searchResultsEl.hidden = false;
       searchResultsEl._currentResults = [];
@@ -4031,6 +5035,77 @@ Build a comprehensive, prioritized training plan covering every knowledge area l
   }
 
   initSearch();
+
+  // Quick Start / Features / AI Setup menu -- same expand/collapse pattern
+  // as the header search widget above. The three buttons inside keep their
+  // original ids and click handlers untouched; this only toggles whether
+  // the panel holding them is visible.
+  const headerMenuEl = document.getElementById('header-settings-menu');
+  const headerMenuToggleBtn = document.getElementById('btn-header-settings-toggle');
+  const headerMenuPanelEl = document.getElementById('header-settings-panel');
+  const headerMenuBackdropEl = document.getElementById('header-menu-backdrop');
+  const headerMenuStatusDotEl = document.getElementById('header-menu-status-dot');
+  const aiStatusDotSourceEl = document.getElementById('ai-status-dot');
+
+  function collapseHeaderMenu() {
+    if (!headerMenuEl) return;
+    headerMenuEl.classList.remove('expanded');
+    if (headerMenuPanelEl) headerMenuPanelEl.hidden = true;
+    if (headerMenuToggleBtn) headerMenuToggleBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  function expandHeaderMenu() {
+    if (!headerMenuEl) return;
+    headerMenuEl.classList.add('expanded');
+    if (headerMenuPanelEl) headerMenuPanelEl.hidden = false;
+    if (headerMenuToggleBtn) headerMenuToggleBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  if (headerMenuEl && headerMenuToggleBtn && headerMenuPanelEl) {
+    headerMenuToggleBtn.addEventListener('click', () => {
+      if (headerMenuEl.classList.contains('expanded')) {
+        collapseHeaderMenu();
+      } else {
+        expandHeaderMenu();
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (headerMenuEl.classList.contains('expanded') && !headerMenuEl.contains(e.target)) {
+        collapseHeaderMenu();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && headerMenuEl.classList.contains('expanded')) {
+        collapseHeaderMenu();
+      }
+    });
+
+    // Closing the menu after one of its buttons opens its own modal keeps
+    // the panel from being left open behind that modal.
+    headerMenuPanelEl.querySelectorAll('button').forEach((btn) => {
+      btn.addEventListener('click', () => collapseHeaderMenu());
+    });
+
+    // The backdrop sits behind the panel and dims the rest of the page
+    // while the menu is open (see .header-menu-backdrop in styles.css) --
+    // clicking it closes the menu, same as clicking outside a modal.
+    if (headerMenuBackdropEl) {
+      headerMenuBackdropEl.addEventListener('click', () => collapseHeaderMenu());
+    }
+  }
+
+  // Mirror the AI-configured status dot onto the collapsed menu trigger --
+  // purely observational, it never writes to #ai-status-dot itself, so the
+  // existing AI-settings logic that owns that element is untouched.
+  if (aiStatusDotSourceEl && headerMenuStatusDotEl) {
+    const syncHeaderMenuDot = () => {
+      headerMenuStatusDotEl.hidden = aiStatusDotSourceEl.hidden;
+    };
+    syncHeaderMenuDot();
+    new MutationObserver(syncHeaderMenuDot).observe(aiStatusDotSourceEl, { attributes: true, attributeFilter: ['hidden'] });
+  }
 
   // Load database content on boot. The loading overlay is hidden in a
   // finally block so a genuine error mid-load still reveals the app (with

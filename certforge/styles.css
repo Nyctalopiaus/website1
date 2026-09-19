@@ -4,16 +4,33 @@
   --bg-card: #434c5e;
   --border-color: rgba(136, 192, 208, 0.2);
   --border-hover: rgba(136, 192, 208, 0.4);
-  
+
+  /* Nested cards inside a panel/card (domain rows, per-choice rationale,
+     PBQ field groups...) were using a near-invisible rgba(255,255,255,0.01-
+     0.02) fill/border -- so close to the parent's own color that the two
+     read as one undifferentiated rectangle. These two lift a nested item a
+     visible step lighter than whatever it's sitting on without touching the
+     base bg-dark/bg-panel/bg-card values (and the text-contrast math that
+     was already tuned against them below). */
+  --surface-lift: rgba(255, 255, 255, 0.05);
+  --surface-lift-border: rgba(136, 192, 208, 0.16);
+
+  /* Real elevation: on a dark surface a drop shadow alone barely reads, so
+     every card pairs its shadow with a faint lighter rim along the top
+     edge -- the two together are what actually make a card look like it's
+     sitting above the surface behind it instead of just having a border. */
+  --elevate-shadow: 0 4px 15px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  --elevate-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
   --text-bright: #eceff4;
   --text-muted: #d8dee9;
   --text-dark: #9da6b8; /* was #4c566a -- failed WCAG contrast (~1.2-1.7:1) on every background it's used on; this passes AA on bg-dark/bg-panel and AA-large on bg-card while staying visually de-emphasized */
-  
+
   --accent-cyan: #88c0d0;
   --accent-green: #a3be8c;
   --accent-orange: #d08770;
   --accent-red: #bf616a;
-  
+
   --font-sans: 'Outfit', sans-serif;
   --font-display: 'Space Grotesk', sans-serif;
   --font-mono: 'Share Tech Mono', monospace;
@@ -27,7 +44,7 @@
 
 body {
   background-color: var(--bg-dark);
-  background-image: linear-gradient(rgba(6, 8, 11, 0.82), rgba(6, 8, 11, 0.82)), url('assets/cyber_study_bg.webp');
+  background-image: linear-gradient(rgba(6, 8, 11, 0.68), rgba(6, 8, 11, 0.68)), url('assets/cyber_study_bg.webp');
   background-attachment: fixed;
   background-size: cover;
   background-position: center;
@@ -48,7 +65,7 @@ body {
   transform: translateX(-50%);
   width: 1000px;
   height: 600px;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.04) 0%, rgba(6, 182, 212, 0.02) 55%, transparent 70%);
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.09) 0%, rgba(6, 182, 212, 0.05) 55%, transparent 70%);
   z-index: -1;
   pointer-events: none;
 }
@@ -59,7 +76,7 @@ body {
 
 /* Header */
 .header {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 1.5rem 1.5rem;
   display: flex;
@@ -109,7 +126,7 @@ body {
 
 .brand-track {
   font-family: var(--font-display);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.05em;
   color: var(--accent-green);
@@ -129,7 +146,7 @@ body {
 }
 
 .exam-switcher-label {
-  font-size: 0.6rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -188,7 +205,7 @@ body {
   background: rgba(255, 255, 255, 0.03);
   color: var(--text-bright);
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.82rem;
+  font-size: 0.87rem;
   transition: width 0.2s ease, opacity 0.15s ease, margin-left 0.2s ease, padding 0.2s ease;
   pointer-events: none;
 }
@@ -243,7 +260,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.65rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -256,7 +273,7 @@ body {
 }
 
 .search-result-snippet {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
   line-height: 1.4;
   overflow: hidden;
@@ -274,7 +291,7 @@ body {
 
 .search-empty-state {
   padding: 0.75rem 0.65rem;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
   text-align: center;
 }
@@ -286,7 +303,7 @@ body {
   background: rgba(6, 182, 212, 0.08);
   border: 1px solid rgba(6, 182, 212, 0.3);
   color: var(--accent-cyan, #06b6d4);
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   font-weight: 600;
   padding: 0.55rem 0.7rem;
   border-radius: 6px;
@@ -310,7 +327,7 @@ body {
 }
 
 .platform-intro {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 0.85rem 1.5rem;
   font-size: 0.85rem;
@@ -326,7 +343,7 @@ body {
 
 /* Container */
 .container {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
 }
@@ -339,11 +356,40 @@ body {
   margin-bottom: 2rem;
 }
 
+/* Shown only when nothing's been answered yet -- spans both grid columns at
+   desktop widths so it sits as a single banner above the stats/domains
+   row instead of getting squeezed into one of them. */
+.fresh-start-banner {
+  grid-column: 1 / -1;
+  background: var(--surface-lift);
+  border: 1px solid var(--surface-lift-border);
+  border-left: 3px solid var(--accent-cyan);
+  border-radius: 0.6rem;
+  padding: 0.75rem 1.1rem;
+  font-size: 0.87rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.fresh-start-banner strong {
+  color: var(--text-bright);
+}
+
 @media (min-width: 900px) {
   .dashboard-panel {
     grid-template-columns: 1fr 1.5fr;
   }
 
+}
+
+@media (min-width: 1300px) {
+  .dashboard-panel {
+    grid-template-columns: 1fr 2fr;
+  }
+
+  .domains-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 .stats-overview {
@@ -360,11 +406,11 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--elevate-shadow);
 }
 
 .stat-label {
-  font-size: 0.7rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -384,7 +430,7 @@ body {
   border: 1px solid var(--border-color);
   padding: 1.5rem;
   border-radius: 0.75rem;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--elevate-shadow);
 }
 
 .domain-mastery h3 {
@@ -415,8 +461,8 @@ body {
   display: flex;
   align-items: center;
   gap: 1rem;
-  background: rgba(255, 255, 255, 0.01);
-  border: 1px solid rgba(255, 255, 255, 0.02);
+  background: var(--surface-lift);
+  border: 1px solid var(--surface-lift-border);
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
 }
@@ -458,7 +504,7 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-bright);
 }
@@ -470,7 +516,7 @@ body {
 }
 
 .domain-num {
-  font-size: 0.65rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -478,14 +524,14 @@ body {
 }
 
 .domain-title {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 500;
   color: var(--text-bright);
   line-height: 1.25;
 }
 
 .domain-progress {
-  font-size: 0.65rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
   opacity: 0.75;
   margin-top: 0.1rem;
@@ -498,13 +544,66 @@ body {
 }
 
 /* Navigation Tabs */
+/* Row/wrap by default (desktop has ample width for all 8 buttons on one
+   line); the 900px breakpoint below switches this back to a stacked column
+   once the two groups no longer comfortably share a line. */
 .study-tabs {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 1.5rem;
+  row-gap: 0.55rem;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid var(--border-color);
-  padding-bottom: 1px;
-  overflow-x: auto;
+  padding-bottom: 0.65rem;
+}
+
+.tab-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  row-gap: 0.35rem;
+}
+
+/* The 3 daily-driver modes (Flashcards/Quiz/Mock Exam) vs. the 5 secondary
+   tools (PBQ Lab, Trap Spotter, Concept Guides, Deck Curator, AI Deep Dive)
+   used to sit at identical visual weight in one 8-wide row -- on mobile
+   that's 4 rows of tab chrome before any actual content. The tool row is
+   deliberately smaller/quieter so the core loop reads as primary. Both
+   rows use the exact same .tab-btn click wiring (data-target), so this is
+   a purely visual grouping. On wide screens the two rows sit side by side
+   (see .study-tabs above), so the divider runs down the left edge instead
+   of along the top; the 900px breakpoint flips it back to a top divider
+   once they stack.  */
+.tab-row-secondary {
+  padding-left: 1.1rem;
+  border-left: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.tab-row-label {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dark);
+  margin-right: 0.35rem;
+}
+
+.tab-btn-tool {
+  font-size: 0.8rem;
+  padding: 0.5rem 0.7rem;
+  color: var(--text-dark);
+}
+
+.tab-btn-tool:hover {
+  color: var(--text-bright);
+}
+
+.tab-btn-tool.active {
+  color: var(--accent-green);
 }
 
 .tab-btn {
@@ -512,9 +611,9 @@ body {
   border: 1px solid transparent;
   border-bottom: none;
   color: var(--text-muted);
-  padding: 0.75rem 1.5rem;
+  padding: 0.65rem 0.85rem;
   font-family: var(--font-display);
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   border-top-left-radius: 0.5rem;
@@ -542,7 +641,7 @@ body {
   border-top: none;
   border-radius: 0 0 1rem 1rem;
   min-height: 400px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.34);
   position: relative;
 }
 
@@ -599,7 +698,7 @@ body {
 
 .app-loading-text {
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   letter-spacing: 0.1em;
   color: var(--text-muted);
 }
@@ -625,7 +724,7 @@ body {
   color: var(--text-bright);
   padding: 0.7rem 1rem;
   border-radius: 0.5rem;
-  font-size: 0.82rem;
+  font-size: 0.87rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   opacity: 0;
   transform: translateY(8px);
@@ -690,7 +789,7 @@ body {
   right: 0.75rem;
   z-index: 2;
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.8rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -752,7 +851,7 @@ body {
   justify-content: center;
   align-items: center;
   text-align: center;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--elevate-shadow-lg);
 }
 
 .card-front {
@@ -808,7 +907,7 @@ body {
 
 .trap-front .trap-label {
   font-family: var(--font-display);
-  font-size: 0.75rem;
+  font-size: 0.87rem;
   font-weight: 700;
   letter-spacing: 0.05em;
   color: var(--accent-orange);
@@ -827,7 +926,7 @@ body {
 
 .card-domain-tag {
   font-family: var(--font-mono);
-  font-size: 0.725rem;
+  font-size: 0.845rem;
   font-weight: 700;
   color: var(--accent-green);
   border: 1px solid rgba(16, 185, 129, 0.2);
@@ -847,7 +946,7 @@ body {
 }
 
 .definition-header {
-  font-size: 0.75rem;
+  font-size: 0.87rem;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -862,7 +961,7 @@ body {
 }
 
 .click-hint {
-  font-size: 0.675rem;
+  font-size: 0.8rem;
   color: var(--text-dark);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -940,16 +1039,24 @@ body {
   margin-bottom: 1.5rem;
 }
 
+/* order:3 (and its own full-width row) keeps this filter/action cluster
+   below the domain badge + bookmark button on every viewport, not just the
+   sub-900px one that already did this -- without it, at desktop widths this
+   group's own width can push the bookmark button off onto a lonely row by
+   itself below everything else, reading as a stray, unlabeled icon rather
+   than a control that belongs next to the domain badge. */
 .quiz-toggle-group {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+  order: 3;
+  flex-basis: 100%;
 }
 
 .hud-badge {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.82rem;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--accent-cyan);
@@ -980,11 +1087,19 @@ body {
   background: rgba(245, 158, 11, 0.05);
 }
 
+.btn-bookmark svg {
+  width: 16px;
+  height: 16px;
+}
+
 .btn-bookmark.active {
   color: var(--accent-orange);
   border-color: var(--accent-orange);
   background: rgba(245, 158, 11, 0.12);
-  text-shadow: 0 0 8px var(--accent-orange);
+}
+
+.btn-bookmark.active svg {
+  filter: drop-shadow(0 0 4px var(--accent-orange));
 }
 
 .quiz-question {
@@ -1030,7 +1145,7 @@ body {
   border: 1px solid rgba(16, 185, 129, 0.2);
   padding: 0.05rem 0.35rem;
   border-radius: 0.25rem;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
 }
 
 /* Option feedback status */
@@ -1049,6 +1164,32 @@ body {
 .option-btn.incorrect {
   border-color: var(--accent-red);
   background: rgba(239, 68, 68, 0.08);
+}
+
+/* Correct/incorrect feedback can't rely on the green/red border alone --
+   colorblind users may not reliably tell those apart, so pin a check/x
+   glyph on the row too (independent of color). */
+.option-btn.correct::after,
+.option-btn.incorrect::after {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-left: auto;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 12px 12px;
+}
+
+.option-btn.correct::after {
+  background-color: rgba(16, 185, 129, 0.22);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eceff4' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5L19 7'/%3E%3C/svg%3E");
+}
+
+.option-btn.incorrect::after {
+  background-color: rgba(239, 68, 68, 0.22);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eceff4' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 6l12 12M18 6L6 18'/%3E%3C/svg%3E");
 }
 
 .option-btn.incorrect .option-letter {
@@ -1089,7 +1230,7 @@ body {
   align-items: center;
   gap: 0.4rem;
   font-family: var(--font-sans);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
@@ -1126,10 +1267,10 @@ body {
 }
 
 .rationale-row {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--surface-lift-border);
   border-radius: 0.5rem;
   padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--surface-lift);
 }
 
 .rationale-row.correct {
@@ -1152,7 +1293,7 @@ body {
 .rationale-letter {
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-bright);
   border: 1px solid var(--border-color);
   padding: 0.05rem 0.4rem;
@@ -1292,7 +1433,7 @@ body {
 }
 
 .spec-label {
-  font-size: 0.675rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: var(--text-dark);
   text-transform: uppercase;
@@ -1367,7 +1508,7 @@ body {
 
 .btn-flag-nav {
   padding: 0.5rem 0.75rem;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   opacity: 0.7;
 }
 
@@ -1397,7 +1538,7 @@ body {
 }
 
 .results-domain-breakdown-title {
-  font-size: 0.75rem;
+  font-size: 0.87rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -1464,7 +1605,7 @@ body {
 }
 
 .results-label {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1528,7 +1669,7 @@ body {
 }
 
 .global-reset-wrap {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 2.5rem auto 0;
   padding: 0 1.5rem;
 }
@@ -1541,15 +1682,9 @@ body {
   gap: 0.45rem;
 }
 
-.btn-curate-danger {
-  border-color: rgba(239, 68, 68, 0.55);
-  color: #fca5a5;
-}
-
-.btn-curate-danger:hover {
-  background: rgba(239, 68, 68, 0.12);
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.22);
-}
+/* Full danger styling now lives with .btn-curate below (it has to come
+   after .btn-curate's own rule to win the cascade once .btn-curate went
+   from outline to filled). */
 
 .reset-control-group {
   display: flex;
@@ -1561,7 +1696,7 @@ body {
 }
 
 .reset-control-label {
-  font-size: 0.7rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -1645,7 +1780,7 @@ body {
 }
 
 .curator-form label {
-  font-size: 0.725rem;
+  font-size: 0.845rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -1676,10 +1811,16 @@ body {
   min-height: 80px;
 }
 
+/* Filled/solid, matching .btn-primary-hud's weight -- this commits a card or
+   question straight into the local database, the single most consequential
+   action on this page, so it shouldn't read as a quieter secondary action
+   than "Submit Answer" or "Start Mock Exam" elsewhere in the app. The danger
+   variant below (Reset Selected) explicitly reverts to the outline treatment
+   since it isn't the button you want easiest-to-hit. */
 .btn-curate {
-  background: transparent;
+  background: var(--accent-green);
   border: 1px solid var(--accent-green);
-  color: var(--accent-green);
+  color: #07090b;
   font-family: var(--font-display);
   font-weight: 700;
   padding: 0.65rem 1rem;
@@ -1687,16 +1828,33 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   margin-top: 0.5rem;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.22);
 }
 
 .btn-curate:hover {
-  background: rgba(16, 185, 129, 0.08);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.15);
+  filter: brightness(1.1);
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.35);
+}
+
+/* Reset Selected stays an outline button -- it's destructive and shouldn't
+   share the Commit buttons' "safe to click" filled treatment. Declared after
+   .btn-curate so it wins the cascade for every property .btn-curate sets. */
+.btn-curate-danger {
+  background: transparent;
+  border-color: rgba(239, 68, 68, 0.55);
+  color: #fca5a5;
+  box-shadow: none;
+}
+
+.btn-curate-danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.22);
+  filter: none;
 }
 
 .optional-tag {
   font-weight: 400;
-  font-size: 0.75rem;
+  font-size: 0.87rem;
   color: var(--text-dark);
   text-transform: none;
 }
@@ -1707,7 +1865,7 @@ body {
 }
 
 .form-status {
-  font-size: 0.775rem;
+  font-size: 0.895rem;
   font-weight: 600;
   text-align: center;
 }
@@ -1717,12 +1875,12 @@ body {
 
 /* Footer */
 .main-footer {
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
   text-align: center;
   border-top: 1px solid var(--border-color);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-dark);
   margin-top: 4rem;
 }
@@ -1765,7 +1923,7 @@ body {
 
 .guides-sidebar h3 {
   font-family: var(--font-display);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   color: var(--text-dark);
   letter-spacing: 0.05em;
@@ -1880,7 +2038,7 @@ body {
 
 .guide-confidence-widget .btn-hud {
   padding: 0.3rem 0.7rem;
-  font-size: 0.75rem;
+  font-size: 0.87rem;
 }
 
 /* Viewer detail display */
@@ -1971,7 +2129,7 @@ body {
   bottom: 0.6rem;
   right: 0.8rem;
   font-family: var(--font-display);
-  font-size: 0.65rem;
+  font-size: 0.8rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: #9ca3af;
@@ -2014,7 +2172,7 @@ body {
 
 .svg-label {
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   text-anchor: middle;
   text-transform: uppercase;
@@ -2026,7 +2184,7 @@ body {
 .green-text { fill: var(--accent-green); }
 
 .svg-point-label {
-  font-size: 11px;
+  font-size: 13px;
   fill: #9ca3af;
   text-anchor: middle;
 }
@@ -2088,7 +2246,7 @@ body {
   color: var(--accent-cyan);
   padding: 0.15rem 0.4rem;
   border-radius: 0.25rem;
-  font-size: 0.825rem;
+  font-size: 0.875rem;
 }
 
 /* Chevron groups */
@@ -2099,7 +2257,7 @@ body {
 
 .chevron-text {
   font-family: var(--font-display);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   fill: #f3f4f6;
   text-anchor: middle;
@@ -2107,7 +2265,7 @@ body {
 
 .chevron-sub {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 12px;
   fill: #9ca3af;
   text-anchor: middle;
 }
@@ -2184,13 +2342,13 @@ body {
 /* Pyramid SVG styles */
 .pyramid-text {
   font-family: var(--font-display);
-  font-size: 12px;
+  font-size: 14px;
   fill: var(--text-bright);
   text-anchor: middle;
 }
 
 .pyramid-sub {
-  font-size: 9px;
+  font-size: 12px;
   fill: var(--accent-cyan);
   text-anchor: middle;
 }
@@ -2212,7 +2370,7 @@ body {
 
 .math-title {
   font-family: var(--font-display);
-  font-size: 0.75rem;
+  font-size: 0.87rem;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--accent-orange);
@@ -2239,46 +2397,31 @@ body {
 }
 
 /* Operator Select Profile Layout */
-.operator-card {
-  grid-column: span 2;
-  border-color: rgba(6, 182, 212, 0.25) !important;
-  background: rgba(6, 182, 212, 0.03) !important;
+/* Accent-coded stat cards -- same border-left + tinted value pattern the
+   toast notifications already use, so "what kind of number is this" reads
+   at a glance instead of every stat rendering identically off-white. */
+.stat-card--info {
+  border-left: 3px solid var(--accent-cyan);
 }
 
-.operator-select {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
+.stat-card--info .stat-value {
   color: var(--accent-cyan);
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 0.95rem;
-  font-weight: 700;
-  outline: none;
-  cursor: pointer;
-  margin-top: 0.4rem;
-  transition: all 0.2s ease;
-  box-shadow: 0 0 8px rgba(6, 182, 212, 0.1);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
-.operator-select:hover {
-  border-color: var(--accent-cyan);
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+.stat-card--success {
+  border-left: 3px solid var(--accent-green);
 }
 
-.operator-select option {
-  background: var(--bg-dark);
-  color: var(--text-bright);
+.stat-card--success .stat-value {
+  color: var(--accent-green);
 }
 
-.operator-value {
-  color: var(--accent-cyan);
-  font-size: 0.9rem;
-  font-weight: 700;
-  margin-top: 0.45rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.stat-card--warn {
+  border-left: 3px solid var(--accent-orange);
+}
+
+.stat-card--warn .stat-value {
+  color: var(--accent-orange);
 }
 
 @media (max-width: 900px) {
@@ -2313,7 +2456,7 @@ body {
   }
 
   .brand-track {
-    font-size: 0.68rem;
+    font-size: 0.8rem;
     line-height: 1.3;
   }
 
@@ -2336,27 +2479,54 @@ body {
   }
 
   .study-tabs {
+    flex-direction: column;
+    margin-bottom: 1rem;
+    gap: 0.5rem;
+  }
+
+  .tab-row {
     overflow-x: visible;
     flex-wrap: wrap;
     gap: 0.45rem;
-    margin-bottom: 1rem;
+  }
+
+  .tab-row-secondary {
+    padding-left: 0;
+    border-left: none;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.06);
   }
 
   .tab-btn {
     flex: 1 1 calc(50% - 0.45rem);
     text-align: center;
     padding: 0.65rem 0.8rem;
-    font-size: 0.84rem;
+    font-size: 0.89rem;
     border-radius: 0.55rem;
     border: 1px solid transparent;
   }
 
-  .stats-overview {
-    grid-template-columns: 1fr;
+  /* Primary row is exactly 3 buttons -- one row, one per third, instead of
+     wrapping to an uneven 2-then-1. */
+  .tab-row-primary .tab-btn {
+    flex: 1 1 calc(33.33% - 0.4rem);
   }
 
-  .operator-card {
-    grid-column: auto;
+  .tab-btn-tool {
+    flex: 1 1 calc(33.33% - 0.4rem);
+    text-align: center;
+    padding: 0.55rem 0.6rem;
+    font-size: 0.8rem;
+    border-radius: 0.55rem;
+    border: 1px solid transparent;
+  }
+
+  .tab-row-label {
+    flex: 1 1 100%;
+  }
+
+  .stats-overview {
+    grid-template-columns: 1fr;
   }
 
   .domain-card {
@@ -2524,7 +2694,7 @@ body {
   gap: 0.4rem;
   padding: 0 0.85rem;
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--accent-cyan, #06b6d4);
   background: rgba(6, 182, 212, 0.08);
@@ -2548,7 +2718,7 @@ body {
   gap: 0.4rem;
   padding: 0 0.85rem;
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--accent-cyan, #06b6d4);
   background: rgba(6, 182, 212, 0.08);
@@ -2562,6 +2732,104 @@ body {
   background: rgba(6, 182, 212, 0.18);
   border-color: var(--accent-cyan, #06b6d4);
   box-shadow: 0 0 12px rgba(6, 182, 212, 0.3);
+}
+
+/* Quick Start / Features / AI Setup used to be three separate always-on
+   header buttons -- one-time-setup actions a returning user never needs
+   again, crowding the space above the content on every visit. They're now
+   tucked behind one menu button; the three buttons themselves, their ids,
+   and their existing click handlers are unchanged, just relocated into
+   this panel. */
+.header-menu {
+  position: relative;
+}
+
+/* Without this, the open panel just floats directly over whatever page
+   content happens to sit underneath it (the intro paragraph, mainly) --
+   the text keeps rendering right up to the panel's edge, so fragments of
+   mid-sentence text end up visibly peeking out on both sides of it, which
+   reads as broken rather than as an intentional menu. Dimming the whole
+   page behind the panel (the same treatment the modals already use) fixes
+   that: nothing looks like it's "poking through" a box that's supposed to
+   be on top of it. */
+.header-menu-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 8, 11, 0.55);
+  z-index: 55;
+}
+
+.header-menu.expanded .header-menu-backdrop {
+  display: block;
+}
+
+.btn-header-settings-toggle {
+  position: relative;
+  z-index: 56;
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  box-sizing: border-box;
+  gap: 0.4rem;
+  padding: 0 0.85rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.btn-header-settings-toggle:hover,
+.header-menu.expanded .btn-header-settings-toggle {
+  color: var(--text-bright);
+  border-color: var(--accent-cyan, #06b6d4);
+  background: rgba(6, 182, 212, 0.1);
+}
+
+/* display:flex below always beats the browser's built-in [hidden]{display:none}
+   rule (author styles win over the UA stylesheet even at equal specificity),
+   so without this the panel would render open regardless of the `hidden`
+   attribute the JS toggles -- this restores the expected closed-by-default,
+   opens-on-click behavior. */
+.header-settings-panel[hidden] {
+  display: none;
+}
+
+.header-settings-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  /* The trigger button is the rightmost item in the header on every layout
+     (desktop row and the wrapped mobile row alike), so the panel always
+     anchors from ITS right edge, not the left -- anchoring left instead
+     (as .search-results does further up, where its trigger isn't pinned to
+     the right edge) sends the panel off the right side of the viewport on
+     narrow screens, since it'd then grow rightward from a starting point
+     that's already near the screen edge. */
+  right: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: max-content;
+  min-width: 210px;
+  max-width: calc(100vw - 2rem);
+  padding: 0.6rem;
+  background: #0d1117;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 20px rgba(6, 182, 212, 0.12);
+}
+
+.header-settings-panel .btn-quickstart-modal,
+.header-settings-panel .btn-feature-modal {
+  width: 100%;
+  justify-content: flex-start;
 }
 
 .quickstart-steps-list {
@@ -2584,7 +2852,7 @@ body {
 .quickstart-steps-list li strong {
   color: var(--accent-cyan, #06b6d4);
   display: block;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-bottom: 0.2rem;
@@ -2702,7 +2970,7 @@ body {
   position: absolute;
   left: 0;
   color: #06b6d4;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
 }
 .feature-modal-list strong {
   color: #fff;
@@ -2715,7 +2983,7 @@ body {
   border: 1px solid rgba(6, 182, 212, 0.2);
   border-radius: 8px;
   padding: 0.85rem 1rem;
-  font-size: 0.82rem;
+  font-size: 0.87rem;
   color: #8b949e;
   line-height: 1.4;
 }
@@ -2731,26 +2999,30 @@ body {
 
 @media (max-width: 460px) {
   .btn-back {
-    font-size: 0.78rem;
+    font-size: 0.9rem;
     padding: 0.35rem 0.7rem;
   }
 
   .brand-wordmark {
-    font-size: 0.82rem;
+    font-size: 0.87rem;
   }
 
   .brand-track {
-    font-size: 0.62rem;
+    font-size: 0.8rem;
   }
 
   .platform-intro {
-    font-size: 0.78rem;
+    font-size: 0.9rem;
     padding: 0.7rem 1rem;
   }
 
+  /* flex-basis is intentionally left alone here -- this used to force every
+     tab full-width below 460px, which pre-dates (and was clobbering) the
+     primary-row-thirds / tool-row-thirds layout set at the 900px breakpoint
+     above, since it shares the .tab-btn class with both. That was collapsing
+     the whole nav to one button per line on small phones. */
   .tab-btn {
-    flex-basis: 100%;
-    font-size: 0.82rem;
+    font-size: 0.87rem;
   }
 
   .flashcard-container {
@@ -2759,7 +3031,7 @@ body {
 
   .domain-num,
   .stat-label {
-    font-size: 0.62rem;
+    font-size: 0.8rem;
   }
 
   .stat-value {
@@ -2793,7 +3065,7 @@ body {
   border: 1px solid rgba(6, 182, 212, 0.35);
   color: var(--accent-cyan, #06b6d4);
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.82rem;
+  font-size: 0.87rem;
   font-weight: 600;
   padding: 0.6rem 1.1rem;
   border-radius: 6px;
@@ -2827,7 +3099,7 @@ body {
   border: 1px solid rgba(6, 182, 212, 0.3);
   color: var(--accent-cyan, #06b6d4);
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.82rem;
+  font-size: 0.87rem;
   font-weight: 600;
   padding: 0.6rem 1.1rem;
   border-radius: 999px;
@@ -2864,7 +3136,7 @@ body {
   padding: 0.55rem 0.9rem;
   background: rgba(6, 182, 212, 0.08);
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.8rem;
   letter-spacing: 0.1em;
   color: var(--accent-cyan, #06b6d4);
 }
@@ -2903,7 +3175,7 @@ body {
    Trap Spotter, and Concept Guides since they all share that one function. */
 .ai-response-meta {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.8rem;
   letter-spacing: 0.04em;
   color: var(--accent-cyan, #06b6d4);
   opacity: 0.8;
@@ -2926,7 +3198,7 @@ body {
 .ai-response-hook-label {
   display: block;
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.8rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--accent-green, #a3be8c);
@@ -2937,7 +3209,7 @@ body {
   margin-top: 0.85rem;
   padding-top: 0.6rem;
   border-top: 1px dashed rgba(216, 222, 233, 0.15);
-  font-size: 0.72rem;
+  font-size: 0.84rem;
   font-style: italic;
   opacity: 0.6;
   white-space: normal;
@@ -2953,7 +3225,7 @@ body {
 
 .ai-settings-label {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.84rem;
   letter-spacing: 0.05em;
   color: #8b949e;
   text-transform: uppercase;
@@ -2991,7 +3263,7 @@ body {
 
 .ai-settings-status {
   margin-top: 0.7rem;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: #8b949e;
   min-height: 1.1em;
 }
@@ -3029,7 +3301,7 @@ body {
   background: transparent;
   border: none;
   color: #8b949e;
-  font-size: 0.72rem;
+  font-size: 0.84rem;
   margin-top: 0.85rem;
   cursor: pointer;
   transition: color 0.15s ease;
@@ -3085,7 +3357,7 @@ body {
   background: rgba(6, 182, 212, 0.08);
   border: 1px solid rgba(6, 182, 212, 0.3);
   color: var(--accent-cyan, #06b6d4);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   padding: 0.5rem 0.9rem;
   border-radius: 999px;
   cursor: pointer;
@@ -3180,7 +3452,7 @@ body {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: color 0.15s ease;
 }
@@ -3269,4 +3541,313 @@ body {
   #training-plan-modal .ai-explain-response-body {
     color: #111;
   }
+}
+
+/* ==========================================
+   PBQ Lab
+   ========================================== */
+.pbq-panel {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.pbq-empty-state {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  padding: 2rem;
+  text-align: center;
+  border: 1px dashed var(--border-color);
+  border-radius: 0.75rem;
+}
+
+.pbq-scenario-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.pbq-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  flex: 1 1 auto;
+}
+
+.pbq-domain-tag {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.06);
+  border: 1px solid rgba(6, 182, 212, 0.2);
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.25rem;
+}
+
+.pbq-verify-badge {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--accent-orange);
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 0.25rem 0.65rem;
+  border-radius: 0.25rem;
+  cursor: help;
+}
+
+.pbq-scenario-context {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.pbq-fields-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.pbq-group {
+  border: 1px solid var(--surface-lift-border);
+  border-radius: 0.75rem;
+  padding: 1.1rem 1.25rem;
+  background: var(--surface-lift);
+}
+
+.pbq-group-label {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  margin-bottom: 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+.pbq-field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pbq-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border-left: 3px solid transparent;
+}
+
+.pbq-field-prompt {
+  font-size: 0.9rem;
+  color: var(--text-bright);
+  font-weight: 500;
+}
+
+.pbq-field-control select.hud-select,
+.pbq-field-control input.pbq-text-input {
+  width: 100%;
+  max-width: 480px;
+}
+
+.pbq-text-input {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-bright);
+  font-family: var(--font-sans);
+  padding: 0.5rem 0.85rem;
+  border-radius: 0.5rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.pbq-text-input:focus {
+  border-color: var(--accent-green);
+}
+
+.pbq-check-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pbq-check-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.87rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background: var(--bg-card);
+  transition: all 0.2s ease;
+}
+
+.pbq-check-pill:has(input:checked) {
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  background: rgba(6, 182, 212, 0.08);
+}
+
+.pbq-check-pill input[type="checkbox"] {
+  accent-color: var(--accent-cyan);
+  cursor: pointer;
+}
+
+.pbq-check-pill.disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.pbq-field-note {
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  font-style: italic;
+}
+
+/* Grading feedback -- applied once Check Answers runs */
+.pbq-field-row.pbq-correct {
+  border-left-color: var(--accent-green);
+  padding-left: 0.75rem;
+}
+
+.pbq-field-row.pbq-incorrect {
+  border-left-color: var(--accent-red);
+  padding-left: 0.75rem;
+}
+
+.pbq-field-result {
+  font-size: 0.9rem;
+  font-family: var(--font-mono);
+}
+
+.pbq-field-result.pbq-correct-text { color: var(--accent-green); }
+.pbq-field-result.pbq-incorrect-text { color: var(--accent-red); }
+
+.pbq-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.pbq-score-badge {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+}
+
+.pbq-score-badge.pbq-score-good { color: var(--accent-green); border-color: var(--accent-green); background: rgba(16, 185, 129, 0.08); }
+.pbq-score-badge.pbq-score-mid { color: var(--accent-orange); border-color: var(--accent-orange); background: rgba(245, 158, 11, 0.08); }
+.pbq-score-badge.pbq-score-low { color: var(--accent-red); border-color: var(--accent-red); background: rgba(239, 68, 68, 0.08); }
+
+/* Diagram layout (native HTML5 drag-and-drop) */
+.pbq-token-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 1rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+  min-height: 3rem;
+}
+
+.pbq-token {
+  background: var(--bg-card);
+  border: 1px solid var(--accent-cyan);
+  color: var(--text-bright);
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.5rem;
+  font-size: 0.87rem;
+  cursor: grab;
+  user-select: none;
+}
+
+.pbq-token:active { cursor: grabbing; }
+.pbq-token.pbq-token-placed { opacity: 0.35; border-style: dashed; }
+
+.pbq-zones-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.pbq-zone {
+  border: 1px solid var(--surface-lift-border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  background: var(--surface-lift);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.pbq-zone.pbq-zone-dragover {
+  border-color: var(--accent-green);
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.pbq-zone-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--accent-cyan);
+  margin-bottom: 0.6rem;
+}
+
+.pbq-zone-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  margin-bottom: 0.75rem;
+  padding: 0.4rem;
+  border: 1px dashed var(--border-color);
+  border-radius: 0.5rem;
+}
+
+.pbq-zone-token-chip {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid var(--accent-green);
+  color: var(--text-bright);
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.4rem;
+  font-size: 0.87rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pbq-zone-token-chip.pbq-correct { border-color: var(--accent-green); }
+.pbq-zone-token-chip.pbq-incorrect { border-color: var(--accent-red); background: rgba(239, 68, 68, 0.1); }
+
+.pbq-zone-token-chip button {
+  background: none;
+  border: none;
+  color: var(--accent-red);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+/* Table layout reuses .control-matrix for the shell; row-level fields render inline beneath each row's cells */
+.pbq-table-row-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
 }

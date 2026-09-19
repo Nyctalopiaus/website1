@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=23" />
+  <link rel="stylesheet" href="styles.css?v=28" />
 </head>
 <body>
   <div class="glow-bg"></div>
@@ -60,15 +60,25 @@
           <option value="cism">CISM</option>
         </select>
       </div>
-      <button type="button" id="btn-open-quickstart" class="btn-quickstart-modal" title="View Quick Start Guide">
-        <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg> <span>Quick Start</span>
-      </button>
-      <button type="button" id="btn-open-features" class="btn-feature-modal" title="View Console Capabilities">
-        <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2 20 5v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/></svg> <span>Features</span>
-      </button>
-      <button type="button" id="btn-open-ai-settings" class="btn-feature-modal" title="Configure AI-powered deeper explanations (Google Gemini)">
-        <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> <span id="btn-open-ai-settings-label">AI Setup</span> <span class="ai-status-dot" id="ai-status-dot" hidden></span>
-      </button>
+      <div class="header-menu" id="header-settings-menu">
+        <div class="header-menu-backdrop" id="header-menu-backdrop"></div>
+        <button type="button" id="btn-header-settings-toggle" class="btn-header-settings-toggle" title="Quick Start, Features &amp; AI Setup" aria-haspopup="true" aria-expanded="false" aria-controls="header-settings-panel">
+          <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+          <span>Menu</span>
+          <span class="ai-status-dot" id="header-menu-status-dot" hidden></span>
+        </button>
+        <div class="header-settings-panel" id="header-settings-panel" hidden>
+          <button type="button" id="btn-open-quickstart" class="btn-quickstart-modal" title="View Quick Start Guide">
+            <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg> <span>Quick Start</span>
+          </button>
+          <button type="button" id="btn-open-features" class="btn-feature-modal" title="View Console Capabilities">
+            <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2 20 5v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/></svg> <span>Features</span>
+          </button>
+          <button type="button" id="btn-open-ai-settings" class="btn-feature-modal" title="Configure AI-powered deeper explanations (Google Gemini)">
+            <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> <span id="btn-open-ai-settings-label">AI Setup</span> <span class="ai-status-dot" id="ai-status-dot" hidden></span>
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -79,24 +89,21 @@
   <main class="container">
     <!-- Section 1: Dashboard and Stats -->
     <section class="dashboard-panel">
+      <p class="fresh-start-banner" id="fresh-start-banner" hidden>No attempts yet — this board fills in as you go. Start with <strong>Flashcards</strong> or jump into a <strong>Practice Quiz</strong> below.</p>
       <div class="stats-overview">
-        <div class="stat-card operator-card">
-          <span class="stat-label">Profile Scope</span>
-          <span class="operator-value font-mono">Local Browser Storage</span>
-        </div>
-        <div class="stat-card">
+        <div class="stat-card stat-card--info" title="Local Browser Storage -- see the intro line above for what that means">
           <span class="stat-label">Total Answered</span>
           <span class="stat-value font-mono" id="stat-answered">0</span>
         </div>
-        <div class="stat-card">
+        <div class="stat-card stat-card--success">
           <span class="stat-label">Overall Accuracy</span>
           <span class="stat-value font-mono" id="stat-accuracy">0%</span>
         </div>
-        <div class="stat-card">
+        <div class="stat-card stat-card--warn">
           <span class="stat-label">Flagged Items</span>
           <span class="stat-value font-mono" id="stat-flagged">0</span>
         </div>
-        <div class="stat-card">
+        <div class="stat-card stat-card--success">
           <span class="stat-label">Mock Exams Passed</span>
           <span class="stat-value font-mono" id="stat-passed">0</span>
         </div>
@@ -114,13 +121,19 @@
 
     <!-- Navigation Tabs -->
     <nav class="study-tabs">
-      <button class="tab-btn active" data-target="tab-flashcards">Flashcards</button>
-      <button class="tab-btn" data-target="tab-quiz">Practice Quiz</button>
-      <button class="tab-btn" data-target="tab-mock">Mock Exam</button>
-      <button class="tab-btn" data-target="tab-trapspotter">Trap Spotter</button>
-      <button class="tab-btn" data-target="tab-guides">Concept Guides</button>
-      <button class="tab-btn" data-target="tab-curator">Deck Curator</button>
-      <button class="tab-btn" data-target="tab-ai-deepdive">✨ AI Deep Dive</button>
+      <div class="tab-row tab-row-primary">
+        <button class="tab-btn active" data-target="tab-flashcards">Flashcards</button>
+        <button class="tab-btn" data-target="tab-quiz">Practice Quiz</button>
+        <button class="tab-btn" data-target="tab-mock">Mock Exam</button>
+      </div>
+      <div class="tab-row tab-row-secondary">
+        <span class="tab-row-label">More tools</span>
+        <button class="tab-btn tab-btn-tool" data-target="tab-pbqlab">PBQ Lab</button>
+        <button class="tab-btn tab-btn-tool" data-target="tab-trapspotter">Trap Spotter</button>
+        <button class="tab-btn tab-btn-tool" data-target="tab-guides">Concept Guides</button>
+        <button class="tab-btn tab-btn-tool" data-target="tab-curator">Deck Curator</button>
+        <button class="tab-btn tab-btn-tool" data-target="tab-ai-deepdive"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> AI Deep Dive</button>
+      </div>
     </nav>
 
     <!-- Tab Contents -->
@@ -208,10 +221,10 @@
                 <input type="checkbox" id="quiz-mistakes-toggle" />
                 <span><svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> My Mistakes</span>
               </label>
-              <button type="button" class="btn-hud" id="btn-retest-mistakes" title="Clear your saved answers for every open mistake so you can answer them again">🔁 Retest Mistakes</button>
-              <button type="button" class="btn-hud" id="btn-quiz-training-plan" title="Build an AI training plan from your open quiz mistakes">✨ Mistakes Training Plan</button>
+              <button type="button" class="btn-hud" id="btn-retest-mistakes" title="Clear your saved answers for every open mistake so you can answer them again"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg> Retest Mistakes</button>
+              <button type="button" class="btn-hud" id="btn-quiz-training-plan" title="Build an AI training plan from your open quiz mistakes"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> Mistakes Training Plan</button>
             </div>
-            <button class="btn-bookmark" id="btn-quiz-bookmark" aria-label="Bookmark Question">★</button>
+            <button class="btn-bookmark" id="btn-quiz-bookmark" aria-label="Bookmark Question"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 2.9 6.9 7.1.6-5.5 4.7 1.7 7.1L12 17.6 5.8 21.3l1.7-7.1L2 9.5l7.1-.6Z"/></svg></button>
           </div>
 
           <div class="quiz-body">
@@ -237,8 +250,8 @@
                 <!-- Per-choice A/B/C/D rationale rows injected by JS -->
               </div>
               <div class="ai-explain-row" id="ai-explain-row">
-                <button type="button" class="btn-ai-explain" id="btn-ai-explain">✨ Explain this question</button>
-                <button type="button" class="btn-ai-deepdive-link" id="btn-ai-deepdive-link">💬 Deep dive this concept</button>
+                <button type="button" class="btn-ai-explain" id="btn-ai-explain"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> Explain this question</button>
+                <button type="button" class="btn-ai-deepdive-link" id="btn-ai-deepdive-link"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg> Deep dive this concept</button>
               </div>
               <div class="ai-explain-response" id="ai-explain-response" hidden>
                 <div class="ai-explain-response-head">
@@ -265,6 +278,12 @@
               <button class="mock-mode-btn active" id="btn-mock-mode-quick" data-mode="quick" type="button">Quick Practice</button>
               <button class="mock-mode-btn" id="btn-mock-mode-full" data-mode="full" type="button">Full-Length Exam</button>
             </div>
+            <div class="mock-fullmock-select" id="mock-fullmock-select" style="margin: 14px 0; display: none; align-items: center; gap: 10px; justify-content: center;">
+              <label for="mock-fullmock-picker" class="spec-label">Choose Full Mock</label>
+              <select id="mock-fullmock-picker" class="hud-select">
+                <!-- Populated dynamically by populateFullMockPicker() from examConfig.full_mock_exams -->
+              </select>
+            </div>
             <div class="mock-specs">
               <div class="spec-item">
                 <span class="spec-label">Questions</span>
@@ -279,7 +298,7 @@
                 <span class="spec-value font-mono" id="mock-spec-passing">70% Pass</span>
               </div>
             </div>
-            <button class="btn-primary-hud" id="btn-start-mock">ENGAGE EXAM DAEMON</button>
+            <button class="btn-primary-hud" id="btn-start-mock">Start Mock Exam</button>
           </div>
 
           <!-- Active Exam Screen -->
@@ -289,16 +308,33 @@
               <div class="mock-timer font-mono" id="mock-timer">15:00</div>
             </div>
             
-            <div class="mock-body">
+            <div class="mock-body" id="mock-body">
               <p class="quiz-question" id="mock-question">Mock question content...</p>
               <div class="quiz-options" id="mock-options-list">
                 <!-- Radio options -->
               </div>
             </div>
 
+            <!-- Curated Full Mock only: the PBQ portion of the timed attempt.
+                 Rendered via the same renderPbqLayout() dispatcher the PBQ Lab
+                 tab uses, under the same continuous timer, with no per-item
+                 feedback (matching how Mock Exam withholds explanations until
+                 the whole attempt is scored). Hidden/empty for every other
+                 exam and mode. -->
+            <div class="mock-pbq-body pbq-content" id="mock-pbq-body" hidden>
+              <div class="pbq-scenario-head">
+                <h3 class="pbq-title" id="mock-pbq-title">Scenario title loading...</h3>
+                <span class="pbq-domain-tag" id="mock-pbq-domain-tag">Domain</span>
+              </div>
+              <p class="pbq-scenario-context" id="mock-pbq-scenario-context">Scenario context loading...</p>
+              <div class="pbq-fields-container" id="mock-pbq-fields-container">
+                <!-- Injected dynamically by renderPbqLayout() -->
+              </div>
+            </div>
+
             <div class="mock-footer">
               <button class="btn-hud" id="btn-mock-prev" disabled>◀ Back</button>
-              <div class="mock-flag-group">
+              <div class="mock-flag-group" id="mock-flag-group">
                 <button class="btn-hud btn-flag-nav" id="btn-mock-flag-prev" title="Jump to previous flagged question" disabled>◀ Flag</button>
                 <button class="btn-hud btn-warn" id="btn-mock-flag">Flag Question</button>
                 <button class="btn-hud btn-flag-nav" id="btn-mock-flag-next" title="Jump to next flagged question" disabled>Flag ▶</button>
@@ -322,11 +358,70 @@
               </div>
             </div>
             <div class="results-domain-breakdown" id="results-domain-breakdown"></div>
-            <p class="results-perfect-note" id="results-perfect-note" hidden>🎯 Clean sweep — nothing to drill into from this run.</p>
+            <p class="results-perfect-note" id="results-perfect-note" hidden><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg> Clean sweep — nothing to drill into from this run.</p>
+
+            <!-- Curated Full Mock only: per-PBQ field-level review, reusing
+                 renderPbqLayout()'s disabled/graded rendering mode (same as
+                 PBQ Lab's own checked-state review) so Josh can see exactly
+                 which fields he got right/wrong on each scenario. Hidden
+                 entirely for any attempt with no PBQs. -->
+            <div class="mock-pbq-review" id="mock-pbq-review" hidden>
+              <h3>Performance-Based Question Review</h3>
+              <div id="mock-pbq-review-list"></div>
+            </div>
+
             <div class="results-actions">
-              <button class="btn-primary-hud" id="btn-training-plan" hidden>✨ Build My Training Plan</button>
+              <button class="btn-primary-hud" id="btn-training-plan" hidden><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> Build My Training Plan</button>
               <button class="btn-primary-hud" id="btn-mock-reset">RETURN TO CONSOLE</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3b. PBQ Lab -->
+      <div class="tab-pane" id="tab-pbqlab">
+        <div class="pbq-panel">
+          <div class="filter-bar">
+            <span>Filter Domain:</span>
+            <select id="pbq-domain-select" class="hud-select">
+              <option value="all">All Domains</option>
+              <!-- Remaining options populated dynamically by populateDomainSelect() -->
+            </select>
+            <span class="hud-badge" id="pbq-layout-tag" hidden>WIZARD</span>
+          </div>
+
+          <div class="pbq-empty-state" id="pbq-empty-state" hidden>
+            No PBQ Lab scenarios for this exam yet -- check back as new content lands.
+          </div>
+
+          <div class="pbq-content" id="pbq-content">
+            <div class="pbq-scenario-head">
+              <h3 class="pbq-title" id="pbq-title">Scenario title loading...</h3>
+              <span class="pbq-domain-tag" id="pbq-domain-tag">Domain</span>
+              <span class="pbq-verify-badge" id="pbq-verify-badge" title="One or more fields in this scenario are flagged for outside verification and may not be fully settled -- treat the flagged field with a bit of extra skepticism." hidden><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg> Needs Verification</span>
+            </div>
+            <p class="pbq-scenario-context" id="pbq-scenario-context">Scenario context loading...</p>
+
+            <div class="pbq-fields-container" id="pbq-fields-container">
+              <!-- Injected dynamically by renderPbqWizard() / renderPbqTable() / renderPbqDiagram() -->
+            </div>
+
+            <div class="pbq-actions-row">
+              <button class="btn-primary-hud" id="btn-pbq-check" type="button">Check Answers</button>
+              <button class="btn-hud" id="btn-pbq-retry" type="button" hidden>Retry This Scenario</button>
+              <span class="pbq-score-badge" id="pbq-score-badge" hidden></span>
+            </div>
+
+            <div class="quiz-explanation-box" id="pbq-rationale-box">
+              <h4 id="pbq-rationale-status">RATIONALE</h4>
+              <p id="pbq-rationale-text">Rationale text...</p>
+            </div>
+          </div>
+
+          <div class="hud-controls">
+            <button class="btn-hud" id="btn-prev-pbq">◀ Prev</button>
+            <span class="hud-counter font-mono" id="pbq-counter">0 / 0</span>
+            <button class="btn-hud" id="btn-next-pbq">Next ▶</button>
           </div>
         </div>
       </div>
@@ -370,8 +465,8 @@
           </div>
 
           <div class="ai-explain-row" id="trap-ai-explain-row">
-            <button type="button" class="btn-ai-explain" id="btn-trap-ai-explain">✨ Explain this trap</button>
-            <button type="button" class="btn-ai-deepdive-link" id="btn-trap-ai-deepdive-link">💬 Deep dive this concept</button>
+            <button type="button" class="btn-ai-explain" id="btn-trap-ai-explain"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> Explain this trap</button>
+            <button type="button" class="btn-ai-deepdive-link" id="btn-trap-ai-deepdive-link"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg> Deep dive this concept</button>
           </div>
           <div class="ai-explain-response" id="trap-ai-explain-response" hidden>
             <div class="ai-explain-response-head">
@@ -458,7 +553,7 @@
             </div>
 
             <div class="ai-explain-row" id="guide-ai-explain-row">
-              <button type="button" class="btn-ai-explain" id="btn-guide-ai-explain">✨ Ask Gemini to go deeper</button>
+              <button type="button" class="btn-ai-explain" id="btn-guide-ai-explain"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> Ask Gemini to go deeper</button>
             </div>
             <div class="ai-explain-response" id="guide-ai-explain-response" hidden>
               <div class="ai-explain-response-head">
@@ -469,7 +564,7 @@
             </div>
 
             <!-- 1. BIA Timeline -->
-            <article class="guide-detail active" data-exam="cism" id=guide-bia">
+            <article class="guide-detail active" data-exam="cism" id="guide-bia">
               <h2>BIA Recovery Metrics Timeline</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -535,7 +630,7 @@
             </article>
 
             <!-- 2. Risk Posture Levels -->
-            <article class="guide-detail" data-exam="cism" id=guide-appetite">
+            <article class="guide-detail" data-exam="cism" id="guide-appetite">
               <h2>Risk Capacity, Tolerance & Appetite</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -575,7 +670,7 @@
             </article>
 
             <!-- 3. Incident Response Stages -->
-            <article class="guide-detail" data-exam="cism" id=guide-ir">
+            <article class="guide-detail" data-exam="cism" id="guide-ir">
               <h2>Incident Response Lifecycle</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -637,7 +732,7 @@
             </article>
 
             <!-- 4. Security Control Matrix -->
-            <article class="guide-detail" data-exam="cism" id=guide-controls">
+            <article class="guide-detail" data-exam="cism" id="guide-controls">
               <h2>Security Control Matrix</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -692,7 +787,7 @@
             </article>
 
             <!-- 5. Governance & Risk Owner -->
-            <article class="guide-detail" data-exam="cism" id=guide-gov">
+            <article class="guide-detail" data-exam="cism" id="guide-gov">
               <h2>Governance & Risk Accountability Hierarchy</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -734,7 +829,7 @@
             </article>
 
             <!-- 6. Quantitative Risk Formulas -->
-            <article class="guide-detail" data-exam="cism" id=guide-quant">
+            <article class="guide-detail" data-exam="cism" id="guide-quant">
               <h2>Quantitative Risk Math Flow</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -776,7 +871,7 @@
             </article>
 
             <!-- 7. Legal Liability & RACI -->
-            <article class="guide-detail" data-exam="cism" id=guide-raci">
+            <article class="guide-detail" data-exam="cism" id="guide-raci">
               <h2>Legal Liability & RACI</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -834,7 +929,7 @@
             </article>
 
             <!-- 8. Documentation Hierarchy -->
-            <article class="guide-detail" data-exam="cism" id=guide-dochierarchy">
+            <article class="guide-detail" data-exam="cism" id="guide-dochierarchy">
               <h2>Documentation Hierarchy & Lifecycle</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -901,7 +996,7 @@
             </article>
 
             <!-- 9. Security Economics -->
-            <article class="guide-detail" data-exam="cism" id=guide-econ">
+            <article class="guide-detail" data-exam="cism" id="guide-econ">
               <h2>Security Economics</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -941,7 +1036,7 @@
             </article>
 
             <!-- 10. SDLC Governance Gates -->
-            <article class="guide-detail" data-exam="cism" id=guide-sdlc">
+            <article class="guide-detail" data-exam="cism" id="guide-sdlc">
               <h2>SDLC Governance Gates</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -1012,7 +1107,7 @@
             </article>
 
             <!-- 11. Access Control Model Comparison -->
-            <article class="guide-detail" data-exam="cism" id=guide-access">
+            <article class="guide-detail" data-exam="cism" id="guide-access">
               <h2>Access Control Model Comparison</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -1073,7 +1168,7 @@
             </article>
 
             <!-- 12. Incident Severity & Escalation Matrix -->
-            <article class="guide-detail" data-exam="cism" id=guide-severity">
+            <article class="guide-detail" data-exam="cism" id="guide-severity">
               <h2>Incident Severity & Escalation Matrix</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -1129,7 +1224,7 @@
             </article>
 
             <!-- 13. Exam-Day Decision Engine -->
-            <article class="guide-detail" data-exam="cism" id=guide-examday">
+            <article class="guide-detail" data-exam="cism" id="guide-examday">
               <h2>Exam-Day Decision Engine</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -1184,7 +1279,7 @@
             </article>
 
             <!-- 14. Risk Assessment Methodology -->
-            <article class="guide-detail" data-exam="cism" id=guide-riskassess">
+            <article class="guide-detail" data-exam="cism" id="guide-riskassess">
               <h2>Risk Assessment & Analysis Methodology</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -1244,7 +1339,7 @@
             </article>
 
             <!-- 15. Vulnerability & Control Deficiency Analysis -->
-            <article class="guide-detail" data-exam="cism" id=guide-vulndef">
+            <article class="guide-detail" data-exam="cism" id="guide-vulndef">
               <h2>Vulnerability & Control Deficiency Analysis</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -1301,7 +1396,7 @@
             </article>
 
             <!-- 16. Risk Treatment Options -->
-            <article class="guide-detail" data-exam="cism" id=guide-treatment">
+            <article class="guide-detail" data-exam="cism" id="guide-treatment">
               <h2>Risk Treatment Options</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -1362,7 +1457,7 @@
             </article>
 
             <!-- 17. Risk Monitoring & Reporting -->
-            <article class="guide-detail" data-exam="cism" id=guide-riskmon">
+            <article class="guide-detail" data-exam="cism" id="guide-riskmon">
               <h2>Risk Monitoring & Reporting</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -1402,7 +1497,7 @@
             </article>
 
             <!-- 18. Program Resource Decisions -->
-            <article class="guide-detail" data-exam="cism" id=guide-progres">
+            <article class="guide-detail" data-exam="cism" id="guide-progres">
               <h2>Security Program Resource Decisions</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -1458,7 +1553,7 @@
             </article>
 
             <!-- 19. Asset Identification & Classification -->
-            <article class="guide-detail" data-exam="cism" id=guide-classify">
+            <article class="guide-detail" data-exam="cism" id="guide-classify">
               <h2>Asset Identification & Classification</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -1514,7 +1609,7 @@
             </article>
 
             <!-- 20. Third-Party & External Services Management -->
-            <article class="guide-detail" data-exam="cism" id=guide-extsvc">
+            <article class="guide-detail" data-exam="cism" id="guide-extsvc">
               <h2>Third-Party & External Services Management</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -1570,7 +1665,7 @@
             </article>
 
             <!-- 21. Program Metrics & Reporting -->
-            <article class="guide-detail" data-exam="cism" id=guide-progmetrics">
+            <article class="guide-detail" data-exam="cism" id="guide-progmetrics">
               <h2>Program Metrics &amp; Reporting</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -1632,7 +1727,7 @@
             </article>
 
             <!-- 22. IR Testing & Metrics -->
-            <article class="guide-detail" data-exam="cism" id=guide-irtest">
+            <article class="guide-detail" data-exam="cism" id="guide-irtest">
               <h2>IR Testing &amp; Metrics</h2>
               <div class="guide-grid-container">
                 <div class="guide-text-col">
@@ -3399,7 +3494,7 @@
       <!-- 7. AI Deep Dive (Freeform Tutor Chat) -->
       <div class="tab-pane" id="tab-ai-deepdive">
         <div class="curator-panel ai-tutor-panel">
-          <h2>✨ AI Deep Dive</h2>
+          <h2><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> AI Deep Dive</h2>
           <p>
             Stuck on something specific? Describe it below and ask Google's Gemini directly -- a concept, a formula, the difference between two terms, or how ISACA tends to trap a topic on the exam. Uses the same Gemini connection as the rest of Certforge (set it up via AI Setup, top right).
           </p>
@@ -3466,7 +3561,7 @@
   </section>
 
   <footer class="main-footer">
-    <p>&copy; 2026 Certforge, a Nycto project. Study content is AI-authored from official CISM exam blueprints and validated for domain and knowledge-statement accuracy — always confirm against ISACA's official materials before your exam.</p>
+    <p>&copy; 2026 Certforge, a Nycto project. Study content is AI-authored from official exam blueprints and validated for domain and knowledge-statement accuracy — always confirm against your certifying body's official materials before your exam.</p>
   </footer>
 
   <!-- Quick Start Modal -->
@@ -3528,7 +3623,7 @@
   <div id="ai-settings-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
     <div class="modal-card feature-modal-content" role="dialog" aria-modal="true" aria-labelledby="ai-settings-modal-title">
       <button id="btn-close-ai-settings" class="modal-close-button" aria-label="Close AI settings">&times;</button>
-      <h2 id="ai-settings-modal-title" class="feature-modal-title">✨ AI Explanations — Google Gemini</h2>
+      <h2 id="ai-settings-modal-title" class="feature-modal-title"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> AI Explanations — Google Gemini</h2>
       <p class="feature-modal-intro">Certforge can ask Google's Gemini API for a deeper, plain-English breakdown of any practice question — the reasoning behind the correct answer, why the traps are wrong, and a memory aid to lock it in for exam day. This is optional and off by default.</p>
 
       <div class="ai-settings-form">
@@ -3587,7 +3682,7 @@
   <div id="training-plan-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
     <div class="modal-card feature-modal-content training-plan-modal-content" role="dialog" aria-modal="true" aria-labelledby="training-plan-modal-title">
       <button id="btn-close-training-plan" class="modal-close-button" aria-label="Close training plan">&times;</button>
-      <h2 id="training-plan-modal-title" class="feature-modal-title">🎯 Your Personalized Training Plan</h2>
+      <h2 id="training-plan-modal-title" class="feature-modal-title"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg> Your Personalized Training Plan</h2>
       <p class="feature-modal-intro" id="training-plan-modal-intro">Built from what you missed on this attempt, prioritized by ISACA knowledge area — powered by the same Gemini connection as the rest of Certforge's AI features.</p>
 
       <div class="ai-explain-response" id="training-plan-response">
@@ -3600,13 +3695,13 @@
       <div class="ai-settings-actions" id="training-plan-actions" hidden>
         <button type="button" class="btn-hud" id="btn-training-plan-copy">📋 Copy to clipboard</button>
         <button type="button" class="btn-hud" id="btn-training-plan-print">🖨️ Print / Save as PDF</button>
-        <button type="button" class="btn-hud" id="btn-training-plan-drill">🎯 Drill these now</button>
-        <button type="button" class="btn-hud" id="btn-training-plan-retry" hidden>🔁 Try again</button>
+        <button type="button" class="btn-hud" id="btn-training-plan-drill"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg> Drill these now</button>
+        <button type="button" class="btn-hud" id="btn-training-plan-retry" hidden><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg> Try again</button>
       </div>
       <p class="ai-settings-status" id="training-plan-status"></p>
     </div>
   </div>
 
-  <script src="app.js?v=31"></script>
+  <script src="app.js?v=33"></script>
 </body>
 </html>
