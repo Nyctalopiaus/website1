@@ -149,6 +149,57 @@ not just a local git commit.
 7. None of these 7 tools touch the shared Node backend
    (`backend/server.js`) — no service restart is needed for this change.
 
+## Post-sync: Fitstack's Python app (do this after the public_html sync)
+
+Found by inspecting cPanel's **Setup Python App** panel directly (screenshot
+reviewed 2026-09-12) — this is a separate deployment target from everything
+above, easy to miss:
+
+- **Application root:** `hf-model-matcher-api` — a physical server directory
+  that is *not* `public_html/fitstack/` or `public_html/hf-model-matcher/`.
+  This is where the actual Python source (`main.py`, `hardware.py`,
+  `hf_client.py`, `engine.py`, `passenger_wsgi.py`) has to live for Passenger
+  to serve it. **Confirm its real absolute path over SSH — don't assume —**
+  then sync the repo's `fitstack/backend/` and updated
+  `fitstack/deploy/passenger_wsgi.py` (already has
+  `MOUNT_PREFIX = "/fitstack/api"` set) into it. The earlier `public_html`
+  file sync does **not** touch this directory.
+- **Application URL:** currently `nycto.ninja/hf-model-matcher/api`, needs to
+  become `nycto.ninja/fitstack/api` to match the `MOUNT_PREFIX` above.
+- Check whether a `cloudlinux-selector` CLI (or `uapi`/`whmapi1` equivalent)
+  is available on this account and supports editing an existing Python app's
+  URI — verify exact syntax with its own `--help`/docs first, don't guess
+  blindly at flags. If it can safely change the Application URL and restart
+  the app, use it.
+- **If no safe CLI path is confirmed, stop and say so rather than guessing** —
+  this field then has to be changed by hand in cPanel → Setup Python App →
+  Application URL, then **Restart** clicked on that same page. Don't hand-edit
+  CloudLinux's underlying config files directly.
+- Only after both sides match (code deployed + URL updated) and the app has
+  been restarted: verify with `curl -I https://nycto.ninja/fitstack/api/<a
+  real endpoint>` — expect a real response, not a 404 — and click through
+  Fitstack's actual model-matching feature end to end, not just confirm the
+  page loads.
+
+## Post-sync verification checklist (all 7 tools)
+
+1. `curl -I https://nycto.ninja/<old-slug>/` for each of the 7 old slugs →
+   expect `301` to the matching new slug; `curl -I https://nycto.ninja/<new-slug>/`
+   → expect `200`.
+2. `https://nycto.ninja/sitemap.xml` lists the new slugs
+   (`housenomics`, `sunk-or-swim`, `sunset-clause`, `greener-grass`,
+   `certforge`, `fitstack`) and `https://nycto.ninja/robots.txt` shows
+   `Disallow: /dibs/`.
+3. Run `scripts/soar_monitor.php` once by hand on prod (or wait for its next
+   hourly cron run) so `status/data/status-data.json` picks up the new
+   `app_key`s instead of the stale ones it'll show right after the file sync
+   (`mortgage-calculator`, `relocation-assessment`, `retirement-forecaster`,
+   `cism-training`) — this is expected/harmless until that next run, not a
+   sign anything broke.
+4. Optional cosmetic-only cleanup: a code comment in `greener-grass/index.html`
+   still reads "see relocation-assessment project memory" — no functional
+   effect, fine to leave.
+
 ## Rollback
 
 - **Local:** `git revert`/`git reset` to the pre-rename commit(s).

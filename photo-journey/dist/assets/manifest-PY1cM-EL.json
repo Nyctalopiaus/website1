@@ -1,0 +1,46 @@
+{
+  "id": "./",
+  "name": "Photo Journey — Art School Photography Coach",
+  "short_name": "Photo Journey",
+  "description": "AI-graded photography and editing curriculum — 90 assignments across 9 categories, with camera briefs you can pull up in the field.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "orientation": "any",
+  "background_color": "#08080a",
+  "theme_color": "#f59e0b",
+  "lang": "en-US",
+  "dir": "ltr",
+  "categories": ["education", "photo", "productivity"],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "launch_handler": { "client_mode": "focus-existing" },
+  "serviceworker": {
+    "src": "sw.js",
+    "scope": "./",
+    "type": "classic",
+    "update_via_cache": "none"
+  },
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Photo Challenges",
+      "short_name": "Challenges",
+      "description": "Jump straight to the assignment curriculum",
+      "url": "./?tab=challenges",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Report Cards",
+      "short_name": "Grades",
+      "description": "Review past Prof. ISO critiques",
+      "url": "./?tab=grades",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

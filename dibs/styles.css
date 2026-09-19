@@ -1,6 +1,11 @@
 /* Nycto's MLS Property Scout - Luxury Aggregator Stylesheet */
 
 :root {
+    /* Tell the browser this page is light-themed so native widgets that
+       CSS can't reach (datalist suggestion popups, scrollbars, etc.)
+       render light instead of following the OS/browser dark mode. */
+    color-scheme: light;
+
     /* Warm & Earthy Light Theme (MLS Scout) */
     --bg-main: #FAF6F0;
     --bg-panel: rgba(245, 239, 227, 0.82);

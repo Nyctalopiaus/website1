@@ -6,19 +6,35 @@
  */
 
 /**
+ * Minimum pixel area (width * height) for a downloaded image to be trusted as a real listing
+ * photo, roughly equivalent to a 200x200 square. Real photos from Matrix consistently come
+ * through at 296x197 (thumbnail) or 640x426 (full) — 58,312px^2 and 272,640px^2 respectively —
+ * while small branding images some agents upload into their own gallery (a business-card-style
+ * logo or headshot) run far smaller: a confirmed real example was 113x85 (9,605px^2). 40,000px^2
+ * sits comfortably below every real photo size seen and comfortably above that logo, with margin
+ * in both directions.
+ */
+const MIN_REAL_PHOTO_PIXEL_AREA = 40000;
+
+/**
  * Guards against a specific bad response Matrix's media host sometimes returns for the
  * *first* photo slot: HTTP 200, Content-Type reported as an "image/*" type, but a body that's
  * actually a tiny CoreLogic UI icon (an SVG, saved with a .jpg extension since the content-type
  * check alone let it through). A real listing photo is always a multi-KB binary image and never
- * starts with '<' — SVG/XML/HTML error bodies do. Used both when accepting a fresh download and
- * when deciding whether an already-cached file on disk is trustworthy enough to skip re-fetching.
+ * starts with '<' — SVG/XML/HTML error bodies do. Also rejects images that decode fine but are too
+ * small in total pixel area to be a real listing photo (see MIN_REAL_PHOTO_PIXEL_AREA) — this
+ * catches agent/brokerage logos and headshots some listings include as an actual gallery photo,
+ * which pass the old width>=100 && height>=100 check but are still much smaller than any real
+ * photo this pipeline has seen. Used both when accepting a fresh download and when deciding
+ * whether an already-cached file on disk is trustworthy enough to skip re-fetching.
  */
 function looksLikeRealPhotoBody(string $body): bool {
     if (strlen($body) < 1024) return false;
     $prefix = ltrim(substr($body, 0, 16));
     if ($prefix === '' || $prefix[0] === '<') return false;
     $imageInfo = @getimagesizefromstring($body);
-    return $imageInfo !== false && $imageInfo[0] >= 100 && $imageInfo[1] >= 100;
+    return $imageInfo !== false && $imageInfo[0] >= 100 && $imageInfo[1] >= 100
+        && ($imageInfo[0] * $imageInfo[1]) >= MIN_REAL_PHOTO_PIXEL_AREA;
 }
 
 function hasUsableCachedPhoto(string $relativeUrl): bool {
@@ -26,7 +42,8 @@ function hasUsableCachedPhoto(string $relativeUrl): bool {
     $path = MEDIA_DIR . '/' . basename($relativeUrl);
     if (!is_file($path) || @filesize($path) < 1024) return false;
     $imageInfo = @getimagesize($path);
-    return $imageInfo !== false && $imageInfo[0] >= 100 && $imageInfo[1] >= 100;
+    return $imageInfo !== false && $imageInfo[0] >= 100 && $imageInfo[1] >= 100
+        && ($imageInfo[0] * $imageInfo[1]) >= MIN_REAL_PHOTO_PIXEL_AREA;
 }
 
 function requireScrapeToken(PDO $pdo): void {
@@ -629,16 +646,28 @@ function handleSync(PDO $pdo) {
             continue;
         }
 
-        $sharedMlsData = $item;
-        unset($sharedMlsData['matrix_review_status'], $sharedMlsData['portal_notes']);
         $incomingStatus = trim((string)($item['status'] ?? 'Active'));
         $incomingPrice = (float)($item['price'] ?? 0);
-        $existingPropertyStmt = $pdo->prepare('SELECT status, price FROM properties WHERE mls_id = :mls_id');
+        $existingPropertyStmt = $pdo->prepare('SELECT status, price, raw_mls_json FROM properties WHERE mls_id = :mls_id');
         $existingPropertyStmt->execute([':mls_id' => $mlsId]);
         $existingPropertyRow = $existingPropertyStmt->fetch(PDO::FETCH_ASSOC);
         $isNewProperty = $existingPropertyRow === false;
         $existingStatus = $isNewProperty ? false : $existingPropertyRow['status'];
         $existingPrice = $isNewProperty ? null : (float)$existingPropertyRow['price'];
+
+        // Merge onto whatever raw_mls_json this listing already has, rather than overwriting it
+        // wholesale. A routine quick-refresh sync (list view only) never visits the detail view,
+        // so its payload item has no `description`/`interior`/`rooms` keys at all — a straight
+        // `$sharedMlsData = $item` would silently erase any of those a prior deep scrape had
+        // already captured, the same class of bug the gallery_images preservation logic below
+        // already guards against for photos. Incoming keys still win when present.
+        $existingRawMlsData = [];
+        if (!$isNewProperty && !empty($existingPropertyRow['raw_mls_json'])) {
+            $decoded = json_decode($existingPropertyRow['raw_mls_json'], true);
+            if (is_array($decoded)) $existingRawMlsData = $decoded;
+        }
+        $sharedMlsData = array_merge($existingRawMlsData, $item);
+        unset($sharedMlsData['matrix_review_status'], $sharedMlsData['portal_notes']);
 
         // Upsert MLS property details if present
         if (isset($item['address']) || isset($item['price'])) {
@@ -801,19 +830,34 @@ function handleSync(PDO $pdo) {
             foreach (array_values($item['gallery_images']) as $idx => $url) {
                 if (empty($url)) continue;
 
-                $existing = glob(MEDIA_DIR . '/' . $safeId . '_' . $idx . '.*');
-                if (!$existing && $idx === 0) {
-                    // Legacy pre-gallery filename, no "_0" suffix.
-                    $existing = glob(MEDIA_DIR . '/' . $safeId . '.*');
+                // Index 0 is special. A routine cheap refresh (list-view only, handled in the
+                // "else" branch below) may have already cached Matrix's small search-result
+                // thumbnail here as "{safeId}_0.*" (or the legacy "{safeId}.*" name) before this
+                // listing ever got a deep scrape. That thumbnail is a legitimate, >=1024-byte real
+                // photo, so the ordinary cache-hit check further down would keep it forever, even
+                // once we're holding the full-resolution detail-page photo right here. Always
+                // re-fetch index 0 on a deep-scrape payload so the better photo actually replaces
+                // it — this only costs one extra request, since a listing's deep scrape (and thus
+                // this branch) only ever runs once per mls_id.
+                if ($idx === 0) {
+                    $photoFetchJobs[$mlsId . '::0'] = $url;
+                    continue;
                 }
 
-                // A cached file only counts as a cache hit if it's a real photo — a previous
-                // sync may have cached Matrix's fake-200 SVG-icon response for this slot (see
-                // looksLikeRealPhotoBody()), and without this check that bad file would be
-                // treated as "already have it" forever, even across a fresh deep scrape with
-                // the correct URL in hand.
-                if ($existing && @filesize($existing[0]) >= 1024) {
-                    $existingByMls[$mlsId][$idx] = 'media/' . basename($existing[0]);
+                $existing = glob(MEDIA_DIR . '/' . $safeId . '_' . $idx . '.*');
+                $existingRelative = $existing ? 'media/' . basename($existing[0]) : '';
+
+                // A cached file only counts as a cache hit if it still passes hasUsableCachedPhoto()
+                // — not just a raw filesize check. That catches both Matrix's fake-200 SVG-icon
+                // response for this slot (see looksLikeRealPhotoBody()) and a real, valid image
+                // that's just too small in pixel area to be an actual listing photo (an
+                // agent/brokerage logo or headshot uploaded into the gallery itself — see
+                // MIN_REAL_PHOTO_PIXEL_AREA above). A file already on disk that fails this now
+                // counts as a cache miss and gets re-fetched right here, so a previously-cached bad
+                // photo self-heals on this listing's next deep scrape instead of being kept forever
+                // just because something already exists at that path.
+                if ($existingRelative !== '' && hasUsableCachedPhoto($existingRelative)) {
+                    $existingByMls[$mlsId][$idx] = $existingRelative;
                     continue;
                 }
 
@@ -824,14 +868,20 @@ function handleSync(PDO $pdo) {
             // deep scrape already built. Preserve every photo already cached on disk for this
             // mls_id, and only fetch index 0 (main_image_url) if it isn't cached yet.
             foreach (glob(MEDIA_DIR . '/' . $safeId . '_*.*') as $path) {
-                if (preg_match('/_(\d+)\.[^.]+$/', $path, $m) && @filesize($path) >= 1024) {
-                    $existingByMls[$mlsId][(int)$m[1]] = 'media/' . basename($path);
+                if (!preg_match('/_(\d+)\.[^.]+$/', $path, $m)) continue;
+                $relative = 'media/' . basename($path);
+                // Same hasUsableCachedPhoto() validity check as the deep-scrape branch above —
+                // a stale bad photo (fake icon, or an undersized logo/headshot) shouldn't be
+                // preserved forever just because a file happens to exist on disk for this index.
+                if (hasUsableCachedPhoto($relative)) {
+                    $existingByMls[$mlsId][(int)$m[1]] = $relative;
                 }
             }
             if (empty($existingByMls[$mlsId])) {
                 $legacy = glob(MEDIA_DIR . '/' . $safeId . '.*');
-                if ($legacy && @filesize($legacy[0]) >= 1024) {
-                    $existingByMls[$mlsId][0] = 'media/' . basename($legacy[0]);
+                $legacyRelative = $legacy ? 'media/' . basename($legacy[0]) : '';
+                if ($legacyRelative !== '' && hasUsableCachedPhoto($legacyRelative)) {
+                    $existingByMls[$mlsId][0] = $legacyRelative;
                 }
             }
 
@@ -1281,11 +1331,30 @@ function handleAdminCleanupPreview(PDO $pdo) {
             $orphanBytes += $o['total_bytes'];
         }
 
+        // Checks every gallery photo, not just the primary/preview image, so a bad photo buried
+        // anywhere in a listing's gallery (e.g. an agent/brokerage logo uploaded as one of the
+        // listing's own photos — see looksLikeRealPhotoBody()'s doc comment) surfaces here instead
+        // of sitting on disk unnoticed. main_image_url is still checked even when it also appears
+        // in gallery_images (harmless double-check; dedup happens naturally since both add the
+        // same mls_id to $imageIssues at most once).
         $imageIssues = [];
-        $imageStmt = $pdo->query('SELECT mls_id, main_image_url FROM properties');
+        $imageStmt = $pdo->query('SELECT mls_id, main_image_url, gallery_images FROM properties');
         while ($imageRow = $imageStmt->fetch(PDO::FETCH_ASSOC)) {
-            if (!hasUsableCachedPhoto((string)($imageRow['main_image_url'] ?? ''))) {
-                $imageIssues[] = (string)$imageRow['mls_id'];
+            $mlsIdForIssue = (string)$imageRow['mls_id'];
+            $urlsToCheck = [(string)($imageRow['main_image_url'] ?? '')];
+            $galleryDecoded = json_decode($imageRow['gallery_images'] ?? '[]', true);
+            if (is_array($galleryDecoded)) {
+                foreach ($galleryDecoded as $galleryUrl) {
+                    $urlsToCheck[] = (string)$galleryUrl;
+                }
+            }
+
+            foreach ($urlsToCheck as $urlToCheck) {
+                if ($urlToCheck === '') continue;
+                if (!hasUsableCachedPhoto($urlToCheck)) {
+                    $imageIssues[] = $mlsIdForIssue;
+                    break;
+                }
             }
         }
         $missingAddressRows = $pdo->query("SELECT mls_id, address, city, state, zip, updated_at FROM properties WHERE address IS NULL OR TRIM(address) = '' OR LOWER(TRIM(address)) = 'address unavailable' ORDER BY updated_at DESC")->fetchAll(PDO::FETCH_ASSOC);

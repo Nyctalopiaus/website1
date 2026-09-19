@@ -57,7 +57,7 @@
                 <button class="btn btn-secondary admin-only" id="btn-admin-operations-direct" onclick="if(window.switchView){window.switchView('admin');}" title="Admin Operations Command Center" style="display: none;">
                     <i data-lucide="shield-check"></i> Admin Operations
                 </button>
-                <button class="btn btn-secondary" id="btn-top-map-homeward" onclick="if(window.exportFavoritesToHomeward){window.exportFavoritesToHomeward();}" title="Plot & view tour route of favorites in Homeward">
+                <button class="btn btn-secondary" id="btn-top-map-homeward" title="Plot & view tour route of favorites in Homeward">
                     <i data-lucide="map"></i> Map in Homeward
                 </button>
                 <button class="btn btn-primary" id="btn-export-modal"><i data-lucide="download"></i> Export / Share</button>
@@ -289,44 +289,44 @@
                     <div class="drawer-section-grid">
                         <div class="filter-group">
                             <label class="filter-label">Min List Price ($)</label>
-                            <select id="drawer-price-min" class="select-input">
-                                <option value="">Any Min Price</option>
-                                <option value="300000">$300,000</option>
-                                <option value="350000">$350,000</option>
-                                <option value="400000">$400,000</option>
-                                <option value="450000">$450,000</option>
-                                <option value="500000">$500,000</option>
-                                <option value="550000">$550,000</option>
-                                <option value="600000">$600,000</option>
-                                <option value="650000">$650,000</option>
-                                <option value="700000">$700,000</option>
-                                <option value="750000">$750,000</option>
-                                <option value="800000">$800,000</option>
-                                <option value="850000">$850,000</option>
-                                <option value="900000">$900,000</option>
-                                <option value="950000">$950,000</option>
-                                <option value="1000000">$1,000,000+</option>
-                            </select>
+                            <input type="text" inputmode="numeric" id="drawer-price-min" class="input-text" list="drawer-price-min-list" placeholder="Any Min Price" autocomplete="off">
+                            <datalist id="drawer-price-min-list">
+                                <option value="$300,000"></option>
+                                <option value="$350,000"></option>
+                                <option value="$400,000"></option>
+                                <option value="$450,000"></option>
+                                <option value="$500,000"></option>
+                                <option value="$550,000"></option>
+                                <option value="$600,000"></option>
+                                <option value="$650,000"></option>
+                                <option value="$700,000"></option>
+                                <option value="$750,000"></option>
+                                <option value="$800,000"></option>
+                                <option value="$850,000"></option>
+                                <option value="$900,000"></option>
+                                <option value="$950,000"></option>
+                                <option value="$1,000,000"></option>
+                            </datalist>
                         </div>
                         <div class="filter-group">
                             <label class="filter-label">Max List Price ($)</label>
-                            <select id="drawer-price-max" class="select-input">
-                                <option value="">Any Max Price</option>
-                                <option value="350000">$350,000</option>
-                                <option value="400000">$400,000</option>
-                                <option value="450000">$450,000</option>
-                                <option value="500000">$500,000</option>
-                                <option value="550000">$550,000</option>
-                                <option value="600000">$600,000</option>
-                                <option value="650000">$650,000</option>
-                                <option value="700000">$700,000</option>
-                                <option value="750000">$750,000</option>
-                                <option value="800000">$800,000</option>
-                                <option value="850000">$850,000</option>
-                                <option value="900000">$900,000</option>
-                                <option value="950000">$950,000</option>
-                                <option value="1000000">$1,000,000</option>
-                            </select>
+                            <input type="text" inputmode="numeric" id="drawer-price-max" class="input-text" list="drawer-price-max-list" placeholder="Any Max Price" autocomplete="off">
+                            <datalist id="drawer-price-max-list">
+                                <option value="$350,000"></option>
+                                <option value="$400,000"></option>
+                                <option value="$450,000"></option>
+                                <option value="$500,000"></option>
+                                <option value="$550,000"></option>
+                                <option value="$600,000"></option>
+                                <option value="$650,000"></option>
+                                <option value="$700,000"></option>
+                                <option value="$750,000"></option>
+                                <option value="$800,000"></option>
+                                <option value="$850,000"></option>
+                                <option value="$900,000"></option>
+                                <option value="$950,000"></option>
+                                <option value="$1,000,000"></option>
+                            </datalist>
                         </div>
                         <div class="filter-group">
                             <label class="filter-label">Min Redfin Estimate ($)</label>

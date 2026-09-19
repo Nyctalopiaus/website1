@@ -27,6 +27,32 @@ $jsonFile = $dataDir . '/status-data.json';
 // endpoint row below by hand.
 $toolsConfig = require __DIR__ . '/tools_config.php';
 
+// FIXED (this audit): several checks below (EIA, OTX, NVD, GreyNoise) are real,
+// key-authenticated production dependencies (see fuel-price-proxy.php / fetcher.py), but this
+// monitor never loaded api.env, so it was hitting them unauthenticated and getting a guaranteed
+// 403/404 every single run regardless of whether the real, keyed request was actually healthy.
+// Same tiny loader already duplicated in fuel-price-proxy.php / mls-proxy.php.
+function loadApiEnv($path) {
+    if (!is_readable($path)) return;
+    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $line = trim($line);
+        if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
+        list($name, $value) = array_map('trim', explode('=', $line, 2));
+        $value = trim($value, "\"'");
+        if ($name !== '' && getenv($name) === false) {
+            putenv("$name=$value");
+        }
+    }
+}
+loadApiEnv('/home/nyctltlc/api.env');
+
+$eiaApiKey = getenv('EIA_API_KEY') ?: '';
+$otxApiKey = getenv('OTX_API_KEY') ?: '';
+$nvdApiKey = getenv('NVD_API_KEY') ?: '';
+$greynoiseApiKey = getenv('GREYNOISE_API_KEY') ?: '';
+// If a key isn't set yet, these checks simply fall back to the same unauthenticated request
+// as before - this only changes behavior once the key is actually present in api.env.
+
 // Admin Verification Helper (Authenticates against nyctos-gig-grid admin_users & active sessions)
 function verifyAdminAuth() {
     // If run from CLI (Cron), automatically authorized
@@ -169,7 +195,9 @@ $monitoredEndpoints = [
         'app_key' => 'open-road-advisor',
         'app_name' => 'Open Road Advisor',
         'name' => 'EIA Fuel Price API',
-        'url' => 'https://api.eia.gov/v2/seriesid/PET.EMD_EPMR_PTE_NUS_DPG.W',
+        // FIXED (this audit): fuel-price-proxy.php always calls this endpoint with
+        // ?api_key=... - checking it unauthenticated guaranteed a 403 every run.
+        'url' => 'https://api.eia.gov/v2/seriesid/PET.EMD_EPMR_PTE_NUS_DPG.W' . ($eiaApiKey ? ('?api_key=' . urlencode($eiaApiKey)) : ''),
         'type' => 'outbound'
     ],
     [
@@ -616,7 +644,10 @@ $monitoredEndpoints = [
         'app_name' => "Nycto's ThreatPulse",
         'name' => 'AlienVault OTX (Structured Indicators)',
         'url' => 'https://otx.alienvault.com/api/v1/pulses/subscribed',
-        'type' => 'outbound'
+        'type' => 'outbound',
+        // FIXED (this audit): fetch_otx_iocs() always sends X-OTX-API-KEY - OTX has no
+        // unauthenticated access, so this guaranteed a 403/DEGRADED every single run.
+        'headers' => $otxApiKey ? ['X-OTX-API-KEY: ' . $otxApiKey] : []
     ],
     [
         'app_key' => 'threatpulse',
@@ -649,7 +680,11 @@ $monitoredEndpoints = [
         'app_name' => "Nycto's ThreatPulse",
         'name' => 'NVD CVE API (CVSS Enrichment)',
         'url' => 'https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=CVE-2021-44228',
-        'type' => 'outbound'
+        'type' => 'outbound',
+        // FIXED (this audit): fetch_nvd_cvss() sends the apiKey header whenever NVD_API_KEY is
+        // set, which raises the rate-limit tier and materially cuts real-world response time -
+        // check it the same way instead of always paying the slower unauthenticated tier's latency.
+        'headers' => $nvdApiKey ? ['apiKey: ' . $nvdApiKey] : []
     ],
     // ADDED (this audit): GreyNoise IOC enrichment is gated on GREYNOISE_API_KEY, which is present
     // in api.env, so it's live in production. Uses a well-known public IP (Google DNS) as a stable
@@ -659,7 +694,13 @@ $monitoredEndpoints = [
         'app_name' => "Nycto's ThreatPulse",
         'name' => 'GreyNoise IP Reputation API',
         'url' => 'https://api.greynoise.io/v3/community/8.8.8.8',
-        'type' => 'outbound'
+        'type' => 'outbound',
+        // FIXED (this audit): fetch_greynoise_context() authenticates with a "key" header (not
+        // Authorization/Bearer) and explicitly treats HTTP 404 as the documented "IP not
+        // observed" response - valid data, not a failure. Checking unauthenticated with 404
+        // treated as an error guaranteed a false OUTAGE every single run.
+        'headers' => $greynoiseApiKey ? ['key: ' . $greynoiseApiKey] : [],
+        'accept_404' => true
     ],
     [
         'app_key' => 'threatpulse',

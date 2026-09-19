@@ -41,7 +41,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body>
   <div class="mesh-glow nebula-1"></div>
@@ -158,7 +158,7 @@
     <div class="category-filter-bar" role="tablist" aria-label="App Categories">
       <button type="button" class="filter-btn active" data-filter="all" role="tab" aria-selected="true">
         <span>⚡ All Applications</span>
-        <span class="filter-count">11</span>
+        <span class="filter-count">12</span>
       </button>
       <button type="button" class="filter-btn" data-filter="finance" role="tab" aria-selected="false">
         <span>💰 Finance &amp; Real Estate</span>
@@ -169,8 +169,8 @@
         <span class="filter-count">4</span>
       </button>
       <button type="button" class="filter-btn" data-filter="lifestyle" role="tab" aria-selected="false">
-        <span>🚗 Travel &amp; Lifestyle</span>
-        <span class="filter-count">2</span>
+        <span>📷 Photography, Travel &amp; Lifestyle</span>
+        <span class="filter-count">3</span>
       </button>
     </div>
 
@@ -612,6 +612,40 @@
             </div>
             <footer class="card-footer">
               <a href="nyctos-gig-grid/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
+            </footer>
+          </div>
+        </article>
+
+        <!-- Project 11: Photo Journey — Art School Photography & Editing Coach -->
+        <article class="project-card active" data-category="lifestyle">
+          <div class="card-glow"></div>
+          <div class="card-inner">
+            <header class="card-header">
+              <div style="display: flex; gap: 0.5rem;">
+                <span class="badge badge-active">Active</span>
+                <span class="badge badge-pro">Pro</span>
+                <span class="badge badge-live">AI Engine</span>
+              </div>
+            </header>
+            <div class="card-content">
+              <h2 class="project-title font-display">Photo Journey</h2>
+              <p class="project-desc">
+                An interactive AI photography coach and photo editing professor ("Prof. ISO"). Connects to your choice of LLM (Google Gemini, OpenAI, Anthropic Claude, OpenRouter, or local Ollama) to analyze camera specs, parse image EXIF data, evaluate original vs. edited photos with interactive comparison sliders, and deliver academic art school critiques with software-specific slider and shortcut guidance.
+              </p>
+              <details class="tech-dropdown">
+                <summary class="tech-toggle">Show tech stack</summary>
+                <div class="tech-tags">
+                  <span>Multimodal Vision AI Engine (Gemini 2.0, GPT-4o, Claude 3.5/3.7, Ollama Qwen2-VL)</span>
+                  <span>Client-Side Binary EXIF Extractor (Camera model, ISO, aperture, &amp; shutter speed parser)</span>
+                  <span>Interactive Before/After Slider (Native HTML5 canvas &amp; clip-path comparison engine)</span>
+                  <span>Multi-Software Knowledge Map (Lightroom, Photoshop, Capture One, Darktable, GIMP)</span>
+                  <span>Academic Grading &amp; Rubric Engine (4-point criteria analysis &amp; student report cards)</span>
+                  <span>Stateless BYO-Key Architecture (100% private browser LocalStorage &amp; IndexedDB)</span>
+                </div>
+              </details>
+            </div>
+            <footer class="card-footer">
+              <a href="photo-journey/" class="btn-launch">Launch Application <span class="arrow">→</span></a>
             </footer>
           </div>
         </article>

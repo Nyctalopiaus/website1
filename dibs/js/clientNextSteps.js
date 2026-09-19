@@ -89,5 +89,4 @@ window.focusClientNextStep = function(status) {
         select.value = status;
         select.dispatchEvent(new Event('change', { bubbles: true }));
     }
-    document.getElementById('view-grid-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };

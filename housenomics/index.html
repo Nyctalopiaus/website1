@@ -4,8 +4,17 @@
   <meta charset="UTF-8" />
       <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; base-uri 'self'; object-src 'none';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b0f19" />
   <title>Housenomics — Full Housing Cost Calculator</title>
   <meta name="description" content="Housenomics — a comprehensive calculator to estimate your true monthly housing cost: 15 vs. 30-year mortgages side-by-side, PMI/taxes/insurance escrow, HOA fees, DTI affordability, live rate sync, and one-click Redfin property parsing." />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/x-icon" href="assets/icons/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32x32.png" />
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Housenomics" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet" />
@@ -131,7 +140,7 @@
   <header class="header">
     <div class="header-nav">
       <a href="../index.html" class="btn-back">← Back to Lab</a>
-      <h1>Housenomics</h1>
+      <h1><svg class="icon" aria-hidden="true"><use href="#icon-home"/></svg> Housenomics</h1>
     </div>
     <div class="flex-center-wrap-gap75">
       <a href="../sunk-or-swim/index.html" class="btn-quickstart-mortgage" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem;" title="Sunk or Swim — Rent vs. Sell Calculator">
@@ -1857,5 +1866,6 @@
   </div>
 
   <script type="module" src="app.js?v=52"></script>
+  <script src="register-sw.js"></script>
 </body>
 </html>

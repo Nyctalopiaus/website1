@@ -145,7 +145,7 @@ class DoorScoutApp {
           ${this.session.targets.length > 1 ? `<button onclick="window.app.removeTargetZone(${index})" class="text-[10px] text-rose-400 font-bold hover:underline">🗑️ Remove</button>` : ''}
         </div>
         <div class="relative">
-          <input id="input-target-${index}" type="text" value="${escapeHtml(target.address || '')}" placeholder="e.g. 5578 S Telluride St, Centennial, CO" class="w-full px-2.5 py-1.5 rounded bg-slate-900 border border-slate-800 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500" />
+          <input id="input-target-${index}" type="text" value="${escapeHtml(target.address || '')}" placeholder="e.g. 123 Elm St, Anytown, CO" class="w-full px-2.5 py-1.5 rounded bg-slate-900 border border-slate-800 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500" />
           <div id="dropdown-target-${index}" class="absolute z-50 left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl hidden max-h-48 overflow-y-auto"></div>
         </div>
         <div>

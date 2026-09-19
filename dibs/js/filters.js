@@ -336,7 +336,9 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         const getNum = id => {
             const el = document.getElementById(id);
             if (!el || el.value === '') return null;
-            const n = parseFloat(el.value);
+            // strip formatting like "$" and "," so both typed numbers and
+            // picked datalist presets (e.g. "$350,000") parse correctly
+            const n = parseFloat(String(el.value).replace(/[^0-9.\-]/g, ''));
             return isNaN(n) ? null : n;
         };
         const getStr = id => {

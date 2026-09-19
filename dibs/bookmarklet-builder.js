@@ -466,6 +466,53 @@ function getEngineCode() {
      * image. Only the deep-scrape walker (which actually looked at every rendered photo via
      * extractGalleryImages()) sets gallery_images explicitly.
      */
+    // Public Remarks / marketing description — confirmed live (Sept 2026) against the full
+    // single-listing detail view. CORRECTED after a real production listing (MLS 4586957, "Willow
+    // Trace") showed heavy contamination: the surrounding 'div.col-sm-6.d-bgcolor--systemLightest'
+    // box near the top of the detail view does NOT scope to just the remarks — its textContent
+    // runs straight into Directions, then the "General Description" header, then the entire
+    // Interior/Rooms/School/Exterior/Parking/Utilities/Associations/Financial section content for
+    // that same listing, all with no separators. Confirmed live on two more listings that this
+    // isn't a one-off: the box's full textContent always includes the rest of the page, an earlier
+    // spot-check just happened to only compare the first 80 characters and missed it. The actual
+    // remarks text lives in a much narrower element: a
+    // '<span class="d-textSoft d-fontSize--small d-marginLeft--3">' holding nothing but that
+    // paragraph — confirmed live to hold exactly the clean remarks and nothing else, with
+    // "Directions" and every later section rendered as separate sibling content outside this span.
+    // Only ever renders in the full detail view, so on a compact list-row block this simply won't
+    // match and description stays unset — matches how notes/gallery are already detail-view-only.
+    function extractPublicRemarks(block) {
+        const descEl = block.querySelector('.d-textSoft.d-fontSize--small.d-marginLeft--3');
+        if (!descEl) return '';
+        const t = (descEl.textContent || '').trim();
+        // Sanity floor — real remarks paragraphs run well over 100 characters; this just guards
+        // against an empty/placeholder span being stored as a real description.
+        return t.length > 30 ? t : '';
+    }
+
+    // Generic label-to-value reader for the detail view's "Interior"/"Exterior"/"Financial"/etc.
+    // spec sections. Confirmed live (Sept 2026): every field in those sections renders as a
+    // '.row' containing a label span (class "d-textStrong ...") next to a sibling value span
+    // (class "d-text ...") — the exact same markup pattern repeats across every section on the
+    // page, so one generic reader covers all of them rather than a one-off regex per field. The
+    // 'span.d-text' CSS selector below matches only the exact class token 'd-text', so it never
+    // matches a 'd-textStrong' label span. Only ever finds matches in the full detail view — a
+    // compact list-row block has none of this markup.
+    function extractLabeledFields(block) {
+        const map = {};
+        const labelEls = Array.from(block.querySelectorAll('span.d-textStrong'));
+        labelEls.forEach(labelEl => {
+            const row = labelEl.closest('.row');
+            if (!row) return;
+            const valueEl = row.querySelector('span.d-text');
+            if (!valueEl) return;
+            const label = labelEl.textContent.replace(/:\s*$/, '').trim();
+            const value = valueEl.textContent.trim();
+            if (label && value) map[label] = value;
+        });
+        return map;
+    }
+
     function parseListingBlock(block) {
         const text = block.innerText || '';
         if (!text.includes('Listing ID') && !text.includes('MLS#') && !text.includes('MLS ID') && !text.includes('Bed')) return null;
@@ -641,7 +688,33 @@ function getEngineCode() {
         const imgEl = block.querySelector('img[src*="GetMedia.ashx"], img[src*="matrixmedia"], .display-photo img');
         const mainImg = (imgEl && !/\/icons?\//i.test(imgEl.src)) ? imgEl.src : '';
 
-        return {
+        const description = extractPublicRemarks(block);
+
+        // Interior spec fields — only populated in the full detail view. Keys are named to match
+        // what js/detailModal.js already expects on raw_mls_json.interior.* (that UI was built
+        // ahead of this extraction ever existing, so it was silently falling back to hardcoded
+        // placeholder values like "1,292 SqFt" for every listing until now).
+        const labeledFields = extractLabeledFields(block);
+        const toInt = (v) => { const n = parseInt(String(v).replace(/[^0-9\-]/g, ''), 10); return isNaN(n) ? undefined : n; };
+        const toNum = (v) => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g, '')); return isNaN(n) ? undefined : n; };
+        const interior = {};
+        if (labeledFields['Baths Full'] !== undefined) interior.baths_full = toInt(labeledFields['Baths Full']);
+        if (labeledFields['Baths 3/4'] !== undefined) interior.baths_3_4 = toInt(labeledFields['Baths 3/4']);
+        if (labeledFields['Baths 1/2'] !== undefined) interior.baths_1_2 = toInt(labeledFields['Baths 1/2']);
+        if (labeledFields['Above Grade Fin Area (SqFt)'] !== undefined) interior.sqft_above_grade = toInt(labeledFields['Above Grade Fin Area (SqFt)']);
+        if (labeledFields['Below Grade (SqFt) Total'] !== undefined) interior.sqft_below_grade_total = toInt(labeledFields['Below Grade (SqFt) Total']);
+        if (labeledFields['Below Grade Finished Area'] !== undefined) interior.sqft_below_grade_finished = toInt(labeledFields['Below Grade Finished Area']);
+        if (labeledFields['PSF Above Grade'] !== undefined) interior.psf_above_grade = toNum(labeledFields['PSF Above Grade']);
+        if (labeledFields['PSF Finished'] !== undefined) interior.psf_finished = toNum(labeledFields['PSF Finished']);
+        if (labeledFields['PSF Total'] !== undefined) interior.psf_total = toNum(labeledFields['PSF Total']);
+        if (labeledFields['Basement'] !== undefined) interior.basement = labeledFields['Basement'];
+        if (labeledFields['Appliances'] !== undefined) interior.appliances = labeledFields['Appliances'];
+        if (labeledFields['Flooring'] !== undefined) interior.flooring = labeledFields['Flooring'];
+        if (labeledFields['Fireplaces'] !== undefined) interior.fireplaces = labeledFields['Fireplaces'];
+        if (labeledFields['Exclusions'] !== undefined) interior.exclusions = labeledFields['Exclusions'];
+        const hasInterior = Object.keys(interior).length > 0;
+
+        const result = {
             mls_id: mlsId,
             favorite: (matrixReviewStatus === 'favorite' || foundFavorite || isFavoritePage) ? 1 : 0,
             address: address,
@@ -669,6 +742,9 @@ function getEngineCode() {
             matrix_review_status: matrixReviewStatus,
             portal_notes: portalNotes
         };
+        if (description) result.description = description;
+        if (hasInterior) result.interior = interior;
+        return result;
     }
 
     function scrapeMatrixPortal(onDone) {

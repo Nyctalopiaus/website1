@@ -1,0 +1,134 @@
+{
+  "exams": [
+    {
+      "id": "cism",
+      "name": "CISM",
+      "full_name": "Certified Information Security Manager",
+      "status": "active",
+      "seed_file": "data/cism_seed.json",
+      "seed_version": 6,
+      "domains": [
+        {
+          "id": 1,
+          "title": "Information Security Governance",
+          "weight_pct": 17
+        },
+        {
+          "id": 2,
+          "title": "Information Risk Management",
+          "weight_pct": 20
+        },
+        {
+          "id": 3,
+          "title": "Information Security Program Development & Management",
+          "weight_pct": 33
+        },
+        {
+          "id": 4,
+          "title": "Information Security Incident Management",
+          "weight_pct": 30
+        }
+      ],
+      "mock_exam": {
+        "question_count": 10,
+        "time_limit_seconds": 900,
+        "passing_threshold": 70
+      },
+      "mock_exam_full": {
+        "question_count": 150,
+        "time_limit_seconds": 14400,
+        "passing_threshold": 70
+      }
+    },
+    {
+      "id": "securityx",
+      "name": "SecurityX",
+      "full_name": "CompTIA SecurityX (CAS-005)",
+      "status": "active",
+      "seed_file": "data/securityx_seed.json",
+      "seed_version": 3,
+      "domains": [
+        {
+          "id": 1,
+          "title": "Governance, Risk, and Compliance",
+          "weight_pct": 20
+        },
+        {
+          "id": 2,
+          "title": "Security Architecture",
+          "weight_pct": 27
+        },
+        {
+          "id": 3,
+          "title": "Security Engineering",
+          "weight_pct": 31
+        },
+        {
+          "id": 4,
+          "title": "Security Operations",
+          "weight_pct": 22
+        }
+      ],
+      "mock_exam": {
+        "question_count": 10,
+        "time_limit_seconds": 900,
+        "passing_threshold": 70
+      }
+    },
+    {
+      "id": "cissp",
+      "name": "CISSP",
+      "full_name": "Certified Information Systems Security Professional",
+      "status": "active",
+      "seed_file": "data/cissp_seed.json",
+      "seed_version": 2,
+      "domains": [
+        {
+          "id": 1,
+          "title": "Security and Risk Management",
+          "weight_pct": 16
+        },
+        {
+          "id": 2,
+          "title": "Asset Security",
+          "weight_pct": 10
+        },
+        {
+          "id": 3,
+          "title": "Security Architecture and Engineering",
+          "weight_pct": 13
+        },
+        {
+          "id": 4,
+          "title": "Communication and Network Security",
+          "weight_pct": 13
+        },
+        {
+          "id": 5,
+          "title": "Identity and Access Management",
+          "weight_pct": 13
+        },
+        {
+          "id": 6,
+          "title": "Security Assessment and Testing",
+          "weight_pct": 12
+        },
+        {
+          "id": 7,
+          "title": "Security Operations",
+          "weight_pct": 13
+        },
+        {
+          "id": 8,
+          "title": "Software Development Security",
+          "weight_pct": 10
+        }
+      ],
+      "mock_exam": {
+        "question_count": 10,
+        "time_limit_seconds": 900,
+        "passing_threshold": 70
+      }
+    }
+  ]
+}

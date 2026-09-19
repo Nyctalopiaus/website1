@@ -1,0 +1,18 @@
+# Apache & cPanel Configuration for Photo Journey on nycto.ninja
+<IfModule mod_headers.c>
+    # Override restrictive parent directory Content-Security-Policy
+    Header unset Content-Security-Policy
+    Header always unset Content-Security-Policy
+
+    # Set Content-Security-Policy allowing Google Gemini, OpenAI, Anthropic, and OpenRouter AI API endpoints
+    Header always set Content-Security-Policy "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; connect-src 'self' https://generativelanguage.googleapis.com https://api.openai.com https://api.anthropic.com https://openrouter.ai https://api.open-meteo.com https://geocoding-api.open-meteo.com https://widgets.mortgagenewsdaily.com https://router.project-osrm.org https://photon.komoot.io https://nominatim.openstreetmap.org https://huggingface.co https://api-inference.huggingface.co https://overpass-api.de https://*.overpass-api.de https://overpass.kumi.systems https://overpass.private.coffee https://maps.mail.ru https://overpass.osm.ch;"
+</IfModule>
+
+# Single Page App (SPA) Routing & Fallback
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /photo-journey/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.html [L]
+</IfModule>

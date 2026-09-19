@@ -345,6 +345,9 @@ export function switchView(viewName) {
 
         const isComparing = state.compareList && state.compareList.includes(String(p.mls_id));
 
+        const mapQuery = [p.address, p.city, p.state, p.zip].filter(Boolean).join(', ');
+        const mapsUrl = mapQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}` : '';
+
         return `
             <div class="property-card" data-mls="${p.mls_id}" onclick="openDetailModal('${p.mls_id}')">
                 <div class="card-media">
@@ -362,7 +365,10 @@ export function switchView(viewName) {
                     </div>
                     <div>
                         <div class="card-address">${escapeHtml(displayAddr)}</div>
-                        <div class="card-city">${escapeHtml(p.city || '')}, ${escapeHtml(p.state || '')} ${escapeHtml(p.zip || '')}</div>
+                        <div class="card-city">
+                            ${escapeHtml(p.city || '')}, ${escapeHtml(p.state || '')} ${escapeHtml(p.zip || '')}
+                            ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="card-map-link" onclick="event.stopPropagation()" title="Open in Google Maps" aria-label="Open in Google Maps"><i data-lucide="map-pin"></i></a>` : ''}
+                        </div>
                     </div>
                     <div class="card-stats">
                         <div class="stat-item"><span class="stat-val">${p.beds}</span><span class="stat-lbl">Beds</span></div>

@@ -204,7 +204,9 @@ window.deleteCustomReactionChip = function(event, chipText) {
         }
 
         const displayAddrModal = cleanDisplayAddress(p.address, p.mls_id);
-        
+        const modalMapQuery = [p.address, p.city, p.state, p.zip].filter(Boolean).join(', ');
+        const modalMapsUrl = modalMapQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(modalMapQuery)}` : '';
+
         // Prepare multi-photo gallery array
         let gallery = [];
         if (Array.isArray(p.gallery_images) && p.gallery_images.length > 0) {
@@ -238,7 +240,10 @@ window.deleteCustomReactionChip = function(event, chipText) {
                             ${matrixBadgeModal}
                             ${ppsqft ? `<span class="score-badge" style="font-size:0.9rem;">$${ppsqft} / SqFt</span>` : ''}
                         </div>
-                        <h2 style="font-size:1.4rem; font-weight:700; color:var(--text-primary);">${escapeHtml(displayAddrModal)}</h2>
+                        <h2 style="font-size:1.4rem; font-weight:700; color:var(--text-primary);">
+                            ${escapeHtml(displayAddrModal)}
+                            ${modalMapsUrl ? `<a href="${modalMapsUrl}" target="_blank" rel="noopener noreferrer" class="card-map-link" title="Open in Google Maps" aria-label="Open in Google Maps"><i data-lucide="map-pin"></i></a>` : ''}
+                        </h2>
                         <div style="color:var(--text-muted); font-size:0.9rem; margin-top:2px;">
                             ${escapeHtml(p.city || '')}, ${escapeHtml(p.state || 'CO')} ${escapeHtml(p.zip || '')} | <strong>MLS #${escapeHtml(String(p.mls_id))}</strong> | List Date: ${escapeHtml(p.list_date || 'N/A')}
                         </div>

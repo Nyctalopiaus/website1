@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+/* Light Theme Variables */
+.theme-light {
+  --bg-main: #fdfbf7;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --border-card: rgba(226, 232, 240, 0.8);
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --bg-header: rgba(255, 255, 255, 0.85);
+}
+
+/* Dark Theme Variables */
+.theme-dark {
+  --bg-main: #08080a;
+  --bg-card: rgba(18, 18, 24, 0.8);
+  --border-card: rgba(255, 255, 255, 0.08);
+  --text-main: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --bg-header: rgba(9, 9, 11, 0.85);
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.font-serif-title {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+/* Studio Glassmorphism & Mesh Backgrounds */
+.studio-glass {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Light Theme Viewfinder Grid */
+.bg-viewfinder-grid-light {
+  background-image: 
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Dark Theme Viewfinder Grid */
+.bg-viewfinder-grid-dark {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Camera Dots Pattern */
+.bg-camera-dots-light {
+  background-image: radial-gradient(rgba(217, 119, 6, 0.15) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+.bg-camera-dots-dark {
+  background-image: radial-gradient(rgba(245, 158, 11, 0.15) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(161, 161, 170, 0.5);
+}
