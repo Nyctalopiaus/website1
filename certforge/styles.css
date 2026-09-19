@@ -707,7 +707,11 @@ body {
   position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
-  z-index: 9998;
+  /* Must beat .modal-overlay's z-index: 9999 -- otherwise a toast fired
+     while a modal is open renders underneath the overlay's dark
+     backdrop-filter blur instead of on top of it, which looks like a
+     smudge in the corner instead of a readable notification. */
+  z-index: 10000;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -1703,6 +1707,13 @@ body {
   letter-spacing: 0.05em;
 }
 
+.reset-control-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+  opacity: 0.85;
+}
+
 .reset-control-row {
   display: flex;
   gap: 0.6rem;
@@ -2019,6 +2030,39 @@ body {
 .guide-mastery-dot.reviewing { background: var(--accent-orange); }
 .guide-mastery-dot.mastered { background: var(--accent-green); }
 
+/* Marking a guide "Shaky" resets it to the same red as a guide you've
+   never opened -- this ring is the only thing that still shows "reviewed,
+   just not solid yet" apart from that shared red. */
+.guide-mastery-dot.reviewed {
+  box-shadow: 0 0 0 2px rgba(243, 244, 246, 0.4);
+}
+
+/* Objective weak-point flag (performance-driven) sitting next to the
+   self-assessed mastery dot -- deliberately louder than the dot so it
+   reads as "the data says so", not just "you haven't reviewed this yet". */
+.guide-weak-flag {
+  display: inline-block;
+  margin-left: 0.4rem;
+  color: var(--accent-red);
+  font-size: 0.85rem;
+  vertical-align: middle;
+  cursor: help;
+}
+
+/* Full-width callout at the top of a flagged guide's viewer. */
+.guide-weakness-banner {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 0.6rem;
+  color: var(--accent-red);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.5;
+  padding: 0.75rem 1rem;
+  margin: 2.5rem 0 1.25rem;
+}
+
 /* Compact per-guide confidence control, pinned to the upper-right corner of
    the viewer instead of a full-width bar -- keeps it out of the way of the
    guide text instead of adding vertical sprawl below it. */
@@ -2247,6 +2291,108 @@ body {
   padding: 0.15rem 0.4rem;
   border-radius: 0.25rem;
   font-size: 0.875rem;
+}
+
+/* Full-width "beyond the bullets" sections appended below a guide's main
+   grid -- exam traps, a worked scenario, and a memory hook. Added
+   2026-09-19 to close the depth gap between the static guides and an
+   "Ask Gemini to go deeper" response: those three ingredients are what
+   made the AI answers feel more useful, and none of them need AI to work
+   as permanent guide content. Siblings of .guide-grid-container (not
+   inside it), so they just stack full-width below the existing two-column
+   layout without touching it. */
+.guide-exam-traps {
+  margin-top: 1.75rem;
+  background: var(--bg-card);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+}
+
+.guide-exam-traps h4 {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--accent-orange);
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.guide-exam-traps ul {
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.guide-exam-traps li {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.guide-exam-traps li strong {
+  color: var(--text-bright);
+}
+
+.guide-scenario {
+  margin-top: 1.25rem;
+  background: rgba(6, 182, 212, 0.05);
+  border-left: 3px solid var(--accent-cyan);
+  border-radius: 0.5rem;
+  padding: 1.1rem 1.35rem;
+}
+
+.guide-scenario h4 {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.05em;
+}
+
+.guide-scenario p {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.guide-scenario strong {
+  color: var(--text-bright);
+}
+
+/* Deliberately the same look as .ai-response-hook (the AI's own "How to
+   remember this" callout) so a static mnemonic reads as the same feature,
+   not a lookalike. */
+.guide-mnemonic {
+  margin-top: 1.25rem;
+  padding: 0.65rem 0.85rem;
+  background: rgba(163, 190, 140, 0.08);
+  border-left: 3px solid var(--accent-green, #a3be8c);
+  border-radius: 0.35rem;
+}
+
+.guide-mnemonic-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-green, #a3be8c);
+  margin-bottom: 0.35rem;
+}
+
+.guide-mnemonic p {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.guide-mnemonic strong {
+  color: var(--text-bright);
 }
 
 /* Chevron groups */
@@ -3261,6 +3407,15 @@ body {
   flex-wrap: wrap;
 }
 
+/* Same fix as .header-settings-panel[hidden] above -- display:flex on the
+   class above always beats the browser's built-in [hidden]{display:none}
+   rule (author styles win over the UA stylesheet even at equal
+   specificity), so without this the action row renders open regardless of
+   the `hidden` attribute the JS toggles. */
+.ai-settings-actions[hidden] {
+  display: none;
+}
+
 .ai-settings-status {
   margin-top: 0.7rem;
   font-size: 0.85rem;
@@ -3459,6 +3614,25 @@ body {
 
 .ai-tutor-clear-link:hover {
   color: var(--accent-red);
+}
+
+.ai-tutor-retry-btn {
+  display: block;
+  margin-top: 0.55rem;
+  background: transparent;
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
+  font-size: 0.8rem;
+  font-family: var(--font-sans);
+  padding: 0.3rem 0.7rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ai-tutor-retry-btn:hover {
+  background: var(--accent-red);
+  color: var(--bg-card);
 }
 
 .ai-status-dot {

@@ -236,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const guideConfidenceBarEl = document.getElementById('guide-confidence-bar');
   const guideMenuEmptyEl = document.getElementById('guide-menu-empty');
   const guideViewerEmptyEl = document.getElementById('guide-viewer-empty');
+  const guideWeaknessBannerEl = document.getElementById('guide-weakness-banner');
 
   // Trap Spotter Elements
   const trapCardEl = document.getElementById('trap-card');
@@ -311,6 +312,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnMockReset = document.getElementById('btn-mock-reset');
   const resultsPerfectNoteEl = document.getElementById('results-perfect-note');
   const btnTrainingPlan = document.getElementById('btn-training-plan');
+  const trainingPlanGenerateRowEl = document.getElementById('training-plan-generate-row');
+  const btnTrainingPlanGenerate = document.getElementById('btn-training-plan-generate');
   const trainingPlanModal = document.getElementById('training-plan-modal');
   const btnCloseTrainingPlan = document.getElementById('btn-close-training-plan');
   const trainingPlanResponseEl = document.getElementById('training-plan-response');
@@ -804,7 +807,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Whichever diagnostics object is currently loaded into the training plan
   // modal -- lastMockDiagnostics (mock exam) or a freshly-built quiz-mistakes
   // one (see buildQuizMistakesDiagnostics()). Set by openTrainingPlanModal()
-  // so buildTrainingPlanPrompt()/runTrainingPlanRequest()/the drill button
+  // so buildTrainingPlanPdfPrompt()/runTrainingPlanRequest()/the drill button
   // all work off one shared pipeline regardless of which entry point opened it.
   let activeTrainingPlanDiag = null;
   // Raw plain-text plan behind whatever's currently rendered in the
@@ -813,6 +816,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // concatenated textContent (meta line/body/callout/disclaimer squished
   // together with no line breaks).
   let lastTrainingPlanText = '';
+  // The structured plan behind whatever's currently rendered -- same one
+  // Gemini call now serves both the on-screen text (via
+  // trainingPlanJsonToText()) and the PDF ("Print" builds the PDF document
+  // directly from this, no second Gemini call). Set every time a plan is
+  // rendered, cached or fresh, so it's available regardless of source
+  // (mock exam has attemptRecord.trainingPlan to persist it across
+  // reopens; quiz mistakes doesn't, so this module-level copy is the only
+  // place Print can read it from for that source).
+  let lastTrainingPlanJson = null;
   let mockCurrentIndex = 0;
   let mockTimeRemaining = 900; // 15 mins
   let mockTimerInterval;
@@ -892,6 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
         targetGuideEl.classList.add('active');
       }
       updateGuideConfidenceBar();
+      updateGuideWeaknessBanner();
       guideAiExplainHandle?.reset();
       guideAiExplainHandle?.showCachedIfAny();
     });
@@ -1104,6 +1117,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Builds the "Domain Mastery" optgroup in the local-data reset dropdown --
   // one entry per domain in the active exam, plus an "all domains" shortcut.
   function populateResetDomainOptions() {
+    const resetExamLabelEl = document.getElementById('local-reset-exam-label');
+    if (resetExamLabelEl) {
+      resetExamLabelEl.textContent = (examConfig || FALLBACK_EXAM_CONFIG).name || 'this exam';
+    }
+
     const optgroup = document.getElementById('reset-domain-optgroup');
     if (!optgroup) return;
     const domainList = (examConfig || FALLBACK_EXAM_CONFIG).domains || [];
@@ -1170,6 +1188,11 @@ document.addEventListener('DOMContentLoaded', () => {
     entry.lastSeenAt = new Date().toISOString();
     questionHistory[questionId] = entry;
     saveJson(STORAGE_KEYS.questionHistory, questionHistory);
+    // Every answer can shift a guide's weak-point rate -- cheap enough (22
+    // sidebar items) to just refresh all of them rather than working out
+    // which guide(s) this one question's KS touches.
+    refreshAllGuideWeakFlags();
+    updateGuideWeaknessBanner();
   }
 
   function isPersonalMistake(questionId) {
@@ -1236,8 +1259,18 @@ document.addEventListener('DOMContentLoaded', () => {
       dot.className = 'guide-mastery-dot';
       item.appendChild(dot);
     }
-    const level = getGuideMasteryLevel(item.dataset.guide);
-    dot.className = `guide-mastery-dot ${MASTERY_LEVEL_CLASSES[level]}`;
+    const guideId = item.dataset.guide;
+    const level = getGuideMasteryLevel(guideId);
+    // Clicking "Shaky" always resets level to 0 (Learning), same color as a
+    // guide that's never been reviewed at all -- that's a real distinction
+    // ("I looked at this and it's still shaky" vs. "haven't gotten to this
+    // yet") the color alone can't carry, so a reviewed guide also gets a
+    // ring around the dot regardless of which level it landed on.
+    const entry = guideMastery[guideId];
+    dot.className = `guide-mastery-dot ${MASTERY_LEVEL_CLASSES[level]}${entry ? ' reviewed' : ''}`;
+    dot.title = entry
+      ? `${MASTERY_LEVEL_LABELS[level]} -- reviewed ${entry.timesReviewed}x, last on ${new Date(entry.lastReviewedAt).toLocaleDateString()}`
+      : 'Not yet reviewed';
   }
 
   function refreshAllGuideDots() {
@@ -1317,9 +1350,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function initGuides() {
+    guideKsMap = buildGuideKsMap();
     refreshAllGuideDots();
+    refreshAllGuideWeakFlags();
     filterGuideMenu();
     updateGuideConfidenceBar();
+    updateGuideWeaknessBanner();
 
     if (guideFocusShakyToggle) {
       guideFocusShakyToggle.addEventListener('change', () => {
@@ -1333,6 +1369,100 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (btnGuideSolid) {
       btnGuideSolid.addEventListener('click', () => handleGuideAssessment(true));
+    }
+  }
+
+  // ==========================================
+  // CONCEPT GUIDE WEAK-POINT FLAGGING
+  // ==========================================
+  // Objective, performance-driven counterpart to the self-assessed mastery
+  // dot above: flags a guide as a weak point when Josh is currently missing
+  // a large share of the real questions tied to its Knowledge Statement(s)
+  // -- using the exact same isPersonalMistake() definition as "My Mistakes",
+  // so a guide's flag clears itself the moment enough of those questions
+  // are answered correctly twice in a row, same as the mistake would drop
+  // off that filter. CISM-only for now: guideKsMap is only ever populated
+  // from KS_TO_GUIDE_TITLE (below, in the AI Training Plan section), which
+  // itself only has entries for the real ISACA KS codes CISM's question
+  // data carries -- any other active exam just gets an empty map here and
+  // every getGuideWeakness() call returns null, same silent no-op the
+  // Training Plan's guide-hint lookup already relies on.
+  const WEAK_POINT_MIN_SAMPLE = 4; // fewer seen questions than this on a guide's KS(es) = not enough signal to flag
+  const WEAK_POINT_RATE = 0.5; // 50%+ still-open misses across those questions = weak point
+
+  // guide_id -> [ks codes]. Built once (initGuides()) from KS_TO_GUIDE_TITLE
+  // instead of hand-duplicating a second id-to-KS list -- that map already
+  // encodes "this KS's questions are best studied via Concept Guide N: Title"
+  // for the AI Training Plan feature, so this just parses the same "Concept
+  // Guide N" number back to the sidebar's Nth CISM item and inverts it.
+  let guideKsMap = {};
+
+  function buildGuideKsMap() {
+    const map = {};
+    const cismItems = Array.from(guideMenuItems).filter(mi => mi.dataset.exam === 'cism');
+    Object.entries(KS_TO_GUIDE_TITLE).forEach(([ks, label]) => {
+      const numMatch = label.match(/^Concept Guide (\d+):/);
+      if (!numMatch) return;
+      const item = cismItems.find(mi => mi.textContent.trim().startsWith(`${numMatch[1]}. `));
+      if (!item) return;
+      const guideId = item.dataset.guide;
+      if (!map[guideId]) map[guideId] = [];
+      map[guideId].push(ks);
+    });
+    return map;
+  }
+
+  // Returns null when there's no KS mapping for this guide, or too few
+  // seen questions across its KS(es) to say anything meaningful yet --
+  // both cases should render as "no flag", never a false weak-point.
+  function getGuideWeakness(guideId) {
+    const ksList = guideKsMap[guideId];
+    if (!ksList || !ksList.length) return null;
+    let missed = 0, total = 0;
+    questions.forEach(q => {
+      if (!ksList.includes(q.knowledge_statement)) return;
+      if (!questionHistory[q.id]) return; // never seen -- doesn't count toward the rate
+      total++;
+      if (isPersonalMistake(q.id)) missed++;
+    });
+    if (total < WEAK_POINT_MIN_SAMPLE) return null;
+    const rate = missed / total;
+    return { missed, total, rate, isWeak: rate >= WEAK_POINT_RATE };
+  }
+
+  function refreshGuideMenuItemFlag(item) {
+    let flag = item.querySelector('.guide-weak-flag');
+    const weakness = getGuideWeakness(item.dataset.guide);
+    if (weakness && weakness.isWeak) {
+      if (!flag) {
+        flag = document.createElement('span');
+        flag.className = 'guide-weak-flag';
+        flag.textContent = '⚠';
+        item.appendChild(flag);
+      }
+      flag.title = `Weak point -- still missing ${weakness.missed}/${weakness.total} (${Math.round(weakness.rate * 100)}%) of the questions tied to this guide`;
+    } else if (flag) {
+      flag.remove();
+    }
+  }
+
+  function refreshAllGuideWeakFlags() {
+    guideMenuItems.forEach(refreshGuideMenuItemFlag);
+  }
+
+  // Full-width callout at the top of the open guide -- the sidebar dot/flag
+  // are easy to skim past, this isn't. Text names the exact miss count so
+  // it reads as "here's your actual data" rather than a generic nag.
+  function updateGuideWeaknessBanner() {
+    if (!guideWeaknessBannerEl) return;
+    const activeItem = getActiveGuideItem();
+    const weakness = activeItem ? getGuideWeakness(activeItem.dataset.guide) : null;
+    if (weakness && weakness.isWeak) {
+      guideWeaknessBannerEl.hidden = false;
+      guideWeaknessBannerEl.textContent =
+        `⚠ Weak point -- you're still missing ${weakness.missed} of ${weakness.total} (${Math.round(weakness.rate * 100)}%) questions tied to this guide. Worth studying this one in depth before the exam.`;
+    } else {
+      guideWeaknessBannerEl.hidden = true;
     }
   }
 
@@ -2528,22 +2658,62 @@ Give the student a deeper explanation: the broader ${getExamName()} principle th
       `is: "${trap.correct_principle}". Can you explain the broader concept in depth?`;
   }
 
-  function buildGuideAiExplainPrompt(title, bodyText) {
-    const systemPrompt = `You are an expert ${getExamFullName()} exam tutor. The student is reading a concept guide reference ` +
-      'page (shown in full below) and wants to go deeper. Do not just repeat the guide content back -- add genuine ' +
-      `depth: connect it to related ${getExamName()} concepts, explain how exam questions commonly frame or trap around this ` +
-      'topic, and give one realistic scenario. Be concise and direct, plain text with short paragraphs or a few ' +
-      'dashes for lists (no markdown headers, no asterisk bullets). Always end with a section titled exactly "How to ' +
-      'remember this:" containing one short, memorable mnemonic, analogy, or memory hook for this topic.';
+  function buildGuideAiExplainPrompt(title, bodyText, missExamples) {
+    const hasMisses = Array.isArray(missExamples) && missExamples.length > 0;
 
-    const userPrompt = `Concept guide: ${title}
+    // Same "-- picked X (rationale); correct was Y (rationale)" line formatMissExample()
+    // already produces for the Training Plan, grouped by KS so Gemini can see which
+    // distinctions cluster together instead of one flat list of questions.
+    const missBlock = hasMisses
+      ? missExamples.map(group =>
+          `${group.ks}${group.ksTitle ? ` -- ${group.ksTitle}` : ''}:\n` +
+          group.examples.map(formatMissExample).join('\n')
+        ).join('\n\n')
+      : '';
+
+    const systemPrompt = hasMisses
+      ? `You are an expert ${getExamFullName()} exam tutor. The student is reading a concept guide reference page ` +
+        '(shown in full below) for a topic they are currently missing exam questions on. Give the same full, wide-' +
+        `ranging deep dive you would for any guide -- do not just repeat the guide content back, add genuine depth: ` +
+        `connect it to related ${getExamName()} concepts, explain how exam questions commonly frame or trap around ` +
+        'this topic in general, and give a realistic scenario. Then, ALSO, separately and in addition to that -- ' +
+        'not instead of it -- the student\'s own missed questions in this guide\'s territory are shown below (what ' +
+        'they picked and why it was wrong): address each one individually, naming the specific distinction or trap ' +
+        'it falls into and how to recognize it next time. Covering both the general deep dive and every specific ' +
+        'miss below means this response should end up noticeably longer and more thorough than a standard one-' +
+        'scenario deep dive -- do not compress, summarize away, or skip either part to keep it short. Be concise ' +
+        'and direct within each part, plain text with short paragraphs or a few dashes for lists (no markdown ' +
+        'headers, no asterisk bullets). Always end with a section titled exactly "How to remember this:" ' +
+        'containing one short, memorable mnemonic, analogy, or memory hook for this topic.'
+      : `You are an expert ${getExamFullName()} exam tutor. The student is reading a concept guide reference ` +
+        'page (shown in full below) and wants to go deeper. Do not just repeat the guide content back -- add genuine ' +
+        `depth: connect it to related ${getExamName()} concepts, explain how exam questions commonly frame or trap around this ` +
+        'topic, and give one realistic scenario. Be concise and direct, plain text with short paragraphs or a few ' +
+        'dashes for lists (no markdown headers, no asterisk bullets). Always end with a section titled exactly "How to ' +
+        'remember this:" containing one short, memorable mnemonic, analogy, or memory hook for this topic.';
+
+    const userPrompt = hasMisses
+      ? `Concept guide: ${title}
+
+Full guide content already shown to the student:
+${bodyText}
+
+The student's actual missed questions tied to this guide:
+${missBlock}
+
+Give the student the full deeper explanation building on this guide, same as always: connect it to related ` +
+        `${getExamName()} concepts, explain how exam questions commonly frame or trap around this topic in general, ` +
+        'and give a realistic scenario. Then, in addition, go through each of the specific missed questions above ' +
+        'individually and name what they got confused there. Cover both parts fully -- this should be longer than ' +
+        'a typical deep dive, not shorter. Then end with the "How to remember this:" memory aid as instructed.'
+      : `Concept guide: ${title}
 
 Full guide content already shown to the student:
 ${bodyText}
 
 Give the student a deeper explanation building on this guide: connect it to related ${getExamName()} concepts, explain how ` +
-      `exam questions commonly frame or trap around this topic, and give one realistic scenario. Then end with ` +
-      `the "How to remember this:" memory aid as instructed.`;
+        `exam questions commonly frame or trap around this topic, and give one realistic scenario. Then end with ` +
+        `the "How to remember this:" memory aid as instructed.`;
 
     return { systemPrompt, userPrompt };
   }
@@ -2577,12 +2747,16 @@ Give the student a deeper explanation building on this guide: connect it to rela
         body: JSON.stringify({
           contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
           // No cap here defaults to a modest per-model limit, which silently
-          // truncates long responses (e.g. the comprehensive training plan,
-          // which can run to dozens of Knowledge Statement sections) with no
-          // error -- the API just stops mid-sentence and finishReason comes
-          // back MAX_TOKENS instead of STOP. Set high enough that none of
-          // the four AI features realistically hit it.
-          generationConfig: { maxOutputTokens: 8192 }
+          // truncates long responses with no error -- the API just stops
+          // mid-sentence and finishReason comes back MAX_TOKENS instead of
+          // STOP. Raised from 8192 -- the Training Plan now gives every
+          // Knowledge Statement the same full depth as a Concept Guide deep
+          // dive (concept + related concepts + trap framing + scenario +
+          // grounded per-miss breakdown + mnemonic), which for a
+          // dozens-of-KS plan is easily 5-10x the old terse-per-KS length.
+          // Still finite and still surfaced via finishReason below rather
+          // than assumed unlimited.
+          generationConfig: { maxOutputTokens: 65536 }
         })
       });
     } catch (err) {
@@ -2614,6 +2788,65 @@ Give the student a deeper explanation building on this guide: connect it to rela
     return candidate?.finishReason === 'MAX_TOKENS'
       ? `${text}\n\n[Response was cut off before finishing -- click Regenerate to try again.]`
       : text;
+  }
+
+  // JSON-structured variant, used only by the PDF-specific Training Plan
+  // (see buildTrainingPlanPdfPrompt()). Kept as its own function rather
+  // than an option bolted onto callGeminiAPI() -- same reasoning as
+  // callGeminiChatAPI() below: the three plain-text single-shot features
+  // (Quiz/Trap Spotter/Guides) can't be broken by a structured-output
+  // change. responseSchema forces Gemini to return JSON matching the given
+  // shape instead of prose, so the caller can reliably pull out per-section
+  // diagrams instead of trying to parse them out of free text.
+  async function callGeminiJsonAPI(apiKey, model, systemPrompt, userPrompt, responseSchema) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+
+    let response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }],
+          generationConfig: {
+            maxOutputTokens: 65536,
+            responseMimeType: 'application/json',
+            responseSchema
+          }
+        })
+      });
+    } catch (err) {
+      const detail = err?.message || String(err);
+      throw new Error(`Could not reach the Gemini API: ${detail}. If this mentions "Content Security Policy", the site's connect-src allowlist needs generativelanguage.googleapis.com added (and deployed). Otherwise check for an ad blocker/privacy extension or your network connection.`);
+    }
+
+    if (!response.ok) {
+      let msg = `Gemini API error (${response.status})`;
+      try {
+        const errData = await response.json();
+        if (errData.error?.message) msg = errData.error.message;
+      } catch (_) { /* use default msg */ }
+      throw new Error(msg);
+    }
+
+    const data = await response.json();
+    const candidate = data.candidates?.[0];
+    const text = candidate?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('Gemini returned an empty response. Try again.');
+    // Unlike callGeminiAPI()'s plain-text truncation, a cut-off JSON response
+    // usually isn't even parseable -- surface it as a hard error rather than
+    // trying to render a broken/partial document.
+    if (candidate?.finishReason === 'MAX_TOKENS') {
+      throw new Error('The PDF plan was too long and got cut off before finishing. Click again to retry.');
+    }
+    try {
+      return JSON.parse(text);
+    } catch (err) {
+      throw new Error('Gemini returned data in an unexpected format for the PDF. Click again to retry.');
+    }
   }
 
   // Multi-turn variant for the AI Deep Dive chat tab -- deliberately kept
@@ -3097,11 +3330,15 @@ Give the student a deeper explanation building on this guide: connect it to rela
         if (!el) return null;
         const title = activeItem.textContent.trim();
         const body = (el.textContent || '').replace(/\s+/g, ' ').trim();
-        return buildGuideAiExplainPrompt(title, body);
+        const weakness = getGuideWeakness(activeItem.dataset.guide);
+        const missExamples = weakness && weakness.isWeak ? buildGuideMissExamples(activeItem.dataset.guide) : [];
+        return buildGuideAiExplainPrompt(title, body, missExamples);
       },
       getCacheKey: () => {
         const activeItem = getActiveGuideItem();
-        return activeItem ? `guide:${activeItem.dataset.guide}` : null;
+        if (!activeItem) return null;
+        const weakness = getGuideWeakness(activeItem.dataset.guide);
+        return `guide:${activeItem.dataset.guide}:${weakness && weakness.isWeak ? 'weak' : 'std'}`;
       }
     });
 
@@ -3193,7 +3430,23 @@ Give the student a deeper explanation building on this guide: connect it to rela
         saveJson(STORAGE_KEYS.aiTutorHistory, aiTutorHistory);
       } catch (err) {
         thinkingMsg.remove();
-        appendAiTutorMessage('model', err?.message || 'Something went wrong asking Gemini.', 'error');
+        const errMsg = appendAiTutorMessage('model', err?.message || 'Something went wrong asking Gemini.', 'error');
+        // Transient failures (rate limits, "model overloaded", a dropped
+        // connection) are common enough here that making the student retype
+        // their question is unnecessary friction -- offer a one-click retry
+        // that resends the exact same message that just failed.
+        const errBubble = errMsg.querySelector('.ai-tutor-msg-bubble');
+        if (errBubble) {
+          const retryBtn = document.createElement('button');
+          retryBtn.type = 'button';
+          retryBtn.className = 'ai-tutor-retry-btn';
+          retryBtn.textContent = '🔄 Retry';
+          retryBtn.addEventListener('click', () => {
+            errMsg.remove();
+            sendAiTutorMessage(trimmed);
+          });
+          errBubble.appendChild(retryBtn);
+        }
       } finally {
         if (btnAiTutorSend) btnAiTutorSend.disabled = false;
       }
@@ -4097,7 +4350,12 @@ Give the student a deeper explanation building on this guide: connect it to rela
     '1A3': 'Concept Guide 7: Legal Liability & RACI',
     '1B2': 'Concept Guide 8: Documentation Hierarchy',
     '1B3': 'Concept Guide 9: Security Economics',
-    '4A5': 'Concept Guide 12: Incident Severity Matrix'
+    '4A5': 'Concept Guide 12: Incident Severity Matrix',
+    '3A5': 'Concept Guide 21: Program Metrics & Reporting',
+    '3B6': 'Concept Guide 21: Program Metrics & Reporting',
+    '4A6': 'Concept Guide 22: IR Testing & Metrics',
+    '4A4': 'Concept Guide 23: DR Site Selection & Backup Strategy',
+    '4A3': 'Concept Guide 23: DR Site Selection & Backup Strategy'
   };
 
   // Only the active exam's own guides -- so the Training Plan's guide
@@ -4122,10 +4380,11 @@ Give the student a deeper explanation building on this guide: connect it to rela
       : `  - Missed: "${ex.question}" -- correct answer: "${ex.correctAnswer}" (${ex.correctRationale})`;
   }
 
-  function buildTrainingPlanPrompt(diag) {
-    const guideTitles = getAllGuideTitles();
-
-    const ksLines = diag.missedByKs.map(item => {
+  // Shared by both the on-screen plain-text plan and the PDF-specific one
+  // below -- same "what they missed, grouped by KS" block either way, only
+  // the surrounding instructions differ per surface.
+  function buildTrainingPlanKsLines(diag) {
+    return diag.missedByKs.map(item => {
       const guideHint = KS_TO_GUIDE_TITLE[item.ks] ? ` (maps directly to ${KS_TO_GUIDE_TITLE[item.ks]})` : '';
       const exampleLines = item.examples.map(formatMissExample).join('\n');
       // item.ks is a real ISACA Knowledge Statement code only when the
@@ -4138,29 +4397,122 @@ Give the student a deeper explanation building on this guide: connect it to rela
         : `Domain ${item.domain}: ${item.domainTitle}`;
       return `${areaLabel}${guideHint} -- missed ${item.count} time(s):\n${exampleLines}`;
     }).join('\n\n');
+  }
 
-    const systemPrompt = `You are an expert ${getExamFullName()} exam tutor building a personalized training plan. ` +
-      'This is meant to be a comprehensive training document, not a short summary -- cover every knowledge area ' +
-      'listed below, one entry per knowledge area, never consolidating multiple listed entries into one. Each ' +
-      'knowledge area below is already labeled exactly as it should appear in your plan -- either a specific ' +
-      'Knowledge Statement code and title (e.g. "Knowledge Statement 2B1 -- <title>") or, for exams whose content ' +
-      "isn't broken down that granularly, a domain-level label (e.g. \"Domain 2: <title>\") -- use that exact label " +
-      'verbatim, never invent, reword, or further consolidate it, and stay consistent ' +
-      'if you reference that knowledge area again later in the plan. For each knowledge area, first state the ' +
-      'correct rule or decision framework in one or two plain sentences, then explain the pattern behind the ' +
-      'misses (not a rehash of the individual questions), so the student actually learns the concept rather than ' +
-      'just being told what to go read. Plain text with short paragraphs or a few dashes for lists (no markdown ' +
-      'headers, no asterisk bullets). Reference a Concept Guide by its exact title only when you are confident it ' +
-      'covers the topic, and only from the list provided -- never invent a guide that is not in that list. ' +
-      'Always end with a section titled exactly "Suggested next 3 study actions:" containing three short, ' +
-      'concrete, ordered next steps.';
+  // ==========================================
+  // TRAINING PLAN -- ONE STRUCTURED CALL, TWO RENDERINGS
+  // ==========================================
+  // A single callGeminiJsonAPI() call (below) produces one structured plan.
+  // trainingPlanJsonToText() flattens it into the same plain-text shape the
+  // on-screen modal always rendered (so buildAiResponseHtml()'s existing
+  // callout-splitting keeps working untouched); "Print / Save as PDF"
+  // builds the richer standalone document straight from the same plan
+  // object -- no second Gemini call. (An earlier version of this feature
+  // did call Gemini twice -- once for the modal, again on Print -- which
+  // doubled the cost/wait AND silently broke the PDF: calling window.open()
+  // after an awaited fetch loses the click's user-gesture context, so the
+  // popup blocker killed it. Both problems went away together once Print
+  // stopped awaiting anything.)
 
-    // Mock Exam has a single scored attempt to open with; Quiz Mistakes has
-    // no attempt at all -- just a live snapshot of what's currently flagged
-    // by "My Mistakes" -- so the two sources need different opening framing.
+  // Diagrams are data, not pixels: Gemini picks one of three plain shapes
+  // and supplies the content; the app renders it as an actual HTML/CSS
+  // block (see renderDiagram()). Three types keeps rendering reliable
+  // instead of trying to parse open-ended diagram instructions out of
+  // free text. responseSchema enforces this shape; buildTrainingPlanPdfPrompt()
+  // below still has to explain in words what each field/type means and
+  // when a diagram is actually worth including, since a schema alone
+  // constrains shape, not judgment.
+  const TRAINING_PLAN_PDF_SCHEMA = {
+    type: 'OBJECT',
+    properties: {
+      sections: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            area: { type: 'STRING' },
+            concept: { type: 'STRING' },
+            missBreakdown: { type: 'STRING' },
+            mnemonic: { type: 'STRING' },
+            guide: { type: 'STRING', nullable: true },
+            diagram: {
+              type: 'OBJECT',
+              nullable: true,
+              properties: {
+                type: { type: 'STRING', enum: ['flow', 'comparison', 'hierarchy'] },
+                title: { type: 'STRING' },
+                steps: {
+                  type: 'ARRAY',
+                  nullable: true,
+                  items: {
+                    type: 'OBJECT',
+                    properties: { label: { type: 'STRING' }, note: { type: 'STRING', nullable: true } },
+                    required: ['label']
+                  }
+                },
+                levels: {
+                  type: 'ARRAY',
+                  nullable: true,
+                  items: {
+                    type: 'OBJECT',
+                    properties: { label: { type: 'STRING' }, note: { type: 'STRING', nullable: true } },
+                    required: ['label']
+                  }
+                },
+                columns: { type: 'ARRAY', nullable: true, items: { type: 'STRING' } },
+                rows: {
+                  type: 'ARRAY',
+                  nullable: true,
+                  items: {
+                    type: 'OBJECT',
+                    properties: { label: { type: 'STRING' }, values: { type: 'ARRAY', items: { type: 'STRING' } } },
+                    required: ['label', 'values']
+                  }
+                }
+              },
+              required: ['type', 'title']
+            }
+          },
+          required: ['area', 'concept', 'missBreakdown', 'mnemonic']
+        }
+      },
+      nextActions: { type: 'ARRAY', items: { type: 'STRING' } }
+    },
+    required: ['sections', 'nextActions']
+  };
+
+  function buildTrainingPlanPdfPrompt(diag) {
+    const guideTitles = getAllGuideTitles();
+    const ksLines = buildTrainingPlanKsLines(diag);
+
     const introLine = diag.source === 'quiz'
       ? `The student has been using Certforge's practice quiz and currently has ${diag.mistakeCount} open mistake${diag.mistakeCount === 1 ? '' : 's'} across ${diag.missedByKs.length} knowledge area${diag.missedByKs.length === 1 ? '' : 's'} (a question counts as an "open mistake" once missed and not yet answered correctly twice in a row since).`
       : `The student just finished a ${diag.mode === 'full' ? 'Full-Length' : 'Quick Practice'} ${getExamName()} mock exam: ${diag.correctCount}/${diag.totalCount} correct (${Math.round(diag.scorePct)}%).`;
+
+    const systemPrompt = `You are an expert ${getExamFullName()} exam tutor building a printed PDF training document ` +
+      '(not a chat reply -- the student will read this later as a standalone document, so it needs its own full ' +
+      'structure). Return one entry per knowledge area listed below, covering every one, never skipping or merging ' +
+      'entries. Each knowledge area is already labeled exactly as it should appear -- use that exact label verbatim ' +
+      'as the "area" field. For each entry: "concept" is the full deep-dive -- the correct rule or decision ' +
+      `framework, connected to related ${getExamName()} concepts, how exam questions commonly frame or trap around ` +
+      'this topic in general, and a realistic scenario, written as flowing prose paragraphs (not a rehash of the ' +
+      'listed questions). "missBreakdown" separately addresses the student\'s specific missed questions listed for ' +
+      'that knowledge area, naming the exact distinction or trap each one falls into. "mnemonic" is one short ' +
+      'memory hook for that topic. "guide" is the exact title of the most relevant Concept Guide from the list ' +
+      'below if one clearly applies, otherwise omit it -- never invent a title not in that list. Every entry should ' +
+      'be long and thorough, covering both the general concept and the specific misses in full -- do not shorten ' +
+      'any entry to keep the document brief.\n\n' +
+      'For "diagram": include one only when it would genuinely help the student understand this specific topic ' +
+      'faster than prose alone -- most entries won\'t need one, and a diagram forced onto a topic that doesn\'t ' +
+      'suit it is worse than no diagram. Choose exactly one of three types when you do: "flow" for an ordered ' +
+      'sequence of stages or a step-by-step process (e.g. incident response phases, a decision sequence) using ' +
+      '"steps"; "hierarchy" for a ranked or nested structure (e.g. policy > standard > procedure, a chain of ' +
+      'authority) using "levels", top level first; "comparison" for contrasting two or more things across shared ' +
+      'attributes (e.g. RTO vs RPO, hot vs warm vs cold site) using "columns" (the things being compared) and ' +
+      '"rows" (the attributes, each with one value per column, same order as "columns"). Keep any diagram\'s own ' +
+      'text short -- it is a visual aid, not another place to write paragraphs.\n\n' +
+      'Plain text in every prose field (no markdown headers, no asterisk bullets). Finish with "nextActions": ' +
+      'exactly three short, concrete, ordered next steps for the student.';
 
     const userPrompt = `${introLine}
 
@@ -4171,14 +4523,166 @@ What they missed, grouped by ISACA Knowledge Statement, most-missed first:
 
 ${ksLines}
 
-Build a comprehensive, prioritized training plan covering every knowledge area listed above -- do not skip any ` +
-      `and do not merge multiple knowledge areas into one domain-level entry. Order them by a combination of miss ` +
-      `frequency and how heavily that domain is weighted on the real exam, most urgent first. For each: state the ` +
-      `correct rule or decision framework in one or two plain sentences, then briefly explain the underlying ` +
-      `pattern behind the misses (not a rehash of the individual questions above), then point to the most relevant ` +
-      `Concept Guide title if one clearly applies. End with the "Suggested next 3 study actions:" section as instructed.`;
+Build the full PDF training document as instructed: one thorough entry per knowledge area listed above, most ` +
+      `urgent first (combining miss frequency with how heavily that domain is weighted on the real exam), each ` +
+      `with a diagram only where one genuinely helps. Finish with the three "nextActions".`;
 
     return { systemPrompt, userPrompt };
+  }
+
+  // Flattens the structured plan into the same plain-text shape the modal
+  // always rendered (area label, then concept/miss-breakdown/guide/mnemonic
+  // per section, ending in the "Suggested next 3 study actions:" marker
+  // buildAiResponseHtml() already knows how to split into its own callout)
+  // -- so the on-screen rendering path needed zero changes even though the
+  // underlying Gemini call is now structured JSON instead of prose.
+  // Diagrams are intentionally dropped here: on-screen was never the point
+  // (see the section header above), and buildAiResponseHtml() only knows
+  // how to render escaped plain text, not markup.
+  function trainingPlanJsonToText(plan) {
+    const sections = (plan?.sections || []).map(s => {
+      const parts = [s.area || ''];
+      if (s.concept) parts.push(s.concept);
+      if (s.missBreakdown) parts.push(`Where this tripped you up: ${s.missBreakdown}`);
+      if (s.guide) parts.push(`Concept Guide: ${s.guide}`);
+      if (s.mnemonic) parts.push(`How to remember this: ${s.mnemonic}`);
+      return parts.join('\n\n');
+    }).join('\n\n---\n\n');
+    const actions = (plan?.nextActions || []).map((a, i) => `${i + 1}. ${a}`).join('\n');
+    return `${sections}\n\nSuggested next 3 study actions:\n${actions}`;
+  }
+
+  // Renders one diagram spec as an HTML/CSS block -- deliberately not SVG:
+  // plain boxes/tables reflow with variable AI-generated text length far
+  // more reliably across print pagination than hand-measured SVG would.
+  // Unknown/malformed type or missing required data degrades to nothing
+  // rather than a broken block -- a missing diagram is a non-event, a
+  // broken one looks like an app bug.
+  function renderDiagram(diagram) {
+    if (!diagram || !diagram.type) return '';
+    const title = diagram.title ? `<div class="pdf-diagram-title">${escapeHtml(diagram.title)}</div>` : '';
+    let body = '';
+    if (diagram.type === 'flow' && Array.isArray(diagram.steps) && diagram.steps.length) {
+      body = `<div class="pdf-diagram-flow">${diagram.steps.map((step, i) => `
+        <div class="pdf-flow-step">
+          <div class="pdf-flow-step-label">${escapeHtml(step.label || '')}</div>
+          ${step.note ? `<div class="pdf-flow-step-note">${escapeHtml(step.note)}</div>` : ''}
+        </div>${i < diagram.steps.length - 1 ? '<div class="pdf-flow-arrow">&#8594;</div>' : ''}`).join('')}</div>`;
+    } else if (diagram.type === 'hierarchy' && Array.isArray(diagram.levels) && diagram.levels.length) {
+      body = `<div class="pdf-diagram-hierarchy">${diagram.levels.map((lvl, i) => `
+        <div class="pdf-hierarchy-level" style="width:${Math.max(40, 100 - i * 12)}%">
+          <div class="pdf-hierarchy-label">${escapeHtml(lvl.label || '')}</div>
+          ${lvl.note ? `<div class="pdf-hierarchy-note">${escapeHtml(lvl.note)}</div>` : ''}
+        </div>${i < diagram.levels.length - 1 ? '<div class="pdf-hierarchy-arrow">&#8595;</div>' : ''}`).join('')}</div>`;
+    } else if (diagram.type === 'comparison' && Array.isArray(diagram.columns) && Array.isArray(diagram.rows) && diagram.rows.length) {
+      const head = `<tr><th></th>${diagram.columns.map(c => `<th>${escapeHtml(c)}</th>`).join('')}</tr>`;
+      const rows = diagram.rows.map(row => `<tr><th>${escapeHtml(row.label || '')}</th>${(row.values || []).map(v => `<td>${escapeHtml(v)}</td>`).join('')}</tr>`).join('');
+      body = `<table class="pdf-diagram-table">${head}${rows}</table>`;
+    }
+    if (!body) return '';
+    return `<div class="pdf-diagram pdf-diagram-${escapeHtml(diagram.type)}">${title}${body}</div>`;
+  }
+
+  // Builds the full standalone HTML document -- inline <style> so it's
+  // self-contained regardless of styles.css (this is opened in its own
+  // blank tab, not part of the app's page), laid out purely for print:
+  // real heading structure, page-break control per section, black-on-white
+  // (the app's own theme is dark, wrong default for a printed page).
+  function buildTrainingPlanPdfHtml(plan, diag) {
+    const examTitle = escapeHtml(getExamFullName());
+    const dateStr = new Date().toLocaleDateString();
+    const headerLine = diag.source === 'quiz'
+      ? `${diag.mistakeCount} open mistake${diag.mistakeCount === 1 ? '' : 's'} across ${diag.missedByKs.length} knowledge area${diag.missedByKs.length === 1 ? '' : 's'}`
+      : `${diag.mode === 'full' ? 'Full-Length' : 'Quick Practice'} mock exam -- ${diag.correctCount}/${diag.totalCount} correct (${Math.round(diag.scorePct)}%)`;
+
+    const sections = (plan.sections || []).map((s, i) => `
+      <section class="pdf-section">
+        <h2>${i + 1}. ${escapeHtml(s.area || '')}</h2>
+        <div class="pdf-concept">${escapeHtml(s.concept || '').replace(/\n+/g, '</p><p>')}</div>
+        ${renderDiagram(s.diagram)}
+        <div class="pdf-miss-breakdown"><strong>Where this tripped you up:</strong><p>${escapeHtml(s.missBreakdown || '').replace(/\n+/g, '</p><p>')}</p></div>
+        ${s.guide ? `<div class="pdf-guide-pointer">See: ${escapeHtml(s.guide)}</div>` : ''}
+        ${s.mnemonic ? `<div class="pdf-mnemonic">How to remember this: ${escapeHtml(s.mnemonic)}</div>` : ''}
+      </section>`).join('\n');
+
+    const actions = (plan.nextActions || []).map(a => `<li>${escapeHtml(a)}</li>`).join('');
+
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${examTitle} Training Plan</title><style>
+      body { font-family: Georgia, 'Times New Roman', serif; color: #111; background: #fff; max-width: 800px; margin: 0 auto; padding: 24px; line-height: 1.5; }
+      header.pdf-header { border-bottom: 3px solid #222; margin-bottom: 24px; padding-bottom: 12px; }
+      header.pdf-header h1 { margin: 0 0 4px; font-size: 1.6em; }
+      .pdf-meta { color: #555; font-size: 0.9em; }
+      /* No page-break-inside:avoid here -- a section this long routinely
+         exceeds one printed page (deliberately: full depth, not a summary),
+         and forcing "avoid" on something taller than a page doesn't stop it
+         splitting, it just pushes the whole section onto a fresh page first
+         and leaves the previous page mostly blank. page-break-after:avoid
+         on the heading below does the useful part -- keeps a heading from
+         landing alone at the bottom of a page -- without that side effect. */
+      .pdf-section { margin-bottom: 28px; }
+      .pdf-section h2 { font-size: 1.15em; border-bottom: 1px solid #ccc; padding-bottom: 4px; page-break-after: avoid; }
+      .pdf-concept p, .pdf-miss-breakdown p { margin: 0.5em 0; }
+      .pdf-miss-breakdown { background: #f6f6f2; border-left: 3px solid #999; padding: 8px 12px; margin: 12px 0; }
+      .pdf-guide-pointer { font-style: italic; color: #444; margin: 6px 0; }
+      .pdf-mnemonic { background: #fff8e6; border: 1px solid #e6d38a; padding: 8px 12px; margin-top: 10px; font-size: 0.95em; }
+      .pdf-diagram { page-break-inside: avoid; margin: 14px 0; padding: 10px; border: 1px solid #ccc; background: #fafafa; }
+      .pdf-diagram-title { font-weight: bold; margin-bottom: 8px; font-size: 0.9em; }
+      .pdf-diagram-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+      .pdf-flow-step { border: 1px solid #888; border-radius: 4px; padding: 6px 10px; min-width: 100px; text-align: center; background: #fff; }
+      .pdf-flow-step-label { font-weight: bold; font-size: 0.85em; }
+      .pdf-flow-step-note { font-size: 0.78em; color: #555; margin-top: 2px; }
+      .pdf-flow-arrow { font-size: 1.2em; color: #888; padding: 0 2px; }
+      .pdf-diagram-hierarchy { display: flex; flex-direction: column; align-items: center; }
+      .pdf-hierarchy-level { border: 1px solid #888; border-radius: 4px; padding: 6px 10px; text-align: center; background: #fff; margin: 0 auto; }
+      .pdf-hierarchy-label { font-weight: bold; font-size: 0.85em; }
+      .pdf-hierarchy-note { font-size: 0.78em; color: #555; }
+      .pdf-hierarchy-arrow { font-size: 1.1em; color: #888; }
+      table.pdf-diagram-table { border-collapse: collapse; width: 100%; font-size: 0.85em; }
+      table.pdf-diagram-table th, table.pdf-diagram-table td { border: 1px solid #ccc; padding: 5px 8px; text-align: left; }
+      table.pdf-diagram-table th { background: #eee; }
+      .pdf-actions { page-break-inside: avoid; border-top: 2px solid #222; padding-top: 12px; margin-top: 24px; }
+      .pdf-footer { color: #777; font-size: 0.8em; margin-top: 24px; border-top: 1px solid #ccc; padding-top: 8px; }
+      @media print { body { padding: 0; } }
+    </style></head>
+    <body>
+      <header class="pdf-header">
+        <h1>${examTitle} Training Plan</h1>
+        <div class="pdf-meta">${escapeHtml(headerLine)} &middot; ${dateStr}</div>
+      </header>
+      ${sections}
+      <section class="pdf-actions">
+        <h2>Suggested Next Steps</h2>
+        <ol>${actions}</ol>
+      </section>
+      <div class="pdf-footer">AI-generated — cross-check against the referenced Concept Guides and your official ${escapeHtml(getExamName())} materials.</div>
+    </body></html>`;
+  }
+
+  // Opens the standalone document in its own tab and triggers print once
+  // it's actually laid out -- print() called before the new document
+  // finishes rendering can print a blank/partial page in some browsers.
+  function openTrainingPlanPdfWindow(html) {
+    const win = window.open('', '_blank');
+    if (!win) {
+      showToast('Could not open the PDF -- check your browser\'s popup blocker for this site.');
+      return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    // Both a load listener and a timeout fallback, guarded by a flag so it
+    // only ever fires once -- document.write()+close() doesn't reliably
+    // fire 'load' the same way across browsers, but calling print() before
+    // layout finishes can print a blank/partial page.
+    let printed = false;
+    const triggerPrint = () => {
+      if (printed) return;
+      printed = true;
+      win.focus();
+      win.print();
+    };
+    win.addEventListener('load', triggerPrint);
+    setTimeout(triggerPrint, 400);
   }
 
   // Builds the same missedByKs shape submitMockExam() does, but from
@@ -4235,12 +4739,51 @@ Build a comprehensive, prioritized training plan covering every knowledge area l
     };
   }
 
+  // Same walk/group logic as buildQuizMistakesDiagnostics(), scoped to a single
+  // guide's mapped KS code(s) (via guideKsMap) instead of every open mistake in
+  // the bank -- feeds the guide's "Ask Gemini to go deeper" button with the
+  // student's actual miss detail when that guide is currently flagged weak.
+  function buildGuideMissExamples(guideId) {
+    const ksList = guideKsMap[guideId];
+    if (!ksList || !ksList.length) return [];
+
+    const byKs = {};
+    questions.forEach(q => {
+      if (!ksList.includes(q.knowledge_statement)) return;
+      if (!isPersonalMistake(q.id)) return;
+
+      const ks = q.knowledge_statement;
+      if (!byKs[ks]) {
+        byKs[ks] = { ks, ksTitle: q.knowledge_statement_title || '', examples: [] };
+      }
+      if (byKs[ks].examples.length >= 2) return;
+
+      const savedSelected = quizAnsweredStates[q.id];
+      const correctKey = (q.correct_option || '').toLowerCase();
+      const pickedKey = (savedSelected && savedSelected !== q.correct_option) ? String(savedSelected).toLowerCase() : null;
+      byKs[ks].examples.push({
+        question: q.question,
+        pickedWrong: pickedKey ? (q[`option_${pickedKey}`] || '') : null,
+        pickedWrongRationale: pickedKey ? (q[`rationale_${pickedKey}`] || '') : '',
+        correctAnswer: q[`option_${correctKey}`] || '',
+        correctRationale: q[`rationale_${correctKey}`] || q.explanation || ''
+      });
+    });
+
+    return Object.values(byKs);
+  }
+
   // Renders a plan (cached or freshly generated) using the same structured
   // formatting as Quiz/Trap Spotter/Guides -- see buildAiResponseHtml() --
   // splitting out the "Suggested next 3 study actions:" section the system
   // prompt always ends with into its own callout, same trick as "How to
-  // remember this:" elsewhere.
-  function renderTrainingPlan(text, { cached, model, ts }) {
+  // remember this:" elsewhere. Takes the structured plan object now, not
+  // raw text -- trainingPlanJsonToText() bridges to the unchanged
+  // plain-text renderer, and lastTrainingPlanJson is what "Print / Save as
+  // PDF" builds from directly.
+  function renderTrainingPlan(plan, { cached, model, ts }) {
+    lastTrainingPlanJson = plan;
+    const text = trainingPlanJsonToText(plan);
     lastTrainingPlanText = text;
     if (trainingPlanResponseBodyEl) {
       trainingPlanResponseBodyEl.innerHTML = buildAiResponseHtml(text, { cached, model, ts }, {
@@ -4263,14 +4806,21 @@ Build a comprehensive, prioritized training plan covering every knowledge area l
   // the same "don't make someone re-spend a lookup" idea as the AI response
   // cache used by Quiz/Trap Spotter/Guides. A Full-Length exam's plan is the
   // most expensive of the four AI features to regenerate, so this matters
-  // most exactly where it's most expensive.
+  // most exactly where it's most expensive. This one call now covers both
+  // the on-screen plan AND the PDF (see the section header above) -- it's
+  // the structured/PDF prompt+schema even though what's shown here is the
+  // flattened plain-text rendering.
   async function runTrainingPlanRequest(forceRefresh) {
     if (!activeTrainingPlanDiag || activeTrainingPlanDiag.missedByKs.length === 0) return;
     if (!trainingPlanResponseBodyEl) return;
 
     const attemptRecord = activeTrainingPlanDiag.attemptRecord;
-    if (!forceRefresh && attemptRecord?.trainingPlan) {
-      renderTrainingPlan(attemptRecord.trainingPlan.text, {
+    // .plan specifically (not just a truthy trainingPlan) -- a plan cached
+    // by an earlier version of this feature stored { text, model, ts }
+    // instead; skip a stale-shaped cache and fall through to a fresh call
+    // rather than rendering a blank plan from undefined.
+    if (!forceRefresh && attemptRecord?.trainingPlan?.plan) {
+      renderTrainingPlan(attemptRecord.trainingPlan.plan, {
         cached: true,
         model: attemptRecord.trainingPlan.model,
         ts: attemptRecord.trainingPlan.ts
@@ -4286,12 +4836,12 @@ Build a comprehensive, prioritized training plan covering every knowledge area l
 
     try {
       const model = getGeminiModel();
-      const { systemPrompt, userPrompt } = buildTrainingPlanPrompt(activeTrainingPlanDiag);
-      const text = await callGeminiAPI(getGeminiApiKey(), model, systemPrompt, userPrompt);
+      const { systemPrompt, userPrompt } = buildTrainingPlanPdfPrompt(activeTrainingPlanDiag);
+      const plan = await callGeminiJsonAPI(getGeminiApiKey(), model, systemPrompt, userPrompt, TRAINING_PLAN_PDF_SCHEMA);
       const ts = Date.now();
-      renderTrainingPlan(text, { cached: false, model, ts });
+      renderTrainingPlan(plan, { cached: false, model, ts });
       if (attemptRecord) {
-        attemptRecord.trainingPlan = { text, model, ts };
+        attemptRecord.trainingPlan = { plan, model, ts };
         saveJson(STORAGE_KEYS.attempts, attempts);
       }
     } catch (err) {
@@ -4308,6 +4858,13 @@ Build a comprehensive, prioritized training plan covering every knowledge area l
     }
   }
 
+  // Opening the modal no longer fires Gemini on its own -- it used to,
+  // which meant a student who only wanted the PDF still paid for (and
+  // waited on) a plan they might close straight away. Now it just shows
+  // the modal with a "Create Plan Here" button; runTrainingPlanRequest()
+  // only runs once the student actually asks for it (or instantly, with
+  // no network call, when a plan for this attempt is already cached --
+  // see the .plan check inside runTrainingPlanRequest()).
   function openTrainingPlanModal(diag) {
     if (!trainingPlanModal || !diag) return;
     activeTrainingPlanDiag = diag;
@@ -4319,7 +4876,14 @@ Build a comprehensive, prioritized training plan covering every knowledge area l
     trainingPlanModal.style.display = 'flex';
     trainingPlanModal.classList.remove('hidden');
     trainingPlanModal.setAttribute('aria-hidden', 'false');
-    runTrainingPlanRequest(false);
+    const hasCachedPlan = !!diag.attemptRecord?.trainingPlan?.plan;
+    if (trainingPlanGenerateRowEl) trainingPlanGenerateRowEl.hidden = hasCachedPlan;
+    if (trainingPlanResponseEl) trainingPlanResponseEl.hidden = !hasCachedPlan;
+    if (hasCachedPlan) {
+      runTrainingPlanRequest(false);
+    } else if (trainingPlanActionsEl) {
+      trainingPlanActionsEl.hidden = true;
+    }
   }
 
   function closeTrainingPlanModal() {
@@ -4384,6 +4948,12 @@ Build a comprehensive, prioritized training plan covering every knowledge area l
       closeTrainingPlanModal();
     }
   });
+  btnTrainingPlanGenerate?.addEventListener('click', () => {
+    if (trainingPlanGenerateRowEl) trainingPlanGenerateRowEl.hidden = true;
+    if (trainingPlanResponseEl) trainingPlanResponseEl.hidden = false;
+    runTrainingPlanRequest(false);
+  });
+
   btnTrainingPlanRetry?.addEventListener('click', () => runTrainingPlanRequest(true));
 
   btnTrainingPlanCopy?.addEventListener('click', async () => {
@@ -4397,8 +4967,20 @@ Build a comprehensive, prioritized training plan covering every knowledge area l
     setTimeout(() => { trainingPlanStatusEl.textContent = ''; }, 2500);
   });
 
+  // Builds the PDF straight from lastTrainingPlanJson -- the same plan
+  // object runTrainingPlanRequest() already fetched (cached or fresh) to
+  // render the modal, not a second Gemini call. Deliberately synchronous:
+  // no await between the click and window.open() inside
+  // openTrainingPlanPdfWindow(), so the popup isn't opened outside the
+  // click's user-gesture context (an earlier version awaited a second
+  // Gemini call here first, which both doubled the cost and silently got
+  // the popup blocked -- see the section header comment above).
   btnTrainingPlanPrint?.addEventListener('click', () => {
-    window.print();
+    if (!lastTrainingPlanJson || !activeTrainingPlanDiag) {
+      showToast('Wait for the plan to finish loading first.');
+      return;
+    }
+    openTrainingPlanPdfWindow(buildTrainingPlanPdfHtml(lastTrainingPlanJson, activeTrainingPlanDiag));
   });
 
   // "Drill these now" -- closes the loop the plan itself can't: jumps
@@ -4583,8 +5165,15 @@ Build a comprehensive, prioritized training plan covering every knowledge area l
         successMsg = `Local ${examLabel} data reset complete. Reloading...`;
         action = () => {
           Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
-          LEGACY_STORAGE_KEYS.forEach(key => localStorage.removeItem(key));
-          Object.values(LEGACY_FLAT_KEYS).forEach(key => localStorage.removeItem(key));
+          // LEGACY_STORAGE_KEYS/LEGACY_FLAT_KEYS are pre-multi-exam flat keys
+          // that only ever belonged to CISM (see migrateLegacyFlatKeysToNamespaced
+          // above). Only clear them when CISM itself is the active exam, so
+          // resetting local data while studying a different exam can never
+          // touch CISM's history.
+          if (ACTIVE_EXAM_ID === 'cism') {
+            LEGACY_STORAGE_KEYS.forEach(key => localStorage.removeItem(key));
+            Object.values(LEGACY_FLAT_KEYS).forEach(key => localStorage.removeItem(key));
+          }
         };
       }
 

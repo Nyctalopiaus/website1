@@ -511,6 +511,7 @@
               <li class="guide-menu-item" data-exam="cism" data-guide="guide-extsvc">20. Third-Party &amp; External Services</li>
               <li class="guide-menu-item" data-exam="cism" data-guide="guide-progmetrics">21. Program Metrics &amp; Reporting</li>
               <li class="guide-menu-item" data-exam="cism" data-guide="guide-irtest">22. IR Testing &amp; Metrics</li>
+              <li class="guide-menu-item" data-exam="cism" data-guide="guide-drsite">23. DR Site Selection &amp; Backup Strategy</li>
               <li class="guide-menu-item" data-exam="securityx" data-guide="guide-sx-hwroot">1. Hardware Roots of Trust</li>
               <li class="guide-menu-item" data-exam="securityx" data-guide="guide-sx-endpoint">2. Endpoint &amp; OS Hardening</li>
               <li class="guide-menu-item" data-exam="securityx" data-guide="guide-sx-datasec">3. Data Protection Techniques</li>
@@ -551,6 +552,8 @@
               <button class="btn-hud btn-warn" id="btn-guide-still-shaky" title="Mark this guide as still shaky">Shaky</button>
               <button class="btn-hud btn-success" id="btn-guide-solid" title="Mark this guide as solid">Solid ✓</button>
             </div>
+
+            <div class="guide-weakness-banner" id="guide-weakness-banner" hidden></div>
 
             <div class="ai-explain-row" id="guide-ai-explain-row">
               <button type="button" class="btn-ai-explain" id="btn-guide-ai-explain"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> Ask Gemini to go deeper</button>
@@ -680,9 +683,10 @@
                   <div class="guide-notes">
                     <h4>Key ISACA Principles:</h4>
                     <ul>
-                      <li><strong>Active Threat Priority</strong>: When an active breach or data leak is identified, the immediate priority is **Containment** (e.g. isolating infected subnets).</li>
+                      <li><strong>Active Threat Priority</strong>: When an active breach or data leak is identified, the immediate priority is <strong>Containment</strong> (e.g. isolating infected subnets).</li>
                       <li><strong>Eradication vs. Recovery</strong>: You cannot restore system backups (Recovery) until the malware or compromise vector has been completely purged (Eradication).</li>
                       <li><strong>Post-Incident Activity</strong>: The Lessons Learned phase is the most critical for governance, ensuring processes are updated to prevent recurrence.</li>
+                      <li><strong>The BCP/DRP trigger point</strong>: an incident escalates from "IR problem" to "disaster" when containment fails, or when downtime threatens to exceed the Maximum Tolerable Downtime (MTD) set by the BIA &mdash; that's the exact point control passes from the Incident Response Team to the Crisis Management Team.</li>
                     </ul>
                   </div>
                 </div>
@@ -695,7 +699,7 @@
                         <text x="70" y="45" class="chevron-text" fill="#f3f4f6">1. Prep</text>
                         <text x="70" y="65" class="chevron-sub" fill="#9ca3af">Plans/Tools</text>
                       </g>
-                      
+
                       <g class="chevron-group active">
                         <polygon points="120,20 220,20 240,50 220,80 120,80 140,50" fill="rgba(255, 255, 255, 0.05)" stroke="var(--border-color)" />
                         <text x="180" y="45" class="chevron-text" fill="#f3f4f6">2. Identify</text>
@@ -728,6 +732,25 @@
                     </svg>
                   </div>
                 </div>
+              </div>
+
+              <div class="guide-exam-traps">
+                <h4>Exam Traps:</h4>
+                <ul>
+                  <li><strong>Active damage vs. evidence preservation</strong>: during active exfiltration or spreading ransomware, containment (stopping the business impact) outranks preserving forensic evidence. Evidence preservation only takes priority once the threat is already isolated.</li>
+                  <li><strong>Premature recovery</strong>: "restore from a clean backup" immediately after detection is a classic wrong-answer bait &mdash; restoring before eradication just hands the still-present attacker a freshly restored target.</li>
+                  <li><strong>First action of the security manager</strong>: asked what a CISM should do FIRST on notification, the answer is almost always verify/confirm the incident (or activate the IR plan) &mdash; not personally perform technical remediation.</li>
+                </ul>
+              </div>
+
+              <div class="guide-scenario">
+                <h4>Worked Scenario</h4>
+                <p>A core database starts exfiltrating customer records to an external IP. The DBA wants to power it down and restore last night's backup; the auditor wants it left running to capture forensic evidence. As the incident manager, you isolate the affected network segment first to stop the exfiltration (<strong>Containment</strong>), then find and revoke the compromised account and patch the exploited vector (<strong>Eradication</strong>) &mdash; only after that do you validate data integrity and bring the database back (<strong>Recovery</strong>), closing with a steering-committee briefing and updated access policies (<strong>Lessons Learned</strong>).</p>
+              </div>
+
+              <div class="guide-mnemonic">
+                <span class="guide-mnemonic-label">🧠 How to remember this</span>
+                <p><strong>PICERL</strong>, like a kitchen fire: Prepare the extinguisher, Identify the burning pan, Contain it with a lid, Eradicate the heat source, Recover by cleaning up, Review what caused it so it doesn't happen again.</p>
               </div>
             </article>
 
@@ -1779,6 +1802,67 @@
                           <td class="font-display bold">Full Interruption</td>
                           <td>Actual failover &mdash; the only test that proves real-world recovery</td>
                           <td>Treating this as the default/first test to run given its cost and risk</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <!-- 23. DR Site Selection & Backup Strategy -->
+            <article class="guide-detail" data-exam="cism" id="guide-drsite">
+              <h2>DR Site Selection &amp; Backup Strategy</h2>
+              <div class="guide-grid-container">
+                <div class="guide-text-col">
+                  <p class="guide-intro">
+                    BIA gives you the RTO and RPO numbers. This guide covers what those numbers actually decide: which class of recovery site to build or contract for, and how aggressive a backup strategy has to be. Proving the resulting plan is adequate uses the exact same escalating test-type ladder as <strong>guide-irtest</strong> &mdash; what's different here is what's being validated: whether the alternate site can actually take over, not whether the response team can react.
+                  </p>
+                  <div class="guide-notes">
+                    <h4>Key ISACA Principles:</h4>
+                    <ul>
+                      <li><strong>Site type is chosen by RTO/MTD, not by budget alone</strong>: the tighter the recovery-time requirement, the more fully-equipped ("hotter") the site has to be. Cost only becomes the deciding factor between options that already meet the RTO.</li>
+                      <li><strong>Backup strategy is chosen by RPO, not by "more frequent is safer"</strong>: the acceptable data-loss window sets required backup frequency and whether replication needs to be synchronous (near-zero RPO, higher bandwidth cost) or asynchronous (small lag, cheaper). Exceeding what RPO actually requires just burns budget the exam expects you to protect elsewhere.</li>
+                      <li><strong>Reciprocal / mutual-aid arrangements fail on capacity, not paperwork</strong>: a signed agreement confirms intent, not that the partner site can actually absorb your production load mid-disaster &mdash; the same "a contract isn't the same as verification" trap covered for vendors in guide-extsvc.</li>
+                      <li><strong>A DR-specific test proves site failover, not team readiness</strong>: it walks the same checklist &rarr; tabletop &rarr; simulation &rarr; parallel &rarr; full-interruption ladder as an IR test, just aimed at "can the alternate site run production," not "can the team follow the plan."</li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="guide-graphic-col">
+                  <div class="control-matrix">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Site Type</th>
+                          <th>Recovery Speed</th>
+                          <th>Relative Cost</th>
+                          <th>Exam Trap</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td class="font-display bold">Hot Site</td>
+                          <td>Minutes &mdash; fully mirrored &amp; running</td>
+                          <td>Highest (duplicated infrastructure runs continuously)</td>
+                          <td>Defaulting to hot without confirming the RTO actually demands it</td>
+                        </tr>
+                        <tr>
+                          <td class="font-display bold">Warm Site</td>
+                          <td>Hours to ~1 day</td>
+                          <td>Moderate</td>
+                          <td>Assuming "warm" means ready now &mdash; hardware/software still needs configuring</td>
+                        </tr>
+                        <tr>
+                          <td class="font-display bold">Cold Site</td>
+                          <td>Days to weeks</td>
+                          <td>Lowest</td>
+                          <td>Picking cold for a system with a tight RTO because it's cheap</td>
+                        </tr>
+                        <tr>
+                          <td class="font-display bold">Reciprocal / Mutual Aid</td>
+                          <td>Entirely dependent on partner's spare capacity</td>
+                          <td>Low (mostly a negotiation cost)</td>
+                          <td>Treating a signed agreement as proof the partner can absorb your load</td>
                         </tr>
                       </tbody>
                     </table>
@@ -3533,6 +3617,7 @@
     <div class="global-reset-inner">
       <div class="reset-control-group">
         <label for="local-reset-select" class="reset-control-label">Local Data Controls</label>
+        <p class="reset-control-hint">These options only reset local data for <strong id="local-reset-exam-label">this exam</strong> — your progress in other exams is never touched.</p>
         <div class="reset-control-row">
           <select id="local-reset-select" class="reset-select" aria-label="Choose what local data to reset">
             <optgroup label="Domain Mastery" id="reset-domain-optgroup">
@@ -3638,8 +3723,15 @@
           <input type="password" id="ai-vault-pin-confirm-input" class="ai-settings-input" placeholder="Re-enter PIN" autocomplete="off" spellcheck="false" />
         </div>
 
-        <label for="ai-gemini-model-input" class="ai-settings-label">Model <span class="ai-settings-label-hint">(optional — defaults to gemini-3.6-flash)</span></label>
-        <input type="text" id="ai-gemini-model-input" class="ai-settings-input" placeholder="gemini-3.6-flash" autocomplete="off" spellcheck="false" />
+        <label for="ai-gemini-model-input" class="ai-settings-label">Model <span class="ai-settings-label-hint">(optional — defaults to gemini-3.5-flash-lite, recommended)</span></label>
+        <input type="text" id="ai-gemini-model-input" class="ai-settings-input" placeholder="gemini-3.5-flash-lite" autocomplete="off" spellcheck="false" />
+
+        <div class="modal-privacy-notice">
+          <span class="modal-privacy-icon">⚡</span>
+          <div>
+            <strong>Recommended: gemini-3.5-flash-lite.</strong> Google's free tier caps gemini-3.6-flash and other standard Flash models at roughly 5 requests/minute and 20 requests/day — that's one or two explanations before you're locked out until tomorrow. Flash-Lite's free tier allows around 500 requests/day, which is enough for a full study session across Explain, Trap Spotter, the AI Tutor chat, and Training Plans (they all draw from the same daily quota). Leave the field above blank to use it, or type a different model name if you'd rather trade quota for the standard Flash model's extra reasoning depth.
+          </div>
+        </div>
 
         <div class="ai-settings-actions" id="ai-unlock-inline-row" hidden>
           <button type="button" id="btn-unlock-ai-settings" class="btn-primary-hud">🔓 Unlock Saved Key</button>
@@ -3685,7 +3777,11 @@
       <h2 id="training-plan-modal-title" class="feature-modal-title"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg> Your Personalized Training Plan</h2>
       <p class="feature-modal-intro" id="training-plan-modal-intro">Built from what you missed on this attempt, prioritized by ISACA knowledge area — powered by the same Gemini connection as the rest of Certforge's AI features.</p>
 
-      <div class="ai-explain-response" id="training-plan-response">
+      <div class="ai-settings-actions" id="training-plan-generate-row">
+        <button type="button" class="btn-primary-hud" id="btn-training-plan-generate"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> Create Plan Here</button>
+      </div>
+
+      <div class="ai-explain-response" id="training-plan-response" hidden>
         <div class="ai-explain-response-head">
           <span>GEMINI</span>
         </div>
