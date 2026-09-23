@@ -43,7 +43,7 @@ const DEFAULT_PROFILE: UserProfile = {
   aiSettings: {
     provider: 'gemini',
     apiKey: '',
-    model: 'gemini-2.0-flash'
+    model: 'gemini-3.5-flash-lite'
   }
 };
 

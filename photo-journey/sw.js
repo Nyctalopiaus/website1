@@ -2,7 +2,7 @@
 // objectives, camera tips) opens even with zero signal out in the field.
 //
 // Bump CACHE_VERSION on any deploy that changes a precached file below.
-const CACHE_VERSION = 'pj-v1';
+const CACHE_VERSION = 'pj-v1789868096807';
 
 const APP_SHELL = [
   './',

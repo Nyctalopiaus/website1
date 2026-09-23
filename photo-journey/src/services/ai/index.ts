@@ -107,7 +107,7 @@ async function callGeminiAPI(
   userPrompt: string,
   imageBase64?: string
 ): Promise<string> {
-  const model = settings.model || 'gemini-2.0-flash';
+  const model = settings.model || 'gemini-3.5-flash-lite';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${settings.apiKey}`;
 
   const contentsParts: any[] = [];
@@ -283,7 +283,7 @@ async function callOpenRouterAPI(
   const customSettings: AISettings = {
     ...settings,
     baseUrl: 'https://openrouter.ai/api/v1',
-    model: settings.model || 'google/gemini-2.0-flash-001'
+    model: settings.model || 'google/gemini-3.5-flash-lite'
   };
   return callOpenAIAPI(customSettings, systemPrompt, userPrompt, imageBase64);
 }

@@ -14,15 +14,6 @@ const rootBackgrounds = path.join(__dirname, 'backgrounds');
 const distIcons = path.join(__dirname, 'dist', 'icons');
 const rootIcons = path.join(__dirname, 'icons');
 
-const swPath = path.join(__dirname, 'sw.js');
-if (fs.existsSync(swPath)) {
-  let swContent = fs.readFileSync(swPath, 'utf8');
-  const newCacheVersion = `pj-v${Date.now()}`;
-  swContent = swContent.replace(/const CACHE_VERSION = ['"].*?['"];/, `const CACHE_VERSION = '${newCacheVersion}';`);
-  fs.writeFileSync(swPath, swContent, 'utf8');
-  console.log(`✓ Updated sw.js CACHE_VERSION -> ${newCacheVersion}`);
-}
-
 if (fs.existsSync(distAssets)) {
   fs.rmSync(rootAssets, { recursive: true, force: true });
   fs.cpSync(distAssets, rootAssets, { recursive: true, force: true });
@@ -53,4 +44,13 @@ for (const name of ['manifest.json', 'sw.js', 'register-sw.js']) {
 if (fs.existsSync(distIndex)) {
   fs.copyFileSync(distIndex, rootIndex);
   console.log('✓ Synced dist/index.html -> photo-journey/index.html');
+}
+
+const swPath = path.join(__dirname, 'sw.js');
+if (fs.existsSync(swPath)) {
+  let swContent = fs.readFileSync(swPath, 'utf8');
+  const newCacheVersion = `pj-v${Date.now()}`;
+  swContent = swContent.replace(/const CACHE_VERSION = ['"].*?['"];/, `const CACHE_VERSION = '${newCacheVersion}';`);
+  fs.writeFileSync(swPath, swContent, 'utf8');
+  console.log(`✓ Updated sw.js CACHE_VERSION -> ${newCacheVersion}`);
 }

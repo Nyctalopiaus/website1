@@ -12,6 +12,17 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
+// Recommended default model per provider — single source of truth for both
+// the provider-tab click handler (which pre-fills the model field) and the
+// "(recommended)" hint shown next to the Model Name input.
+const DEFAULT_MODELS: Record<AIProvider, string> = {
+  gemini: 'gemini-2.0-flash',
+  openai: 'gpt-4o',
+  anthropic: 'claude-3-5-sonnet-latest',
+  ollama: 'qwen2-vl',
+  openrouter: 'google/gemini-2.0-flash-001'
+};
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({ userProfile, onSave, onClose }) => {
   const [profile, setProfile] = useState<UserProfile>(JSON.parse(JSON.stringify(userProfile)));
   const [showGuide, setShowGuide] = useState<boolean>(false);
@@ -175,7 +186,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ userProfile, onSav
                     aiSettings: {
                       ...profile.aiSettings,
                       provider: prov,
-                      model: prov === 'gemini' ? 'gemini-2.0-flash' : prov === 'openai' ? 'gpt-4o' : prov === 'anthropic' ? 'claude-3-5-sonnet-latest' : prov === 'ollama' ? 'qwen2-vl' : 'google/gemini-2.0-flash-001'
+                      model: DEFAULT_MODELS[prov]
                     }
                   })}
                   className={`py-2 px-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${
@@ -354,7 +365,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ userProfile, onSav
 
             {/* Model Name */}
             <div>
-              <label htmlFor="ai-model-name" className="text-xs text-slate-500 block mb-1">Model Name</label>
+              <label htmlFor="ai-model-name" className="text-xs text-slate-500 block mb-1">
+                Model Name <span className="opacity-70">(optional — defaults to {DEFAULT_MODELS[profile.aiSettings.provider]}, recommended)</span>
+              </label>
               <input
                 id="ai-model-name"
                 type="text"

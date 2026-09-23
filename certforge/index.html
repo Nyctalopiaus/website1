@@ -71,12 +71,23 @@
           <button type="button" id="btn-open-quickstart" class="btn-quickstart-modal" title="View Quick Start Guide">
             <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg> <span>Quick Start</span>
           </button>
+          <button type="button" id="btn-open-shortcuts" class="btn-feature-modal" title="Keyboard Shortcuts (Press ? key)">
+            <kbd class="hdr-kbd">?</kbd> <span>Shortcuts</span>
+          </button>
           <button type="button" id="btn-open-features" class="btn-feature-modal" title="View Console Capabilities">
             <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2 20 5v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/></svg> <span>Features</span>
           </button>
           <button type="button" id="btn-open-ai-settings" class="btn-feature-modal" title="Configure AI-powered deeper explanations (Google Gemini)">
             <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> <span id="btn-open-ai-settings-label">AI Setup</span> <span class="ai-status-dot" id="ai-status-dot" hidden></span>
           </button>
+          <hr class="header-menu-divider" />
+          <button type="button" id="btn-export-data" class="btn-feature-modal" title="Export all progress and bookmarks as JSON file">
+            <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> <span>Export Progress</span>
+          </button>
+          <button type="button" id="btn-import-data" class="btn-feature-modal" title="Import previously exported progress JSON file">
+            <svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> <span>Import Progress</span>
+          </button>
+          <input type="file" id="import-data-file" accept=".json" style="display:none;" />
         </div>
       </div>
     </div>
@@ -98,6 +109,14 @@
         <div class="stat-card stat-card--success">
           <span class="stat-label">Overall Accuracy</span>
           <span class="stat-value font-mono" id="stat-accuracy">0%</span>
+        </div>
+        <div class="stat-card stat-card--readiness" title="Composite Exam Readiness Index based on domain mastery and quiz accuracy">
+          <span class="stat-label">Exam Readiness</span>
+          <span class="stat-value font-mono" id="stat-readiness">0%</span>
+        </div>
+        <div class="stat-card stat-card--streak" title="Consecutive days studied">
+          <span class="stat-label">Study Streak</span>
+          <span class="stat-value font-mono" id="stat-streak">🔥 0d</span>
         </div>
         <div class="stat-card stat-card--warn">
           <span class="stat-label">Flagged Items</span>
@@ -129,10 +148,12 @@
       <div class="tab-row tab-row-secondary">
         <span class="tab-row-label">More tools</span>
         <button class="tab-btn tab-btn-tool" data-target="tab-pbqlab">PBQ Lab</button>
+        <button class="tab-btn tab-btn-tool" data-target="tab-risklab"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Risk Calc Lab</button>
         <button class="tab-btn tab-btn-tool" data-target="tab-trapspotter">Trap Spotter</button>
         <button class="tab-btn tab-btn-tool" data-target="tab-guides">Concept Guides</button>
         <button class="tab-btn tab-btn-tool" data-target="tab-curator">Deck Curator</button>
         <button class="tab-btn tab-btn-tool" data-target="tab-ai-deepdive"><svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> AI Deep Dive</button>
+        <button type="button" class="btn-zen-mode" id="btn-zen-mode" title="Toggle Distraction-Free Focus Mode"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/></svg> Focus Mode</button>
       </div>
     </nav>
 
@@ -370,7 +391,14 @@
               <div id="mock-pbq-review-list"></div>
             </div>
 
+            <!-- Missed Multiple-Choice Questions Review -->
+            <div class="mock-mcq-review" id="mock-mcq-review" hidden>
+              <h3>Missed Multiple-Choice Questions</h3>
+              <div id="mock-mcq-review-list"></div>
+            </div>
+
             <div class="results-actions">
+              <button class="btn-primary-hud" id="btn-review-mistakes-quiz" hidden><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg> Review Missed MCQs in Practice Quiz</button>
               <button class="btn-primary-hud" id="btn-training-plan" hidden><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> Build My Training Plan</button>
               <button class="btn-primary-hud" id="btn-mock-reset">RETURN TO CONSOLE</button>
             </div>
@@ -424,6 +452,11 @@
             <button class="btn-hud" id="btn-next-pbq">Next ▶</button>
           </div>
         </div>
+      </div>
+
+      <!-- 3c. Risk Calc Lab -->
+      <div class="tab-pane" id="tab-risklab">
+        <!-- Injected dynamically by initRiskLab() from js/riskCalcLab.js -->
       </div>
 
       <!-- 4. Trap Spotter -->
@@ -557,6 +590,7 @@
 
             <div class="ai-explain-row" id="guide-ai-explain-row">
               <button type="button" class="btn-ai-explain" id="btn-guide-ai-explain"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5c.3 2.8 1 4.7 2.3 6 1.3 1.3 3.2 2 6 2.3-2.8.3-4.7 1-6 2.3-1.3 1.3-2 3.2-2.3 6-.3-2.8-1-4.7-2.3-6-1.3-1.3-3.2-2-6-2.3 2.8-.3 4.7-1 6-2.3 1.3-1.3 2-3.2 2.3-6Z"/></svg> Ask Gemini to go deeper</button>
+              <button type="button" class="btn-ai-explain btn-ai-ultra-deepdive" id="btn-guide-ai-ultra-deepdive" hidden><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Exhaustive Deep Dive</button>
             </div>
             <div class="ai-explain-response" id="guide-ai-explain-response" hidden>
               <div class="ai-explain-response-head">
@@ -572,15 +606,17 @@
               <div class="guide-grid-container">
                 <div class="guide-text-col">
                   <p class="guide-intro">
-                    Business Continuity and Disaster Recovery metrics are heavily tested. The key is understanding how they flow sequentially and their relationship with MTD.
+                    Business Continuity and Disaster Recovery metrics are heavily tested. The key is understanding how they flow sequentially, who sets each one, and how they dictate technical architecture.
                   </p>
                   <div class="guide-notes">
                     <h4>Key ISACA Principles:</h4>
                     <ul>
-                      <li><strong>RPO (Recovery Point Objective)</strong>: Measures maximum data loss in time (e.g., 4 hours of transactions). It dictates backup frequency.</li>
-                      <li><strong>RTO (Recovery Time Objective)</strong>: The time allowed to get hardware/systems back online (e.g., restore server from OS install).</li>
-                      <li><strong>WRT (Work Recovery Time)</strong>: The time required to restore/verify databases, catch up on transactions, and perform checks.</li>
-                      <li><strong>MTD (Maximum Tolerable Downtime)</strong>: The absolute limit. Formula: <code>RTO + WRT &le; MTD</code>. Exceeding MTD means operational survival is threatened.</li>
+                      <li><strong>BIA (Business Impact Analysis)</strong>: The foundational assessment that identifies critical business processes and the financial/operational impact of downtime &mdash; it's what produces the RTO, RPO, and MTD figures below. The BIA must happen <em>before</em> a DR strategy or backup technology is chosen; you can't design recovery around data you haven't yet identified as critical.</li>
+                      <li><strong>RPO (Recovery Point Objective)</strong>: Measures maximum tolerable data loss in time (e.g., 4 hours of transactions). It dictates backup/replication frequency &mdash; an RPO of 4 hours means data must be backed up or replicated at least that often. Set by business management, delivered by IT/storage teams.</li>
+                      <li><strong>RTO (Recovery Time Objective)</strong>: The time allowed to get hardware/systems back online (e.g., restore server from OS install). Set by business management based on financial and operational impact; IT designs the solution that delivers it.</li>
+                      <li><strong>RTA (Recovery Time Actual)</strong>: The time recovery actually takes during a real incident or a test. RTA must always be &le; RTO &mdash; an RTA that exceeds RTO is a failed business SLA, not just a disappointing test result.</li>
+                      <li><strong>WRT (Work Recovery Time)</strong>: The time required to restore/verify databases, catch up on transactions, and perform checks after systems are technically back online. Formula: <code>RTO = Technical Recovery Time + WRT</code>.</li>
+                      <li><strong>MTD (Maximum Tolerable Downtime)</strong>: The absolute limit. Formula: <code>RTO + WRT &le; MTD</code>. Exceeding MTD means operational survival is threatened. RTO is deliberately set <em>shorter</em> than MTD to leave a safety buffer &mdash; never equal to it.</li>
                     </ul>
                   </div>
                 </div>
@@ -629,6 +665,25 @@
                     </svg>
                   </div>
                 </div>
+              </div>
+
+              <div class="guide-exam-traps">
+                <h4>Exam Traps:</h4>
+                <ul>
+                  <li><strong>Who sets RTO/RPO</strong>: a classic wrong-answer bait is "IT engineers set RTO and RPO based on what the storage hardware and network bandwidth can support." ISACA's answer runs the other way &mdash; business management and business process owners set these targets based on financial and operational impact, and IT merely designs the technical solution to meet them.</li>
+                  <li><strong>RTO vs. MTD</strong>: don't treat these as interchangeable. RTO is a target IT commits to hit; MTD is the point past which the business itself is at risk. RTO must always land inside MTD with margin to spare, never equal to it.</li>
+                  <li><strong>RTA exceeding RTO</strong>: if a DR test or a real incident shows RTA is greater than RTO, that's a finding against the recovery capability, not an acceptable variance &mdash; it means the current architecture can't actually meet the business requirement it was built for.</li>
+                </ul>
+              </div>
+
+              <div class="guide-scenario">
+                <h4>Worked Scenario</h4>
+                <p>A payments platform's BIA sets its RPO at zero (no transaction loss is acceptable) and its RTO at near-zero (customers won't tolerate a visible outage). The zero RPO immediately disqualifies nightly tape backups &mdash; the only architecture that satisfies it is synchronous, real-time data replication to a secondary site. The near-zero RTO disqualifies a cold site, which can take days to provision &mdash; the business requirement forces a hot site or a highly-available multi-region deployment with automatic failover. Notice the direction of causality: the BIA's business-impact numbers came first, and they dictated the technical architecture, not the other way around. (For how to choose between hot/warm/cold sites and reciprocal arrangements once RTO/MTD are known, see Concept Guide 23: DR Site Selection &amp; Backup Strategy.)</p>
+              </div>
+
+              <div class="guide-mnemonic">
+                <span class="guide-mnemonic-label">🧠 How to remember this</span>
+                <p>RTO is the clock ticking down to your rescue (how long you can wait). RPO is the snapshot of your camera rolling backward (how much data you are willing to lose).</p>
               </div>
             </article>
 
@@ -866,6 +921,8 @@
                       <li><strong>Exposure Factor (EF)</strong>: The percentage of loss (e.g. partial breach = 0.15).</li>
                       <li><strong>ARO (Annual Rate of Occurrence)</strong>: Frequency of the event per year.</li>
                       <li><strong>Cost-Justification Rule</strong>: A control's cost must not exceed the ALE reduction it brings.</li>
+                      <li><strong>EF is not probability</strong>: Exposure Factor is the percentage of the asset's value destroyed in <em>one</em> event, not the odds of that event happening &mdash; likelihood is entirely ARO's job. Mixing the two up is the most common way test-takers set up SLE and ALE wrong.</li>
+                      <li><strong>ARO under 1.0 is normal</strong>: rare events get fractional AROs (e.g. a once-per-10-years flood is ARO = 0.1, a once-per-4-years event is ARO = 0.25) &mdash; don't assume ARO must be a whole number or at least 1.</li>
                     </ul>
                   </div>
                 </div>
@@ -890,6 +947,26 @@
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div class="guide-exam-traps">
+                <h4>Exam Traps:</h4>
+                <ul>
+                  <li><strong>EF vs. likelihood</strong>: a wrong-answer bait describes EF as "the chance the threat occurs" &mdash; EF is always about magnitude of loss <em>given</em> the event happens, never about how often it happens. If a stem gives you a percentage tied to "how much would be destroyed," that's EF; a percentage or frequency tied to "how often," that's feeding ARO.</li>
+                  <li><strong>SLE vs. ALE confusion</strong>: SLE is the cost of one occurrence; ALE is the cost per year, averaged across however often it happens. A question asking "what is the annualized loss" wants ALE, not SLE &mdash; stopping the math after SLE is a common half-finished-formula trap.</li>
+                  <li><strong>Comparing control cost to SLE instead of ALE</strong>: the cost-justification rule always weighs a control's <em>annual</em> cost against the <em>annual</em> loss expectancy it removes (ALE_before &minus; ALE_after), never against the one-time SLE &mdash; comparing to SLE will make an unjustifiable control look cheap enough to approve.</li>
+                  <li><strong>A negative Net Benefit is a valid answer</strong>: if the annual control cost is higher than the ALE it removes, ISACA expects you to recommend <em>against</em> the control (or accept the risk instead) &mdash; "more security is always better" is the wrong instinct here.</li>
+                </ul>
+              </div>
+
+              <div class="guide-scenario">
+                <h4>Worked Scenario</h4>
+                <p>A data center houses server hardware valued at $500,000 (Asset Value). Fire-risk analysis shows a fire in that facility would destroy about 40% of the equipment's value (Exposure Factor = 0.40), and historical incident data across similar facilities puts a fire like this at roughly once every 10 years (ARO = 0.1). <strong>SLE</strong> = $500,000 &times; 0.40 = <strong>$200,000</strong> &mdash; the cost if this fire happens once. <strong>ALE</strong> = $200,000 &times; 0.1 = <strong>$20,000</strong> &mdash; the annualized cost of that risk sitting unmitigated. A fire-suppression system costs $8,000 a year to run and would cut the Exposure Factor to 10% if a fire still broke out, dropping the residual SLE to $50,000 and the residual ALE to $50,000 &times; 0.1 = $5,000. That's an ALE reduction of $20,000 &minus; $5,000 = $15,000. <strong>Net Benefit</strong> = $15,000 &minus; $8,000 = <strong>+$7,000</strong>, so the system is cost-justified. (Expressed as ROSI, that's the same $15,000/$8,000 relationship as a return ratio &mdash; see Concept Guide 9: Security Economics for the ROSI formula itself.)</p>
+              </div>
+
+              <div class="guide-mnemonic">
+                <span class="guide-mnemonic-label">🧠 How to remember this</span>
+                <p>AV &times; EF = SLE: how bad is one bad day. SLE &times; ARO = ALE: how bad is this year, on average. ALE saved &minus; control cost = Net Benefit: only buy the umbrella if it costs less than the rain.</p>
               </div>
             </article>
 
@@ -3798,6 +3875,37 @@
     </div>
   </div>
 
-  <script src="app.js?v=33"></script>
+  <!-- Keyboard Shortcuts Modal -->
+  <div id="shortcuts-modal" class="modal-overlay hidden" style="display:none;" aria-hidden="true">
+    <div class="modal-card feature-modal-content shortcuts-modal-content" role="dialog" aria-modal="true" aria-labelledby="shortcuts-modal-title">
+      <button id="btn-close-shortcuts" class="modal-close-button" aria-label="Close shortcuts dialog">&times;</button>
+      <h2 id="shortcuts-modal-title" class="feature-modal-title">⌨️ Keyboard Shortcuts</h2>
+      <p class="feature-modal-intro">Speed up your study workflow with quick keyboard navigation.</p>
+      <div class="shortcuts-grid">
+        <div class="shortcut-group">
+          <h3>Global & Navigation</h3>
+          <div class="shortcut-row"><span class="shortcut-desc">Open Keyboard Shortcuts</span><kbd class="kbd-key">?</kbd></div>
+          <div class="shortcut-row"><span class="shortcut-desc">Focus Global Search Bar</span><kbd class="kbd-key">/</kbd></div>
+          <div class="shortcut-row"><span class="shortcut-desc">Toggle Distraction-Free Focus</span><kbd class="kbd-key">Z</kbd></div>
+        </div>
+        <div class="shortcut-group">
+          <h3>Flashcards Tab</h3>
+          <div class="shortcut-row"><span class="shortcut-desc">Flip Active Card</span><kbd class="kbd-key">Space</kbd> or <kbd class="kbd-key">Enter</kbd></div>
+          <div class="shortcut-row"><span class="shortcut-desc">Next / Previous Flashcard</span><kbd class="kbd-key">→</kbd> / <kbd class="kbd-key">←</kbd></div>
+          <div class="shortcut-row"><span class="shortcut-desc">Mark as "Got It"</span><kbd class="kbd-key">1</kbd></div>
+          <div class="shortcut-row"><span class="shortcut-desc">Mark as "Still Learning"</span><kbd class="kbd-key">2</kbd></div>
+        </div>
+        <div class="shortcut-group">
+          <h3>Practice Quiz Tab</h3>
+          <div class="shortcut-row"><span class="shortcut-desc">Select Choice A, B, C, or D</span><kbd class="kbd-key">1</kbd> <kbd class="kbd-key">2</kbd> <kbd class="kbd-key">3</kbd> <kbd class="kbd-key">4</kbd> / <kbd class="kbd-key">A</kbd> <kbd class="kbd-key">B</kbd> <kbd class="kbd-key">C</kbd> <kbd class="kbd-key">D</kbd></div>
+          <div class="shortcut-row"><span class="shortcut-desc">Submit Answer</span><kbd class="kbd-key">Enter</kbd></div>
+          <div class="shortcut-row"><span class="shortcut-desc">Next / Previous Question</span><kbd class="kbd-key">→</kbd> / <kbd class="kbd-key">←</kbd></div>
+          <div class="shortcut-row"><span class="shortcut-desc">Toggle Bookmark</span><kbd class="kbd-key">B</kbd></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js?v=34"></script>
 </body>
 </html>
