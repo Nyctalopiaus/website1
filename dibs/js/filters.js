@@ -57,7 +57,7 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
             if (f.favoritesOnly && !p.favorite) return false;
             if (f.possibilitiesOnly) {
                 const mRev = getPropertyReviewStatus(p);
-                if (mRev !== 'possibility' && p.rating !== 3) return false;
+                if (mRev !== 'possibility') return false;
             }
             if (f.realtorSharedOnly && !p.shared_with_realtor) return false;
             if (f.hasNotesOnly && !p.user_notes && !p.realtor_notes) return false;

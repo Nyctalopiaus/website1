@@ -77,6 +77,210 @@ export function formatRelativeTime(ts) {
   return `${months} month${months === 1 ? '' : 's'} ago`;
 }
 
+export function renderAiMarkdown(rawText) {
+  if (!rawText) return '';
+
+  function escape(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function formatLatexMath(expr) {
+    let s = expr.trim();
+    s = s.replace(/^\$\$|\$\$$/g, '').replace(/^\$|\$$/g, '').trim();
+
+    let previous;
+    do {
+      previous = s;
+      s = s.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '<span class="ai-math-frac"><span class="ai-math-num">$1</span><span class="ai-math-den">$2</span></span>');
+    } while (s !== previous);
+
+    s = s.replace(/\\text\{([^{}]+)\}/g, '$1');
+    s = s.replace(/\\times/g, ' × ');
+    s = s.replace(/\\cdot/g, ' · ');
+    s = s.replace(/\\%/g, '%');
+    s = s.replace(/\\\$/g, '$');
+    s = s.replace(/\\_/g, '_');
+    s = s.replace(/\\ /g, ' ');
+    return s;
+  }
+
+  const lines = rawText.split(/\r?\n/);
+  let html = '';
+  let inList = false;
+  let listType = null;
+  let inTable = false;
+  let currentCardOpen = false;
+
+  function closeList() {
+    if (inList) {
+      html += listType === 'ul' ? '</ul>' : '</ol>';
+      inList = false;
+      listType = null;
+    }
+  }
+
+  function closeTable() {
+    if (inTable) {
+      html += '</tbody></table></div>';
+      inTable = false;
+    }
+  }
+
+  function closeCard() {
+    closeList();
+    closeTable();
+    if (currentCardOpen) {
+      html += '</div></div>';
+      currentCardOpen = false;
+    }
+  }
+
+  function formatInline(str) {
+    let s = escape(str);
+    // Fix dollar math delimiters wrapping numbers like $10,000,000$ -> $10,000,000
+    s = s.replace(/\$([0-9,.]+)\$/g, '$$$1');
+    // Inline LaTeX math $expr$
+    s = s.replace(/\$([^$]+)\$/g, (match, p1) => {
+      if (/[\\=×+]/.test(p1)) {
+        return `<span class="ai-inline-math">${formatLatexMath(p1)}</span>`;
+      }
+      return match;
+    });
+    s = s.replace(/`([^`]+)`/g, '<code class="ai-inline-code">$1</code>');
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+    s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    return s;
+  }
+
+  function getSectionIcon(title) {
+    const t = title.toLowerCase();
+    if (t.includes('acronym') || t.includes('terminology') || t.includes('deconstruction')) return '🔤';
+    if (t.includes('math') || t.includes('calculation') || t.includes('formula') || t.includes('metric')) return '🧮';
+    if (t.includes('intersect') || t.includes('dependen') || t.includes('cascade')) return '⚡';
+    if (t.includes('trap') || t.includes('mindset') || t.includes('distractor')) return '🪤';
+    if (t.includes('architect') || t.includes('framework') || t.includes('nist') || t.includes('iso')) return '🏢';
+    if (t.includes('decision') || t.includes('rule') || t.includes('flowchart')) return '🚦';
+    if (t.includes('remember') || t.includes('mnemonic') || t.includes('memory')) return '🧠';
+    if (t.includes('missed') || t.includes('mistake') || t.includes('question')) return '🎯';
+    return '📌';
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i].trim();
+
+    if (!line) {
+      closeList();
+      if (inTable) closeTable();
+      continue;
+    }
+
+    if (/^\|?\s*:?-+:?\s*(\|?\s*:?-+:?\s*)+$/.test(line)) {
+      continue;
+    }
+
+    if (line.startsWith('|') && line.endsWith('|')) {
+      closeList();
+      const cells = line.split('|').slice(1, -1).map(c => formatInline(c.trim()));
+      if (!inTable) {
+        inTable = true;
+        html += '<div class="ai-table-wrapper"><table class="ai-table"><thead><tr>';
+        cells.forEach(c => { html += `<th>${c}</th>`; });
+        html += '</tr></thead><tbody>';
+      } else {
+        html += '<tr>';
+        cells.forEach(c => { html += `<td>${c}</td>`; });
+        html += '</tr>';
+      }
+      continue;
+    } else if (inTable) {
+      closeTable();
+    }
+
+    // Display Formula Block: $$...$$ or lines starting with $$
+    if (line.startsWith('$$') || (line.includes('$$') && line.endsWith('$$'))) {
+      closeList();
+      const formattedMath = formatLatexMath(line);
+      html += `<div class="ai-formula-box"><span class="ai-formula-icon">🧮</span><div class="ai-formula-expr">${formattedMath}</div></div>`;
+      continue;
+    }
+
+    const headerMatch = line.match(/^(#{1,6}|\d+\.)\s+(.+)$/);
+    if (headerMatch && (line.startsWith('#') || (headerMatch[1].match(/^\d+\.$/) && line.length > 5))) {
+      const rawTitle = headerMatch[2].trim();
+      const cleanTitle = rawTitle.replace(/^\d+\.\s*/, '').replace(/\*\*|__/g, '');
+      const icon = getSectionIcon(cleanTitle);
+
+      closeCard();
+      currentCardOpen = true;
+      html += `<div class="ai-section-card"><div class="ai-section-header"><span class="ai-section-icon">${icon}</span><h3 class="ai-section-title">${formatInline(rawTitle)}</h3></div><div class="ai-section-content">`;
+      continue;
+    }
+
+    const calloutMatch = line.match(/^(?:>\s*)?(Exam Trap|Key Formula|Exam Rule|If\/Then Rule|Pro-Tip|Scenario):\s*(.+)$/i);
+    if (calloutMatch) {
+      closeList();
+      const type = calloutMatch[1].toLowerCase();
+      let badgeClass = 'ai-callout-trap';
+      let badgeIcon = '🪤';
+      let badgeTitle = 'Exam Trap';
+
+      if (type.includes('formula')) {
+        badgeClass = 'ai-callout-formula';
+        badgeIcon = '🧮';
+        badgeTitle = 'Key Formula';
+      } else if (type.includes('rule')) {
+        badgeClass = 'ai-callout-rule';
+        badgeIcon = '🚦';
+        badgeTitle = 'Exam Rule';
+      } else if (type.includes('tip') || type.includes('scenario')) {
+        badgeClass = 'ai-callout-tip';
+        badgeIcon = '💡';
+        badgeTitle = type.includes('scenario') ? 'Scenario' : 'Pro Tip';
+      }
+
+      html += `<div class="ai-callout ${badgeClass}"><span class="ai-callout-badge">${badgeIcon} ${badgeTitle}</span><p>${formatInline(calloutMatch[2])}</p></div>`;
+      continue;
+    }
+
+    const ulMatch = line.match(/^[-*•]\s+(.+)$/);
+    const olMatch = line.match(/^(\d+)\.\s+(.+)$/);
+
+    if (ulMatch) {
+      if (!inList || listType !== 'ul') {
+        closeList();
+        inList = true;
+        listType = 'ul';
+        html += '<ul class="ai-list">';
+      }
+      html += `<li>${formatInline(ulMatch[1])}</li>`;
+      continue;
+    }
+
+    if (olMatch) {
+      if (!inList || listType !== 'ol') {
+        closeList();
+        inList = true;
+        listType = 'ol';
+        html += '<ol class="ai-list">';
+      }
+      html += `<li>${formatInline(olMatch[2])}</li>`;
+      continue;
+    }
+
+    closeList();
+    html += `<p>${formatInline(line)}</p>`;
+  }
+
+  closeCard();
+  return html;
+}
+
 export function buildAiResponseHtml(text, { cached, model, ts }, { calloutMarker, calloutLabel, disclaimer } = {}) {
   const metaLine = cached
     ? `🕓 Cached · asked ${formatRelativeTime(ts)} · ${escapeHtml(model || 'Gemini')}`
@@ -87,9 +291,9 @@ export function buildAiResponseHtml(text, { cached, model, ts }, { calloutMarker
   const callout = markerIndex === -1 ? '' : text.slice(markerIndex + calloutMarker.length).trim();
 
   let html = `<div class="ai-response-meta">${metaLine}</div>`;
-  html += `<div class="ai-response-text">${escapeHtml(mainText)}</div>`;
+  html += `<div class="ai-response-text">${renderAiMarkdown(mainText)}</div>`;
   if (callout) {
-    html += `<div class="ai-response-hook"><span class="ai-response-hook-label">${escapeHtml(calloutLabel || '')}</span>${escapeHtml(callout)}</div>`;
+    html += `<div class="ai-response-hook"><span class="ai-response-hook-label">${escapeHtml(calloutLabel || '')}</span>${renderAiMarkdown(callout)}</div>`;
   }
   html += `<div class="ai-response-disclaimer">${escapeHtml(disclaimer || `AI-generated — cross-check against the rationale above and your official ${getExamName()} materials.`)}</div>`;
   return html;
@@ -109,8 +313,8 @@ export function buildAiExplainPrompt(q) {
 
   const systemPrompt = `You are an expert ${getExamFullName()} exam tutor helping a student who already answered a practice ` +
     "question and has read the standard rationale. Do not just repeat what they've already seen -- add genuine " +
-    'depth. Be concise and direct, plain text with short paragraphs or a few dashes for lists (no markdown headers, ' +
-    'no asterisk bullets). Always end with a section titled exactly "How to remember this:" containing one short, ' +
+    'depth. Structure your reply clearly using Markdown formatting (`###` headers, **bold key terms**, bullet lists, ' +
+    'and "Exam Trap:" callouts). Always end with a section titled exactly "### How to remember this:" containing one short, ' +
     `memorable mnemonic, analogy, or memory hook the student can recall under exam pressure for this specific concept. ${TERMINOLOGY_GUARDRAIL}`;
 
   const userPrompt = `Domain ${q.domain}: ${domainTitle}
@@ -135,9 +339,9 @@ export function buildTrapAiExplainPrompt(trap) {
 
   const systemPrompt = `You are an expert ${getExamFullName()} exam tutor. The student is running a "trap statement" drill: ` +
     'a plausible-sounding wrong claim, followed by why it fails and the correct governing principle, both of which ' +
-    "they have already read. Do not just repeat what they've already seen -- add genuine depth. Be concise and " +
-    'direct, plain text with short paragraphs or a few dashes for lists (no markdown headers, no asterisk bullets). ' +
-    'Always end with a section titled exactly "How to remember this:" containing one short, memorable mnemonic, ' +
+    "they have already read. Do not just repeat what they've already seen -- add genuine depth. " +
+    'Structure your response using clean Markdown formatting (`###` headers, **bold key terms**, bullet points, ' +
+    'and an "Exam Trap:" callout). Always end with a section titled exactly "### How to remember this:" containing one short, memorable mnemonic, ' +
     `analogy, or memory hook for this specific trap. ${TERMINOLOGY_GUARDRAIL}`;
 
   const userPrompt = `Domain ${trap.domain}: ${domainTitle}${trap.knowledge_statement ? ' -- ' + trap.knowledge_statement : ''}
@@ -172,18 +376,15 @@ export function buildGuideAiExplainPrompt(title, bodyText, missExamples) {
       'this topic in general, and give a realistic scenario. Then, ALSO, separately and in addition to that -- ' +
       'not instead of it -- the student\'s own missed questions in this guide\'s territory are shown below (what ' +
       'they picked and why it was wrong): address each one individually, naming the specific distinction or trap ' +
-      'it falls into and how to recognize it next time. Covering both the general deep dive and every specific ' +
-      'miss below means this response should end up noticeably longer and more thorough than a standard one-' +
-      'scenario deep dive -- do not compress, summarize away, or skip either part to keep it short. Be concise ' +
-      'and direct within each part, plain text with short paragraphs or a few dashes for lists (no markdown ' +
-      'headers, no asterisk bullets). Always end with a section titled exactly "How to remember this:" ' +
-      'containing one short, memorable mnemonic, analogy, or memory hook for this topic.'
+      'it falls into and how to recognize it next time. Structure your output cleanly using Markdown section headers (`###`), ' +
+      '**bold key terms**, bullet lists, and "Exam Trap:" callouts. Always end with a section titled exactly ' +
+      '"### How to remember this:" containing one short, memorable mnemonic, analogy, or memory hook for this topic.'
     : `You are an expert ${getExamFullName()} exam tutor. The student is reading a concept guide reference ` +
       'page (shown in full below) and wants to go deeper. Do not just repeat the guide content back -- add genuine ' +
       `depth: connect it to related ${getExamName()} concepts, explain how exam questions commonly frame or trap around this ` +
-      'topic, and give one realistic scenario. Be concise and direct, plain text with short paragraphs or a few ' +
-      'dashes for lists (no markdown headers, no asterisk bullets). Always end with a section titled exactly "How to ' +
-      'remember this:" containing one short, memorable mnemonic, analogy, or memory hook for this topic.') + ` ${TERMINOLOGY_GUARDRAIL}`;
+      'topic, and give one realistic scenario. Structure your output cleanly using Markdown section headers (`###`), ' +
+      '**bold key terms**, bullet lists, and "Exam Trap:" callouts. Always end with a section titled exactly ' +
+      '"### How to remember this:" containing one short, memorable mnemonic, analogy, or memory hook for this topic.') + ` ${TERMINOLOGY_GUARDRAIL}`;
 
   const userPrompt = hasMisses
     ? `Concept guide: ${title}
@@ -222,16 +423,17 @@ export function buildGuideAiExhaustivePrompt(title, bodyText, missExamples) {
 
   const systemPrompt = `You are an expert ${getExamFullName()} exam master tutor providing an exhaustive, ultra-deep-dive breakdown on a concept guide. ` +
     'Do not hold back -- provide an in-depth, authoritative, highly structured master breakdown covering all technical, mathematical, and strategic aspects of this topic. ' +
-    'Organize your response cleanly with short plain text paragraphs and bullet lists (no markdown headers, no asterisk bullets). ' +
-    'You MUST include the following 6 core sections in your response:\n' +
-    '1. Acronym & Terminology Deconstruction: Expand all related acronyms, explain naming etymologies, and clarify subtle term distinctions that trap students.\n' +
-    '2. Mathematical Foundations & Worked Calculations: Show exact formulas (e.g. SLE, ALE, ROSI, RPO/RTO metrics, key lengths, probability) with a step-by-step numerical example.\n' +
-    '3. Intersecting Concepts & Dependencies: Detail upstream requirements (what must be in place first), downstream failure cascades (what breaks if this fails), and comparative trade-offs.\n' +
-    '4. Exam Traps & Mindset Distinctions: Explain how exam writers test this ("First" vs "Most Important", Managerial/Governance vs Technical operator lenses, and common distractor traps).\n' +
-    '5. Real-World Architecture & Framework Alignment: Walk through a practical enterprise scenario and map this concept to NIST SP 800-53, ISO 27001, GDPR, or PCI-DSS where applicable.\n' +
-    '6. Decision Flowchart / Exam Rules: Give bulleted "If/Then" decision rules for exam day.' +
-    (hasMisses ? ' Also, address each of the student\'s missed questions listed below individually.' : '') +
-    ` Always end with a section titled exactly "How to remember this:" containing one short, memorable mnemonic or analogy. ${TERMINOLOGY_GUARDRAIL}`;
+    'Organize your breakdown using Markdown headers (`###`), **bold key terms**, formula blocks, Markdown tables, and structured bullet lists. ' +
+    'For mathematical formulas, use standalone `$$` display formula lines (e.g. `$$\\text{SLE} = \\text{Asset Value} \\times \\text{Exposure Factor}$$`). Do not wrap standard currency figures in math dollar signs (write $10,000,000, not \\$10,000,000\\$). ' +
+    'You MUST structure your breakdown using the following 6 core Markdown section headers:\n' +
+    '### 1. Acronym & Terminology Deconstruction: Expand all related acronyms, explain naming etymologies, and clarify subtle term distinctions that trap students.\n' +
+    '### 2. Mathematical Foundations & Worked Calculations: Show exact formulas (e.g. SLE, ALE, ROSI, RPO/RTO metrics, key lengths, probability) with a step-by-step numerical example.\n' +
+    '### 3. Intersecting Concepts & Dependencies: Detail upstream requirements (what must be in place first), downstream failure cascades (what breaks if this fails), and comparative trade-offs.\n' +
+    '### 4. Exam Traps & Mindset Distinctions: Explain how exam writers test this ("First" vs "Most Important", Managerial/Governance vs Technical operator lenses, and common distractor traps).\n' +
+    '### 5. Real-World Architecture & Framework Alignment: Walk through a practical enterprise scenario and map this concept to NIST SP 800-53, ISO 27001, GDPR, or PCI-DSS where applicable.\n' +
+    '### 6. Decision Flowchart / Exam Rules: Give bulleted "If/Then" decision rules for exam day.\n' +
+    (hasMisses ? 'Include a section `### 7. Missed Question Traps Breakdown` addressing each of the student\'s missed questions listed below individually.\n' : '') +
+    ` Always end with a section titled exactly "### How to remember this:" containing one short, memorable mnemonic or analogy. ${TERMINOLOGY_GUARDRAIL}`;
 
   const userPrompt = `Concept guide: ${title}
 
@@ -372,10 +574,9 @@ export function buildAiTutorSystemPrompt(domainTitle) {
     ? ` The student has flagged this conversation as focused on Domain: ${domainTitle} -- lean on that context when it's relevant, but still answer directly if they drift to something else.`
     : '';
   return `You are an expert ${getExamFullName()} exam tutor having an open-ended conversation with a student who is stuck on ` +
-    'a specific topic. Answer what they actually asked -- don\'t pad with unrelated background. Be concise and ' +
-    'direct, plain text with short paragraphs or a few dashes for lists (no markdown headers, no asterisk ' +
-    'bullets). When you give a substantive explanation of a concept (not for short follow-up or clarifying ' +
-    'exchanges), end that reply with a section titled exactly "How to remember this:" containing one short, ' +
+    'a specific topic. Answer what they actually asked -- don\'t pad with unrelated background. Use clear Markdown ' +
+    'formatting (`###` headers, **bold terms**, bullet lists) for readability. When you give a substantive explanation ' +
+    'of a concept, end that reply with a section titled exactly "### How to remember this:" containing one short, ' +
     `memorable mnemonic, analogy, or memory hook the student can recall under exam pressure.${domainNote} ${TERMINOLOGY_GUARDRAIL}`;
 }
 

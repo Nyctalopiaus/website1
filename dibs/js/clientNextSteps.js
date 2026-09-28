@@ -19,7 +19,7 @@ export async function renderClientNextSteps() {
 
     const properties = state.allProperties || [];
     const favorites = properties.filter(property => property.favorite).length;
-    const possibilities = properties.filter(property => property.rating === 3).length;
+    const possibilities = properties.filter(property => !property.hidden && !property.favorite && Number(property.possibility) === 1).length;
     const reviewNeeded = properties.filter(property => !property.hidden && !property.favorite && property.rating === 0).length;
     let showings = [];
     try {

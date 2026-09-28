@@ -37,6 +37,16 @@ function looksLikeRealPhotoBody(string $body): bool {
         && ($imageInfo[0] * $imageInfo[1]) >= MIN_REAL_PHOTO_PIXEL_AREA;
 }
 
+// Matrix's search-results thumbnail is 296px wide (confirmed Sept 2026: 59 of 167 dev listings
+// still had a 296x1xx index-0 photo from before the index-0 re-fetch fix). A listing whose main
+// photo is that small isn't "done" — handleScrapeStatus() leaves it out of `completed` so the next
+// deep scrape re-walks its gallery, which re-fetches index 0 at full size.
+function isThumbnailSizedPhoto(string $relativeUrl): bool {
+    if (strpos($relativeUrl, 'media/') !== 0) return false;
+    $info = @getimagesize(MEDIA_DIR . '/' . basename($relativeUrl));
+    return $info !== false && $info[0] <= 320;
+}
+
 function hasUsableCachedPhoto(string $relativeUrl): bool {
     if (strpos($relativeUrl, 'media/') !== 0) return false;
     $path = MEDIA_DIR . '/' . basename($relativeUrl);
@@ -366,7 +376,11 @@ function handleList(PDO $pdo) {
                 COALESCE(u.user_notes, '') as user_notes,
                 COALESCE(u.realtor_notes, '') as realtor_notes,
                 COALESCE(u.tags_json, '[]') as tags_json,
-                COALESCE(u.shared_with_realtor, 0) as shared_with_realtor
+                COALESCE(u.shared_with_realtor, 0) as shared_with_realtor,
+                COALESCE(u.possibility, 0) as possibility,
+                u.mls_status_baseline, u.mls_status_seen,
+                COALESCE(u.mls_status_conflict, 0) as mls_status_conflict,
+                u.mls_notes_json, u.mls_note_outbox, u.mls_note_sent_at
             FROM properties p
             LEFT JOIN redfin_data r ON p.mls_id = r.mls_id
             LEFT JOIN user_metadata u ON p.mls_id = u.mls_id AND u.user_id = :user_id
@@ -382,6 +396,8 @@ function handleList(PDO $pdo) {
             $row['climate_risk_json'] = json_decode($row['climate_risk_json'] ?? '{}', true) ?: [];
             $row['school_ratings_json'] = json_decode($row['school_ratings_json'] ?? '[]', true) ?: [];
             $row['tags_json'] = json_decode($row['tags_json'] ?? '[]', true) ?: [];
+            $row['mls_notes'] = json_decode($row['mls_notes_json'] ?? '[]', true) ?: [];
+            unset($row['mls_notes_json']);
             $row['price'] = (float)$row['price'];
             $row['beds'] = (int)$row['beds'];
             $row['baths'] = (float)$row['baths'];
@@ -504,6 +520,140 @@ function handleUpdateGlobalPropertyVisibility(PDO $pdo) {
     }
 
     echo json_encode(['success' => true, 'mls_id' => $mlsId, 'is_hidden' => (bool)$isHidden]);
+}
+
+// ---------------------------------------------------------------------------------------------
+// MLS two-way sync (review status + notes)
+//
+// Matrix review buckets map 1:1 onto Dibs flags: favorite <-> favorite, dislike <-> hidden,
+// possibility <-> possibility, none <-> none of those. mls_status_baseline remembers the bucket
+// the MLS showed at the last reconciled sync, which is what makes this loop-proof:
+//   MLS changed, Dibs didn't  -> pull MLS into Dibs
+//   Dibs changed, MLS didn't  -> leave it; scrape_status hands it to the bookmarklet to push
+//   both changed, same value  -> converged (this is also how a successful push lands)
+//   both changed, different   -> conflict flag, nothing pushed until resolved in Dibs
+//   nothing changed           -> no-op
+// ---------------------------------------------------------------------------------------------
+
+const MLS_REVIEW_STATUSES = ['favorite', 'dislike', 'possibility', 'none'];
+
+function dibsStatusFromFlags(array $row): string {
+    // Same precedence as js/properties.js getPropertyReviewStatus().
+    if ((int)($row['hidden'] ?? 0) === 1) return 'dislike';
+    if ((int)($row['favorite'] ?? 0) === 1) return 'favorite';
+    if ((int)($row['possibility'] ?? 0) === 1) return 'possibility';
+    return 'none';
+}
+
+function flagsForMlsStatus(string $status): array {
+    return [
+        'favorite' => $status === 'favorite' ? 1 : 0,
+        'hidden' => $status === 'dislike' ? 1 : 0,
+        'possibility' => $status === 'possibility' ? 1 : 0,
+    ];
+}
+
+/** Pure decision function — see the table above. Returns ['action' => pull|push|converged|conflict|noop|adopt]. */
+function reconcileMlsStatus(?string $baseline, string $mlsNow, string $dibsNow): string {
+    if ($baseline === null || $baseline === '') return 'adopt';          // first sync after upgrade: MLS wins, as before
+    $mlsChanged = $mlsNow !== $baseline;
+    $dibsChanged = $dibsNow !== $baseline;
+    if (!$mlsChanged && !$dibsChanged) return 'noop';
+    if ($mlsChanged && !$dibsChanged) return 'pull';
+    if (!$mlsChanged && $dibsChanged) return 'push';
+    return $mlsNow === $dibsNow ? 'converged' : 'conflict';
+}
+
+/** Normalizes note text for duplicate detection: portal wraps notes in quotes and HTML-encodes them. */
+function normalizeMlsNoteText(string $text): string {
+    $t = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $t = preg_replace('/\s+/u', ' ', trim($t));
+    $t = preg_replace('/^["“](.*)["”]$/us', '$1', $t);
+    return function_exists('mb_strtolower') ? mb_strtolower(trim($t), 'UTF-8') : strtolower(trim($t));
+}
+
+function syncMlsUserState(PDO $pdo, int $userId, string $mlsId, array $item): void {
+    $stmt = $pdo->prepare('SELECT favorite, hidden, possibility, user_notes, mls_status_baseline, mls_note_outbox FROM user_metadata WHERE user_id = :u AND mls_id = :m');
+    $stmt->execute([':u' => $userId, ':m' => $mlsId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    $set = [];
+    $params = [':u' => $userId, ':m' => $mlsId];
+
+    // --- Review status -------------------------------------------------------------------
+    $mlsNow = (string)($item['matrix_review_status'] ?? '');
+    if (in_array($mlsNow, MLS_REVIEW_STATUSES, true)) {
+        $baseline = $row['mls_status_baseline'] ?? null;
+        $dibsNow = dibsStatusFromFlags($row);
+        $action = reconcileMlsStatus($baseline, $mlsNow, $dibsNow);
+        // Always remember what the MLS showed, so a conflict can be resolved from Dibs later.
+        $set[] = 'mls_status_seen = :seen';
+        $params[':seen'] = $mlsNow;
+
+        if ($action === 'adopt' || $action === 'pull') {
+            foreach (flagsForMlsStatus($mlsNow) as $col => $val) $set[] = "$col = $val";
+            $set[] = 'mls_status_baseline = :baseline';
+            $set[] = 'mls_status_conflict = 0';
+            $params[':baseline'] = $mlsNow;
+            if ($action === 'pull' && $mlsNow !== $dibsNow) {
+                logEvent($pdo, 'sync', 'info', "MLS status pulled into Dibs: $dibsNow -> $mlsNow", $mlsId);
+            }
+        } elseif ($action === 'converged' || $action === 'noop') {
+            $set[] = 'mls_status_baseline = :baseline';
+            $set[] = 'mls_status_conflict = 0';
+            $params[':baseline'] = $mlsNow;
+            if ($action === 'converged' && ($item['mls_status_push_result'] ?? '') === 'pushed') {
+                logEvent($pdo, 'sync', 'info', "Dibs status pushed to MLS: $baseline -> $mlsNow", $mlsId);
+            }
+        } elseif ($action === 'conflict') {
+            $set[] = 'mls_status_conflict = 1';
+            logEvent($pdo, 'sync', 'warn', "MLS status conflict: baseline $baseline, MLS now $mlsNow, Dibs now $dibsNow", $mlsId);
+        }
+        // 'push': leave everything; handleScrapeStatus() lists it for the bookmarklet.
+    }
+
+    // --- Notes ---------------------------------------------------------------------------
+    $rows = $item['portal_notes_rows'] ?? null;
+    if (is_array($rows)) {
+        $clean = [];
+        foreach ($rows as $r) {
+            $text = trim((string)($r['text'] ?? ''));
+            if ($text === '') continue;
+            $clean[] = [
+                'date' => substr(trim((string)($r['date'] ?? '')), 0, 20),
+                'author' => substr(trim((string)($r['author'] ?? '')), 0, 60),
+                'text' => function_exists('mb_substr') ? mb_substr($text, 0, 1000, 'UTF-8') : substr($text, 0, 1000),
+            ];
+        }
+        $set[] = 'mls_notes_json = :mls_notes_json';
+        $params[':mls_notes_json'] = json_encode($clean, JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    // Only seed the Dibs note from the MLS when Dibs has none — never overwrite a Dibs edit.
+    $portalNotes = trim((string)($item['portal_notes'] ?? ''));
+    if ($portalNotes !== '' && trim((string)($row['user_notes'] ?? '')) === '') {
+        $set[] = 'user_notes = :user_notes';
+        $params[':user_notes'] = $portalNotes;
+    }
+
+    // Outbox result reported by the bookmarklet. Only clear the outbox when the text it acted on
+    // is still what's queued (the user may have changed/cancelled it mid-scrape).
+    $noteResult = (string)($item['mls_note_result'] ?? '');
+    $outbox = (string)($row['mls_note_outbox'] ?? '');
+    if (in_array($noteResult, ['sent', 'already_present'], true) && $outbox !== ''
+        && normalizeMlsNoteText((string)($item['mls_note_text'] ?? '')) === normalizeMlsNoteText($outbox)) {
+        $set[] = 'mls_note_outbox = NULL';
+        if ($noteResult === 'sent') $set[] = 'mls_note_sent_at = CURRENT_TIMESTAMP';
+        logEvent($pdo, 'sync', 'info', $noteResult === 'sent' ? 'Dibs note posted to MLS' : 'Queued note already on MLS; outbox cleared', $mlsId);
+        recordPropertyActivity($pdo, $mlsId, 'mls_note_sent', 'shared', $noteResult === 'sent' ? 'Sent a note to the MLS portal.' : 'Queued MLS note was already on the portal.', [], $userId);
+    } elseif ($noteResult === 'failed') {
+        logEvent($pdo, 'sync', 'warn', 'MLS note post failed; left in outbox', $mlsId, ['text' => $item['mls_note_text'] ?? '']);
+    }
+
+    if ($set) {
+        $set[] = 'updated_at = CURRENT_TIMESTAMP';
+        $pdo->prepare('UPDATE user_metadata SET ' . implode(', ', $set) . ' WHERE user_id = :u AND mls_id = :m')->execute($params);
+    }
 }
 
 function handleSync(PDO $pdo) {
@@ -667,7 +817,10 @@ function handleSync(PDO $pdo) {
             if (is_array($decoded)) $existingRawMlsData = $decoded;
         }
         $sharedMlsData = array_merge($existingRawMlsData, $item);
-        unset($sharedMlsData['matrix_review_status'], $sharedMlsData['portal_notes']);
+        unset(
+            $sharedMlsData['matrix_review_status'], $sharedMlsData['portal_notes'], $sharedMlsData['portal_notes_rows'],
+            $sharedMlsData['mls_note_result'], $sharedMlsData['mls_note_text'], $sharedMlsData['mls_status_push_result']
+        );
 
         // Upsert MLS property details if present
         if (isset($item['address']) || isset($item['price'])) {
@@ -770,40 +923,13 @@ function handleSync(PDO $pdo) {
             ]);
         }
 
-        // Initialize user metadata record for target user and sync matrix portal review status/notes
-        $matrixReview = $item['matrix_review_status'] ?? 'none';
-        $portalNotes = trim($item['portal_notes'] ?? '');
+        $matrixKey = trim((string)($item['matrix_key'] ?? ''));
+        if ($matrixKey !== '' && preg_match('/^\d{4,20}$/', $matrixKey)) {
+            $pdo->prepare('UPDATE properties SET matrix_key = :k WHERE mls_id = :mls_id')->execute([':k' => $matrixKey, ':mls_id' => $mlsId]);
+        }
 
         $stmtUserMetaInit->execute([':user_id' => $targetUserId, ':mls_id' => $mlsId]);
-
-        $updateParts = [];
-        $updateParams = [':user_id' => $targetUserId, ':mls_id' => $mlsId];
-
-        if ($matrixReview === 'dislike') {
-            $updateParts[] = "hidden = 1";
-            $updateParts[] = "favorite = 0";
-        } else if ($matrixReview === 'favorite') {
-            $updateParts[] = "favorite = 1";
-            $updateParts[] = "hidden = 0";
-        } else if ($matrixReview === 'possibility') {
-            $updateParts[] = "rating = 3";
-            $updateParts[] = "hidden = 0";
-            $updateParts[] = "favorite = 0";
-        } else if ($matrixReview === 'none') {
-            $updateParts[] = "favorite = 0";
-            $updateParts[] = "hidden = 0";
-        }
-
-        if ($portalNotes !== '') {
-            $updateParts[] = "user_notes = :user_notes";
-            $updateParams[':user_notes'] = $portalNotes;
-        }
-
-        if (!empty($updateParts)) {
-            $updateParts[] = "updated_at = CURRENT_TIMESTAMP";
-            $sqlUser = "UPDATE user_metadata SET " . implode(', ', $updateParts) . " WHERE user_id = :user_id AND mls_id = :mls_id";
-            $pdo->prepare($sqlUser)->execute($updateParams);
-        }
+        syncMlsUserState($pdo, (int)$targetUserId, $mlsId, $item);
     }
 
     // Cache listing photos locally (see cacheListingImagesMulti()). Each item may carry a full
@@ -943,11 +1069,55 @@ function handleScrapeStatus(PDO $pdo) {
         $stmt = $pdo->query("SELECT mls_id, main_image_url FROM properties WHERE full_scrape_completed_at IS NOT NULL");
         $completed = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            if (hasUsableCachedPhoto((string)($row['main_image_url'] ?? ''))) {
+            $main = (string)($row['main_image_url'] ?? '');
+            if (hasUsableCachedPhoto($main) && !isThumbnailSizedPhoto($main)) {
                 $completed[] = $row['mls_id'];
             }
         }
-        echo json_encode(['success' => true, 'completed' => array_values($completed)]);
+        // Pending MLS writes for the token's user (requireScrapeToken() already ran in api.php).
+        // pending_status: Dibs changed since the baseline and there's no conflict. The
+        // bookmarklet only pushes if the MLS still shows `baseline` when it gets there.
+        // pending_notes: "Send to MLS" outbox. Both are keyed by mls_id.
+        $pendingStatus = [];
+        $pendingNotes = [];
+        // Target the same account handleSync() writes to (the bookmarklet's SCOUT_USER), not
+        // just the token's owner — an admin-generated bookmarklet carries the admin's token but
+        // syncs into the client's account. Only the token owner themselves or an admin may
+        // read another account's pending writes; anyone else gets their own.
+        $tokenUserId = (int)($GLOBALS['scrape_token_user_id'] ?? 0);
+        $requestedUsername = trim((string)($_GET['username'] ?? ''));
+        if ($tokenUserId > 0 && $requestedUsername !== '') {
+            $who = $pdo->prepare('SELECT id FROM users WHERE username = :un LIMIT 1');
+            $who->execute([':un' => $requestedUsername]);
+            $requestedId = (int)($who->fetchColumn() ?: 0);
+            if ($requestedId > 0 && $requestedId !== $tokenUserId) {
+                $adm = $pdo->prepare("SELECT (COALESCE(is_admin, 0) = 1 OR role = 'admin') FROM users WHERE id = :id");
+                $adm->execute([':id' => $tokenUserId]);
+                if ((int)$adm->fetchColumn() === 1) $tokenUserId = $requestedId;
+            }
+        }
+        if ($tokenUserId > 0) {
+            $q = $pdo->prepare("SELECT m.mls_id, m.favorite, m.hidden, m.possibility, m.mls_status_baseline, m.mls_status_conflict, m.mls_note_outbox, p.matrix_key
+                                FROM user_metadata m LEFT JOIN properties p ON p.mls_id = m.mls_id
+                                WHERE m.user_id = :u AND (m.mls_status_baseline IS NOT NULL OR (m.mls_note_outbox IS NOT NULL AND m.mls_note_outbox != ''))");
+            $q->execute([':u' => $tokenUserId]);
+            while ($r = $q->fetch(PDO::FETCH_ASSOC)) {
+                $want = dibsStatusFromFlags($r);
+                $base = $r['mls_status_baseline'];
+                if ($base !== null && $base !== '' && (int)$r['mls_status_conflict'] === 0 && $want !== $base) {
+                    $pendingStatus[$r['mls_id']] = ['matrix_key' => $r['matrix_key'], 'want' => $want, 'baseline' => $base];
+                }
+                if (trim((string)$r['mls_note_outbox']) !== '') {
+                    $pendingNotes[$r['mls_id']] = ['matrix_key' => $r['matrix_key'], 'text' => (string)$r['mls_note_outbox']];
+                }
+            }
+        }
+        echo json_encode([
+            'success' => true,
+            'completed' => array_values($completed),
+            'pending_status' => (object)$pendingStatus,
+            'pending_notes' => (object)$pendingNotes,
+        ]);
     } catch (Throwable $t) {
         http_response_code(500);
         logEvent($pdo, 'system', 'error', 'handleScrapeStatus failed: ' . $t->getMessage());
@@ -1051,6 +1221,46 @@ function handleUpdateUserData(PDO $pdo) {
     if (isset($data['shared_with_realtor'])) {
         $fields[] = "shared_with_realtor = :shared_with_realtor";
         $params[':shared_with_realtor'] = (int)$data['shared_with_realtor'];
+    }
+
+    // MLS review buckets are mutually exclusive, so keep the Dibs flags that map onto them
+    // exclusive too (dibsStatusFromFlags() would otherwise silently pick one by precedence).
+    if (isset($data['possibility'])) {
+        $fields[] = "possibility = :possibility";
+        $params[':possibility'] = (int)$data['possibility'] ? 1 : 0;
+        if ((int)$data['possibility'] && !isset($data['favorite'])) $fields[] = "favorite = 0";
+        if ((int)$data['possibility'] && !isset($data['hidden'])) $fields[] = "hidden = 0";
+    } elseif ((!empty($data['favorite']) || !empty($data['hidden']))) {
+        $fields[] = "possibility = 0";
+    }
+
+    // "Send to MLS" outbox. Empty string / null cancels. Portal notes are capped at 500 chars
+    // and can never be edited or deleted once posted, so validate here rather than on the portal.
+    if (array_key_exists('mls_note_outbox', $data)) {
+        $outbox = trim((string)($data['mls_note_outbox'] ?? ''));
+        if ((function_exists('mb_strlen') ? mb_strlen($outbox, 'UTF-8') : preg_match_all('/./us', $outbox)) > 500) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'MLS notes are limited to 500 characters.']);
+            return;
+        }
+        $fields[] = "mls_note_outbox = :mls_note_outbox";
+        $params[':mls_note_outbox'] = $outbox === '' ? null : $outbox;
+    }
+
+    // Resolve an MLS status conflict. keep_dibs: treat the MLS's current bucket as the new
+    // baseline so the next sync pushes the Dibs value. take_mls: adopt the MLS bucket.
+    if (!empty($data['mls_conflict_resolve']) && in_array($data['mls_conflict_resolve'], ['keep_dibs', 'take_mls'], true)) {
+        $seenStmt = $pdo->prepare('SELECT mls_status_seen FROM user_metadata WHERE user_id = :user_id AND mls_id = :mls_id');
+        $seenStmt->execute([':user_id' => $userId, ':mls_id' => $mlsId]);
+        $seen = (string)($seenStmt->fetchColumn() ?: '');
+        if (in_array($seen, MLS_REVIEW_STATUSES, true)) {
+            $fields[] = "mls_status_baseline = :mls_seen";
+            $fields[] = "mls_status_conflict = 0";
+            $params[':mls_seen'] = $seen;
+            if ($data['mls_conflict_resolve'] === 'take_mls') {
+                foreach (flagsForMlsStatus($seen) as $col => $val) $fields[] = "$col = $val";
+            }
+        }
     }
 
     if (!empty($fields)) {

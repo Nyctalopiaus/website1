@@ -444,12 +444,14 @@ window.deleteCustomReactionChip = function(event, chipText) {
                         <textarea id="modal-user-notes" class="input-text" style="min-height:90px;" placeholder="Add private notes, pros/cons, showing feedback...">${escapeHtml(p.user_notes || '')}</textarea>
                     </div>
 
+                    ${renderMlsSyncPanel(p, matrixRev)}
+
                     ${state.currentUserProfile?.role === 'client' ? `
                         <div style="border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:0.85rem; background:var(--bg-panel);">
                             <h3 style="font-size:0.95rem; font-weight:700; color:var(--text-primary);"><i data-lucide="circle-check"></i> My Decision</h3>
                             <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.65rem;">
                                 <button type="button" class="btn ${p.favorite ? 'btn-gold' : 'btn-secondary'}" onclick="setPropertyDecision('${p.mls_id}', 'love')"><i data-lucide="heart"></i> Love</button>
-                                <button type="button" class="btn ${p.rating === 3 ? 'btn-primary' : 'btn-secondary'}" onclick="setPropertyDecision('${p.mls_id}', 'consider')"><i data-lucide="circle-help"></i> Consider</button>
+                                <button type="button" class="btn ${matrixRev === 'possibility' ? 'btn-primary' : 'btn-secondary'}" onclick="setPropertyDecision('${p.mls_id}', 'consider')"><i data-lucide="circle-help"></i> Consider</button>
                                 <button type="button" class="btn ${p.hidden ? 'btn-secondary' : 'btn-secondary'}" style="${p.hidden ? 'color:var(--accent-red); border-color:var(--accent-red);' : ''}" onclick="setPropertyDecision('${p.mls_id}', 'pass')"><i data-lucide="ban"></i> Pass</button>
                             </div>
                         </div>
@@ -550,25 +552,145 @@ window.deleteCustomReactionChip = function(event, chipText) {
         openDetailModal(mlsId);
     };
 
+    // ---- MLS portal two-way sync panel -------------------------------------------------------
+    // Status: pushed automatically on the next scrape (with a confirm prompt on the portal) when
+    // only Dibs changed. Notes: append-only on the portal, so they're only sent via the explicit
+    // "Queue for MLS" outbox below — never derived from the personal notes field automatically.
+    const MLS_STATUS_LABELS = { favorite: 'Favorite', possibility: 'Possibility', dislike: 'Disliked', none: 'No status' };
+
+    function renderMlsSyncPanel(p, dibsStatus) {
+        const baseline = p.mls_status_baseline || null;
+        const seen = p.mls_status_seen || baseline;
+        const conflict = Number(p.mls_status_conflict) === 1;
+        let statusLine;
+        if (!baseline) {
+            statusLine = `<span style="color:var(--text-muted);">Not synced with the MLS yet — runs on the next scrape.</span>`;
+        } else if (conflict) {
+            statusLine = `
+                <div style="border:1px solid var(--accent-red); border-radius:var(--radius-sm); padding:0.6rem; color:var(--text-primary);">
+                    <strong><i data-lucide="triangle-alert"></i> Conflict:</strong> both sides changed since the last sync.
+                    Dibs says <strong>${MLS_STATUS_LABELS[dibsStatus]}</strong>, MLS says <strong>${MLS_STATUS_LABELS[seen] || seen}</strong>. Nothing will be pushed until you pick one.
+                    <div style="display:flex; gap:0.5rem; margin-top:0.5rem; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-primary" onclick="resolveMlsConflict('${p.mls_id}', 'keep_dibs')">Keep Dibs (${MLS_STATUS_LABELS[dibsStatus]})</button>
+                        <button type="button" class="btn btn-secondary" onclick="resolveMlsConflict('${p.mls_id}', 'take_mls')">Use MLS (${MLS_STATUS_LABELS[seen] || seen})</button>
+                    </div>
+                </div>`;
+        } else if (dibsStatus !== baseline) {
+            statusLine = `<span><i data-lucide="upload"></i> MLS will change <strong>${MLS_STATUS_LABELS[baseline]}</strong> → <strong>${MLS_STATUS_LABELS[dibsStatus]}</strong> on the next scrape (you'll confirm it on the portal).</span>`;
+        } else {
+            statusLine = `<span style="color:var(--text-muted);"><i data-lucide="check"></i> In sync with MLS (${MLS_STATUS_LABELS[baseline]}).</span>`;
+        }
+
+        const notes = Array.isArray(p.mls_notes) ? p.mls_notes : [];
+        const notesHtml = notes.length
+            ? notes.map(n => `<div style="padding:0.4rem 0; border-bottom:1px solid var(--border-color);"><span style="color:var(--text-muted); font-size:0.8rem;">${escapeHtml(n.date || '')} · ${escapeHtml(n.author || '')}</span><div>${escapeHtml(n.text || '')}</div></div>`).join('')
+            : `<div style="color:var(--text-muted);">No notes on the MLS portal yet.</div>`;
+
+        const outbox = (p.mls_note_outbox || '').trim();
+        const outboxHtml = outbox
+            ? `<div style="border:1px dashed var(--border-color); border-radius:var(--radius-sm); padding:0.6rem;">
+                   <div style="font-size:0.85rem; color:var(--text-muted);"><i data-lucide="clock"></i> Queued — posts on the next scrape after you confirm it on the portal:</div>
+                   <div style="margin:0.35rem 0;">"${escapeHtml(outbox)}"</div>
+                   <button type="button" class="btn btn-secondary" onclick="setMlsNoteOutbox('${p.mls_id}', '')">Cancel</button>
+               </div>`
+            : `<textarea id="modal-mls-note" class="input-text" maxlength="500" style="min-height:60px;" placeholder="Short note for your realtor, e.g. Not extra wide garage" oninput="document.getElementById('modal-mls-note-count').textContent = this.value.length + ' / 500'"></textarea>
+               <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                   <button type="button" class="btn btn-primary" onclick="queueMlsNoteFromModal('${p.mls_id}')"><i data-lucide="send"></i> Queue for MLS</button>
+                   <span id="modal-mls-note-count" style="font-size:0.8rem; color:var(--text-muted);">0 / 500</span>
+                   <span style="font-size:0.8rem; color:var(--text-muted);">Portal notes are permanent — they can't be edited or deleted.</span>
+               </div>`;
+
+        return `
+            <div style="border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:0.85rem; background:var(--bg-panel); display:flex; flex-direction:column; gap:0.6rem;">
+                <h3 style="font-size:0.95rem; font-weight:700; color:var(--text-primary);"><i data-lucide="refresh-cw"></i> MLS Portal Sync</h3>
+                <div style="font-size:0.85rem;">${statusLine}</div>
+                <div style="font-size:0.85rem;">${notesHtml}</div>
+                ${outboxHtml}
+            </div>`;
+    }
+
+    function postMlsUpdate(mlsId, body, successMsg) {
+        return apiFetch(CONFIG.API_URL + '?action=update_user_data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mls_id: mlsId, ...body })
+        }).then(data => {
+            if (!data?.success) throw new Error(data?.error || 'Unable to save');
+            showToast(successMsg, 'success');
+            return data;
+        }).catch(error => { showToast(error.message || 'Unable to save', 'error'); throw error; });
+    }
+
+    window.setMlsNoteOutbox = function(mlsId, text) {
+        const p = state.allProperties.find(item => item.mls_id === mlsId);
+        postMlsUpdate(mlsId, { mls_note_outbox: text }, text ? 'Queued for the MLS' : 'MLS note cancelled').then(() => {
+            if (p) p.mls_note_outbox = text || null;
+            openDetailModal(mlsId);
+        }).catch(() => {});
+    };
+
+    window.queueMlsNoteFromModal = function(mlsId) {
+        const el = document.getElementById('modal-mls-note');
+        const text = (el?.value || '').trim();
+        if (!text) { showToast('Type a note first', 'error'); return; }
+        if (text.length > 500) { showToast('MLS notes are limited to 500 characters', 'error'); return; }
+        const p = state.allProperties.find(item => item.mls_id === mlsId);
+        const norm = s => String(s || '').replace(/\s+/g, ' ').trim().replace(/^["“](.*)["”]$/s, '$1').trim().toLowerCase();
+        if ((p?.mls_notes || []).some(n => norm(n.text) === norm(text))) {
+            showToast('That note is already on the MLS portal', 'error');
+            return;
+        }
+        window.setMlsNoteOutbox(mlsId, text);
+    };
+
+    window.resolveMlsConflict = function(mlsId, choice) {
+        const p = state.allProperties.find(item => item.mls_id === mlsId);
+        postMlsUpdate(mlsId, { mls_conflict_resolve: choice }, choice === 'keep_dibs' ? 'Dibs status will be pushed on the next scrape' : 'Using the MLS status').then(() => {
+            if (p) {
+                // Mirror what the server just did (handleUpdateUserData, mls_conflict_resolve).
+                const seen = p.mls_status_seen;
+                p.mls_status_baseline = seen;
+                p.mls_status_conflict = 0;
+                if (choice === 'take_mls') {
+                    p.favorite = seen === 'favorite' ? 1 : 0;
+                    p.hidden = seen === 'dislike' ? 1 : 0;
+                    p.possibility = seen === 'possibility' ? 1 : 0;
+                }
+            }
+            applyFiltersAndRender();
+            renderClientNextSteps();
+            openDetailModal(mlsId);
+        }).catch(() => {});
+    };
+
     window.setPropertyDecision = function(mlsId, decision) {
         const p = state.allProperties.find(item => item.mls_id === mlsId);
         if (!p) return;
         const decisions = {
-            love: { favorite: 1, hidden: 0, rating: 5, message: 'Saved as a favorite' },
-            consider: { favorite: 0, hidden: 0, rating: 3, message: 'Marked as under consideration' },
-            pass: { favorite: 0, hidden: 1, rating: 0, message: 'Marked as passed' }
+            // These three map 1:1 onto the MLS portal buckets (Favorite / Possibility / Dislike)
+            // and are pushed there on the next scrape. Clicking the active one clears it (-> none).
+            love: { favorite: 1, hidden: 0, possibility: 0, rating: 5, message: 'Saved as a favorite' },
+            consider: { favorite: 0, hidden: 0, possibility: 1, rating: 3, message: 'Marked as a possibility' },
+            pass: { favorite: 0, hidden: 1, possibility: 0, rating: 0, message: 'Marked as passed' }
         };
-        const update = decisions[decision];
+        let update = decisions[decision];
         if (!update) return;
+        const isActive = (decision === 'love' && p.favorite && !p.hidden)
+            || (decision === 'consider' && getPropertyReviewStatus(p) === 'possibility')
+            || (decision === 'pass' && p.hidden);
+        if (isActive) {
+            update = { favorite: 0, hidden: 0, possibility: 0, rating: p.rating, message: 'Decision cleared' };
+        }
 
         apiFetch(CONFIG.API_URL + '?action=update_user_data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mls_id: mlsId, favorite: update.favorite, hidden: update.hidden, rating: update.rating })
+            body: JSON.stringify({ mls_id: mlsId, favorite: update.favorite, hidden: update.hidden, possibility: update.possibility, rating: update.rating })
         }).then(data => {
             if (!data?.success) throw new Error(data?.error || 'Unable to save decision');
             p.favorite = update.favorite;
             p.hidden = update.hidden;
+            p.possibility = update.possibility;
             p.rating = update.rating;
             applyFiltersAndRender();
             renderClientNextSteps();

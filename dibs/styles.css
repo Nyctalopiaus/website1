@@ -162,6 +162,12 @@ body {
 }
 
 /* Header Navbar */
+.navbar, .user-dashboard-top-grid, .top-filter-container, .main-content, #properties-grid, .stats-bar {
+    max-width: 1850px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .navbar {
     display: flex;
     align-items: center;

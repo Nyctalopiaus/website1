@@ -59,6 +59,12 @@ export function updateDashboardStats() {
   const passedCount = attempts.filter(a => a.score >= dashPassingThreshold).length;
   if (statPassedEl) statPassedEl.textContent = passedCount;
 
+  const streak = getStudyStreak();
+  const previewEl = document.getElementById('dashboard-preview-text');
+  if (previewEl) {
+    previewEl.textContent = `Answered: ${perfData.answered} | Accuracy: ${accuracy}% | Streak: 🔥 ${streak}d`;
+  }
+
   let totalDomainCoverage = 0;
   const domainList = getActiveExamConfig().domains || [];
   domainList.forEach(d => {

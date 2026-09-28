@@ -299,7 +299,19 @@ function handleCreateScrapeToken(PDO $pdo) {
     $stmt = $pdo->prepare("INSERT INTO scrape_tokens (token_hash, user_id, expires_at) VALUES (:token_hash, :user_id, datetime('now', '+30 days'))");
     $stmt->execute([':token_hash' => $tokenHash, ':user_id' => $userId]);
 
-    echo json_encode(['success' => true, 'token' => $token, 'expires_in_days' => 30]);
+    $exp = $pdo->prepare('SELECT expires_at FROM scrape_tokens WHERE token_hash = :h');
+    $exp->execute([':h' => $tokenHash]);
+    echo json_encode(['success' => true, 'token' => $token, 'expires_in_days' => 30, 'expires_at' => $exp->fetchColumn() ?: null]);
+}
+
+// Read-only: when does this account's current scrape token expire? Never creates or revokes a
+// token — regenerating (which revokes the old one and breaks any running scrape / saved
+// bookmarklet) only happens from an explicit "Generate new" click. Times are UTC.
+function handleScrapeTokenStatus(PDO $pdo) {
+    $stmt = $pdo->prepare('SELECT expires_at FROM scrape_tokens WHERE user_id = :user_id AND expires_at > CURRENT_TIMESTAMP ORDER BY expires_at DESC LIMIT 1');
+    $stmt->execute([':user_id' => (int)$_SESSION['user_id']]);
+    $expiresAt = $stmt->fetchColumn();
+    echo json_encode(['success' => true, 'has_token' => $expiresAt !== false, 'expires_at' => $expiresAt ?: null]);
 }
 
 function handleListUsers(PDO $pdo) {

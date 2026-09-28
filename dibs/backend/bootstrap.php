@@ -503,6 +503,22 @@ try {
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_user_preferences_id ON user_preferences(user_id)", 'idx_user_preferences_id');
     runMigration($pdo, "ALTER TABLE user_preferences ADD COLUMN custom_reaction_chips_json TEXT DEFAULT '[]'", 'user_preferences.custom_reaction_chips_json');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_saved_filters_user_id ON saved_filters(user_id)", 'idx_saved_filters_user_id');
+
+    // MLS two-way sync. matrix_key = Matrix's internal listing key (the portal's write endpoints
+    // take this, not the MLS number). Per user+listing: possibility = Dibs-side "Possibility"
+    // bucket flag; mls_status_baseline = the MLS bucket seen at the last reconciled sync (lets
+    // handleSync tell which side changed — see reconcileMlsStatus()); mls_status_conflict = both
+    // sides changed, nothing is pushed until resolved; mls_notes_json = note rows last read from
+    // the portal; mls_note_outbox = a note queued by "Send to MLS" (append-only on the portal, so
+    // only ever sent deliberately, once).
+    runMigration($pdo, "ALTER TABLE properties ADD COLUMN matrix_key TEXT", 'properties.matrix_key');
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN possibility INTEGER DEFAULT 0", 'user_metadata.possibility');
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN mls_status_baseline TEXT DEFAULT NULL", 'user_metadata.mls_status_baseline');
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN mls_status_conflict INTEGER DEFAULT 0", 'user_metadata.mls_status_conflict');
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN mls_status_seen TEXT DEFAULT NULL", 'user_metadata.mls_status_seen');
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN mls_notes_json TEXT DEFAULT NULL", 'user_metadata.mls_notes_json');
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN mls_note_outbox TEXT DEFAULT NULL", 'user_metadata.mls_note_outbox');
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN mls_note_sent_at DATETIME DEFAULT NULL", 'user_metadata.mls_note_sent_at');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_saved_filters_target ON saved_filters(target_user_id)", 'idx_saved_filters_target');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_users_realtor ON users(realtor_id)", 'idx_users_realtor');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_login_attempts_time ON login_attempts(timestamp)", 'idx_login_attempts_time');

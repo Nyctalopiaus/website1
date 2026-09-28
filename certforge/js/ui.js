@@ -252,6 +252,55 @@ export function initUiModals() {
     syncHeaderMenuDot();
     new MutationObserver(syncHeaderMenuDot).observe(aiStatusDotSourceEl, { attributes: true, attributeFilter: ['hidden'] });
   }
+
+  initDashboardCollapseUi();
+}
+
+function initDashboardCollapseUi() {
+  const header = document.getElementById('dashboard-summary-header');
+  const body = document.getElementById('dashboard-summary-body');
+  const btnToggle = document.getElementById('btn-toggle-dashboard');
+  const label = document.getElementById('dashboard-toggle-label');
+  const chevron = document.getElementById('chevron-dashboard');
+
+  if (header && body) {
+    const STORAGE_KEY = 'certforge_dashboard_collapsed_v1';
+    const savedCollapsed = localStorage.getItem(STORAGE_KEY);
+
+    // Apply saved user preference (defaults to expanded if not set)
+    if (savedCollapsed === 'true') {
+      body.classList.add('hidden');
+      if (label) label.textContent = 'Expand Stats & Mastery';
+      if (chevron) chevron.classList.add('rotate-180');
+      if (btnToggle) btnToggle.setAttribute('aria-expanded', 'false');
+    } else {
+      body.classList.remove('hidden');
+      if (label) label.textContent = 'Collapse Stats & Mastery';
+      if (chevron) chevron.classList.remove('rotate-180');
+      if (btnToggle) btnToggle.setAttribute('aria-expanded', 'true');
+    }
+
+    const toggle = (e) => {
+      if (e) e.stopPropagation();
+      const isCurrentlyHidden = body.classList.contains('hidden');
+      if (isCurrentlyHidden) {
+        body.classList.remove('hidden');
+        if (label) label.textContent = 'Collapse Stats & Mastery';
+        if (chevron) chevron.classList.remove('rotate-180');
+        if (btnToggle) btnToggle.setAttribute('aria-expanded', 'true');
+        localStorage.setItem(STORAGE_KEY, 'false');
+      } else {
+        body.classList.add('hidden');
+        if (label) label.textContent = 'Expand Stats & Mastery';
+        if (chevron) chevron.classList.add('rotate-180');
+        if (btnToggle) btnToggle.setAttribute('aria-expanded', 'false');
+        localStorage.setItem(STORAGE_KEY, 'true');
+      }
+    };
+
+    header.addEventListener('click', toggle);
+    if (btnToggle) btnToggle.addEventListener('click', (e) => { e.stopPropagation(); toggle(e); });
+  }
 }
 
 export function initAiSettingsUi() {

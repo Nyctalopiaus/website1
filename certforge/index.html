@@ -98,45 +98,64 @@
   </p>
 
   <main class="container">
-    <!-- Section 1: Dashboard and Stats -->
-    <section class="dashboard-panel">
-      <p class="fresh-start-banner" id="fresh-start-banner" hidden>No attempts yet — this board fills in as you go. Start with <strong>Flashcards</strong> or jump into a <strong>Practice Quiz</strong> below.</p>
-      <div class="stats-overview">
-        <div class="stat-card stat-card--info" title="Local Browser Storage -- see the intro line above for what that means">
-          <span class="stat-label">Total Answered</span>
-          <span class="stat-value font-mono" id="stat-answered">0</span>
+    <!-- Section 1: Dashboard and Stats (Collapsible Summary Header) -->
+    <div id="dashboard-summary-wrapper" class="dashboard-summary-wrapper">
+      <div id="dashboard-summary-header" class="dashboard-summary-header" title="Click to expand/collapse study stats & domain mastery">
+        <div class="summary-header-left">
+          <span class="summary-badge-icon">⚡</span>
+          <span class="summary-title">Exam Telemetry & Domain Mastery:</span>
+          <span id="dashboard-preview-text" class="dashboard-preview-text font-mono">
+            Answered: 0 | Accuracy: 0% | Readiness: 0% | Streak: 🔥 0d
+          </span>
         </div>
-        <div class="stat-card stat-card--success">
-          <span class="stat-label">Overall Accuracy</span>
-          <span class="stat-value font-mono" id="stat-accuracy">0%</span>
-        </div>
-        <div class="stat-card stat-card--readiness" title="Composite Exam Readiness Index based on domain mastery and quiz accuracy">
-          <span class="stat-label">Exam Readiness</span>
-          <span class="stat-value font-mono" id="stat-readiness">0%</span>
-        </div>
-        <div class="stat-card stat-card--streak" title="Consecutive days studied">
-          <span class="stat-label">Study Streak</span>
-          <span class="stat-value font-mono" id="stat-streak">🔥 0d</span>
-        </div>
-        <div class="stat-card stat-card--warn">
-          <span class="stat-label">Flagged Items</span>
-          <span class="stat-value font-mono" id="stat-flagged">0</span>
-        </div>
-        <div class="stat-card stat-card--success">
-          <span class="stat-label">Mock Exams Passed</span>
-          <span class="stat-value font-mono" id="stat-passed">0</span>
-        </div>
+        <button type="button" id="btn-toggle-dashboard" class="btn-toggle-dashboard" aria-expanded="true">
+          <span id="dashboard-toggle-label">Collapse Stats & Mastery</span>
+          <svg id="chevron-dashboard" width="14" height="14" class="chevron-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
       </div>
 
-      <!-- Domain progress circles -->
-      <div class="domain-mastery">
-        <h3>Syllabus Domain Mastery</h3>
-        <div class="domains-grid" id="domains-grid">
-          <!-- Populated dynamically by renderDomainMasteryGrid() from the active exam's domain list -->
-        </div>
-      </div>
+      <div id="dashboard-summary-body" class="dashboard-summary-body">
+        <section class="dashboard-panel">
+          <p class="fresh-start-banner" id="fresh-start-banner" hidden>No attempts yet — this board fills in as you go. Start with <strong>Flashcards</strong> or jump into a <strong>Practice Quiz</strong> below.</p>
+          <div class="stats-overview">
+            <div class="stat-card stat-card--info" title="Local Browser Storage -- see the intro line above for what that means">
+              <span class="stat-label">Total Answered</span>
+              <span class="stat-value font-mono" id="stat-answered">0</span>
+            </div>
+            <div class="stat-card stat-card--success">
+              <span class="stat-label">Overall Accuracy</span>
+              <span class="stat-value font-mono" id="stat-accuracy">0%</span>
+            </div>
+            <div class="stat-card stat-card--readiness" title="Composite Exam Readiness Index based on domain mastery and quiz accuracy">
+              <span class="stat-label">Exam Readiness</span>
+              <span class="stat-value font-mono" id="stat-readiness">0%</span>
+            </div>
+            <div class="stat-card stat-card--streak" title="Consecutive days studied">
+              <span class="stat-label">Study Streak</span>
+              <span class="stat-value font-mono" id="stat-streak">🔥 0d</span>
+            </div>
+            <div class="stat-card stat-card--warn">
+              <span class="stat-label">Flagged Items</span>
+              <span class="stat-value font-mono" id="stat-flagged">0</span>
+            </div>
+            <div class="stat-card stat-card--success">
+              <span class="stat-label">Mock Exams Passed</span>
+              <span class="stat-value font-mono" id="stat-passed">0</span>
+            </div>
+          </div>
 
-    </section>
+          <!-- Domain progress circles -->
+          <div class="domain-mastery">
+            <h3>Syllabus Domain Mastery</h3>
+            <div class="domains-grid" id="domains-grid">
+              <!-- Populated dynamically by renderDomainMasteryGrid() from the active exam's domain list -->
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
 
     <!-- Navigation Tabs -->
     <nav class="study-tabs">

@@ -150,7 +150,8 @@ export const NO_PHOTO_IMG = 'data:image/svg+xml;charset=UTF-8,' + encodeURICompo
     export function getPropertyReviewStatus(p) {
         if (p.hidden) return 'dislike';
         if (p.favorite) return 'favorite';
-        if (p.rating === 3) return 'possibility';
+        // Explicit flag that syncs with the MLS "Possibility" bucket (replaces the old rating===3 proxy).
+        if (Number(p.possibility) === 1) return 'possibility';
         return 'none';
     }
     export function cleanDisplayAddress(address, mlsId) {

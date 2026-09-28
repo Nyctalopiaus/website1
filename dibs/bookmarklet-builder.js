@@ -25,9 +25,9 @@ function getEngineCode() {
             : 'http://127.0.0.1:8888/backend/api.php'),
         USER: window.SCOUT_USER || null,
         SCRAPE_TOKEN: window.SCOUT_SCRAPE_TOKEN || null,
-        // 'deep' = walk every listing into full detail view, one at a time, capturing fresh notes
-        // always and a full photo gallery once per listing.
-        MODE: window.SCOUT_MODE || 'deep',
+        // Ask before every Dibs -> MLS write (review status or note). On by default; set
+        // window.SCOUT_CONFIRM_WRITES = false before the engine runs to turn it off.
+        CONFIRM_WRITES: window.SCOUT_CONFIRM_WRITES !== false,
         AUTO_POPUP_REDFIN: true
     };
 
@@ -107,6 +107,11 @@ function getEngineCode() {
         const n = parseInt(String(str).replace(/[^0-9]/g, ''), 10);
         return isNaN(n) ? 0 : n;
     };
+
+    // Matrix bucket codes (confirmed live Sept 2026 from Dpy.clickPortalBucketResponsive and
+    // PortalResultsJs.moveBucket): Bucket.ashx?bkt=<code> sets the bucket absolutely (0 clears).
+    const BUCKET_CODE_TO_STATUS = { '0': 'none', '2': 'dislike', '4': 'possibility', '6': 'favorite' };
+    const STATUS_TO_BUCKET_CODE = { none: '0', dislike: '2', possibility: '4', favorite: '6' };
 
     function extractMatrixNotes(block, mlsId) {
         let candidateTexts = [];
@@ -245,7 +250,7 @@ function getEngineCode() {
                 // this long is almost certainly the listing's public-remarks/marketing
                 // description caught by one of the broader fallback selectors above, not an
                 // actual saved note. Caps false positives regardless of which selector matched.
-                clean.length > 400
+                clean.length > 500 // the portal's own note limit
             ) {
                 continue;
             }
@@ -311,7 +316,8 @@ function getEngineCode() {
             }
 
             authorsSeen.add(author);
-            entries.push({ author, text });
+            const dateEl = row.querySelector('.mtx-subtextSoft');
+            entries.push({ author, text, date: dateEl ? (dateEl.innerText || dateEl.textContent || '').trim() : '' });
         });
 
         if (entries.length === 0) {
@@ -327,6 +333,7 @@ function getEngineCode() {
 
         return {
             text: formatted,
+            rows: entries,
             rowCount: rows.length,
             multiAuthor,
             authors: Array.from(authorsSeen)
@@ -654,10 +661,17 @@ function getEngineCode() {
         const isFavoritePage = pageText.includes('favorite listings') || pageText.includes('favorites (');
         const isPossibilityPage = pageText.includes('possibility listings') || pageText.includes('possibilities (');
 
-        let matrixReviewStatus = isFavoritePage ? 'favorite' : (isDislikePage ? 'dislike' : (isPossibilityPage ? 'possibility' : 'none'));
+        // null = couldn't tell. The backend ignores a null status rather than treating it as
+        // 'none' — a false 'none' would otherwise wipe a Dibs favorite during two-way sync.
+        let matrixReviewStatus = isFavoritePage ? 'favorite' : (isDislikePage ? 'dislike' : (isPossibilityPage ? 'possibility' : null));
 
+        // Most reliable source (confirmed live Sept 2026): the bucket selector's own
+        // data-currentbucket attribute — 0 none, 2 dislike, 4 possibility, 6 favorite.
+        const bucketSelector = block.querySelector('.j-portalBucketSelector[data-currentbucket]');
         const bucketIcon = block.querySelector('.j-portalBucketSelectorIcon');
-        if (bucketIcon) {
+        if (bucketSelector && BUCKET_CODE_TO_STATUS[bucketSelector.getAttribute('data-currentbucket')]) {
+            matrixReviewStatus = BUCKET_CODE_TO_STATUS[bucketSelector.getAttribute('data-currentbucket')];
+        } else if (bucketIcon) {
             const bucketCls = bucketIcon.className.toString();
             const bucketTitle = (bucketIcon.title || bucketIcon.getAttribute('title') || '').toLowerCase();
             if (bucketCls.includes('bucketDislikes') || bucketTitle === 'dislike') {
@@ -742,14 +756,23 @@ function getEngineCode() {
             matrix_review_status: matrixReviewStatus,
             portal_notes: portalNotes
         };
+        // Matrix's internal listing key — the portal's write endpoints (Bucket.ashx, ListingNotes
+        // /AddNote) take this, not the MLS number. Confirmed live on the bucket selector
+        // (data-key), the notes widget (data-k) and the photo viewer (data-key).
+        const keyEl = block.querySelector('.j-portalBucketSelector[data-key], .j-notesWidget[data-k], .ivResponsive[data-key]');
+        const matrixKey = keyEl ? (keyEl.getAttribute('data-key') || keyEl.getAttribute('data-k')) : '';
+        if (matrixKey && /^\d{4,20}$/.test(matrixKey) && matrixKey !== mlsId) result.matrix_key = matrixKey;
         if (description) result.description = description;
         if (hasInterior) result.interior = interior;
         return result;
     }
 
+    // First pass of every deep scrape: reads the search-results list page (not a standalone
+    // "quick scrape" mode — that no longer exists). deepScrapeMatrixPortal() calls this, then
+    // walks each listing's detail view.
     function scrapeMatrixPortal(onDone) {
         notify('🔍 Scraping properties from Matrix page...');
-        logToServer('info', 'Quick scrape started', null, { url: window.location.href });
+        logToServer('info', 'Results-list scrape started', null, { url: window.location.href });
 
         const blocks = findListingBlocks();
 
@@ -808,17 +831,172 @@ function getEngineCode() {
     // Asks the backend which mls_ids already have a completed full (photo) scrape, so the deep
     // walker can skip straight past the expensive photo work for them and only re-check notes.
     function fetchScrapeStatus(callback) {
-        fetch(getEffectiveApiUrl() + '?action=scrape_status', { headers: { 'X-Scout-Token': CONFIG.SCRAPE_TOKEN || '' } })
+        fetch(getEffectiveApiUrl() + '?action=scrape_status' + (CONFIG.USER ? '&username=' + encodeURIComponent(CONFIG.USER) : ''), { headers: { 'X-Scout-Token': CONFIG.SCRAPE_TOKEN || '' } })
             .then(res => res.json())
             .then(data => {
-                const completed = (data && data.success && Array.isArray(data.completed)) ? data.completed.map(String) : [];
-                callback(new Set(completed));
+                const ok = data && data.success;
+                const completed = (ok && Array.isArray(data.completed)) ? data.completed.map(String) : [];
+                // pending_* are the Dibs -> MLS writes waiting for this user (see
+                // handleScrapeStatus()). Missing/failed = push nothing, which is the safe default.
+                const pending = {
+                    status: (ok && data.pending_status && typeof data.pending_status === 'object') ? data.pending_status : {},
+                    notes: (ok && data.pending_notes && typeof data.pending_notes === 'object') ? data.pending_notes : {}
+                };
+                callback(new Set(completed), pending);
             })
             .catch(err => {
                 console.warn('Scout scrape_status fetch error:', err);
                 logToServer('warn', 'scrape_status fetch error: ' + err.message);
-                callback(new Set());
+                callback(new Set(), { status: {}, notes: {} });
             });
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Dibs -> MLS writes. Every write goes through confirmMlsWrite() while CONFIRM_WRITES is on
+    // (the default), so nothing reaches the realtor-visible portal without an explicit click.
+    // Endpoints confirmed live Sept 2026 (read-only inspection):
+    //   status: POST /Matrix/public/Portal/Bucket.ashx?bkt=<0|2|4|6>  {cid, keys, pbs:1, L}
+    //   notes:  POST <widget data-widgeturl>/AddNote  {widget data-*, note, __RequestVerificationToken}
+    //           -> responds with the re-rendered notes widget HTML (used to verify the post).
+    // Portal notes are append-only (no edit/delete endpoint exists), hence the duplicate check.
+    // ---------------------------------------------------------------------------------------
+    let skipAllMlsWrites = false;
+
+    function normalizeNoteText(t) {
+        const tmp = document.createElement('textarea');
+        tmp.innerHTML = String(t || '');
+        return tmp.value.replace(/\s+/g, ' ').trim().replace(/^["“](.*)["”]$/s, '$1').trim().toLowerCase();
+    }
+
+    function confirmMlsWrite(details) {
+        if (skipAllMlsWrites) return Promise.resolve('skip');
+        if (!CONFIG.CONFIRM_WRITES) return Promise.resolve('write');
+        return new Promise(resolve => {
+            const overlay = document.createElement('div');
+            overlay.setAttribute('style', 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2147483647;display:flex;align-items:center;justify-content:center;font:14px/1.4 system-ui,sans-serif;');
+            const box = document.createElement('div');
+            box.setAttribute('style', 'background:#fff;color:#111;max-width:460px;width:calc(100vw - 32px);border-radius:10px;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.4);');
+            const h = document.createElement('div');
+            h.textContent = '✍️ Write to MLS portal? (your realtor can see this)';
+            h.setAttribute('style', 'font-weight:700;font-size:15px;margin-bottom:10px;');
+            const body = document.createElement('div');
+            body.setAttribute('style', 'white-space:pre-wrap;background:#f4f4f5;border-radius:6px;padding:10px;margin-bottom:14px;');
+            body.textContent = details;
+            const row = document.createElement('div');
+            row.setAttribute('style', 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;');
+            const mk = (label, val, primary) => {
+                const b = document.createElement('button');
+                b.textContent = label;
+                b.setAttribute('style', 'padding:8px 14px;border-radius:6px;border:1px solid #ccc;cursor:pointer;' + (primary ? 'background:#16a34a;color:#fff;border-color:#16a34a;font-weight:600;' : 'background:#fff;'));
+                b.onclick = () => { overlay.remove(); if (val === 'skip_all') skipAllMlsWrites = true; resolve(val === 'skip_all' ? 'skip' : val); };
+                return b;
+            };
+            row.append(mk('Skip all MLS writes', 'skip_all'), mk('Skip', 'skip'), mk('Write to MLS', 'write', true));
+            box.append(h, body, row);
+            overlay.append(box);
+            document.body.append(overlay);
+        });
+    }
+
+    async function pushMlsStatus(listing, pending, notesWidget) {
+        const p = pending.status[listing.mls_id];
+        if (!p) return null;
+        const key = listing.matrix_key;
+        if (!key || (p.matrix_key && String(p.matrix_key) !== String(key))) {
+            logToServer('warn', 'MLS status push skipped: matrix key missing/mismatched', listing.mls_id, { key, expected: p.matrix_key });
+            return 'skipped';
+        }
+        if (listing.matrix_review_status !== p.baseline) {
+            // MLS changed since the last sync too — the backend will flag the conflict.
+            logToServer('info', 'MLS status push skipped: MLS changed since baseline', listing.mls_id, { baseline: p.baseline, mlsNow: listing.matrix_review_status, want: p.want });
+            return 'skipped';
+        }
+        const code = STATUS_TO_BUCKET_CODE[p.want];
+        if (code === undefined) return 'skipped';
+
+        const decision = await confirmMlsWrite(\`\${listing.address || ''}\nMLS# \${listing.mls_id}\n\nReview status: \${p.baseline}  →  \${p.want}\`);
+        if (decision !== 'write') { logToServer('info', 'MLS status push skipped by user', listing.mls_id, { want: p.want }); return 'skipped'; }
+
+        const cid = (notesWidget && notesWidget.dataset.cid) || (window.Dpy && Dpy.getPortalContact && Dpy.getPortalContact()) || '';
+        const lang = (notesWidget && notesWidget.dataset.l) || '1';
+        try {
+            const res = await fetch('/Matrix/public/Portal/Bucket.ashx?bkt=' + code, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
+                body: new URLSearchParams({ cid, keys: key, pbs: '1', L: lang }).toString()
+            });
+            const text = await res.text();
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            logToServer('info', 'MLS status pushed', listing.mls_id, { from: p.baseline, to: p.want, response: text.slice(0, 500) });
+            // Keep the page consistent with what the portal now has.
+            const sel = document.querySelector(\`.j-portalBucketSelector[data-key="\${key}"]\`);
+            if (sel) sel.setAttribute('data-currentbucket', code);
+            try { window.PortalResultsJs && PortalResultsJs.updateResponsiveBucketIconAndMenu(code, key); } catch (e) {}
+            listing.matrix_review_status = p.want;
+            listing.mls_status_push_result = 'pushed';
+            return 'pushed';
+        } catch (err) {
+            logToServer('error', 'MLS status push failed: ' + err.message, listing.mls_id, { want: p.want });
+            notify('❌ MLS status write failed for ' + (listing.address || listing.mls_id) + ': ' + err.message, true);
+            return 'failed';
+        }
+    }
+
+    async function pushMlsNote(listing, pending, notesWidget, notesInfo) {
+        const n = pending.notes[listing.mls_id];
+        if (!n || !String(n.text || '').trim()) return null;
+        const text = String(n.text).trim();
+        listing.mls_note_text = text;
+
+        if (!notesWidget) {
+            logToServer('warn', 'MLS note push skipped: no notes widget on this view', listing.mls_id);
+            return 'skipped';
+        }
+        const key = notesWidget.dataset.k;
+        if (!key || (listing.matrix_key && key !== String(listing.matrix_key)) || (n.matrix_key && key !== String(n.matrix_key))) {
+            logToServer('warn', 'MLS note push skipped: notes widget key mismatch', listing.mls_id, { widgetKey: key, listingKey: listing.matrix_key, expected: n.matrix_key });
+            return 'skipped';
+        }
+        const wanted = normalizeNoteText(text);
+        if ((notesInfo.rows || []).some(r => normalizeNoteText(r.text) === wanted)) {
+            listing.mls_note_result = 'already_present';
+            return 'already_present';
+        }
+
+        const decision = await confirmMlsWrite(\`\${listing.address || ''}\nMLS# \${listing.mls_id}\n\nAdd note (permanent — can't be edited or deleted):\n"\${text}"\`);
+        if (decision !== 'write') { logToServer('info', 'MLS note push skipped by user', listing.mls_id); return 'skipped'; }
+
+        const token = (notesWidget.querySelector("[name='__RequestVerificationToken']") || document.querySelector("[name='__RequestVerificationToken']") || {}).value || '';
+        const d = notesWidget.dataset;
+        const params = new URLSearchParams({ k: d.k, cid: d.cid || '', w: d.w || '', l: d.l || '1', hi: d.hi || '', cnt: d.cnt || '', sm: d.sm || '', note: text, __RequestVerificationToken: token });
+        try {
+            const res = await fetch((d.widgeturl || '/Matrix/Public/DisplayWidgets/ListingNotes') + '/AddNote', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
+                body: params.toString()
+            });
+            const html = await res.text();
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            // Verify against the re-rendered widget the portal sent back.
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const fresh = extractMatrixNotesDetailed(doc, listing.mls_id);
+            const landed = (fresh.rows || []).some(r => normalizeNoteText(r.text) === wanted);
+            if (!landed) throw new Error('note not found in portal response');
+            const newWidget = doc.querySelector('.j-notesWidget');
+            if (newWidget) notesWidget.outerHTML = newWidget.outerHTML;
+            notesInfo.rows = fresh.rows;
+            notesInfo.text = fresh.text;
+            listing.mls_note_result = 'sent';
+            logToServer('info', 'MLS note posted and verified', listing.mls_id, { length: text.length });
+            return 'sent';
+        } catch (err) {
+            listing.mls_note_result = 'failed';
+            logToServer('error', 'MLS note post failed: ' + err.message, listing.mls_id);
+            notify('❌ MLS note write failed for ' + (listing.address || listing.mls_id) + ': ' + err.message, true);
+            return 'failed';
+        }
     }
 
         const waitUntil = async (predicate, timeoutMs, pollMs = 150) => {
@@ -923,7 +1101,13 @@ function delay(ms) {
             }
 
             let completedSet = new Set();
-            await new Promise(resolve => fetchScrapeStatus(set => { completedSet = set; resolve(); }));
+            let pending = { status: {}, notes: {} };
+            await new Promise(resolve => fetchScrapeStatus((set, p) => { completedSet = set; pending = p; resolve(); }));
+            const pendingCount = Object.keys(pending.status).length + Object.keys(pending.notes).length;
+            if (pendingCount) {
+                notify(\`📤 \${pendingCount} Dibs change(s) waiting to go to the MLS — you'll be asked before each write.\`, false, true);
+            }
+            const mlsWriteCounts = { pushed: 0, sent: 0, already_present: 0, skipped: 0, failed: 0 };
 
             const visitedPositions = new Set();
             const multiAuthorFlags = [];
@@ -976,6 +1160,16 @@ function delay(ms) {
                 const notesInfo = extractMatrixNotesDetailed(matchedBlock, listing.mls_id);
                 listing.portal_notes = notesInfo.text;
                 if (notesInfo.multiAuthor) multiAuthorFlags.push(listing.mls_id);
+
+                // Dibs -> MLS pushes for this listing (each one confirmed first — see confirmMlsWrite()).
+                const notesWidget = (matchedBlock && matchedBlock.querySelector('.j-notesWidget')) || document.querySelector('.j-notesWidget');
+                for (const r of [await pushMlsStatus(listing, pending, notesWidget), await pushMlsNote(listing, pending, notesWidget, notesInfo)]) {
+                    if (r && mlsWriteCounts[r] !== undefined) mlsWriteCounts[r]++;
+                }
+                // Only report the note rows when the notes widget is actually on this view;
+                // otherwise an empty list would wipe the stored MLS notes for this listing.
+                if (notesWidget) listing.portal_notes_rows = notesInfo.rows || [];
+                if (listing.mls_note_result === 'sent') listing.portal_notes = notesInfo.text;
 
                 const alreadyFullyScraped = completedSet.has(String(listing.mls_id));
                 let photoNote = '';
@@ -1061,9 +1255,16 @@ function delay(ms) {
             if (multiAuthorFlags.length) {
                 summary += \`. ⚠️ \${multiAuthorFlags.length} listing(s) had multi-author notes — check: \${multiAuthorFlags.join(', ')}\`;
             }
-            notify(summary, failedSyncCount > 0 || !reachedFinalListing, true);
+            if (pendingCount) {
+                const w = mlsWriteCounts;
+                summary += \`. MLS writes: \${w.pushed} status, \${w.sent} note(s) sent\` +
+                    (w.already_present ? \`, \${w.already_present} already there\` : '') +
+                    (w.skipped ? \`, \${w.skipped} skipped\` : '') +
+                    (w.failed ? \`, \${w.failed} FAILED\` : '');
+            }
+            notify(summary, failedSyncCount > 0 || !reachedFinalListing || mlsWriteCounts.failed > 0, true);
             logToServer('info', 'Deep scrape complete', null, {
-                processedCount, fullScrapeCount, failedSyncCount, reachedFinalListing, multiAuthorFlags, url: window.location.href
+                processedCount, fullScrapeCount, failedSyncCount, reachedFinalListing, multiAuthorFlags, mlsWriteCounts, url: window.location.href
             });
         });
     }
@@ -1074,14 +1275,12 @@ function delay(ms) {
         // threw synchronously mid-scrape with zero durable record anywhere — gets reported to the
         // server and surfaced as a toast instead of silently aborting with nothing to go on.
         try {
-            if (CONFIG.MODE === 'deep') {
-                deepScrapeMatrixPortal().catch(err => {
-                    logToServer('error', 'Deep scrape crashed: ' + (err && err.message), null, { stack: err && err.stack, url: window.location.href });
-                    notify('❌ Deep scrape crashed: ' + (err && err.message), true);
-                });
-            } else {
-                scrapeMatrixPortal();
-            }
+            // Every scrape is a deep scrape: walk each listing's detail view one at a time,
+            // capturing fresh notes always and a full photo gallery once per listing.
+            deepScrapeMatrixPortal().catch(err => {
+                logToServer('error', 'Deep scrape crashed: ' + (err && err.message), null, { stack: err && err.stack, url: window.location.href });
+                notify('❌ Deep scrape crashed: ' + (err && err.message), true);
+            });
         } catch (err) {
             logToServer('error', 'Scrape crashed: ' + (err && err.message), null, { stack: err && err.stack, url: window.location.href });
             notify('❌ Scrape crashed: ' + (err && err.message), true);
@@ -1109,7 +1308,7 @@ function getBookmarkletCode(apiUrl, username, scrapeToken) {
     const cleanEngine = cleanJsForBookmarklet(getEngineCode());
     const userPart = username ? `window.SCOUT_USER='` + username + `'; ` : '';
     const tokenPart = scrapeToken ? `window.SCOUT_SCRAPE_TOKEN='` + scrapeToken + `'; ` : '';
-    const wrapper = `(function(){ window.SCOUT_API_URL='` + apiUrl + `'; ` + userPart + tokenPart + `window.SCOUT_MODE='deep'; ` + cleanEngine + `})();`;
+    const wrapper = `(function(){ window.SCOUT_API_URL='` + apiUrl + `'; ` + userPart + tokenPart + cleanEngine + `})();`;
     return 'javascript:' + wrapper;
 }
 

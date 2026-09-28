@@ -32,6 +32,11 @@ switch ($action) {
         handleCreateScrapeToken($pdo);
         break;
 
+    case 'scrape_token_status':
+        requireRealtorOrAdmin();
+        handleScrapeTokenStatus($pdo);
+        break;
+
     case 'list_collections':
         handleListCollections($pdo);
         break;

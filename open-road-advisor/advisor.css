@@ -86,9 +86,9 @@ body {
 
 /* Header styling */
 .header {
-  max-width: 1200px;
+  max-width: 1850px;
   margin: 0 auto;
-  padding: 2.5rem 1.5rem 1.75rem;
+  padding: 2.5rem 2rem 1.75rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -168,9 +168,9 @@ body {
 
 /* Layout container */
 .container {
-  max-width: 1200px;
+  max-width: 1850px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 2rem 2rem;
 }
 
 /* Grids dashboard structure */

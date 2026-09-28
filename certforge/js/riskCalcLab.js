@@ -3,7 +3,7 @@
 
 import { escapeHtml, ICON_SPARKLE } from './config.js';
 import { getGeminiApiKey, getGeminiModel } from './vault.js';
-import { callGeminiAPI } from './ai.js';
+import { callGeminiAPI, renderAiMarkdown } from './ai.js';
 import { getExamName } from './state.js';
 
 // Pre-defined scenario templates with parametric scaling
@@ -899,7 +899,10 @@ async function handleAiRiskExplain(containerEl) {
   aiBox.innerHTML = `<div class="ai-loading">Generating CISM Management Breakdown with Gemini AI...</div>`;
 
   const sc = currentRiskScenario;
-  const sysPrompt = `You are an expert ${getExamName()} exam master tutor specializing in Quantitative Risk Management, Financial Loss Expectancy, and Business Impact Analysis. Give a structured, authoritative, plain text breakdown of the scenario provided. Organize with short paragraphs and bullet points. End with a section titled "How to remember this:" containing one memorable memory aid.`;
+  const sysPrompt = `You are an expert ${getExamName()} exam master tutor specializing in Quantitative Risk Management, Financial Loss Expectancy, and Business Impact Analysis. ` +
+    'Give a structured, authoritative breakdown of the scenario provided. Organize using Markdown section headers (`###`), **bold key terms**, display formula blocks (`$$...$$`), and structured bullet lists. ' +
+    'For mathematical formulas (e.g. SLE, ALE, ROSI), use standalone `$$` display formula lines (e.g. `$$\\text{SLE} = \\text{Asset Value} \\times \\text{Exposure Factor}$$`). Do not wrap standard currency figures in math dollar signs (write $10,000,000, not \\$10,000,000\\$). ' +
+    'End with a section titled exactly "### How to remember this:" containing one memorable memory aid.';
   const userPrompt = `Scenario: ${sc.title}
 Asset: ${sc.assetName}
 Description: ${sc.description}
@@ -912,7 +915,7 @@ Explain the core ${getExamName()} risk governance principle here, break down the
     aiBox.innerHTML = `
       <div class="ai-response-card">
         <div class="ai-response-meta">${ICON_SPARKLE} Gemini AI Master Tutor Breakdown</div>
-        <div class="ai-response-text">${escapeHtml(text)}</div>
+        <div class="ai-response-text">${renderAiMarkdown(text)}</div>
       </div>
     `;
   } catch (err) {

@@ -12,18 +12,23 @@ export function setupBookmarkletLink() {
         return base + '/backend/api.php';
     };
 
+    // The plaintext token only exists right after it's generated (the server stores a hash), so
+    // the drag/copy buttons stay disabled until "Generate new" is clicked in this page session.
+    // Opening the modal never creates or revokes a token — see refreshScrapeToken().
+    const NOT_READY_MSG = 'Click "Generate new" to create a bookmarklet. Your existing bookmarklet keeps working until you do.';
+
     const setBookmarkletReadyState = (ready) => {
         const links = [elements.dragBookmarkletBtn, elements.modalDragBmBtn, elements.modalDragDeepBmBtn].filter(Boolean);
         links.forEach(link => {
             link.setAttribute('aria-disabled', ready ? 'false' : 'true');
             link.style.pointerEvents = ready ? '' : 'none';
             link.style.opacity = ready ? '' : '0.55';
-            link.title = ready ? '' : 'Generating protected bookmarklet...';
+            link.title = ready ? '' : NOT_READY_MSG;
             if (!ready) link.setAttribute('href', 'javascript:void(0)');
         });
         [document.getElementById('btn-copy-bm-code'), document.getElementById('btn-copy-console-code')].filter(Boolean).forEach(button => {
             button.disabled = !ready;
-            button.title = ready ? '' : 'Generating protected bookmarklet...';
+            button.title = ready ? '' : NOT_READY_MSG;
         });
     };
 
@@ -48,6 +53,33 @@ export function setupBookmarkletLink() {
 
     updateHrefs();
 
+    const tokenStatusEl = () => document.getElementById('bm-token-status');
+    const formatUtc = (value) => {
+        const d = new Date(String(value).replace(' ', 'T') + 'Z');
+        return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+    };
+    const renderTokenStatus = (expiresAt, justGenerated) => {
+        const el = tokenStatusEl();
+        if (!el) return;
+        if (!expiresAt) {
+            el.textContent = 'No active token — click "Generate new" to create a bookmarklet.';
+            return;
+        }
+        const days = Math.max(0, Math.ceil((new Date(String(expiresAt).replace(' ', 'T') + 'Z') - Date.now()) / 86400000));
+        el.textContent = (justGenerated ? 'New token created. ' : '') + `Expires ${formatUtc(expiresAt)} (${days} day${days === 1 ? '' : 's'} left).` +
+            (justGenerated ? ' Drag or copy the bookmarklet below and replace your old one.' : ' Generating a new one immediately stops the current bookmarklet, including a scrape in progress.');
+    };
+    const loadTokenStatus = async () => {
+        if (!getCurrentUsername()) return;
+        try {
+            const res = await apiFetch('backend/api.php?action=scrape_token_status');
+            if (res?.success) renderTokenStatus(res.expires_at, false);
+        } catch (e) {
+            const el = tokenStatusEl();
+            if (el) el.textContent = 'Could not load token status.';
+        }
+    };
+
     const refreshScrapeToken = async () => {
         if (!getCurrentUsername()) return false;
         isScrapeTokenReady = false;
@@ -58,6 +90,7 @@ export function setupBookmarkletLink() {
             scrapeToken = res.token;
             isScrapeTokenReady = true;
             updateHrefs();
+            renderTokenStatus(res.expires_at, true);
             return true;
         } catch (e) {
             scrapeToken = null;
@@ -119,7 +152,7 @@ export function setupBookmarkletLink() {
     if (elements.dragBookmarkletBtn) {
         elements.dragBookmarkletBtn.addEventListener('click', async (e) => {
             e.preventDefault();
-            await refreshScrapeToken();
+            await loadTokenStatus();
             await loadTargetUsers();
             elements.modalBookmarklet?.classList.add('active');
         });
@@ -127,8 +160,21 @@ export function setupBookmarkletLink() {
 
     if (elements.btnBookmarkletGuide) {
         elements.btnBookmarkletGuide.addEventListener('click', async () => {
-            await refreshScrapeToken();
+            await loadTokenStatus();
             await loadTargetUsers();
+        });
+    }
+
+    const generateBtn = document.getElementById('btn-generate-bm-token');
+    if (generateBtn) {
+        generateBtn.addEventListener('click', async () => {
+            if (!window.confirm('Generate a new scrape token?\n\nYour current bookmarklet stops working immediately, including any scrape running right now.')) return;
+            generateBtn.disabled = true;
+            try {
+                await refreshScrapeToken();
+            } finally {
+                generateBtn.disabled = false;
+            }
         });
     }
 
@@ -136,7 +182,7 @@ export function setupBookmarkletLink() {
     if (copyBmBtn) {
         copyBmBtn.addEventListener('click', () => {
             if (!isScrapeTokenReady || !scrapeToken) {
-                if (window.showToast) window.showToast('Bookmarklet setup is still generating. Please wait.', 'warning');
+                if (window.showToast) window.showToast(NOT_READY_MSG, 'warning');
                 return;
             }
             const apiUrl = getApiUrl();
@@ -154,7 +200,7 @@ export function setupBookmarkletLink() {
     if (copyConsoleBtn) {
         copyConsoleBtn.addEventListener('click', () => {
             if (!isScrapeTokenReady || !scrapeToken) {
-                if (window.showToast) window.showToast('Bookmarklet setup is still generating. Please wait.', 'warning');
+                if (window.showToast) window.showToast(NOT_READY_MSG, 'warning');
                 return;
             }
             const apiUrl = getApiUrl();

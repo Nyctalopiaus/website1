@@ -24,7 +24,8 @@ import {
 
 import {
   callGeminiChatAPI,
-  buildAiTutorSystemPrompt
+  buildAiTutorSystemPrompt,
+  renderAiMarkdown
 } from './ai.js';
 
 const aiTutorDomainSelect = document.getElementById('ai-tutor-domain-select');
@@ -56,7 +57,11 @@ export function initAiTutor({ openAiUnlockModal, refreshAiHeaderButtonState, sho
     if (variant) msg.classList.add(variant);
     const bubble = document.createElement('div');
     bubble.className = 'ai-tutor-msg-bubble';
-    bubble.textContent = text;
+    if (role === 'user' || variant === 'thinking') {
+      bubble.textContent = text;
+    } else {
+      bubble.innerHTML = renderAiMarkdown(text);
+    }
     msg.appendChild(bubble);
     aiTutorChatEl.appendChild(msg);
     scrollAiTutorChatToBottom();

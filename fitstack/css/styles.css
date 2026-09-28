@@ -120,9 +120,9 @@ body {
 }
 
 .container {
-  max-width: 1280px;
+  max-width: 1800px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 32px;
 }
 
 /* Header & Nav */
@@ -479,6 +479,12 @@ select.input-search:disabled {
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   margin-bottom: 24px;
+}
+
+@media (min-width: 1100px) {
+  .goals-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 @media (max-width: 640px) {
