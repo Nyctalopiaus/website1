@@ -227,6 +227,8 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
             }
         }
 
+        updateTabBadges();
+
         if (!chips.length) {
             container.style.display = 'none';
             container.innerHTML = '';
@@ -265,6 +267,92 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         if (elements.filterBeds) elements.filterBeds.value = f.beds ? String(f.beds) : '0';
         if (elements.filterStatus) elements.filterStatus.value = f.status || 'all';
         if (elements.filterMatrixStatusTop) elements.filterMatrixStatusTop.value = f.matrixStatus || 'all';
+    }
+    export function updateTabBadges() {
+        const f = state.filters;
+
+        // Tab 1: Price & Value (tab-price)
+        let countPrice = 0;
+        if (f.priceMin !== null) countPrice++;
+        if (f.priceMax !== null) countPrice++;
+        if (f.rfEstMin !== null) countPrice++;
+        if (f.rfEstMax !== null) countPrice++;
+        if (f.ppsqftMax !== null) countPrice++;
+        if (f.underRedfinOnly) countPrice++;
+
+        // Tab 2: Rooms & Layout (tab-rooms)
+        let countRooms = 0;
+        if (f.beds > 0) countRooms++;
+        if (f.bedsMax !== null) countRooms++;
+        if (f.baths > 0) countRooms++;
+        if (f.bathsFullMin !== null) countRooms++;
+        if (f.baths34Min !== null) countRooms++;
+        if (f.bathsHalfMin !== null) countRooms++;
+        if (f.levels) countRooms++;
+        if (f.basement) countRooms++;
+
+        // Tab 3: Size & Lot (tab-specs)
+        let countSpecs = 0;
+        if (f.sqftMin !== null) countSpecs++;
+        if (f.sqftMax !== null) countSpecs++;
+        if (f.sqftTotMin !== null) countSpecs++;
+        if (f.sqftAboveMin !== null) countSpecs++;
+        if (f.sqftBelowMin !== null) countSpecs++;
+        if (f.propertyType) countSpecs++;
+        if (f.yearMin !== null) countSpecs++;
+        if (f.yearMax !== null) countSpecs++;
+        if (f.acresMin !== null) countSpecs++;
+        if (f.acresMax !== null) countSpecs++;
+        if (f.garageMin !== null) countSpecs++;
+        if (f.parkingMin !== null) countSpecs++;
+
+        // Tab 4: Taxes & HOA (tab-finances)
+        let countFinances = 0;
+        if (f.hoaMax !== null) countFinances++;
+        if (f.noHoaOnly) countFinances++;
+        if (f.taxMax !== null) countFinances++;
+        if (f.taxYear !== null) countFinances++;
+
+        // Tab 5: Location & Scores (tab-location)
+        let countLocation = 0;
+        if (f.city) countLocation++;
+        if (f.zip) countLocation++;
+        if (f.schoolDistrict) countLocation++;
+        if (f.walkscoreMin !== null) countLocation++;
+        if (f.transitscoreMin !== null) countLocation++;
+        if (f.bikescoreMin !== null) countLocation++;
+
+        // Tab 6: Ratings & Notes (tab-collections)
+        let countCollections = 0;
+        if (f.ratingMin > 0) countCollections++;
+        if (f.matrixStatus !== 'all') countCollections++;
+        if (f.appliances) countCollections++;
+        if (f.flooring) countCollections++;
+        if (f.fireplaceOnly) countCollections++;
+        if (f.realtorNotesOnly) countCollections++;
+        if (f.favoritesOnly) countCollections++;
+        if (f.possibilitiesOnly) countCollections++;
+        if (f.realtorSharedOnly) countCollections++;
+        if (f.hasNotesOnly) countCollections++;
+
+        const setBadge = (id, count) => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (count > 0) {
+                    el.innerText = count;
+                    el.style.display = 'inline-block';
+                } else {
+                    el.style.display = 'none';
+                }
+            }
+        };
+
+        setBadge('badge-tab-price', countPrice);
+        setBadge('badge-tab-rooms', countRooms);
+        setBadge('badge-tab-specs', countSpecs);
+        setBadge('badge-tab-finances', countFinances);
+        setBadge('badge-tab-location', countLocation);
+        setBadge('badge-tab-collections', countCollections);
     }
     export function syncDrawerInputsFromState() {
         const f = state.filters;
@@ -325,11 +413,13 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         setChk('toggle-fireplace', f.fireplaceOnly);
         setChk('toggle-realtor-notes', f.realtorNotesOnly);
 
-        setChk('drawer-toggle-favorites', f.favoritesOnly);
-        setChk('drawer-toggle-possibilities', f.possibilitiesOnly);
-        setChk('drawer-toggle-realtor-shared', f.realtorSharedOnly);
-        setChk('drawer-toggle-has-notes', f.hasNotesOnly);
-        setChk('drawer-toggle-include-hidden', f.showHidden);
+        setChk('toggle-favorites', f.favoritesOnly);
+        setChk('toggle-possibilities', f.possibilitiesOnly);
+        setChk('toggle-realtor-shared', f.realtorSharedOnly);
+        setChk('toggle-has-notes', f.hasNotesOnly);
+        setChk('toggle-include-hidden', f.showHidden);
+
+        updateTabBadges();
     }
     export function syncStateFromDrawerInputs() {
         const f = state.filters;
@@ -398,11 +488,11 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         f.fireplaceOnly = getChk('toggle-fireplace');
         f.realtorNotesOnly = getChk('toggle-realtor-notes');
 
-        f.favoritesOnly = getChk('drawer-toggle-favorites');
-        f.possibilitiesOnly = getChk('drawer-toggle-possibilities');
-        f.realtorSharedOnly = getChk('drawer-toggle-realtor-shared');
-        f.hasNotesOnly = getChk('drawer-toggle-has-notes');
-        f.showHidden = getChk('drawer-toggle-include-hidden');
+        f.favoritesOnly = getChk('toggle-favorites');
+        f.possibilitiesOnly = getChk('toggle-possibilities');
+        f.realtorSharedOnly = getChk('toggle-realtor-shared');
+        f.hasNotesOnly = getChk('toggle-has-notes');
+        f.showHidden = getChk('toggle-include-hidden');
 
         if (f.status) localStorage.setItem('scout_filter_status', f.status);
         if (f.matrixStatus) localStorage.setItem('scout_filter_matrix_status', f.matrixStatus);
@@ -417,6 +507,17 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         const btnClose = document.getElementById('btn-close-filter-console');
         const btnApply = document.getElementById('btn-drawer-apply');
         const btnResetDrawer = document.getElementById('btn-drawer-reset');
+
+        if (modalDrawer) {
+            modalDrawer.addEventListener('input', () => {
+                syncStateFromDrawerInputs();
+                updateTabBadges();
+            });
+            modalDrawer.addEventListener('change', () => {
+                syncStateFromDrawerInputs();
+                updateTabBadges();
+            });
+        }
 
         if (btnOpen && modalDrawer) {
             btnOpen.addEventListener('click', () => {

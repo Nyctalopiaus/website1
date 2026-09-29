@@ -257,12 +257,22 @@ window.deleteCustomReactionChip = function(event, chipText) {
                         <a href="${calcUrl}" target="_blank" class="btn btn-secondary" style="text-decoration:none; background:rgba(91,124,153,0.2); color:#6B8CA3; border:1px solid #5B7C99;">
                             <i data-lucide="calculator"></i> Mortgage Calculator
                         </a>
-                        <button class="btn ${p.favorite ? 'btn-gold' : 'btn-secondary'}" onclick="toggleFavoriteModal('${p.mls_id}')">
-                            ${p.favorite ? '<i data-lucide="star" style="fill:currentColor"></i> Favorited' : '<i data-lucide="star"></i> Save Favorite'}
+                        <button type="button" class="btn btn-secondary" onclick="openPhotoViewer('${p.mls_id}', null, { fromDetail: true })">
+                            <i data-lucide="images"></i> View Photos (${currentGalleryImages.length})
                         </button>
                         <button class="btn btn-secondary realtor-or-admin-only" onclick="addMlsToPlaylist('${p.mls_id}')" style="${(state.currentUserProfile?.role === 'realtor' || state.currentUserProfile?.role === 'admin' || state.isAdmin) ? '' : 'display:none;'}">
                             <i data-lucide="folder-plus"></i> Add to Playlist
                         </button>
+                    </div>
+                </div>
+
+                <!-- My Decision Row -->
+                <div style="border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:0.85rem; background:var(--bg-panel);">
+                    <h3 style="font-size:0.95rem; font-weight:700; color:var(--text-primary); margin-bottom:0.65rem; display:flex; align-items:center; gap:0.4rem;"><i data-lucide="circle-check"></i> My Decision</h3>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                        <button type="button" class="btn ${p.favorite && !p.hidden ? 'btn-gold' : 'btn-secondary'}" onclick="setPropertyDecision('${p.mls_id}', 'love')"><i data-lucide="heart"></i> Love</button>
+                        <button type="button" class="btn ${matrixRev === 'possibility' ? 'btn-primary' : 'btn-secondary'}" onclick="setPropertyDecision('${p.mls_id}', 'consider')"><i data-lucide="circle-help"></i> Consider</button>
+                        <button type="button" class="btn ${p.hidden ? 'btn-secondary' : 'btn-secondary'}" style="${p.hidden ? 'color:var(--accent-red); border-color:var(--accent-red);' : ''}" onclick="setPropertyDecision('${p.mls_id}', 'pass')"><i data-lucide="ban"></i> Pass</button>
                     </div>
                 </div>
 
@@ -281,7 +291,10 @@ window.deleteCustomReactionChip = function(event, chipText) {
                             <button type="button" class="gallery-nav-btn prev" onclick="prevModalPhoto()" title="Previous Photo (Left Arrow)"><i data-lucide="chevron-left"></i></button>
                             <button type="button" class="gallery-nav-btn next" onclick="nextModalPhoto()" title="Next Photo (Right Arrow)"><i data-lucide="chevron-right"></i></button>
                         ` : ''}
-                        <img id="modal-gallery-main-img" src="${escapeHtml(currentGalleryImages[0])}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="gallery-main-img" alt="Property Image 1">
+                        <img id="modal-gallery-main-img" src="${escapeHtml(currentGalleryImages[0])}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="gallery-main-img" alt="Property Image 1" style="cursor:zoom-in;" title="Open full-screen" onclick="openPhotoViewer('${p.mls_id}', currentModalPhotoIndex(), { fromDetail: true })">
+                        <button type="button" class="gallery-full-link" style="right:auto; left:14px; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px;" onclick="openPhotoViewer('${p.mls_id}', null, { fromDetail: true })">
+                            <i data-lucide="layout-grid"></i> See all ${currentGalleryImages.length} photos
+                        </button>
                         <a id="modal-gallery-full-link" href="${isSafeMediaUrl(currentGalleryImages[0]) ? escapeHtml(currentGalleryImages[0]) : '#'}" target="_blank" rel="noopener" class="gallery-full-link">
                             <i data-lucide="image"></i> View Full Image
                         </a>
@@ -446,17 +459,6 @@ window.deleteCustomReactionChip = function(event, chipText) {
 
                     ${renderMlsSyncPanel(p, matrixRev)}
 
-                    ${state.currentUserProfile?.role === 'client' ? `
-                        <div style="border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:0.85rem; background:var(--bg-panel);">
-                            <h3 style="font-size:0.95rem; font-weight:700; color:var(--text-primary);"><i data-lucide="circle-check"></i> My Decision</h3>
-                            <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.65rem;">
-                                <button type="button" class="btn ${p.favorite ? 'btn-gold' : 'btn-secondary'}" onclick="setPropertyDecision('${p.mls_id}', 'love')"><i data-lucide="heart"></i> Love</button>
-                                <button type="button" class="btn ${matrixRev === 'possibility' ? 'btn-primary' : 'btn-secondary'}" onclick="setPropertyDecision('${p.mls_id}', 'consider')"><i data-lucide="circle-help"></i> Consider</button>
-                                <button type="button" class="btn ${p.hidden ? 'btn-secondary' : 'btn-secondary'}" style="${p.hidden ? 'color:var(--accent-red); border-color:var(--accent-red);' : ''}" onclick="setPropertyDecision('${p.mls_id}', 'pass')"><i data-lucide="ban"></i> Pass</button>
-                            </div>
-                        </div>
-                    ` : ''}
-
                     <div style="display:flex; flex-direction:column; gap:0.5rem;">
                         <h3 style="font-size:0.95rem; font-weight:700; color:var(--text-primary);"><i data-lucide="handshake"></i> Questions & Comments for Realtor</h3>
                         <textarea id="modal-realtor-notes" class="input-text" style="min-height:70px;" placeholder="Add questions to ask realtor or showing availability...">${escapeHtml(p.realtor_notes || '')}</textarea>
@@ -478,6 +480,12 @@ window.deleteCustomReactionChip = function(event, chipText) {
 
         elements.modalDetail.classList.add('active');
         elements.modalDetail.dataset.currentMlsId = mlsId;
+
+        const modalContent = elements.modalDetail?.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.scrollTop = 0;
+        }
+
         window.loadPropertyActivity(mlsId);
     };
 
@@ -771,6 +779,8 @@ window.deleteCustomReactionChip = function(event, chipText) {
             }
         });
     };
+
+    window.currentModalPhotoIndex = function() { return currentGalleryIndex; };
 
     window.prevModalPhoto = function() {
         window.switchModalPhoto(currentGalleryIndex - 1);

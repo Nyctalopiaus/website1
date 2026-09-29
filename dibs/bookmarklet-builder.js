@@ -73,6 +73,17 @@ function getEngineCode() {
     // ever seen if DevTools happens to be open on this exact tab at this exact moment (which is
     // exactly how the old cleanInt ReferenceError went unnoticed for as long as it did). Never
     // throws and never blocks the scrape — a failed log beacon must not affect scraping itself.
+    // Which portal search this run is walking: the Matrix URL's p= id (e.g. "CS-3948407-0" for a
+    // saved search, "AE-..." for the agent's search) plus its name from the tab title. The server
+    // scopes the off-market check to this search so east-side / west-side / Springs searches
+    // never judge each other's homes.
+    function getPortalSearchInfo() {
+        const m = window.location.href.match(/[?&]p=([A-Za-z]{2}-\d+)/);
+        const name = (document.title || '').split(' - ')[0].trim();
+        return { key: m ? m[1] : '', name: m ? name.slice(0, 120) : '' };
+    }
+    const RUN_SEARCH = getPortalSearchInfo();
+
     function logToServer(level, message, mlsId, context) {
         try {
             fetch(getEffectiveApiUrl() + '?action=client_log', {
@@ -805,7 +816,7 @@ function getEngineCode() {
     // which awaits this per listing — never hang on a single failed sync. On failure the error
     // toast is already shown here; callers just get {success:false, ...} back to log/skip.
     function syncToBackend(payload, callback) {
-        const dataStr = JSON.stringify({ properties: payload, username: CONFIG.USER || null });
+        const dataStr = JSON.stringify({ properties: payload, username: CONFIG.USER || null, search_key: RUN_SEARCH.key, search_name: RUN_SEARCH.name });
 
         fetch(getEffectiveApiUrl() + '?action=sync', {
             method: 'POST',
@@ -1077,7 +1088,10 @@ function delay(ms) {
      */
     async function deepScrapeMatrixPortal() {
         notify('🔎 Starting deep scrape — this walks every listing and may take a while...');
-        logToServer('info', 'Deep scrape started', null, { url: window.location.href });
+        logToServer('info', 'Deep scrape started', null, { url: window.location.href, search_key: RUN_SEARCH.key, search_name: RUN_SEARCH.name });
+        if (!RUN_SEARCH.key) {
+            notify('ℹ️ Could not tell which saved search this is, so off-market detection will be skipped for this run. Start from a search in the portal to enable it.', false, true);
+        }
 
         scrapeMatrixPortal(async () => {
             let hasNav = !!document.querySelector('a.glyphicon-chevron-right') || !!getCounterInfo();
@@ -1115,6 +1129,7 @@ function delay(ms) {
             let fullScrapeCount = 0;
             let failedSyncCount = 0;
             let reachedFinalListing = false;
+            let lastCounterTotal = 0; // "Y" from the portal's "X of Y" counter; used to prove the walk saw every listing
             const MAX_ITER = 500; // safety cap independent of the "X of Y" counter, in case it's ever absent/unreliable
             let iter = 0;
             let keepGoing = true;
@@ -1149,6 +1164,7 @@ function delay(ms) {
                 }
 
                 const counter = getCounterInfo();
+                if (counter && counter.total) lastCounterTotal = counter.total;
                 if (counter) {
                     if (visitedPositions.has(counter.cur)) {
                         logToServer('info', 'Deep scrape reached previously visited position, stopping', null, { position: counter.cur, processedCount });
@@ -1263,8 +1279,13 @@ function delay(ms) {
                     (w.failed ? \`, \${w.failed} FAILED\` : '');
             }
             notify(summary, failedSyncCount > 0 || !reachedFinalListing || mlsWriteCounts.failed > 0, true);
+            // walkComplete = every position 1..Y in the portal was visited and synced OK. Only then
+            // may the server treat "not seen this run" as "gone from the portal" (off-market check).
+            const walkComplete = reachedFinalListing && failedSyncCount === 0 && lastCounterTotal > 0 && visitedPositions.size === lastCounterTotal;
             logToServer('info', 'Deep scrape complete', null, {
-                processedCount, fullScrapeCount, failedSyncCount, reachedFinalListing, multiAuthorFlags, mlsWriteCounts, url: window.location.href
+                processedCount, fullScrapeCount, failedSyncCount, reachedFinalListing, multiAuthorFlags, mlsWriteCounts, url: window.location.href,
+                walkComplete, portalTotal: lastCounterTotal, visitedCount: visitedPositions.size, sync_user: CONFIG.USER || null,
+                search_key: RUN_SEARCH.key, search_name: RUN_SEARCH.name
             });
         });
     }

@@ -106,8 +106,111 @@ function recordScrapeRunEvent(PDO $pdo, string $message, $context): void {
     }
     if ($status === null) return;
 
+    // Grab the running run's start time before closing it out - the off-market check needs it.
+    $runStmt = $pdo->prepare("SELECT id, started_at FROM scrape_runs WHERE initiated_by_user_id = :user_id AND status = 'running' ORDER BY id DESC LIMIT 1");
+    $runStmt->execute([':user_id' => $userId]);
+    $run = $runStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($status === 'completed' && $run && !empty($run['started_at']) && !empty($metrics['walkComplete'])) {
+        try {
+            $metrics['off_market'] = markListingsMissingFromPortal($pdo, (string)$run['started_at'], $metrics, $userId);
+        } catch (Throwable $e) {
+            logEvent($pdo, 'sync', 'error', 'Off-market check failed: ' . $e->getMessage(), null, null);
+        }
+    }
+
     $stmt = $pdo->prepare("UPDATE scrape_runs SET status = :status, completed_at = CURRENT_TIMESTAMP, metrics_json = :metrics, error_message = :error WHERE id = (SELECT id FROM scrape_runs WHERE initiated_by_user_id = :user_id AND status = 'running' ORDER BY id DESC LIMIT 1)");
     $stmt->execute([':status' => $status, ':metrics' => json_encode($metrics, JSON_INVALID_UTF8_SUBSTITUTE), ':error' => $error, ':user_id' => $userId]);
+}
+
+/** Portal search id from the Matrix URL's p= param ("CS-3948407-0" -> "CS-3948407"); '' if absent/odd. */
+function normalizeSearchKey($raw): string {
+    $raw = trim((string)$raw);
+    if (preg_match('/^([A-Za-z]{2}-\d{1,12})/', $raw, $m)) return strtoupper($m[1]);
+    return '';
+}
+
+/**
+ * Off-market detection, scoped to ONE portal search. Matrix portals just stop showing a listing
+ * once it's withdrawn, expired, sold, etc. - there's no explicit "gone" signal. So after a deep
+ * scrape that provably walked every "X of Y" position of search K with zero failed syncs
+ * (walkComplete from the bookmarklet), a home is marked 'Off Market' when:
+ *  - search K has shown it before (property_search_sightings) but not during this run, and
+ *  - it's still on-market in Dibs and nothing synced it during this run (price_checked_at), and
+ *  - no OTHER search (this user's or anyone's) has seen it more recently than K did - so a home
+ *    that merely fell outside K's criteria but still shows in another search is left alone; it only
+ *    flips once it has dropped out of every search that was showing it.
+ * Different searches (east side, west side, Colorado Springs...) never judge each other's homes.
+ *
+ * Self-healing: if it shows up in any search again, the next sync overwrites status back to
+ * Active and logs the change. If "too many" of K's homes would flip at once (more than max(3, 25%)),
+ * the search's criteria probably changed - skip + log instead.
+ *
+ * @return array summary stored in the scrape run's metrics
+ */
+function markListingsMissingFromPortal(PDO $pdo, string $runStartedAt, array $metrics, int $tokenUserId): array {
+    $searchKey = normalizeSearchKey($metrics['search_key'] ?? '');
+    $summary = ['search_key' => $searchKey, 'checked' => 0, 'missing' => 0, 'marked' => 0, 'skipped_reason' => ''];
+    if ($searchKey === '') {
+        $summary['skipped_reason'] = 'no_search_key';
+        return $summary;
+    }
+
+    $targetUserId = 0;
+    $syncUser = trim((string)($metrics['sync_user'] ?? ''));
+    if ($syncUser !== '') {
+        $u = $pdo->prepare('SELECT id FROM users WHERE username = :un LIMIT 1');
+        $u->execute([':un' => $syncUser]);
+        $targetUserId = (int)($u->fetchColumn() ?: 0);
+    }
+    if ($targetUserId <= 0) $targetUserId = $tokenUserId;
+
+    $onMarket = "LOWER(TRIM(COALESCE(p.status, 'Active'))) NOT IN ('off market', 'closed', 'sold', 'withdrawn', 'expired', 'canceled', 'cancelled')";
+    $params = [':uid' => $targetUserId, ':k' => $searchKey];
+
+    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM property_search_sightings s JOIN properties p ON p.mls_id = s.mls_id
+        WHERE s.user_id = :uid AND s.search_key = :k AND $onMarket");
+    $countStmt->execute($params);
+    $summary['checked'] = (int)$countStmt->fetchColumn();
+
+    $missStmt = $pdo->prepare("SELECT p.mls_id, p.address, p.status FROM property_search_sightings s JOIN properties p ON p.mls_id = s.mls_id
+        WHERE s.user_id = :uid AND s.search_key = :k AND $onMarket
+          AND s.last_seen_at < :started
+          AND COALESCE(p.price_checked_at, p.updated_at, p.created_at) < :started2
+          AND NOT EXISTS (SELECT 1 FROM property_search_sightings o
+                          WHERE o.mls_id = s.mls_id AND o.last_seen_at > s.last_seen_at
+                            AND NOT (o.user_id = :uid2 AND o.search_key = :k2))");
+    $missStmt->execute($params + [':started' => $runStartedAt, ':started2' => $runStartedAt, ':uid2' => $targetUserId, ':k2' => $searchKey]);
+    $missing = $missStmt->fetchAll(PDO::FETCH_ASSOC);
+    $summary['missing'] = count($missing);
+    if (!$missing) return $summary;
+
+    $limit = max(3, (int)ceil($summary['checked'] * 0.25));
+    if (count($missing) > $limit) {
+        $summary['skipped_reason'] = 'too_many_missing';
+        logEvent($pdo, 'sync', 'warn', sprintf('Off-market check skipped for search %s: %d of %d homes were missing from a complete walk (limit %d). Did the search criteria change?', $searchKey, count($missing), $summary['checked'], $limit), null, ['mls_ids' => array_column($missing, 'mls_id')]);
+        return $summary;
+    }
+
+    $upd = $pdo->prepare("UPDATE properties SET status = 'Off Market', updated_at = CURRENT_TIMESTAMP WHERE mls_id = :mls_id");
+    $favStmt = $pdo->prepare('SELECT user_id FROM user_metadata WHERE mls_id = :mls_id AND favorite = 1');
+    $searchName = trim((string)($metrics['search_name'] ?? '')) ?: $searchKey;
+    foreach ($missing as $row) {
+        $mlsId = (string)$row['mls_id'];
+        $prev = trim((string)($row['status'] ?? '')) ?: 'Active';
+        $upd->execute([':mls_id' => $mlsId]);
+        recordPropertyActivity($pdo, $mlsId, 'listing_status_changed', 'public',
+            "No longer in the MLS portal (likely withdrawn, expired, or sold). Status changed from $prev to Off Market.",
+            ['previous_status' => $prev, 'status' => 'Off Market', 'reason' => 'missing_from_full_portal_walk', 'search_key' => $searchKey, 'search_name' => $searchName]);
+        $favStmt->execute([':mls_id' => $mlsId]);
+        $label = trim((string)($row['address'] ?? '')) ?: "MLS #$mlsId";
+        foreach ($favStmt->fetchAll(PDO::FETCH_COLUMN) as $favUserId) {
+            createNotification($pdo, (int)$favUserId, 'off_market', 'Off market', "$label is no longer in your MLS portal.", "#detail-{$mlsId}");
+        }
+        $summary['marked']++;
+    }
+    logEvent($pdo, 'sync', 'info', sprintf('Marked %d listing(s) Off Market after a complete walk of search "%s".', $summary['marked'], $searchName), null, ['mls_ids' => array_column($missing, 'mls_id'), 'search_key' => $searchKey]);
+    return $summary;
 }
 
 function handleGetScrapeRuns(PDO $pdo) {
@@ -788,6 +891,17 @@ function handleSync(PDO $pdo) {
         INSERT OR IGNORE INTO user_metadata (user_id, mls_id) VALUES (:user_id, :mls_id)
     ");
 
+    // Which portal search this batch came from (bookmarklet sends the URL's p= id). Recorded per
+    // listing so the off-market check can be scoped to one search - see markListingsMissingFromPortal().
+    $searchKey = normalizeSearchKey($data['search_key'] ?? '');
+    $searchName = trim((string)($data['search_name'] ?? ''));
+    $searchName = function_exists('mb_substr') ? mb_substr($searchName, 0, 120, 'UTF-8') : substr($searchName, 0, 120);
+    $stmtSighting = $searchKey === '' ? null : $pdo->prepare("
+        INSERT INTO property_search_sightings (user_id, search_key, mls_id, search_name, last_seen_at)
+        VALUES (:user_id, :search_key, :mls_id, :search_name, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id, search_key, mls_id) DO UPDATE SET last_seen_at = CURRENT_TIMESTAMP, search_name = excluded.search_name
+    ");
+
     foreach ($properties as $item) {
         $mlsId = trim($item['mls_id'] ?? '');
         if (empty($mlsId)) {
@@ -859,6 +973,9 @@ function handleSync(PDO $pdo) {
                 ':original_price' => $incomingPrice
             ]);
             $syncedCount++;
+            if ($stmtSighting) {
+                $stmtSighting->execute([':user_id' => $targetUserId, ':search_key' => $searchKey, ':mls_id' => $mlsId, ':search_name' => $searchName]);
+            }
             if ($isNewProperty) {
                 recordPropertyActivity($pdo, $mlsId, 'listing_imported', 'public', 'Listing added from Matrix MLS.');
             } elseif (strcasecmp(trim((string)$existingStatus), $incomingStatus) !== 0) {

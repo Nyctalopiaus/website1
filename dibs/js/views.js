@@ -3,7 +3,7 @@
  */
 import { state, elements } from './state.js';
 import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG, getStatusBadgeClass } from './properties.js';
-import { renderMap, highlightMapMarker, unhighlightMapMarker } from './map.js';
+import { renderMap, highlightMapMarker, unhighlightMapMarker, getPropertiesInView } from './map.js';
 import { showToast } from './toast.js';
 import { updateCompareButtons } from './compare.js';
 import { renderAdminView } from './adminView.js';
@@ -107,13 +107,35 @@ export function updateKPIs() {
             </section>
         `;
     } else {
-        const totalPrice = filtered.reduce((acc, p) => acc + (p.price || 0), 0);
-        const totalSqft = filtered.reduce((acc, p) => acc + (p.sqft_finished || 0), 0);
-        const avgPrice = filtered.length ? Math.round(totalPrice / filtered.length) : 0;
-        const avgSqft = filtered.length ? Math.round(totalSqft / filtered.length) : 0;
-        const avgPpsqft = totalSqft ? Math.round(totalPrice / totalSqft) : 0;
+        // In map view, stats describe only what's visible on the map; elsewhere, all filtered.
+        const inMapView = state.activeView === 'map';
+        const shown = inMapView ? getPropertiesInView() : filtered;
+        const isSubset = inMapView && shown.length < filtered.length;
+        const shownActiveCount = shown.filter(p => p.status === 'Active').length;
 
-        const priceDropCount = filtered.filter(p => p.price_reduced || p.price_drop || (p.original_price && p.original_price > p.price)).length;
+        const calcAverages = (list) => {
+            const tp = list.reduce((acc, p) => acc + (p.price || 0), 0);
+            const ts = list.reduce((acc, p) => acc + (p.sqft_finished || 0), 0);
+            return {
+                avgPrice: list.length ? Math.round(tp / list.length) : 0,
+                avgSqft: list.length ? Math.round(ts / list.length) : 0,
+                avgPpsqft: ts ? Math.round(tp / ts) : 0
+            };
+        };
+        const { avgPrice, avgSqft, avgPpsqft } = calcAverages(shown);
+        const overall = calcAverages(filtered);
+
+        const pctDiff = (val, base) => {
+            if (!val || !base) return '<span>—</span>';
+            const pct = Math.round(((val - base) / base) * 100);
+            if (pct === 0) return '<span>±0%</span>';
+            return pct > 0 ? `<span class="kpi-up">+${pct}%</span>` : `<span class="kpi-down">−${Math.abs(pct)}%</span>`;
+        };
+        const compareHtml = (isSubset && shown.length)
+            ? `<div class="user-panel-card-compare" title="All ${filtered.length}: $${overall.avgPrice.toLocaleString()} avg · $${overall.avgPpsqft} / SqFt">Price ${pctDiff(avgPrice, overall.avgPrice)} · $/SqFt ${pctDiff(avgPpsqft, overall.avgPpsqft)} vs all ${filtered.length}</div>`
+            : '';
+
+        const priceDropCount = shown.filter(p => p.price_reduced || p.price_drop || (p.original_price && p.original_price > p.price)).length;
         
         function parseListDate(dateStr) {
             if (!dateStr) return null;
@@ -133,7 +155,7 @@ export function updateKPIs() {
         }
 
         const nowMs = Date.now();
-        const domList = filtered.map(p => {
+        const domList = shown.map(p => {
             if (typeof p.days_on_market === 'number') return p.days_on_market;
             const dt = parseListDate(p.list_date);
             if (dt) {
@@ -147,7 +169,7 @@ export function updateKPIs() {
 
         const collapsedText = document.getElementById('dashboard-collapsed-summary-text');
         if (collapsedText) {
-            collapsedText.innerHTML = `<b>${filtered.length}</b> Properties &nbsp;•&nbsp; <b>$${avgPrice.toLocaleString()}</b> Avg Price &nbsp;•&nbsp; <b>${priceDropCount}</b> Price Drops${hasRealDom ? ` &nbsp;•&nbsp; Avg <b>${avgDom} Days</b>` : ''}`;
+            collapsedText.innerHTML = `<b>${inMapView ? `${shown.length} of ${filtered.length}` : filtered.length}</b> Properties &nbsp;•&nbsp; <b>$${avgPrice.toLocaleString()}</b> Avg Price &nbsp;•&nbsp; <b>${priceDropCount}</b> Price Drops${hasRealDom ? ` &nbsp;•&nbsp; Avg <b>${avgDom} Days</b>` : ''}`;
         }
 
         statsBar.innerHTML = `
@@ -162,13 +184,13 @@ export function updateKPIs() {
                     </button>
                 </div>
                 <div class="user-top-panel-grid">
-                    <div class="user-panel-card" title="Total properties matching current filters">
+                    <div class="user-panel-card" title="${inMapView ? 'Properties visible in the map area / total matching filters' : 'Total properties matching current filters'}">
                         <div class="user-panel-card-header">
-                            <span class="user-panel-card-label">Properties</span>
+                            <span class="user-panel-card-label">${inMapView ? 'Properties in View' : 'Properties'}</span>
                             <i data-lucide="home" style="color:var(--accent-emerald);"></i>
                         </div>
-                        <div class="user-panel-card-value">${filtered.length}</div>
-                        <div class="user-panel-card-sub">${activeCount} Active listings</div>
+                        <div class="user-panel-card-value">${shown.length}${inMapView ? ` <span class="kpi-of">of ${filtered.length}</span>` : ''}</div>
+                        <div class="user-panel-card-sub">${shownActiveCount} Active listings</div>
                     </div>
 
                     <div class="user-panel-card" title="Properties with recent price reductions">
@@ -187,6 +209,7 @@ export function updateKPIs() {
                         </div>
                         <div class="user-panel-card-value">$${avgPrice.toLocaleString()}</div>
                         <div class="user-panel-card-sub">$${avgPpsqft} / SqFt</div>
+                        ${compareHtml}
                     </div>
 
                     <div class="user-panel-card" title="${hasRealDom ? 'Average days on market' : 'Average finished square footage'}">
@@ -285,9 +308,7 @@ export function syncDashboardCollapseState() {
             } else if (state.activeView === 'map') {
                 if (elements.mapContainer) elements.mapContainer.style.display = 'flex';
                 renderMap();
-                if (elements.mapCardsContainer) {
-                    renderGrid(elements.mapCardsContainer, true);
-                }
+                renderMapCards();
             } else if (state.activeView === 'table') {
                 elements.tableContainer.style.display = 'block';
                 renderTable();
@@ -295,8 +316,29 @@ export function syncDashboardCollapseState() {
                 elements.matrixContainer.style.display = 'grid';
                 renderMatrix();
             }
+            // Stats depend on the active view (map view = only what's on screen), so refresh
+            // them after the view (and its map pins) are rendered.
+            updateKPIs();
         }
     }
+
+    // Map view: cards + "X of Y" count for only the pins inside the visible map area.
+    function renderMapCards() {
+        if (!elements.mapCardsContainer) return;
+        const inView = getPropertiesInView();
+        const total = state.filteredProperties.length;
+        const countEl = document.getElementById('map-results-count');
+        if (countEl) {
+            countEl.innerHTML = total ? `<b>${inView.length}</b> of ${total} results in map view` : '';
+        }
+        renderGrid(elements.mapCardsContainer, true, inView);
+    }
+
+    document.addEventListener('dibs:map-viewport-changed', () => {
+        if (state.activeView !== 'map') return;
+        renderMapCards();
+        updateKPIs();
+    });
 import { savePreferencesToServer } from './api.js';
 
 export function switchView(viewName) {
@@ -402,9 +444,18 @@ export function switchView(viewName) {
         `;
     }
 
-    export function renderGrid(containerEl = elements.gridContainer, attachMapHoverEvents = false) {
+    export function renderGrid(containerEl = elements.gridContainer, attachMapHoverEvents = false, propsOverride = null) {
         if (!containerEl) return;
-        const props = state.filteredProperties;
+        const props = propsOverride || state.filteredProperties;
+        if (!props.length && propsOverride && state.filteredProperties.length) {
+            containerEl.innerHTML = `
+                <div style="grid-column: 1/-1; text-align:center; padding: 4rem; color: var(--text-muted); background: var(--bg-card); border-radius: 12px;">
+                    <h3>No properties in this map area</h3>
+                    <p style="margin-top: 0.5rem;">Zoom out, drag the map, or use Fit All to see every result.</p>
+                </div>
+            `;
+            return;
+        }
         if (!props.length) {
             containerEl.innerHTML = `
                 <div style="grid-column: 1/-1; text-align:center; padding: 4rem; color: var(--text-muted); background: var(--bg-card); border-radius: 12px;">

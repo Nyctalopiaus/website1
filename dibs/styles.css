@@ -410,6 +410,30 @@ body {
     transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, margin 0.35s ease, padding 0.35s ease;
 }
 
+/* Desktop: keep the dashboard panels, collapsed strip and filter bar centered on the same
+   1850px column as the navbar, with identical 2rem gutters, so their edges line up. (body is a
+   flex column, so without an explicit width the filter bar shrinks to its content and the
+   dashboard grid, with fixed side margins, hugs the left edge on wide screens.) */
+@media (min-width: 769px) {
+    .user-dashboard-top-grid,
+    .top-filter-container {
+        width: 100%;
+        max-width: 1850px;
+        box-sizing: border-box;
+        margin-left: auto;
+        margin-right: auto;
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+    .dashboard-collapsed-strip {
+        width: calc(100% - 4rem);
+        max-width: calc(1850px - 4rem);
+        box-sizing: border-box;
+        margin-left: auto;
+        margin-right: auto;
+    }
+}
+
 .user-dashboard-top-grid.collapsed {
     max-height: 0 !important;
     opacity: 0 !important;
@@ -2461,6 +2485,28 @@ body {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 1.25rem;
 }
+
+.map-results-count {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+}
+.map-results-count b { color: var(--text-primary, inherit); }
+
+.kpi-of {
+    font-size: 0.55em;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.user-panel-card-compare {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+.user-panel-card-compare .kpi-up { color: var(--accent-gold); font-weight: 700; }
+.user-panel-card-compare .kpi-down { color: var(--accent-emerald); font-weight: 700; }
 
 @media (max-width: 1024px) {
     .map-view-split-wrapper {

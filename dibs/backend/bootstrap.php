@@ -265,6 +265,19 @@ try {
             FOREIGN KEY (initiated_by_user_id) REFERENCES users(id) ON DELETE CASCADE
         );
 
+        -- Which Matrix portal search (the portal URL's p= id, e.g. CS-3948407) last showed each
+        -- listing, per user. Lets the off-market check judge a complete walk of one search only
+        -- against homes that search has shown before.
+        CREATE TABLE IF NOT EXISTS property_search_sightings (
+            user_id INTEGER NOT NULL,
+            search_key TEXT NOT NULL,
+            mls_id TEXT NOT NULL,
+            search_name TEXT DEFAULT '',
+            last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, search_key, mls_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_search_sightings_mls ON property_search_sightings (mls_id);
+
         CREATE TABLE IF NOT EXISTS user_preferences (
             user_id INTEGER PRIMARY KEY,
             active_view TEXT DEFAULT 'grid',

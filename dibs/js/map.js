@@ -79,6 +79,11 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './p
                 } catch(e){}
             });
 
+            // Let the card list + stats re-filter to what's visible after every zoom/pan.
+            mapState.leafletMap.on('moveend', () => {
+                document.dispatchEvent(new CustomEvent('dibs:map-viewport-changed'));
+            });
+
             // Popup content includes icon markup that only enters the DOM once Leaflet
             // opens the popup, so icons there can't be initialized at render time.
             mapState.leafletMap.on('popupopen', () => {
@@ -177,6 +182,7 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './p
                 zIndexOffset: p.favorite ? 500 : 0
             }).addTo(mapState.leafletMap);
             marker._favorite = !!p.favorite;
+            marker._property = p;
             const imgUrl = escapeHtml(p.main_image_url || NO_PHOTO_IMG);
 
             const popupContent = `
@@ -232,6 +238,20 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './p
         if (bounds.length > 0 && (forceFit || (autoFit && !mapState.leafletMap._userHasInteracted))) {
             mapState.leafletMap.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
         }
+    }
+
+    // Filtered properties whose pin is inside the visible map area, in current sort order.
+    // Falls back to the full filtered list if the map isn't ready/sized yet.
+    export function getPropertiesInView() {
+        const all = state.filteredProperties;
+        const map = mapState.leafletMap;
+        if (!map || !mapState.mapMarkers.length) return all;
+        const size = map.getSize();
+        if (!size.x || !size.y) return all;
+        const viewBounds = map.getBounds();
+        return mapState.mapMarkers
+            .filter(m => m._property && viewBounds.contains(m.getLatLng()))
+            .map(m => m._property);
     }
 
     export function highlightMapMarker(mlsId) {

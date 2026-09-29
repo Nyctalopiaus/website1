@@ -89,4 +89,15 @@ window.focusClientNextStep = function(status) {
         select.value = status;
         select.dispatchEvent(new Event('change', { bubbles: true }));
     }
+    // Bring the results into view, stopping just below the sticky header (logo bar + playlist
+    // banner, ~238px when the banner shows). A plain scrollIntoView({block:'start'}) put the
+    // grid's top edge at y=0, hiding the first row of cards under that header.
+    requestAnimationFrame(() => {
+        const target = document.getElementById('view-grid-container');
+        if (!target) return;
+        const header = document.querySelector('.header-sticky-wrapper');
+        const offset = (header ? header.getBoundingClientRect().height : 0) + 12;
+        const top = target.getBoundingClientRect().top + window.scrollY - offset;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    });
 };

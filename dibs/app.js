@@ -51,6 +51,7 @@ import { renderRealtorView } from './js/realtorView.js';
 // window.toggleFavorite / etc. side-effect assignments run (they're called from onclick="..."
 // attributes in dynamically-rendered HTML, so they must exist on window before any card renders).
 import './js/detailModal.js';
+import './js/photoViewer.js';
 
 // Global JS error capture — posts to the same action=client_log endpoint the bookmarklet uses
 // (backend/properties.php's handleClientLog / event_log table), so an error in the main app is
