@@ -8,7 +8,7 @@
  */
 import { state, elements, CONFIG } from './state.js';
 import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, isSafeMediaUrl, NO_PHOTO_IMG, getStatusBadgeClass } from './properties.js';
-import { apiFetch } from './api.js';
+import { apiFetch, savePreferencesToServer } from './api.js';
 import { applyFiltersAndRender } from './filters.js';
 import { showToast } from './toast.js';
 import { renderClientNextSteps } from './clientNextSteps.js';
@@ -22,6 +22,102 @@ export const DEFAULT_REACTION_CHIPS = [
     '🔊 Busy Road',
     '💵 Priced Well'
 ];
+
+// Quick-insert chips for the MLS Portal Sync note box (a separate, fully editable library).
+export const DEFAULT_MLS_NOTE_CHIPS = [
+    'Split rail fence',
+    'Garage too small'
+];
+
+function getMlsNoteChips() {
+    return Array.isArray(state.userMlsNoteChips) ? state.userMlsNoteChips : [...DEFAULT_MLS_NOTE_CHIPS];
+}
+
+const MLS_CHIP_SEP = ', ';
+
+function splitMlsNote(text) {
+    return String(text || '').split(/\s*[,;\n]\s*/).map(s => s.trim()).filter(Boolean);
+}
+
+function mlsNoteHasChip(text, chip) {
+    const c = chip.toLowerCase();
+    return splitMlsNote(text).some(part => part.toLowerCase() === c);
+}
+
+window.renderMlsNoteChipsHtml = function() {
+    const current = document.getElementById('modal-mls-note')?.value || '';
+    let html = '<div class="reaction-chips-wrapper" style="display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center;">';
+    getMlsNoteChips().forEach(chip => {
+        const safe = escapeHtml(chip);
+        html += `
+            <button type="button" class="reaction-chip ${mlsNoteHasChip(current, chip) ? 'active' : ''}" data-chip="${safe}"
+                    onclick="window.toggleMlsNoteChip(this.dataset.chip)">
+                <span>${safe}</span>
+                <span class="chip-delete-btn" title="Remove from your MLS note chips" onclick="window.deleteMlsNoteChip(event, this.parentElement.dataset.chip)">&times;</span>
+            </button>`;
+    });
+    html += `
+        <button type="button" class="btn btn-secondary btn-compact reaction-chip-add" onclick="window.promptAddMlsNoteChip()">
+            <i data-lucide="plus"></i> Custom Chip
+        </button>
+    </div>`;
+    return html;
+};
+
+function refreshMlsNoteChips() {
+    const container = document.getElementById('modal-mls-note-chips');
+    if (!container) return;
+    container.innerHTML = window.renderMlsNoteChipsHtml();
+    if (window.lucide) window.lucide.createIcons();
+}
+
+// Called from the textarea's oninput so the count and chip highlights track manual typing.
+window.onMlsNoteInput = function() {
+    const el = document.getElementById('modal-mls-note');
+    const count = document.getElementById('modal-mls-note-count');
+    if (el && count) count.textContent = el.value.length + ' / 500';
+    document.querySelectorAll('#modal-mls-note-chips .reaction-chip[data-chip]').forEach(btn => {
+        btn.classList.toggle('active', mlsNoteHasChip(el?.value, btn.dataset.chip));
+    });
+};
+
+window.toggleMlsNoteChip = function(chip) {
+    const el = document.getElementById('modal-mls-note');
+    if (!el || !chip) return;
+    const parts = splitMlsNote(el.value);
+    const idx = parts.findIndex(part => part.toLowerCase() === chip.toLowerCase());
+    if (idx >= 0) {
+        parts.splice(idx, 1);
+    } else {
+        parts.push(chip);
+    }
+    const next = parts.join(MLS_CHIP_SEP);
+    if (next.length > 500) { showToast('MLS notes are limited to 500 characters', 'error'); return; }
+    el.value = next;
+    window.onMlsNoteInput();
+    el.focus();
+};
+
+window.promptAddMlsNoteChip = function() {
+    const input = prompt('New MLS note chip (e.g. "Backs to open space", "No basement"):');
+    if (!input || !input.trim()) return;
+    const chip = input.trim().replace(/[,;\n]+/g, ' ').slice(0, 100);
+    const list = getMlsNoteChips();
+    if (!list.some(c => c.toLowerCase() === chip.toLowerCase())) {
+        state.userMlsNoteChips = [...list, chip];
+        savePreferencesToServer();
+    }
+    refreshMlsNoteChips();
+    window.toggleMlsNoteChip(chip);
+};
+
+window.deleteMlsNoteChip = function(event, chip) {
+    event.stopPropagation();
+    if (!confirm(`Remove "${chip}" from your MLS note chips?`)) return;
+    state.userMlsNoteChips = getMlsNoteChips().filter(c => c !== chip);
+    savePreferencesToServer();
+    refreshMlsNoteChips();
+};
 
 export function getPropertyTags(p) {
     if (!p) return [];
@@ -107,7 +203,7 @@ window.promptAddCustomReactionChip = function(mlsId) {
     if (!state.userCustomChips) state.userCustomChips = [];
     if (!state.userCustomChips.includes(cleanChip) && !DEFAULT_REACTION_CHIPS.includes(cleanChip)) {
         state.userCustomChips.push(cleanChip);
-        if (window.savePreferencesToServer) window.savePreferencesToServer();
+        savePreferencesToServer();
     }
     window.togglePropertyReactionChip(mlsId, cleanChip);
 };
@@ -117,7 +213,7 @@ window.deleteCustomReactionChip = function(event, chipText) {
     if (!confirm(`Delete "${chipText}" from your reusable reaction chips library?`)) return;
     if (state.userCustomChips) {
         state.userCustomChips = state.userCustomChips.filter(c => c !== chipText);
-        if (window.savePreferencesToServer) window.savePreferencesToServer();
+        savePreferencesToServer();
     }
     const modalEl = document.getElementById('modal-detail');
     const mlsId = modalEl?.dataset?.currentMlsId || '';
@@ -601,7 +697,8 @@ window.deleteCustomReactionChip = function(event, chipText) {
                    <div style="margin:0.35rem 0;">"${escapeHtml(outbox)}"</div>
                    <button type="button" class="btn btn-secondary" onclick="setMlsNoteOutbox('${p.mls_id}', '')">Cancel</button>
                </div>`
-            : `<textarea id="modal-mls-note" class="input-text" maxlength="500" style="min-height:60px;" placeholder="Short note for your realtor, e.g. Not extra wide garage" oninput="document.getElementById('modal-mls-note-count').textContent = this.value.length + ' / 500'"></textarea>
+            : `<div id="modal-mls-note-chips">${window.renderMlsNoteChipsHtml()}</div>
+               <textarea id="modal-mls-note" class="input-text" maxlength="500" style="min-height:60px;" placeholder="Short note for your realtor, e.g. Not extra wide garage — or tap a chip above" oninput="window.onMlsNoteInput()"></textarea>
                <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
                    <button type="button" class="btn btn-primary" onclick="queueMlsNoteFromModal('${p.mls_id}')"><i data-lucide="send"></i> Queue for MLS</button>
                    <span id="modal-mls-note-count" style="font-size:0.8rem; color:var(--text-muted);">0 / 500</span>

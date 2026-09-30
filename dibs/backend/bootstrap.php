@@ -285,6 +285,7 @@ try {
             compare_list_json TEXT DEFAULT '[]',
             active_filters_json TEXT DEFAULT '{}',
             custom_reaction_chips_json TEXT DEFAULT '[]',
+            mls_note_chips_json TEXT DEFAULT NULL,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
@@ -515,6 +516,7 @@ try {
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_scrape_runs_user_started ON scrape_runs(initiated_by_user_id, started_at DESC)", 'scrape_runs.user_started');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_user_preferences_id ON user_preferences(user_id)", 'idx_user_preferences_id');
     runMigration($pdo, "ALTER TABLE user_preferences ADD COLUMN custom_reaction_chips_json TEXT DEFAULT '[]'", 'user_preferences.custom_reaction_chips_json');
+    runMigration($pdo, "ALTER TABLE user_preferences ADD COLUMN mls_note_chips_json TEXT DEFAULT NULL", 'user_preferences.mls_note_chips_json');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_saved_filters_user_id ON saved_filters(user_id)", 'idx_saved_filters_user_id');
 
     // MLS two-way sync. matrix_key = Matrix's internal listing key (the portal's write endpoints

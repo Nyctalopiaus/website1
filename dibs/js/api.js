@@ -88,6 +88,9 @@ import { elements, state } from './state.js';
                     state.userCustomChips = p.custom_reaction_chips;
                     localStorage.setItem('scout_custom_reaction_chips', JSON.stringify(p.custom_reaction_chips));
                 }
+                if (Array.isArray(p.mls_note_chips)) {
+                    state.userMlsNoteChips = p.mls_note_chips;
+                }
             }
         } catch (e) {
             console.warn('Could not sync preferences from server, using local fallback:', e);
@@ -101,6 +104,7 @@ import { elements, state } from './state.js';
             current_sort: state.currentSort,
             compare_list: state.compareList,
             custom_reaction_chips: state.userCustomChips || [],
+            ...(Array.isArray(state.userMlsNoteChips) ? { mls_note_chips: state.userMlsNoteChips } : {}),
             active_filters: {
                 status: state.filters.status,
                 matrixStatus: state.filters.matrixStatus

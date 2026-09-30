@@ -23,6 +23,7 @@
         compareList: [],
         collections: [],
         userCustomChips: [],
+        userMlsNoteChips: null, // null = use DEFAULT_MLS_NOTE_CHIPS until the user edits the list
         filters: {
             search: '',
             priceMin: null, priceMax: null,
