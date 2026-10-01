@@ -253,7 +253,6 @@
                         <option value="price-desc">Price: High to Low</option>
                         <option value="sqft-desc">SqFt: High to Low</option>
                         <option value="ppsqft-asc">Price/SqFt: Low to High</option>
-                        <option value="walkscore-desc">WalkScore: High to Low</option>
                         <option value="rating-desc">My Rating: Highest</option>
                     </select>
                 </div>
@@ -268,7 +267,7 @@
             <div class="drawer-header">
                 <div>
                     <h2 style="font-size:1.3rem; margin-bottom:2px;"><i data-lucide="sliders-horizontal"></i> Property Filters</h2>
-                    <p style="font-size:0.8rem; color:var(--text-muted);">Filter properties across 32 detailed specs, financials, location scores, and notes</p>
+                    <p style="font-size:0.8rem; color:var(--text-muted);">Filter properties across detailed specs, financials, location, and notes</p>
                 </div>
                 <button class="modal-close" aria-label="Close" id="btn-close-filter-console" style="position:static; font-size:1.4rem;"><i data-lucide="x"></i></button>
             </div>
@@ -279,7 +278,7 @@
                 <button class="drawer-tab-btn" data-tab="tab-rooms"><i data-lucide="bed"></i> Rooms & Layout <span class="badge-filter-count" id="badge-tab-rooms" style="display:none;">0</span></button>
                 <button class="drawer-tab-btn" data-tab="tab-specs"><i data-lucide="ruler"></i> Size & Lot <span class="badge-filter-count" id="badge-tab-specs" style="display:none;">0</span></button>
                 <button class="drawer-tab-btn" data-tab="tab-finances"><i data-lucide="bar-chart-3"></i> Taxes & HOA <span class="badge-filter-count" id="badge-tab-finances" style="display:none;">0</span></button>
-                <button class="drawer-tab-btn" data-tab="tab-location"><i data-lucide="map-pin"></i> Location & Scores <span class="badge-filter-count" id="badge-tab-location" style="display:none;">0</span></button>
+                <button class="drawer-tab-btn" data-tab="tab-location"><i data-lucide="map-pin"></i> Location <span class="badge-filter-count" id="badge-tab-location" style="display:none;">0</span></button>
                 <button class="drawer-tab-btn" data-tab="tab-collections"><i data-lucide="star"></i> Ratings & Notes <span class="badge-filter-count" id="badge-tab-collections" style="display:none;">0</span></button>
             </div>
 
@@ -330,47 +329,6 @@
                             </datalist>
                         </div>
                         <div class="filter-group">
-                            <label class="filter-label">Min Redfin Estimate ($)</label>
-                            <select id="filter-rf-est-min" class="select-input">
-                                <option value="">Any Min Redfin Est</option>
-                                <option value="300000">$300,000</option>
-                                <option value="350000">$350,000</option>
-                                <option value="400000">$400,000</option>
-                                <option value="450000">$450,000</option>
-                                <option value="500000">$500,000</option>
-                                <option value="550000">$550,000</option>
-                                <option value="600000">$600,000</option>
-                                <option value="650000">$650,000</option>
-                                <option value="700000">$700,000</option>
-                                <option value="750000">$750,000</option>
-                                <option value="800000">$800,000</option>
-                                <option value="850000">$850,000</option>
-                                <option value="900000">$900,000</option>
-                                <option value="950000">$950,000</option>
-                                <option value="1000000">$1,000,000+</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label class="filter-label">Max Redfin Estimate ($)</label>
-                            <select id="filter-rf-est-max" class="select-input">
-                                <option value="">Any Max Redfin Est</option>
-                                <option value="350000">$350,000</option>
-                                <option value="400000">$400,000</option>
-                                <option value="450000">$450,000</option>
-                                <option value="500000">$500,000</option>
-                                <option value="550000">$550,000</option>
-                                <option value="600000">$600,000</option>
-                                <option value="650000">$650,000</option>
-                                <option value="700000">$700,000</option>
-                                <option value="750000">$750,000</option>
-                                <option value="800000">$800,000</option>
-                                <option value="850000">$850,000</option>
-                                <option value="900000">$900,000</option>
-                                <option value="950000">$950,000</option>
-                                <option value="1000000">$1,000,000</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
                             <label class="filter-label">Max Price / Finished SqFt ($)</label>
                             <input type="text" inputmode="numeric" id="filter-ppsqft-max" class="input-text" list="filter-ppsqft-max-list" placeholder="Any Max $/SqFt" autocomplete="off">
                             <datalist id="filter-ppsqft-max-list">
@@ -384,11 +342,6 @@
                                 <option value="$500"></option>
                                 <option value="$600"></option>
                             </datalist>
-                        </div>
-                        <div class="filter-group" style="display:flex; align-items:flex-end;">
-                            <label class="toggle-chip" style="padding:0.6rem;">
-                                <input type="checkbox" id="toggle-under-redfin"> <i data-lucide="trending-down"></i> Below Redfin Estimate Only
-                            </label>
                         </div>
                     </div>
                 </div>
@@ -682,7 +635,7 @@
                     </div>
                 </div>
 
-                <!-- Tab 5: Location & Redfin Scores -->
+                <!-- Tab 5: Location -->
                 <div class="drawer-tab-panel" id="tab-location">
                     <div class="drawer-section-grid">
                         <div class="filter-group">
@@ -701,33 +654,6 @@
                             <label class="filter-label">School District Keyword</label>
                             <select id="filter-school-district" class="select-input">
                                 <option value="">All School Districts</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label class="filter-label">Min WalkScore (0 - 100)</label>
-                            <select id="drawer-walkscore-min" class="select-input">
-                                <option value="">Any WalkScore</option>
-                                <option value="90">90+ (Walker's Paradise)</option>
-                                <option value="70">70+ (Very Walkable)</option>
-                                <option value="50">50+ (Somewhat Walkable)</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label class="filter-label">Min TransitScore (0 - 100)</label>
-                            <select id="filter-transitscore-min" class="select-input">
-                                <option value="">Any TransitScore</option>
-                                <option value="90">90+ (Rider's Paradise)</option>
-                                <option value="70">70+ (Excellent Transit)</option>
-                                <option value="50">50+ (Good Transit)</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label class="filter-label">Min BikeScore (0 - 100)</label>
-                            <select id="filter-bikescore-min" class="select-input">
-                                <option value="">Any BikeScore</option>
-                                <option value="90">90+ (Biker's Paradise)</option>
-                                <option value="70">70+ (Very Bikeable)</option>
-                                <option value="50">50+ (Somewhat Bikeable)</option>
                             </select>
                         </div>
                     </div>
@@ -1322,7 +1248,7 @@
             <div class="modal-header">
                 <div>
                     <h2 class="font-serif" style="font-size: 1.5rem; margin-bottom: 0.2rem;"><i data-lucide="scale"></i> Side-by-Side Luxury Property Comparison</h2>
-                    <p style="font-size: 0.85rem; color: var(--text-muted);">Compare specs, valuation metrics, location scores, and financial highlights side-by-side</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Compare specs, pricing metrics, and financial highlights side-by-side</p>
                 </div>
                 <button class="modal-close" aria-label="Close" id="btn-close-compare-matrix"><i data-lucide="x"></i></button>
             </div>
@@ -1573,10 +1499,6 @@
                                 <span style="color: var(--text-muted);">Price / SqFt:</span>
                                 <strong id="prop-map-ppsqft">-</strong>
                             </div>
-                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
-                                <span style="color: var(--text-muted);">Walk Score:</span>
-                                <strong id="prop-map-walkscore">-</strong>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -1714,7 +1636,6 @@
                                 <option value="price-asc">Price: Low to High</option>
                                 <option value="date-desc">List Date: Newest First</option>
                                 <option value="sqft-desc">SqFt: Largest First</option>
-                                <option value="walkscore-desc">WalkScore: Highest First</option>
                             </select>
                         </div>
                         <div style="display:flex; align-items:center; gap:0.35rem; margin-left:auto;">

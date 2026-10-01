@@ -1,5 +1,5 @@
 /**
- * Redfin-style full-screen photo viewer.
+ * Full-screen photo viewer.
  *
  *   window.openPhotoViewer(mlsId)            -> "All photos" scrolling grid + sticky info panel
  *   window.openPhotoViewer(mlsId, index)     -> single-photo lightbox starting at `index`
@@ -126,7 +126,7 @@ function render() {
         </div>`;
 
     if (current.mode === 'grid') {
-        // Redfin-ish rhythm: one wide photo, then a pair, repeat.
+        // Rhythm: one wide photo, then a pair, repeat.
         const cells = imgs.map((url, i) => {
             const wide = (i % 3 === 0);
             return `<div class="pv-cell ${wide ? 'wide' : ''}" data-pv-idx="${i}">${img(url, '', `Photo ${i + 1}`, i > 3 ? 'loading="lazy"' : '')}</div>`;

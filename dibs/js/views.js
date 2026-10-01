@@ -357,14 +357,26 @@ export function switchView(viewName) {
     showToast(`Switched view to ${viewName.toUpperCase()}`, 'info');
 }
 
+    function getCardDaysOnMarket(p) {
+        if (typeof p.days_on_market === 'number') return p.days_on_market;
+        if (p.days_on_market != null && p.days_on_market !== '' && !isNaN(Number(p.days_on_market))) return Number(p.days_on_market);
+        if (!p.list_date) return null;
+        const str = String(p.list_date).trim();
+        let dt = null;
+        const parts = str.split('/');
+        if (parts.length === 3) {
+            let y = parseInt(parts[2], 10);
+            if (y < 100) y += 2000;
+            dt = new Date(y, parseInt(parts[0], 10) - 1, parseInt(parts[1], 10));
+        }
+        if (!dt || Number.isNaN(dt.getTime())) dt = new Date(str.replace(' ', 'T'));
+        if (Number.isNaN(dt.getTime())) return null;
+        return Math.max(0, Math.round((Date.now() - dt.getTime()) / 86400000));
+    }
+
     export function buildPropertyCardHtml(p) {
         const ppsqft = p.sqft_finished ? Math.round(p.price / p.sqft_finished) : 0;
-        const rfDelta = p.redfin_estimate ? Math.round(((p.price - p.redfin_estimate) / p.redfin_estimate) * 100) : null;
-        let rfBadge = '';
-        if (rfDelta !== null) {
-            const isAbove = rfDelta > 0;
-            rfBadge = `<span class="card-rf-delta ${isAbove ? 'delta-above' : 'delta-below'}">${isAbove ? '+' : ''}${rfDelta}% vs Redfin</span>`;
-        }
+        const dom = getCardDaysOnMarket(p);
 
         const matrixRev = getPropertyReviewStatus(p);
         let matrixBadge = '';
@@ -403,7 +415,6 @@ export function switchView(viewName) {
                 <div class="card-body">
                     <div class="card-price-row">
                         <span class="card-price font-serif">$${p.price.toLocaleString()}</span>
-                        ${rfBadge}
                     </div>
                     <div>
                         <div class="card-address">${escapeHtml(displayAddr)}</div>
@@ -419,9 +430,9 @@ export function switchView(viewName) {
                         <div class="stat-item"><span class="stat-val">$${ppsqft}</span><span class="stat-lbl">$/SqFt</span></div>
                     </div>
                     <div class="card-scores">
+                        ${dom !== null ? `<span class="score-badge" title="Days on market"><i data-lucide="clock" style="width:0.85em;height:0.85em;vertical-align:-0.1em;"></i> ${dom} ${dom === 1 ? 'day' : 'days'} on market</span>` : ''}
                         <span class="score-badge">Built: ${p.year_built || 'N/A'}</span>
                         <span class="score-badge">Lot: ${p.lot_acres ? p.lot_acres + ' acres' : (p.lot_sqft ? p.lot_sqft.toLocaleString() + ' sqft' : 'N/A')}</span>
-                        ${p.walk_score ? `<span class="score-badge" style="background:#4F7A46; color:#fff;"><i data-lucide="footprints"></i> ${p.walk_score}/100</span>` : ''}
                         ${p.hoa_fee ? `<span class="score-badge" style="background:#B87A2A; color:#fff;">HOA: $${p.hoa_fee}</span>` : '<span class="score-badge">No HOA</span>'}
                         ${matrixBadge}
                     </div>
@@ -497,7 +508,6 @@ export function switchView(viewName) {
                         <th>Built</th>
                         <th>HOA</th>
                         <th>Tax</th>
-                        <th>WalkScore</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -523,7 +533,6 @@ export function switchView(viewName) {
                                 <td>${p.year_built || '-'}</td>
                                 <td>${p.hoa_fee ? '$' + p.hoa_fee : 'No'}</td>
                                 <td>${p.annual_tax ? '$' + p.annual_tax : '-'}</td>
-                                <td>${p.walk_score ? p.walk_score + '/100' : '-'}</td>
                                 <td>
                                     <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.75rem;" onclick="event.stopPropagation(); openDetailModal('${p.mls_id}')">View</button>
                                 </td>
@@ -571,7 +580,6 @@ export function switchView(viewName) {
         const bestPrice = Math.min(...props.map(p => p.price));
         const bestPpsqft = Math.min(...props.map(p => p.sqft_finished ? Math.round(p.price / p.sqft_finished) : Infinity));
         const bestSqft = Math.max(...props.map(p => p.sqft_finished || 0));
-        const bestWalkScore = Math.max(...props.map(p => p.walk_score || 0));
         const bestYearBuilt = Math.max(...props.map(p => p.year_built || 0));
         const bestHoaFee = Math.min(...props.map(p => (p.hoa_fee !== null && p.hoa_fee !== undefined) ? p.hoa_fee : 0));
 
@@ -599,7 +607,7 @@ export function switchView(viewName) {
                     <div class="matrix-info-item">
                         <span><i data-lucide="trophy"></i></span>
                         <div>
-                            <strong>Winner Highlights:</strong> Green highlighted boxes indicate best-in-class values (Lowest Price, Lowest $/SqFt, Largest Area, Newest Year, Lowest HOA, & Highest WalkScore).
+                            <strong>Winner Highlights:</strong> Green highlighted boxes indicate best-in-class values (Lowest Price, Lowest $/SqFt, Largest Area, Newest Year, & Lowest HOA).
                         </div>
                     </div>
                     <div class="matrix-info-item">
@@ -635,7 +643,6 @@ export function switchView(viewName) {
                 return '<span style="color:var(--text-muted);"><i data-lucide="clipboard-list"></i> Unreviewed</span>';
             }},
             { label: 'List Price', fn: p => `<strong style="font-size:1.1rem; color:var(--accent-gold);">$${p.price.toLocaleString()}</strong>`, isWinner: p => p.price === bestPrice },
-            { label: 'Redfin Estimate', fn: p => p.redfin_estimate ? `$${p.redfin_estimate.toLocaleString()}` : 'N/A' },
             { label: 'Beds / Baths', fn: p => `${p.beds} Beds / ${p.baths} Baths` },
             { label: 'Finished SqFt', fn: p => p.sqft_finished ? p.sqft_finished.toLocaleString() : 'N/A', isWinner: p => p.sqft_finished === bestSqft && bestSqft > 0 },
             { label: 'Price per SqFt', fn: p => `$${p.sqft_finished ? Math.round(p.price / p.sqft_finished) : 'N/A'}`, isWinner: p => p.sqft_finished && Math.round(p.price / p.sqft_finished) === bestPpsqft },
@@ -643,7 +650,6 @@ export function switchView(viewName) {
             { label: 'Lot Size', fn: p => p.lot_acres ? `${p.lot_acres} Acres` : 'N/A' },
             { label: 'HOA Fee', fn: p => p.hoa_fee ? `$${p.hoa_fee}/yr` : 'No HOA', isWinner: p => (p.hoa_fee || 0) === bestHoaFee },
             { label: 'Annual Tax', fn: p => p.annual_tax ? `$${p.annual_tax}` : 'N/A' },
-            { label: 'WalkScore', fn: p => p.walk_score ? `${p.walk_score} / 100` : 'N/A', isWinner: p => p.walk_score === bestWalkScore && bestWalkScore > 0 },
             { label: 'School District', fn: p => escapeHtml(p.school_district || 'N/A') }
         ];
 

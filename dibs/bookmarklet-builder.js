@@ -1,6 +1,6 @@
 /**
  * Nycto's MLS Property Scout - Self-Contained Bookmarklet Engine Builder
- * Generates 100% inline bookmarklet executable directly on HTTPS Matrix MLS & Redfin pages.
+ * Generates 100% inline bookmarklet executable directly on HTTPS Matrix MLS pages.
  */
 function getEngineCode() {
     // NOTE: this has to be String.raw (not a plain template literal) so that regex escapes
@@ -14,7 +14,7 @@ function getEngineCode() {
     // the two .replace() calls after the raw extraction below strip those backslashes back out.
     const raw = String.raw`/**
  * Nycto's MLS Property Scout - Bookmarklet Engine
- * High-performance DOM parser for Matrix REColorado and Redfin property pages.
+ * High-performance DOM parser for Matrix REColorado property pages.
  */
 (function() {
     'use strict';
@@ -27,8 +27,7 @@ function getEngineCode() {
         SCRAPE_TOKEN: window.SCOUT_SCRAPE_TOKEN || null,
         // Ask before every Dibs -> MLS write (review status or note). On by default; set
         // window.SCOUT_CONFIRM_WRITES = false before the engine runs to turn it off.
-        CONFIRM_WRITES: window.SCOUT_CONFIRM_WRITES !== false,
-        AUTO_POPUP_REDFIN: true
+        CONFIRM_WRITES: window.SCOUT_CONFIRM_WRITES !== false
     };
 
     let toastTimeout = null;
@@ -83,6 +82,35 @@ function getEngineCode() {
         return { key: m ? m[1] : '', name: m ? name.slice(0, 120) : '' };
     }
     const RUN_SEARCH = getPortalSearchInfo();
+
+    function portalPageUrl() {
+        try {
+            const u = new URL(window.location.href);
+            u.searchParams.delete('dibs_mls');
+            return u.toString();
+        } catch (e) {
+            return window.location.href;
+        }
+    }
+
+    function getDibsJumpTarget() {
+        const m = window.location.search.match(/[?&]dibs_mls=(\d+)/);
+        return m ? m[1] : '';
+    }
+
+    // Drop dibs_mls from the address bar and the ASP.NET form action once used, so later
+    // postbacks (and a later click of this bookmarklet to sync) don't jump again.
+    function clearDibsJumpParam() {
+        try { history.replaceState(history.state, '', portalPageUrl()); } catch (e) {}
+        const form = document.forms[0];
+        if (form && form.action && form.action.indexOf('dibs_mls=') !== -1) {
+            try {
+                const a = new URL(form.action, window.location.href);
+                a.searchParams.delete('dibs_mls');
+                form.setAttribute('action', a.toString());
+            } catch (e) {}
+        }
+    }
 
     function logToServer(level, message, mlsId, context) {
         try {
@@ -648,7 +676,7 @@ function getEngineCode() {
 
         // BUG FIX (found while investigating why "Top Picks" showed implausible HOA figures like
         // $576-$1680/mo against a DB where 5+ favorited listings all had inflated hoa_fee values,
-        // 5-15x Josh's original Redfin export for the same addresses): "Annual HOA Fee" and "Total
+        // 5-15x the figures in Josh's earlier export for the same addresses): "Annual HOA Fee" and "Total
         // Annual HOA Fees" are explicitly annual dollar amounts on Matrix, but the raw matched
         // number was being stored straight into hoa_fee (a monthly figure everywhere else in the
         // app - card badges, filters, the export CSV) with no /12 conversion. Only the plain "HOA
@@ -762,7 +790,7 @@ function getEngineCode() {
             annual_tax: annualTax,
             tax_year: taxYear,
             list_date: listDate,
-            mls_url: window.location.href,
+            mls_url: portalPageUrl(),
             main_image_url: mainImg,
             matrix_review_status: matrixReviewStatus,
             portal_notes: portalNotes
@@ -1018,25 +1046,85 @@ function getEngineCode() {
         return predicate();
     };
 
+    function findDetailLinkInBlock(b) {
+        const addrElem = b.querySelector('.d-displayAddress, .portal-address, [id*="Address"], [class*="Address"]');
+        if (addrElem && addrElem.tagName === 'A') return addrElem;
+        const linkInAddr = addrElem ? addrElem.querySelector('a') : null;
+        if (linkInAddr) return linkInAddr;
+
+        const links = Array.from(b.querySelectorAll('a'));
+        const addrLink = links.find(a => {
+            const t = a.innerText.trim();
+            return t && /^\d+\s+[A-Za-z]/.test(t);
+        });
+        if (addrLink) return addrLink;
+
+        const postBackLink = links.find(a => a.href && (a.href.includes('__doPostBack') || a.href.includes('DisplayCore') || a.href.includes('javascript:')));
+        return postBackLink || null;
+    }
+
     function findFirstDetailLinkOnPage() {
         const blocks = findListingBlocks();
         for (const b of blocks) {
-            const addrElem = b.querySelector('.d-displayAddress, .portal-address, [id*="Address"], [class*="Address"]');
-            if (addrElem && addrElem.tagName === 'A') return addrElem;
-            const linkInAddr = addrElem ? addrElem.querySelector('a') : null;
-            if (linkInAddr) return linkInAddr;
-
-            const links = Array.from(b.querySelectorAll('a'));
-            const addrLink = links.find(a => {
-                const t = a.innerText.trim();
-                return t && /^\d+\s+[A-Za-z]/.test(t);
-            });
-            if (addrLink) return addrLink;
-
-            const postBackLink = links.find(a => a.href && (a.href.includes('__doPostBack') || a.href.includes('DisplayCore') || a.href.includes('javascript:')));
-            if (postBackLink) return postBackLink;
+            const link = findDetailLinkInBlock(b);
+            if (link) return link;
         }
         return null;
+    }
+
+    // "Open in Matrix" from Dibs: the portal has no per-listing URL (detail views are postbacks on
+    // the search's result set), so Dibs links to the search page with dibs_mls=<MLS #> appended.
+    // The portal ignores that param (confirmed live Oct 2026); this finds that listing's row in
+    // the results and opens it. The smallest matching block wins, since findListingBlocks() also
+    // returns outer containers that hold many listings.
+    function findDetailLinkForMls(mlsId) {
+        // textContent, not innerText: innerText forces layout on each of the ~400 blocks and made
+        // a 144-listing search take ~30s to scan.
+        const blocks = findListingBlocks()
+            .filter(b => {
+                const t = b.textContent || '';
+                return t.indexOf(mlsId) !== -1 && (t.match(/\d{5,}/g) || []).indexOf(mlsId) !== -1;
+            })
+            .sort((a, b) => (a.textContent || '').length - (b.textContent || '').length);
+        for (const b of blocks) {
+            const link = findDetailLinkInBlock(b);
+            if (link) return link;
+        }
+        return null;
+    }
+
+    async function jumpToDibsListing(mlsId) {
+        clearDibsJumpParam();
+        notify('🔎 Opening MLS #' + mlsId + ' from Dibs...', false, true);
+        let link = null;
+        await waitUntil(() => findListingBlocks().length > 0, 10000, 250);
+        link = findDetailLinkForMls(mlsId);
+        // Results render 50 at a time behind a "See More Results" button (confirmed live Oct
+        // 2026, wired to PortalResultsJs.getNextDisplaySet()), so page through until it shows up.
+        for (let batch = 0; !link && batch < 30; batch++) {
+            const more = Array.from(document.querySelectorAll('a')).find(a => /getNextDisplaySet/.test(a.getAttribute('href') || '') && a.offsetParent !== null);
+            if (!more) break;
+            const rowCount = () => document.querySelectorAll('[data-key]').length;
+            const before = rowCount();
+            more.click();
+            // Short timeout on purpose: right after page load the portal can ignore this click,
+            // and a quick retry beats sitting out a long wait.
+            await waitUntil(() => rowCount() > before, 4000, 250);
+            link = findDetailLinkForMls(mlsId);
+        }
+        if (!link) {
+            notify("⚠️ MLS #" + mlsId + " isn't in this search's results — it may be off-market or in a different saved search.", true, true);
+            logToServer('warn', 'Dibs jump: listing not found in search results', mlsId, { url: portalPageUrl() });
+            return;
+        }
+        link.click();
+        const opened = await waitUntil(() => !!(document.querySelector('a.glyphicon-chevron-right') || getCounterInfo()) && (document.body.innerText || '').indexOf(mlsId) !== -1, 10000, 250);
+        if (opened) {
+            notify('✅ Opened MLS #' + mlsId);
+        } else {
+            notify('⚠️ Found MLS #' + mlsId + ' but its detail view did not load. Try clicking it in the list.', true, true);
+            logToServer('warn', 'Dibs jump: detail view did not load', mlsId, { url: portalPageUrl() });
+        }
     }
 
 function delay(ms) {
@@ -1292,6 +1380,14 @@ function delay(ms) {
 
     const hostname = window.location.hostname;
     if (hostname.includes('recolorado.com') || hostname.includes('matrix')) {
+        const jumpMls = getDibsJumpTarget();
+        if (jumpMls) {
+            jumpToDibsListing(jumpMls).catch(err => {
+                logToServer('error', 'Dibs jump crashed: ' + (err && err.message), jumpMls, { url: portalPageUrl() });
+                notify('❌ Could not open MLS #' + jumpMls + ': ' + (err && err.message), true, true);
+            });
+            return;
+        }
         // Wrapped so a future bug of the same shape as the old undefined-cleanInt crash — which
         // threw synchronously mid-scrape with zero durable record anywhere — gets reported to the
         // server and surfaced as a toast instead of silently aborting with nothing to go on.
@@ -1307,7 +1403,7 @@ function delay(ms) {
             notify('❌ Scrape crashed: ' + (err && err.message), true);
         }
     } else {
-        notify('ℹ️ Run this bookmarklet while viewing Matrix MLS or Redfin listing pages.');
+        notify('ℹ️ Run this bookmarklet while viewing Matrix MLS listing pages.');
     }
 })();
 `;

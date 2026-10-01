@@ -13,6 +13,22 @@ import { applyFiltersAndRender } from './filters.js';
 import { showToast } from './toast.js';
 import { renderClientNextSteps } from './clientNextSteps.js';
 
+// Matrix's portal has no per-listing URL (a listing's detail view is a postback on the search's
+// result set, and the address bar never changes), so the best Dibs can link to is the search page
+// the house was synced from. Tag that link with dibs_mls=<MLS #>: the portal ignores unknown query
+// params (confirmed live Oct 2026), and the Dibs bookmarklet, when clicked on a page carrying that
+// param, opens that one listing instead of running a scrape.
+function matrixListingUrl(p) {
+    const base = p.mls_url || 'https://matrix.recolorado.com/Matrix/Public/Portal.aspx';
+    try {
+        const u = new URL(base);
+        if (p.mls_id) u.searchParams.set('dibs_mls', String(p.mls_id));
+        return u.toString();
+    } catch (e) {
+        return base;
+    }
+}
+
 
 export const DEFAULT_REACTION_CHIPS = [
     '😍 Great Kitchen',
@@ -276,15 +292,8 @@ window.deleteCustomReactionChip = function(event, chipText) {
         } catch(e){}
 
         const ppsqft = p.sqft_finished ? Math.round(p.price / p.sqft_finished) : (p.sqft_total ? Math.round(p.price / p.sqft_total) : 0);
-        const rfDelta = p.redfin_estimate ? Math.round(((p.price - p.redfin_estimate) / p.redfin_estimate) * 100) : null;
-        let rfDiffText = 'N/A';
-        if (p.redfin_estimate) {
-            const diffVal = p.price - p.redfin_estimate;
-            const isAbove = diffVal > 0;
-            rfDiffText = `$${p.redfin_estimate.toLocaleString()} (${isAbove ? '+' : ''}${rfDelta}% vs List)`;
-        }
 
-        const mlsUrl = p.mls_url || `https://matrix.recolorado.com/Matrix/Public/Portal.aspx?L=1&k=2343995XHKSS&p=CS-3939147-0#1`;
+        const mlsUrl = matrixListingUrl(p.mls_url ? p : { ...p, mls_url: 'https://matrix.recolorado.com/Matrix/Public/Portal.aspx?L=1&k=2343995XHKSS&p=CS-3939147-0#1' });
 
         const matrixRev = getPropertyReviewStatus(p);
         let matrixBadgeModal = '';
@@ -321,8 +330,6 @@ window.deleteCustomReactionChip = function(event, chipText) {
         if (p.annual_tax && p.price) calcParams.set('taxRate', ((p.annual_tax / p.price) * 100).toFixed(2));
         if (p.hoa_fee) calcParams.set('hoaFees', Math.round(p.hoa_fee / 12));
         if (displayAddrModal) calcParams.set('address', displayAddrModal);
-        const redfinDirectUrl = (p.redfin_url && typeof p.redfin_url === 'string' && p.redfin_url.startsWith('http') && !p.redfin_url.includes('stingray/do/')) ? p.redfin_url : null;
-        if (redfinDirectUrl) calcParams.set('url', redfinDirectUrl);
         const calcUrl = `/housenomics/?${calcParams.toString()}`;
 
         elements.modalDetailBody.innerHTML = `
@@ -347,7 +354,7 @@ window.deleteCustomReactionChip = function(event, chipText) {
 
                     <!-- Actions -->
                     <div class="modal-action-bar">
-                        <a href="${mlsUrl}" target="_blank" class="btn btn-gold" style="text-decoration:none;">
+                        <a href="${escapeHtml(mlsUrl)}" target="_blank" class="btn btn-gold" style="text-decoration:none;">
                             <i data-lucide="link"></i> View Original Matrix MLS Portal Listing
                         </a>
                         <a href="${calcUrl}" target="_blank" class="btn btn-secondary" style="text-decoration:none; background:rgba(91,124,153,0.2); color:#6B8CA3; border:1px solid #5B7C99;">
@@ -508,27 +515,16 @@ window.deleteCustomReactionChip = function(event, chipText) {
 
                 <!-- Section 4: Financials, Taxes & HOA -->
                 <div>
-                    <div class="modal-section-title"><i data-lucide="wallet"></i> Financials, HOA & Redfin Estimates</div>
+                    <div class="modal-section-title"><i data-lucide="wallet"></i> Financials, Taxes & HOA</div>
                     <div class="modal-grid-4">
                         <div class="modal-detail-box"><span class="modal-detail-lbl">List Price</span><span class="modal-detail-val" style="color:var(--accent-gold);">$${p.price.toLocaleString()}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">Annual Property Tax</span><span class="modal-detail-val">${p.annual_tax ? '$' + p.annual_tax.toLocaleString() : 'N/A'}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">Tax Year</span><span class="modal-detail-val">${p.tax_year || '2025'}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">HOA Fee</span><span class="modal-detail-val">${p.hoa_fee ? '$' + p.hoa_fee + '/yr' : 'No HOA'}</span></div>
-                        <div class="modal-detail-box" style="grid-column: span 2;"><span class="modal-detail-lbl">Redfin Estimate</span><span class="modal-detail-val">${rfDiffText}</span></div>
                     </div>
                 </div>
 
-                <!-- Section 5: WalkScore & Scores -->
-                <div>
-                    <div class="modal-section-title"><i data-lucide="footprints"></i> Livability & WalkScore Metrics</div>
-                    <div class="modal-grid-3">
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">WalkScore</span><span class="modal-detail-val" style="color:#4F7A46;"><i data-lucide="footprints"></i> ${p.walk_score ? p.walk_score + ' / 100' : '45 / 100'}</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Transit Score</span><span class="modal-detail-val"><i data-lucide="bus"></i> ${p.transit_score ? p.transit_score + ' / 100' : '35 / 100'}</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Bike Score</span><span class="modal-detail-val"><i data-lucide="bike"></i> ${p.bike_score ? p.bike_score + ' / 100' : '48 / 100'}</span></div>
-                    </div>
-                </div>
-
-                <!-- Section 6: Rating & Notes -->
+                <!-- Section 5: Rating & Notes -->
                 <div id="detail-notes" style="background:var(--bg-input); padding:1.25rem; border-radius:var(--radius-md); border:1px solid var(--border-color); display:flex; flex-direction:column; gap:1.25rem;">
                     <div>
                         <div class="modal-section-title" style="border:none; margin:0 0 0.5rem 0;"><i data-lucide="star"></i> My Home Rating</div>

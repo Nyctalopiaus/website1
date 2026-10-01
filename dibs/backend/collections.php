@@ -216,11 +216,10 @@ function handleGetCollection(PDO $pdo) {
         $queryParams = array_merge([$metaUserId], $mlsIds);
 
         $pStmt = $pdo->prepare("
-            SELECT p.*, r.redfin_url, r.redfin_estimate, r.walk_score, r.transit_score, r.bike_score, r.price_per_sqft,
+            SELECT p.*,
                    COALESCE(u.favorite, 0) as favorite, COALESCE(u.hidden, 0) as hidden, COALESCE(u.rating, 0) as rating,
                    COALESCE(u.user_notes, '') as user_notes, COALESCE(u.realtor_notes, '') as realtor_notes
             FROM properties p
-            LEFT JOIN redfin_data r ON p.mls_id = r.mls_id
             LEFT JOIN user_metadata u ON p.mls_id = u.mls_id AND u.user_id = ?
             LEFT JOIN property_visibility v ON p.mls_id = v.mls_id
             WHERE p.mls_id IN ($inClause) AND COALESCE(v.is_hidden, 0) = 0

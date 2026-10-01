@@ -23,9 +23,6 @@ $pdo->exec("
     CREATE TABLE IF NOT EXISTS properties (
         mls_id TEXT PRIMARY KEY, address TEXT, city TEXT, state TEXT, zip TEXT, price REAL, status TEXT, beds INTEGER, baths REAL, levels TEXT, sqft_total INTEGER, sqft_finished INTEGER, lot_sqft INTEGER, lot_acres REAL, year_built INTEGER, property_type TEXT, school_district TEXT, parking_total INTEGER, garage_spaces INTEGER, hoa_exists INTEGER, hoa_fee REAL, annual_tax REAL, tax_year INTEGER, list_date TEXT, mls_url TEXT, main_image_url TEXT, gallery_images TEXT, raw_mls_json TEXT, latitude REAL, longitude REAL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
-    CREATE TABLE IF NOT EXISTS redfin_data (
-        mls_id TEXT PRIMARY KEY, redfin_url TEXT, redfin_estimate REAL, walk_score INTEGER, transit_score INTEGER, bike_score INTEGER, price_per_sqft REAL, days_on_redfin INTEGER, climate_risk_json TEXT, school_ratings_json TEXT, raw_redfin_json TEXT, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
     CREATE TABLE IF NOT EXISTS user_metadata (
         mls_id TEXT PRIMARY KEY, favorite INTEGER DEFAULT 0, hidden INTEGER DEFAULT 0, rating INTEGER DEFAULT 0, user_notes TEXT DEFAULT '', realtor_notes TEXT DEFAULT '', tags_json TEXT DEFAULT '[]', shared_with_realtor INTEGER DEFAULT 0, updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -64,8 +61,6 @@ $sampleListings = [
         'list_date' => '2026-07-31',
         'mls_url' => 'https://matrix.recolorado.com/Matrix/Public/Portal.aspx?L=1&k=2343995XHKSS&p=CS-3939147-0#1',
         'main_image_url' => 'https://matrixmedia.recolorado.com/mediaserver/GetMedia.ashx?Key=2055951235&TableID=9&Type=1&Number=0&Size=2&exk=5de545effc0bd4483c0ee0b81634ac22',
-        'walk_score' => 45,
-        'redfin_estimate' => 512000,
         'user_notes' => '',
         'realtor_notes' => '',
         'favorite' => 0,
@@ -104,8 +99,6 @@ $sampleListings = [
         'list_date' => '2026-08-15',
         'mls_url' => 'https://matrix.recolorado.com/Matrix/Public/Portal.aspx?L=1&k=2343995XHKSS&p=CS-3939147-0#1',
         'main_image_url' => 'https://matrixmedia.recolorado.com/mediaserver/GetMedia.ashx?Key=2056198627&TableID=9&Type=1&Number=0&Size=2&exk=8815ef848699f081bdf968475c0d9ff',
-        'walk_score' => 52,
-        'redfin_estimate' => 498000,
         'user_notes' => '',
         'realtor_notes' => '',
         'favorite' => 0,
@@ -140,8 +133,6 @@ $sampleListings = [
         'list_date' => '2026-04-28',
         'mls_url' => 'https://matrix.recolorado.com/Matrix/Public/Portal.aspx?L=1&k=2343995XHKSS&p=CS-3939147-0#1',
         'main_image_url' => 'https://matrixmedia.recolorado.com/mediaserver/GetMedia.ashx?Key=2053755606&TableID=9&Type=1&Number=0&Size=2&exk=4d5a4ba12538d5d9974642bac190656e',
-        'walk_score' => 61,
-        'redfin_estimate' => 535000,
         'user_notes' => '',
         'realtor_notes' => '',
         'favorite' => 0,
@@ -219,17 +210,6 @@ foreach ($sampleListings as $item) {
         ':mls_url' => $item['mls_url'],
         ':main_image_url' => $item['main_image_url'],
         ':raw_mls_json' => $rawMlsJson
-    ]);
-
-    $stmtRf = $pdo->prepare("
-        INSERT INTO redfin_data (mls_id, walk_score, redfin_estimate)
-        VALUES (:mls_id, :walk_score, :redfin_estimate)
-        ON CONFLICT(mls_id) DO UPDATE SET walk_score=excluded.walk_score, redfin_estimate=excluded.redfin_estimate
-    ");
-    $stmtRf->execute([
-        ':mls_id' => $item['mls_id'],
-        ':walk_score' => $item['walk_score'],
-        ':redfin_estimate' => $item['redfin_estimate']
     ]);
 
     $stmtUser = $pdo->prepare("

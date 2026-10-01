@@ -181,25 +181,6 @@ export const NO_PHOTO_IMG = 'data:image/svg+xml;charset=UTF-8,' + encodeURICompo
     export function isSafeMediaUrl(url) {
         return typeof url === 'string' && /^https?:\/\//i.test(url);
     }
-    export function getRedfinUrl(p) {
-        if (!p) return 'https://www.redfin.com';
-        if (p.redfin_url && typeof p.redfin_url === 'string' && p.redfin_url.startsWith('http') && !p.redfin_url.includes('stingray/do/')) {
-            return p.redfin_url;
-        }
-        const cleanAddr = cleanDisplayAddress(p.address, p.mls_id);
-        const parts = [
-            cleanAddr !== 'Address Unavailable' ? cleanAddr : '',
-            p.city,
-            p.state || 'CO',
-            p.zip
-        ].filter(Boolean);
-
-        const query = parts.join(' ');
-        if (!query) return 'https://www.redfin.com';
-
-        return `https://www.redfin.com/stingray/do/query-location?location=${encodeURIComponent(query)}`;
-    }
-
 export function getStatusBadgeClass(status) {
     const st = (status || 'Active').toLowerCase().trim();
     if (st.includes('active')) return 'badge-active';

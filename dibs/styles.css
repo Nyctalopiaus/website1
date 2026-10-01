@@ -1293,16 +1293,6 @@ body {
     color: var(--text-primary);
 }
 
-.card-rf-delta {
-    font-size: 0.8rem;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 4px;
-}
-
-.delta-above { background-color: rgba(176, 70, 58, 0.2); color: #C97A63; }
-.delta-below { background-color: rgba(47, 75, 60, 0.2); color: #4F7A63; }
-
 .card-address {
     font-size: 0.95rem;
     font-weight: 600;

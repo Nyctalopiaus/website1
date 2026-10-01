@@ -27,12 +27,12 @@
         filters: {
             search: '',
             priceMin: null, priceMax: null,
-            rfEstMin: null, rfEstMax: null, ppsqftMax: null, underRedfinOnly: false,
+            ppsqftMax: null,
             beds: 0, bedsMax: null, baths: 0, bathsFullMin: null, baths34Min: null, bathsHalfMin: null, levels: '', basement: '',
             sqftMin: null, sqftMax: null, sqftTotMin: null, sqftAboveMin: null, sqftBelowMin: null, propertyType: '',
             yearMin: null, yearMax: null, acresMin: null, acresMax: null, parkingMin: null, garageMin: null,
             hoaMax: null, noHoaOnly: false, taxMax: null, taxYear: null,
-            city: '', zip: '', schoolDistrict: '', walkscoreMin: null, transitscoreMin: null, bikescoreMin: null,
+            city: '', zip: '', schoolDistrict: '',
             status: 'all', ratingMin: 0, matrixStatus: 'all', selectedClientId: 'all', appliances: '', flooring: '', fireplaceOnly: false, realtorNotesOnly: false,
             favoritesOnly: false, possibilitiesOnly: false, realtorSharedOnly: false, hasNotesOnly: false, showHidden: true
         }
@@ -91,7 +91,6 @@
         filterYearMax: document.getElementById('filter-year-max'),
         filterHoaMax: document.getElementById('filter-hoa-max'),
         filterTaxMax: document.getElementById('filter-tax-max'),
-        filterWalkscoreMin: document.getElementById('filter-walkscore-min'),
         filterStatus: document.getElementById('filter-status'),
         filterMatrixStatusTop: document.getElementById('filter-matrix-status-top'),
         filterClientSelect: document.getElementById('filter-client-select'),

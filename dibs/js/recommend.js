@@ -3,7 +3,7 @@
  * Deterministic, client-side scoring over whichever properties the user checks in the
  * selection panel - no LLM call, no backend endpoint, no API key. Reproduces the kind of
  * analysis Josh got by pasting a favorites CSV into an LLM ($/sqft, lot size, days-on-market
- * negotiation leverage, HOA overhead, price vs. Redfin estimate), generated from percentile
+ * negotiation leverage, HOA overhead), generated from percentile
  * comparisons within the selected set rather than model-generated prose.
  *
  * Enhanced with transparency: per-metric score breakdowns, customizable weight profiles,
@@ -16,33 +16,28 @@ import { showToast } from './toast.js';
 export const WEIGHT_PROFILES = {
     balanced: {
         label: 'Balanced Default',
-        desc: 'Balanced mix: Price/SqFt (35%), Lot size (20%), Days on Market (20%), HOA (15%), Redfin Est (10%)',
-        weights: { ppsqft: 0.35, lotAcres: 0.20, domDays: 0.20, hoaFee: 0.15, redfinDeltaPct: 0.10 }
+        desc: 'Balanced mix: Price/SqFt (39%), Lot size (22%), Days on Market (22%), HOA (17%)',
+        weights: { ppsqft: 0.39, lotAcres: 0.22, domDays: 0.22, hoaFee: 0.17 }
     },
     negotiation: {
         label: 'High Leverage Negotiation',
         desc: 'Identifies listings with longest Days on Market for aggressive price negotiation',
-        weights: { domDays: 0.60, ppsqft: 0.25, redfinDeltaPct: 0.15, hoaFee: 0.00, lotAcres: 0.00 }
-    },
-    appraisal: {
-        label: 'Low Appraisal Risk',
-        desc: 'Prioritizes properties priced farthest under Redfin valuation estimate',
-        weights: { redfinDeltaPct: 0.55, ppsqft: 0.30, domDays: 0.15, hoaFee: 0.00, lotAcres: 0.00 }
+        weights: { domDays: 0.70, ppsqft: 0.30, hoaFee: 0.00, lotAcres: 0.00 }
     },
     value: {
         label: 'Value Hunter',
-        desc: 'Focuses heavily on price per sqft and discount relative to Redfin valuation estimate',
-        weights: { ppsqft: 0.50, redfinDeltaPct: 0.25, domDays: 0.15, hoaFee: 0.10, lotAcres: 0.00 }
+        desc: 'Focuses heavily on price per sqft, with days on market and HOA as tiebreakers',
+        weights: { ppsqft: 0.67, domDays: 0.20, hoaFee: 0.13, lotAcres: 0.00 }
     },
     overhead: {
         label: 'Low Overhead',
         desc: 'Prioritizes properties with minimal monthly HOA fees and efficient price per sqft',
-        weights: { hoaFee: 0.45, ppsqft: 0.35, redfinDeltaPct: 0.20, lotAcres: 0.00, domDays: 0.00 }
+        weights: { hoaFee: 0.56, ppsqft: 0.44, lotAcres: 0.00, domDays: 0.00 }
     },
     land: {
         label: 'Max Land & Space',
         desc: 'Focuses primarily on lot size in acres and finished living space',
-        weights: { lotAcres: 0.50, ppsqft: 0.30, domDays: 0.20, hoaFee: 0.00, redfinDeltaPct: 0.00 }
+        weights: { lotAcres: 0.50, ppsqft: 0.30, domDays: 0.20, hoaFee: 0.00 }
     }
 };
 
@@ -82,15 +77,6 @@ const METRIC_DEFS = {
         good: (v, avg) => `Below-average HOA fee (${fmtMoney(v)}/mo vs. ${fmtMoney(avg)} avg)`,
         worst: (v, avg) => `Highest HOA fee in set (${fmtMoney(v)}/mo vs. ${fmtMoney(avg)} avg)`,
         weak: (v, avg) => `Above-average HOA overhead (${fmtMoney(v)}/mo vs. ${fmtMoney(avg)} avg)`
-    },
-    redfinDeltaPct: {
-        name: 'Redfin Est. Gap',
-        direction: -1, // more negative (under estimate) is better
-        formatVal: (v) => `${Math.abs(v).toFixed(1)}% ${v < 0 ? 'under' : 'over'}`,
-        best: (v) => `Priced ${Math.abs(v).toFixed(1)}% ${v < 0 ? 'under' : 'over'} Redfin's estimate - best value gap`,
-        good: (v) => `Priced ${Math.abs(v).toFixed(1)}% ${v < 0 ? 'under' : 'over'} Redfin's estimate`,
-        worst: (v) => `Priced ${Math.abs(v).toFixed(1)}% ${v < 0 ? 'under' : 'over'} Redfin's estimate - highest markup vs estimate`,
-        weak: (v) => `Priced ${Math.abs(v).toFixed(1)}% ${v < 0 ? 'under' : 'over'} Redfin's estimate`
     }
 };
 
@@ -132,7 +118,7 @@ function defaultSelectionIds() {
 
 function getMetrics(p) {
     const sqft = p.sqft_finished || p.sqft_total || 0;
-    const ppsqft = p.price_per_sqft || (sqft ? p.price / sqft : null);
+    const ppsqft = sqft ? p.price / sqft : null;
 
     let lotAcres = null;
     if (p.lot_sqft) {
@@ -148,12 +134,10 @@ function getMetrics(p) {
             domDays = Math.max(0, Math.round((Date.now() - listed.getTime()) / 86400000));
         }
     }
-    if (domDays === null && p.days_on_redfin) domDays = p.days_on_redfin;
 
     const hoaFee = (typeof p.hoa_fee === 'number') ? p.hoa_fee : null;
-    const redfinDeltaPct = p.redfin_estimate ? ((p.price - p.redfin_estimate) / p.redfin_estimate) * 100 : null;
 
-    return { ppsqft, lotAcres, domDays, hoaFee, redfinDeltaPct };
+    return { ppsqft, lotAcres, domDays, hoaFee };
 }
 
 function isUsable(v) {
@@ -232,7 +216,7 @@ function getSituationalBadge(entry, rankNum) {
     if (rankNum === 1) return { icon: '<i data-lucide="crown"></i>', label: '#1 Top Pick', class: 'situational-badge-top' };
 
     const { percentiles } = entry;
-    if (percentiles.ppsqft >= GOOD_THRESHOLD || percentiles.redfinDeltaPct >= GOOD_THRESHOLD) {
+    if (percentiles.ppsqft >= GOOD_THRESHOLD) {
         return { icon: '<i data-lucide="tag"></i>', label: 'Best Value', class: '' };
     }
     if (percentiles.domDays >= GOOD_THRESHOLD) {

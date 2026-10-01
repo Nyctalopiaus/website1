@@ -1,7 +1,7 @@
 <?php
 /**
  * Nycto's MLS Property Scout - Backend API Router
- * Handles SQLite persistence for scraped MLS listings, Redfin enrichment, notes, tags, and favorites.
+ * Handles SQLite persistence for scraped MLS listings, notes, tags, and favorites.
  * Bootstraps the DB/session (bootstrap.php), loads auth/user-admin handlers (auth.php) and the
  * property data pipeline (properties.php), then dispatches on $action. Public endpoint and
  * action names are unchanged from before the split.

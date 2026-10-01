@@ -8,12 +8,12 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         state.filters = {
             search: '',
             priceMin: null, priceMax: null,
-            rfEstMin: null, rfEstMax: null, ppsqftMax: null, underRedfinOnly: false,
+            ppsqftMax: null,
             beds: 0, bedsMax: null, baths: 0, bathsFullMin: null, baths34Min: null, bathsHalfMin: null, levels: '', basement: '',
             sqftMin: null, sqftMax: null, sqftTotMin: null, sqftAboveMin: null, sqftBelowMin: null, propertyType: '',
             yearMin: null, yearMax: null, acresMin: null, acresMax: null, parkingMin: null, garageMin: null,
             hoaMax: null, noHoaOnly: false, taxMax: null, taxYear: null,
-            city: '', zip: '', schoolDistrict: '', walkscoreMin: null, transitscoreMin: null, bikescoreMin: null,
+            city: '', zip: '', schoolDistrict: '',
             status: 'all', ratingMin: 0, matrixStatus: 'all', appliances: '', flooring: '', fireplaceOnly: false, realtorNotesOnly: false,
             favoritesOnly: false, possibilitiesOnly: false, realtorSharedOnly: false, hasNotesOnly: false, showHidden: true
         };
@@ -73,10 +73,7 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
             // 3. Price & Valuation
             if (f.priceMin !== null && p.price < f.priceMin) return false;
             if (f.priceMax !== null && p.price > f.priceMax) return false;
-            if (f.rfEstMin !== null && (p.redfin_estimate || 0) < f.rfEstMin) return false;
-            if (f.rfEstMax !== null && (p.redfin_estimate || 0) > f.rfEstMax) return false;
             if (f.ppsqftMax !== null && (p.sqft_finished ? p.price / p.sqft_finished : Infinity) > f.ppsqftMax) return false;
-            if (f.underRedfinOnly && (!p.redfin_estimate || p.price >= p.redfin_estimate)) return false;
 
             // 4. Beds & Baths Breakdown
             if (f.beds > 0 && p.beds < f.beds) return false;
@@ -120,9 +117,6 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
             if (f.city && !String(p.city || '').toLowerCase().includes(f.city.toLowerCase())) return false;
             if (f.zip && !String(p.zip || '').includes(f.zip)) return false;
             if (f.schoolDistrict && !String(p.school_district || '').toLowerCase().includes(f.schoolDistrict.toLowerCase())) return false;
-            if (f.walkscoreMin !== null && (p.walk_score || 0) < f.walkscoreMin) return false;
-            if (f.transitscoreMin !== null && (p.transit_score || 0) < f.transitscoreMin) return false;
-            if (f.bikescoreMin !== null && (p.bike_score || 0) < f.bikescoreMin) return false;
 
             // 10. Ratings & Features
             if (f.ratingMin > 0 && (p.rating || 0) < f.ratingMin) return false;
@@ -155,10 +149,7 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         if (f.search) chips.push({ label: `Search: "${f.search}"`, clear: () => { f.search = ''; if (elements.filterSearch) elements.filterSearch.value = ''; } });
         if (f.priceMin !== null) chips.push({ label: `Min Price: $${f.priceMin.toLocaleString()}`, clear: () => { f.priceMin = null; } });
         if (f.priceMax !== null) chips.push({ label: `Max Price: $${f.priceMax.toLocaleString()}`, clear: () => { f.priceMax = null; } });
-        if (f.rfEstMin !== null) chips.push({ label: `Min Redfin Est: $${f.rfEstMin.toLocaleString()}`, clear: () => { f.rfEstMin = null; } });
-        if (f.rfEstMax !== null) chips.push({ label: `Max Redfin Est: $${f.rfEstMax.toLocaleString()}`, clear: () => { f.rfEstMax = null; } });
         if (f.ppsqftMax !== null) chips.push({ label: `Max $/SqFt: $${f.ppsqftMax}`, clear: () => { f.ppsqftMax = null; } });
-        if (f.underRedfinOnly) chips.push({ label: `Below Redfin Est`, icon: 'trending-down', clear: () => { f.underRedfinOnly = false; } });
         if (f.beds > 0) chips.push({ label: `Beds: ${f.beds}+`, clear: () => { f.beds = 0; } });
         if (f.bedsMax !== null) chips.push({ label: `Max Beds: ${f.bedsMax}`, clear: () => { f.bedsMax = null; } });
         if (f.baths > 0) chips.push({ label: `Baths: ${f.baths}+`, clear: () => { f.baths = 0; } });
@@ -186,9 +177,6 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         if (f.city) chips.push({ label: `City: ${f.city}`, clear: () => { f.city = ''; } });
         if (f.zip) chips.push({ label: `Zip: ${f.zip}`, clear: () => { f.zip = ''; } });
         if (f.schoolDistrict) chips.push({ label: `School: "${f.schoolDistrict}"`, clear: () => { f.schoolDistrict = ''; } });
-        if (f.walkscoreMin !== null) chips.push({ label: `WalkScore: ${f.walkscoreMin}+`, clear: () => { f.walkscoreMin = null; } });
-        if (f.transitscoreMin !== null) chips.push({ label: `TransitScore: ${f.transitscoreMin}+`, clear: () => { f.transitscoreMin = null; } });
-        if (f.bikescoreMin !== null) chips.push({ label: `BikeScore: ${f.bikescoreMin}+`, clear: () => { f.bikescoreMin = null; } });
         if (f.status !== 'all') chips.push({ label: `Status: ${f.status}`, clear: () => { f.status = 'all'; } });
         if (f.ratingMin > 0) chips.push({ label: `Rating: ${f.ratingMin}+ Stars`, clear: () => { f.ratingMin = 0; } });
         if (f.matrixStatus !== 'all') {
@@ -275,10 +263,7 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         let countPrice = 0;
         if (f.priceMin !== null) countPrice++;
         if (f.priceMax !== null) countPrice++;
-        if (f.rfEstMin !== null) countPrice++;
-        if (f.rfEstMax !== null) countPrice++;
         if (f.ppsqftMax !== null) countPrice++;
-        if (f.underRedfinOnly) countPrice++;
 
         // Tab 2: Rooms & Layout (tab-rooms)
         let countRooms = 0;
@@ -313,14 +298,11 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         if (f.taxMax !== null) countFinances++;
         if (f.taxYear !== null) countFinances++;
 
-        // Tab 5: Location & Scores (tab-location)
+        // Tab 5: Location (tab-location)
         let countLocation = 0;
         if (f.city) countLocation++;
         if (f.zip) countLocation++;
         if (f.schoolDistrict) countLocation++;
-        if (f.walkscoreMin !== null) countLocation++;
-        if (f.transitscoreMin !== null) countLocation++;
-        if (f.bikescoreMin !== null) countLocation++;
 
         // Tab 6: Ratings & Notes (tab-collections)
         let countCollections = 0;
@@ -367,10 +349,7 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
 
         setVal('drawer-price-min', f.priceMin);
         setVal('drawer-price-max', f.priceMax);
-        setVal('filter-rf-est-min', f.rfEstMin);
-        setVal('filter-rf-est-max', f.rfEstMax);
         setVal('filter-ppsqft-max', f.ppsqftMax);
-        setChk('toggle-under-redfin', f.underRedfinOnly);
 
         setVal('drawer-beds-min', f.beds);
         setVal('filter-beds-max', f.bedsMax);
@@ -402,9 +381,6 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         setVal('filter-city', f.city);
         setVal('filter-zip', f.zip);
         setVal('filter-school-district', f.schoolDistrict);
-        setVal('drawer-walkscore-min', f.walkscoreMin);
-        setVal('filter-transitscore-min', f.transitscoreMin);
-        setVal('filter-bikescore-min', f.bikescoreMin);
 
         setVal('filter-rating-min', f.ratingMin);
         setVal('filter-matrix-status', f.matrixStatus);
@@ -442,10 +418,7 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
 
         f.priceMin = getNum('drawer-price-min');
         f.priceMax = getNum('drawer-price-max');
-        f.rfEstMin = getNum('filter-rf-est-min');
-        f.rfEstMax = getNum('filter-rf-est-max');
         f.ppsqftMax = getNum('filter-ppsqft-max');
-        f.underRedfinOnly = getChk('toggle-under-redfin');
 
         f.beds = getNum('drawer-beds-min') || 0;
         f.bedsMax = getNum('filter-beds-max');
@@ -477,9 +450,6 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         f.city = getStr('filter-city');
         f.zip = getStr('filter-zip');
         f.schoolDistrict = getStr('filter-school-district');
-        f.walkscoreMin = getNum('drawer-walkscore-min');
-        f.transitscoreMin = getNum('filter-transitscore-min');
-        f.bikescoreMin = getNum('filter-bikescore-min');
 
         f.ratingMin = getNum('filter-rating-min') || 0;
         f.matrixStatus = getStr('filter-matrix-status') || 'all';
@@ -784,9 +754,6 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
                     const ppsqB = b.sqft_finished ? b.price / b.sqft_finished : 999999;
                     return ppsqA - ppsqB;
                 });
-                break;
-            case 'walkscore-desc':
-                props.sort((a, b) => (b.walk_score || 0) - (a.walk_score || 0));
                 break;
             case 'rating-desc':
                 props.sort((a, b) => (b.rating || 0) - (a.rating || 0));

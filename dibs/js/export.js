@@ -10,9 +10,9 @@ export function exportCSV() {
     const props = state.filteredProperties;
     if (!props.length) return showToast('No properties to export', 'warning');
 
-    const headers = ['MLS ID', 'Address', 'City', 'Price', 'Beds', 'Baths', 'SqFt', 'Lot Acres', 'Year Built', 'HOA Fee', 'Annual Tax', 'WalkScore', 'Personal Notes'];
+    const headers = ['MLS ID', 'Address', 'City', 'Price', 'Beds', 'Baths', 'SqFt', 'Lot Acres', 'Year Built', 'HOA Fee', 'Annual Tax', 'Personal Notes'];
     const rows = props.map(p => [
-        p.mls_id, `"${p.address}"`, `"${p.city}"`, p.price, p.beds, p.baths, p.sqft_finished, p.lot_acres, p.year_built, p.hoa_fee, p.annual_tax, p.walk_score, `"${(p.user_notes || '').replace(/"/g, '""')}"`
+        p.mls_id, `"${p.address}"`, `"${p.city}"`, p.price, p.beds, p.baths, p.sqft_finished, p.lot_acres, p.year_built, p.hoa_fee, p.annual_tax, `"${(p.user_notes || '').replace(/"/g, '""')}"`
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -53,7 +53,6 @@ function buildHomewardStops(properties) {
             sqft: p.sqft_finished ? String(p.sqft_finished) : '',
             hoaNotes: p.hoa_fee ? `$${p.hoa_fee}/mo HOA` : '',
             notes: p.user_notes || '',
-            redfinUrl: p.url || '',
             photoUrl: photo,
             rating: 5,
             visited: false
@@ -121,7 +120,7 @@ export function downloadTourCalendarICS(properties, client) {
     const icsLines = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
-        'PRODID:-//MLS Redfin Scout//Realtor Showing Itinerary//EN',
+        'PRODID:-//MLS Property Scout//Realtor Showing Itinerary//EN',
         'CALSCALE:GREGORIAN',
         'METHOD:PUBLISH'
     ];

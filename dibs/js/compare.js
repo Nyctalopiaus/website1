@@ -130,19 +130,12 @@ function renderCompareTableHTML(props) {
         { label: 'Property Photo & Address', key: 'header' },
         { label: 'List Price', render: p => `<span class="compare-prop-price font-serif">$${p.price.toLocaleString()}</span>` },
         { label: 'Price / SqFt', render: p => `$${p.sqft_finished ? Math.round(p.price / p.sqft_finished) : 0} / sqft` },
-        { label: 'Redfin Est. Delta', render: p => {
-            if (!p.redfin_estimate) return 'N/A';
-            const delta = Math.round(((p.price - p.redfin_estimate) / p.redfin_estimate) * 100);
-            const isAbove = delta > 0;
-            return `<span style="color:${isAbove ? '#B0463A' : '#4F7A46'}; font-weight:700;">${isAbove ? '+' : ''}${delta}% vs Redfin</span>`;
-        }},
         { label: 'Beds / Baths', render: p => `${p.beds} Beds | ${p.baths} Baths` },
         { label: 'Finished SqFt', render: p => p.sqft_finished ? `${p.sqft_finished.toLocaleString()} sqft` : 'N/A' },
         { label: 'Lot Size', render: p => p.lot_acres ? `${p.lot_acres} Acres` : (p.lot_sqft ? `${p.lot_sqft.toLocaleString()} sqft` : 'N/A') },
         { label: 'Year Built', render: p => p.year_built || 'N/A' },
         { label: 'HOA Fee', render: p => p.hoa_fee ? `$${p.hoa_fee}/mo` : '<span style="color:#4F7A46;">No HOA</span>' },
         { label: 'Annual Taxes', render: p => p.taxes_annual ? `$${p.taxes_annual.toLocaleString()}/yr` : 'N/A' },
-        { label: 'Walk / Transit Score', render: p => `<i data-lucide="footprints"></i> ${p.walk_score || 'N/A'} / <i data-lucide="bus"></i> ${p.transit_score || 'N/A'}` },
         { label: 'Garage & Parking', render: p => `${p.garage_spaces ? p.garage_spaces + ' Garage' : 'N/A'}` }
     ];
 
@@ -159,12 +152,6 @@ function renderCompareTableHTML(props) {
                     <span><i data-lucide="pin"></i></span>
                     <div>
                         <strong>Custom Selection:</strong> Comparing the <strong>${props.length}</strong> specific property listing(s) you added to your comparison dock via <strong>+ Compare</strong>.
-                    </div>
-                </div>
-                <div class="matrix-info-item">
-                    <span><i data-lucide="bar-chart-3"></i></span>
-                    <div>
-                        <strong>Valuation Benchmarking:</strong> Evaluates list price against Redfin estimated value (<span style="color:#4F7A46; font-weight:700;">Green = below estimate</span>, <span style="color:#B0463A; font-weight:700;">Red = above estimate</span>).
                     </div>
                 </div>
             </div>

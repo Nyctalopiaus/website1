@@ -3,9 +3,25 @@
  * Handles client management, client status matrix, dual property notes, property chat, and tour planning.
  */
 import { apiFetch } from './api.js';
+
+// Matrix's portal has no per-listing URL (a listing's detail view is a postback on the search's
+// result set, and the address bar never changes), so the best Dibs can link to is the search page
+// the house was synced from. Tag that link with dibs_mls=<MLS #>: the portal ignores unknown query
+// params (confirmed live Oct 2026), and the Dibs bookmarklet, when clicked on a page carrying that
+// param, opens that one listing instead of running a scrape.
+function matrixListingUrl(p) {
+    const base = p.mls_url || 'https://matrix.recolorado.com/Matrix/Public/Portal.aspx';
+    try {
+        const u = new URL(base);
+        if (p.mls_id) u.searchParams.set('dibs_mls', String(p.mls_id));
+        return u.toString();
+    } catch (e) {
+        return base;
+    }
+}
 import { state, elements } from './state.js';
 import { showToast } from './toast.js';
-import { cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG, getRedfinUrl } from './properties.js';
+import { cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './properties.js';
 import { sendPropertiesToHomeward, downloadTourCalendarICS } from './export.js';
 
 let activeClientId = null;
@@ -617,7 +633,7 @@ function renderRealtorTableBoard(matrix, clientId) {
         const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
         const ppsqft = p.sqft_finished ? `$${Math.round(p.price / p.sqft_finished)}` : '-';
         const fitScore = calculateFitScore(p, realtorData.selected_client);
-        const mlsUrl = p.mls_url || `https://matrix.recolorado.com/Matrix/Public/Portal.aspx`;
+        const mlsUrl = matrixListingUrl(p);
 
         let revBadgeHtml = '';
         if (loved.some(item => String(item.mls_id) === String(p.mls_id))) {
@@ -789,7 +805,7 @@ function renderRealtorPropertyCard(p, clientId) {
                         <button class="matrix-icon-btn" onclick="event.stopPropagation(); window.openPropertyMapModal('${p.mls_id}')" title="Property Location Map Modal"><i data-lucide="map-pin"></i></button>
                         <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddr + ', ' + (p.city || '') + ' ' + (p.state || 'CO') + ' ' + (p.zip || ''))}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Google Maps Directions"><i data-lucide="map"></i></a>
                         ${p.virtual_tour_url ? `<a href="${escapeHtml(p.virtual_tour_url)}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Virtual Tour"><i data-lucide="video"></i></a>` : ''}
-                        ${p.mls_url ? `<a href="${escapeHtml(p.mls_url)}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Matrix MLS Portal"><i data-lucide="external-link"></i></a>` : ''}
+                        ${p.mls_url ? `<a href="${escapeHtml(matrixListingUrl(p))}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Matrix MLS Portal"><i data-lucide="external-link"></i></a>` : ''}
                     </div>
                 </div>
 

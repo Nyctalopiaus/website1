@@ -1,7 +1,7 @@
 /**
  * Nycto's MLS Property Scout - Single Property Location Map Modal
  * Renders dedicated interactive Leaflet map canvas focused on a single property parcel,
- * with WalkScore, parcel specs, Google Maps directions, and Street View links.
+ * with parcel specs, Google Maps directions, and Street View links.
  */
 import { state } from './state.js';
 import { cleanDisplayAddress, escapeHtml, isValidCoord } from './properties.js';
@@ -35,7 +35,6 @@ export function openPropertyMapModal(mlsId) {
     const elBedsBaths = document.getElementById('prop-map-beds-baths');
     const elSqft = document.getElementById('prop-map-sqft');
     const elPpsqft = document.getElementById('prop-map-ppsqft');
-    const elWalkscore = document.getElementById('prop-map-walkscore');
 
     const elGmaps = document.getElementById('prop-map-btn-gmaps');
     const elStreetview = document.getElementById('prop-map-btn-streetview');
@@ -48,7 +47,6 @@ export function openPropertyMapModal(mlsId) {
     if (elBedsBaths) elBedsBaths.innerText = `${prop.beds || 0} Beds / ${prop.baths || 0} Baths`;
     if (elSqft) elSqft.innerText = `${(prop.sqft_finished || 0).toLocaleString()} SqFt`;
     if (elPpsqft) elPpsqft.innerText = prop.sqft_finished ? `$${Math.round(prop.price / prop.sqft_finished)}` : 'N/A';
-    if (elWalkscore) elWalkscore.innerText = prop.walk_score ? `${prop.walk_score}/100` : 'N/A';
 
     // Populate General Description & Physical Land Specs Table
     const raw = prop.raw_mls_json || {};

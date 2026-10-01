@@ -202,7 +202,6 @@ export function applyRealtorPortalFilters() {
         if (sortVal === 'price-asc') return (a.price || 0) - (b.price || 0);
         if (sortVal === 'rating-desc') return (b.rating || 0) - (a.rating || 0);
         if (sortVal === 'sqft-desc') return (b.sqft_finished || 0) - (a.sqft_finished || 0);
-        if (sortVal === 'walkscore-desc') return (b.walk_score || 0) - (a.walk_score || 0);
         if (sortVal === 'date-desc') return new Date(b.created_at || b.list_date || 0) - new Date(a.created_at || a.list_date || 0);
         return 0;
     });
@@ -238,12 +237,6 @@ function renderRealtorCards(container, properties) {
 
     container.innerHTML = properties.map(p => {
         const ppsqft = p.sqft_finished ? Math.round(p.price / p.sqft_finished) : 0;
-        const rfDelta = p.redfin_estimate ? Math.round(((p.price - p.redfin_estimate) / p.redfin_estimate) * 100) : null;
-        let rfDiffBadge = '';
-        if (rfDelta !== null) {
-            const isAbove = rfDelta > 0;
-            rfDiffBadge = `<span class="card-rf-delta ${isAbove ? 'delta-above' : 'delta-below'}" style="font-size:0.75rem;">${isAbove ? '+' : ''}${rfDelta}% vs Redfin</span>`;
-        }
 
         const revStatus = getPropertyReviewStatus(p);
         let revBadgeHtml = '';
@@ -283,7 +276,6 @@ function renderRealtorCards(container, properties) {
                             <div>
                                 <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
                                     <h2 style="color: var(--accent-gold); font-weight:800; font-size:1.4rem; margin:0;">$${p.price.toLocaleString()}</h2>
-                                    ${rfDiffBadge}
                                     ${ppsqft ? `<span style="font-size:0.78rem; font-weight:700; color:var(--text-muted);">$${ppsqft}/SqFt</span>` : ''}
                                 </div>
                                 <h3 style="margin-top:4px; font-size:1.05rem; line-height:1.3; margin-bottom:2px; cursor:pointer;" onclick="window.openDetailModal('${p.mls_id}')">${escapeHtml(displayAddr)}</h3>
@@ -308,7 +300,6 @@ function renderRealtorCards(container, properties) {
                         <span><strong>${(p.sqft_finished || 0).toLocaleString()}</strong> SqFt</span>
                         <span><strong>${p.lot_acres ? p.lot_acres + ' ac' : (p.lot_sqft ? (p.lot_sqft).toLocaleString() + ' sqft' : 'N/A')}</strong> Lot</span>
                         <span><strong>${p.year_built || 'N/A'}</strong> Built</span>
-                        ${p.walk_score ? `<span><strong><i data-lucide="footprints"></i> ${p.walk_score}/100</strong></span>` : ''}
                         <span><strong>${p.hoa_fee ? '$' + p.hoa_fee + '/yr HOA' : 'No HOA'}</strong></span>
                     </div>
 

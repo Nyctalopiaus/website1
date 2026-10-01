@@ -664,6 +664,43 @@
                 font-weight: 600 !important;
             }
         }
+        .card-photo-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            opacity: 0.85;
+            transition: all 0.2s ease;
+        }
+        .card-photo-nav:hover {
+            opacity: 1;
+            background: var(--accent-gold);
+            color: #000;
+        }
+        .card-photo-nav.prev { left: 10px; }
+        .card-photo-nav.next { right: 10px; }
+        .card-photo-count-badge {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.75);
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            z-index: 5;
+        }
     </style>
 </head>
 <body>
@@ -713,7 +750,7 @@
                 <div>
                     <h2 style="font-size:1.3rem;"><i data-lucide="clipboard-list"></i> Curated Property Portfolio</h2>
                     <p style="color: var(--text-muted); font-size:0.88rem; margin-top: 0.2rem;">
-                        Live view of saved homes, buyer review statuses, ratings, notes, and Redfin scores.
+                        Live view of saved homes, buyer review statuses, ratings, and notes.
                     </p>
                 </div>
                 <span style="font-size:0.8rem; background:rgba(16, 185, 129, 0.15); color:var(--accent-green); padding:4px 10px; border-radius:20px; font-weight:700;">
@@ -808,7 +845,6 @@
                         <option value="rating-desc" selected>Buyer Rating: Highest First</option>
                         <option value="date-desc">List Date: Newest First</option>
                         <option value="sqft-desc">SqFt: Largest First</option>
-                        <option value="walkscore-desc">WalkScore: Highest First</option>
                     </select>
                 </div>
             </div>
@@ -838,6 +874,22 @@
     </main>
 
     <script>
+
+// Matrix's portal has no per-listing URL (a listing's detail view is a postback on the search's
+// result set, and the address bar never changes), so the best Dibs can link to is the search page
+// the house was synced from. Tag that link with dibs_mls=<MLS #>: the portal ignores unknown query
+// params (confirmed live Oct 2026), and the Dibs bookmarklet, when clicked on a page carrying that
+// param, opens that one listing instead of running a scrape.
+function matrixListingUrl(p) {
+    const base = p.mls_url || 'https://matrix.recolorado.com/Matrix/Public/Portal.aspx';
+    try {
+        const u = new URL(base);
+        if (p.mls_id) u.searchParams.set('dibs_mls', String(p.mls_id));
+        return u.toString();
+    } catch (e) {
+        return base;
+    }
+}
         const API_URL = 'backend/api.php';
         const NO_PHOTO_IMG = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250"><rect width="400" height="250" fill="#F0EAE0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#B0A48F" font-family="sans-serif" font-size="18">No Photo Available</text></svg>');
         let allProperties = [];
@@ -878,24 +930,6 @@
             );
         }
 
-        function getRedfinUrl(p) {
-            if (!p) return 'https://www.redfin.com';
-            if (p.redfin_url && typeof p.redfin_url === 'string' && p.redfin_url.startsWith('http') && !p.redfin_url.includes('stingray/do/')) {
-                return p.redfin_url;
-            }
-            const cleanAddr = cleanDisplayAddress(p.address, p.mls_id);
-            const parts = [
-                cleanAddr !== 'Address Unavailable' ? cleanAddr : '',
-                p.city,
-                p.state || 'CO',
-                p.zip
-            ].filter(Boolean);
-
-            const query = parts.join(' ');
-            if (!query) return 'https://www.redfin.com';
-
-            return `https://www.redfin.com/stingray/do/query-location?location=${encodeURIComponent(query)}`;
-        }
 
         let heroBannerState = {
             currentIndex: 0,
@@ -1085,48 +1119,6 @@
                 if (window.lucide) window.lucide.createIcons();
             }
         }
-
-        .card-photo-nav {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            background: rgba(0,0,0,0.6);
-            color: #fff;
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 10;
-            opacity: 0.85;
-            transition: all 0.2s ease;
-        }
-        .card-photo-nav:hover {
-            opacity: 1;
-            background: var(--accent-gold);
-            color: #000;
-        }
-        .card-photo-nav.prev { left: 10px; }
-        .card-photo-nav.next { right: 10px; }
-        .card-photo-count-badge {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.75);
-            color: #fff;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            z-index: 5;
-        }
-    </style>
-</head>
-<body>
-    ...
         function loadRealtorProperties() {
             const urlParams = new URLSearchParams(window.location.search);
             const token = urlParams.get('token');
@@ -1300,7 +1292,6 @@
                 if (sortVal === 'price-asc') return (a.price || 0) - (b.price || 0);
                 if (sortVal === 'rating-desc') return (b.rating || 0) - (a.rating || 0);
                 if (sortVal === 'sqft-desc') return (b.sqft_finished || 0) - (a.sqft_finished || 0);
-                if (sortVal === 'walkscore-desc') return (b.walk_score || 0) - (a.walk_score || 0);
                 if (sortVal === 'date-desc') return new Date(b.created_at || b.list_date || 0) - new Date(a.created_at || a.list_date || 0);
                 return 0;
             });
@@ -1352,12 +1343,6 @@
 
             container.innerHTML = properties.map(p => {
                 const ppsqft = p.sqft_finished ? Math.round(p.price / p.sqft_finished) : 0;
-                const rfDelta = p.redfin_estimate ? Math.round(((p.price - p.redfin_estimate) / p.redfin_estimate) * 100) : null;
-                let rfDiffBadge = '';
-                if (rfDelta !== null) {
-                    const isAbove = rfDelta > 0;
-                    rfDiffBadge = `<span class="card-rf-delta ${isAbove ? 'delta-above' : 'delta-below'}" style="font-size:0.75rem;">${isAbove ? '+' : ''}${rfDelta}% vs Redfin</span>`;
-                }
 
                 const revStatus = getPropertyReviewStatus(p);
                 let revBadgeHtml = '';
@@ -1367,7 +1352,7 @@
                 else revBadgeHtml = `<span class="badge-matrix-review badge-matrix-unreviewed"><i data-lucide="clipboard-list"></i> Unreviewed</span>`;
 
                 const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
-                const mlsUrl = p.mls_url || `https://matrix.recolorado.com/Matrix/Public/Portal.aspx`;
+                const mlsUrl = matrixListingUrl(p);
 
                 let tagsArray = [];
                 if (Array.isArray(p.tags_json)) tagsArray = p.tags_json;
@@ -1413,7 +1398,6 @@
                                     <div>
                                         <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
                                             <h2 class="print-price" style="color: var(--accent-gold); font-weight:800; font-size:1.5rem; margin:0;">$${p.price.toLocaleString()}</h2>
-                                            ${rfDiffBadge}
                                             ${ppsqft ? `<span style="font-size:0.78rem; font-weight:700; color:var(--text-muted);">$${ppsqft}/SqFt</span>` : ''}
                                         </div>
                                         <h3 style="margin-top:4px; font-size:1.1rem; line-height:1.3; margin-bottom:2px;">${escapeHtml(displayAddr)}</h3>
@@ -1436,7 +1420,6 @@
                                 <span><strong>${(p.sqft_finished || 0).toLocaleString()}</strong> SqFt</span>
                                 <span><strong>${p.lot_acres ? p.lot_acres + ' ac' : (p.lot_sqft ? (p.lot_sqft).toLocaleString() + ' sqft' : 'N/A')}</strong> Lot</span>
                                 <span><strong>${p.year_built || 'N/A'}</strong> Built</span>
-                                ${p.walk_score ? `<span><strong><i data-lucide="footprints"></i> ${p.walk_score}/100</strong></span>` : ''}
                                 <span><strong>${p.hoa_fee ? '$' + p.hoa_fee + '/yr HOA' : 'No HOA'}</strong></span>
                             </div>
 

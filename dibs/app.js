@@ -199,7 +199,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.filterYearMax) elements.filterYearMax.addEventListener('input', e => { state.filters.yearMax = parseInt(e.target.value) || null; applyFiltersAndRender(); });
         if (elements.filterHoaMax) elements.filterHoaMax.addEventListener('input', e => { state.filters.hoaMax = parseFloat(e.target.value) || null; applyFiltersAndRender(); });
         if (elements.filterTaxMax) elements.filterTaxMax.addEventListener('input', e => { state.filters.taxMax = parseFloat(e.target.value) || null; applyFiltersAndRender(); });
-        if (elements.filterWalkscoreMin) elements.filterWalkscoreMin.addEventListener('input', e => { state.filters.walkscoreMin = parseInt(e.target.value) || null; applyFiltersAndRender(); });
         if (elements.filterStatus) elements.filterStatus.addEventListener('change', e => {
             state.filters.status = e.target.value;
             localStorage.setItem('scout_filter_status', e.target.value);

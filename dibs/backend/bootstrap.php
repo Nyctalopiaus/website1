@@ -187,21 +187,6 @@ try {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
-        CREATE TABLE IF NOT EXISTS redfin_data (
-            mls_id TEXT PRIMARY KEY,
-            redfin_url TEXT,
-            redfin_estimate REAL,
-            walk_score INTEGER,
-            transit_score INTEGER,
-            bike_score INTEGER,
-            price_per_sqft REAL,
-            days_on_redfin INTEGER,
-            climate_risk_json TEXT,
-            school_ratings_json TEXT,
-            raw_redfin_json TEXT,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (mls_id) REFERENCES properties(mls_id) ON DELETE CASCADE
-        );
 
         CREATE TABLE IF NOT EXISTS user_metadata (
             user_id INTEGER NOT NULL,

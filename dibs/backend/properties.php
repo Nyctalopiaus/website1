@@ -471,8 +471,6 @@ function handleList(PDO $pdo) {
         $stmt = $pdo->prepare("
             SELECT
                 p.*,
-                r.redfin_url, r.redfin_estimate, r.walk_score, r.transit_score, r.bike_score,
-                r.price_per_sqft, r.days_on_redfin, r.climate_risk_json, r.school_ratings_json, r.raw_redfin_json,
                 COALESCE(u.favorite, 0) as favorite,
                 COALESCE(u.hidden, 0) as hidden,
                 COALESCE(u.rating, 0) as rating,
@@ -485,7 +483,6 @@ function handleList(PDO $pdo) {
                 COALESCE(u.mls_status_conflict, 0) as mls_status_conflict,
                 u.mls_notes_json, u.mls_note_outbox, u.mls_note_sent_at
             FROM properties p
-            LEFT JOIN redfin_data r ON p.mls_id = r.mls_id
             LEFT JOIN user_metadata u ON p.mls_id = u.mls_id AND u.user_id = :user_id
             LEFT JOIN property_visibility v ON p.mls_id = v.mls_id
             WHERE COALESCE(v.is_hidden, 0) = 0
@@ -496,8 +493,6 @@ function handleList(PDO $pdo) {
 
         foreach ($rows as &$row) {
             $row['gallery_images'] = json_decode($row['gallery_images'] ?? '[]', true) ?: [];
-            $row['climate_risk_json'] = json_decode($row['climate_risk_json'] ?? '{}', true) ?: [];
-            $row['school_ratings_json'] = json_decode($row['school_ratings_json'] ?? '[]', true) ?: [];
             $row['tags_json'] = json_decode($row['tags_json'] ?? '[]', true) ?: [];
             $row['mls_notes'] = json_decode($row['mls_notes_json'] ?? '[]', true) ?: [];
             unset($row['mls_notes_json']);
@@ -841,30 +836,6 @@ function handleSync(PDO $pdo) {
             updated_at = CURRENT_TIMESTAMP
     ");
 
-    $stmtRedfin = $pdo->prepare("
-        INSERT INTO redfin_data (
-            mls_id, redfin_url, redfin_estimate, walk_score, transit_score, bike_score,
-            price_per_sqft, days_on_redfin, climate_risk_json, school_ratings_json,
-            raw_redfin_json, updated_at
-        ) VALUES (
-            :mls_id, :redfin_url, :redfin_estimate, :walk_score, :transit_score, :bike_score,
-            :price_per_sqft, :days_on_redfin, :climate_risk_json, :school_ratings_json,
-            :raw_redfin_json, CURRENT_TIMESTAMP
-        )
-        ON CONFLICT(mls_id) DO UPDATE SET
-            redfin_url = COALESCE(excluded.redfin_url, redfin_url),
-            redfin_estimate = COALESCE(excluded.redfin_estimate, redfin_estimate),
-            walk_score = COALESCE(excluded.walk_score, walk_score),
-            transit_score = COALESCE(excluded.transit_score, transit_score),
-            bike_score = COALESCE(excluded.bike_score, bike_score),
-            price_per_sqft = COALESCE(excluded.price_per_sqft, price_per_sqft),
-            days_on_redfin = COALESCE(excluded.days_on_redfin, days_on_redfin),
-            climate_risk_json = COALESCE(excluded.climate_risk_json, climate_risk_json),
-            school_ratings_json = COALESCE(excluded.school_ratings_json, school_ratings_json),
-            raw_redfin_json = COALESCE(excluded.raw_redfin_json, raw_redfin_json),
-            updated_at = CURRENT_TIMESTAMP
-    ");
-
     // Resolve target user account for imported matrix review statuses and notes
     $syncUsername = trim($data['username'] ?? $data['target_username'] ?? '');
     $targetUserId = null;
@@ -1021,23 +992,6 @@ function handleSync(PDO $pdo) {
                     }
                 }
             }
-        }
-
-        // Upsert Redfin data if present
-        if (isset($item['redfin_url']) || isset($item['walk_score']) || isset($item['redfin_estimate'])) {
-            $stmtRedfin->execute([
-                ':mls_id' => $mlsId,
-                ':redfin_url' => $item['redfin_url'] ?? null,
-                ':redfin_estimate' => isset($item['redfin_estimate']) ? (float)$item['redfin_estimate'] : null,
-                ':walk_score' => isset($item['walk_score']) ? (int)$item['walk_score'] : null,
-                ':transit_score' => isset($item['transit_score']) ? (int)$item['transit_score'] : null,
-                ':bike_score' => isset($item['bike_score']) ? (int)$item['bike_score'] : null,
-                ':price_per_sqft' => isset($item['price_per_sqft']) ? (float)$item['price_per_sqft'] : null,
-                ':days_on_redfin' => isset($item['days_on_redfin']) ? (int)$item['days_on_redfin'] : null,
-                ':climate_risk_json' => isset($item['climate_risk']) ? json_encode($item['climate_risk'], JSON_INVALID_UTF8_SUBSTITUTE) : null,
-                ':school_ratings_json' => isset($item['school_ratings']) ? json_encode($item['school_ratings'], JSON_INVALID_UTF8_SUBSTITUTE) : null,
-                ':raw_redfin_json' => json_encode($item['raw_redfin'] ?? $item, JSON_INVALID_UTF8_SUBSTITUTE)
-            ]);
         }
 
         $matrixKey = trim((string)($item['matrix_key'] ?? ''));
@@ -1462,7 +1416,6 @@ function handleDeleteProperty(PDO $pdo) {
     }
 
     $pdo->prepare("DELETE FROM properties WHERE mls_id = :mls_id")->execute([':mls_id' => $mlsId]);
-    $pdo->prepare("DELETE FROM redfin_data WHERE mls_id = :mls_id")->execute([':mls_id' => $mlsId]);
     $pdo->prepare("DELETE FROM user_metadata WHERE mls_id = :mls_id")->execute([':mls_id' => $mlsId]);
 
     echo json_encode(['success' => true, 'deleted_mls_id' => $mlsId]);
@@ -1751,7 +1704,6 @@ function handleAdminCleanupExecute(PDO $pdo) {
         // 1. Process target MLS IDs
         if (!empty($targetMlsIds)) {
             $stmtDelProp = $pdo->prepare("DELETE FROM properties WHERE mls_id = :mls_id");
-            $stmtDelRedfin = $pdo->prepare("DELETE FROM redfin_data WHERE mls_id = :mls_id");
             $stmtDelUserMeta = $pdo->prepare("DELETE FROM user_metadata WHERE mls_id = :mls_id");
             $stmtClearMedia = $pdo->prepare("UPDATE properties SET main_image_url = '', gallery_images = '[]', photo_count = 0, updated_at = CURRENT_TIMESTAMP WHERE mls_id = :mls_id");
             $stmtMarkStale = $pdo->prepare("UPDATE properties SET status = :status, updated_at = CURRENT_TIMESTAMP WHERE mls_id = :mls_id");
@@ -1789,7 +1741,6 @@ function handleAdminCleanupExecute(PDO $pdo) {
                 // Process DB updates
                 if ($cleanupMode === 'full_delete') {
                     $stmtDelProp->execute([':mls_id' => $mlsId]);
-                    $stmtDelRedfin->execute([':mls_id' => $mlsId]);
                     $stmtDelUserMeta->execute([':mls_id' => $mlsId]);
                     $deletedPropsCount++;
                 } else if ($cleanupMode === 'media_only') {
@@ -1956,9 +1907,9 @@ function handleGetClientMatrix(PDO $pdo) {
 
     $clientId = (int)$selectedClient['id'];
 
-    // Fetch all properties with client metadata & redfin enrichment
+    // Fetch all properties with client metadata
     $stmtMeta = $pdo->prepare("
-        SELECT p.*, r.redfin_estimate, r.walk_score, r.transit_score, r.bike_score, r.days_on_redfin,
+        SELECT p.*,
                COALESCE(m.favorite, 0) as favorite,
                COALESCE(m.hidden, 0) as hidden,
                COALESCE(m.rating, 0) as rating,
@@ -1969,7 +1920,6 @@ function handleGetClientMatrix(PDO $pdo) {
                m.tags_json, m.updated_at as meta_updated_at
         FROM properties p
         LEFT JOIN user_metadata m ON p.mls_id = m.mls_id AND m.user_id = :cid
-        LEFT JOIN redfin_data r ON p.mls_id = r.mls_id
         LEFT JOIN showing_itinerary si ON p.mls_id = si.mls_id AND si.client_id = :itinerary_client_id
         LEFT JOIN property_visibility v ON p.mls_id = v.mls_id
         WHERE COALESCE(v.is_hidden, 0) = 0
