@@ -223,6 +223,59 @@ function handleGetScrapeRuns(PDO $pdo) {
     echo json_encode(['success' => true, 'runs' => $runs]);
 }
 
+/**
+ * Matches rows whose stored photo fields still point at Matrix's media server instead of a local
+ * media/ copy. Those URLs only decode when the Referer is matrix.recolorado.com (see
+ * cacheListingImages()), so the dashboard renders every one of them as a blank image.
+ */
+const UNCACHED_MATRIX_PHOTO_SQL = "(main_image_url LIKE '%recolorado.com%' OR main_image_url LIKE '/%' OR gallery_images LIKE '%recolorado.com%')";
+
+/**
+ * True for a Matrix media URL that declares a Type other than 1. Listing photos are always
+ * Type=1; Type=15 is the agent/office image, which older bookmarklets sent in gallery slot 10.
+ */
+function isNonListingMatrixImage(string $url): bool {
+    return preg_match('/[?&]Type=(\d+)/i', $url, $m) === 1 && $m[1] !== '1';
+}
+
+/**
+ * Self-heal for listings left holding raw Matrix URLs (Oct 2026: a deep scrape whose photo
+ * downloads all failed left 40 uncached URLs in gallery_images, shown as 40 blank photos).
+ * Rebuilds the photo fields from whatever usable files are on disk, or blanks them so the
+ * "no photo" placeholder shows. full_scrape_completed_at is cleared so the next deep scrape
+ * re-walks the gallery.
+ */
+function repairUncachedMatrixPhotos(PDO $pdo): void {
+    $rows = $pdo->query('SELECT mls_id FROM properties WHERE ' . UNCACHED_MATRIX_PHOTO_SQL)->fetchAll(PDO::FETCH_COLUMN);
+    if (empty($rows)) return;
+
+    $update = $pdo->prepare('UPDATE properties SET main_image_url = :url, gallery_images = :gallery, photo_count = :count, full_scrape_completed_at = NULL WHERE mls_id = :mls_id');
+    foreach ($rows as $mlsId) {
+        $safeId = preg_replace('/[^A-Za-z0-9_-]/', '', (string)$mlsId);
+        $photosByIdx = [];
+        if ($safeId !== '') {
+            foreach (glob(MEDIA_DIR . '/' . $safeId . '_*.*') ?: [] as $path) {
+                if (!preg_match('/_(\d+)\.[^.]+$/', $path, $m)) continue;
+                $relative = 'media/' . basename($path);
+                if (hasUsableCachedPhoto($relative)) $photosByIdx[(int)$m[1]] = $relative;
+            }
+            if (empty($photosByIdx)) {
+                $legacy = glob(MEDIA_DIR . '/' . $safeId . '.*') ?: [];
+                $legacyRelative = $legacy ? 'media/' . basename($legacy[0]) : '';
+                if ($legacyRelative !== '' && hasUsableCachedPhoto($legacyRelative)) $photosByIdx[0] = $legacyRelative;
+            }
+        }
+        ksort($photosByIdx);
+        $galleryUrls = array_values($photosByIdx);
+        $update->execute([
+            ':url' => $galleryUrls[0] ?? '',
+            ':gallery' => json_encode($galleryUrls, JSON_INVALID_UTF8_SUBSTITUTE),
+            ':count' => count($galleryUrls),
+            ':mls_id' => $mlsId
+        ]);
+    }
+}
+
 function repairInvalidPrimaryPreviews(PDO $pdo): void {
     $listings = $pdo->query("SELECT mls_id, main_image_url, gallery_images FROM properties WHERE main_image_url LIKE 'media/%'");
     $update = $pdo->prepare("UPDATE properties SET main_image_url = :url, updated_at = CURRENT_TIMESTAMP WHERE mls_id = :mls_id");
@@ -361,10 +414,16 @@ function cacheListingImages(array $urlsByMlsId): array {
  * simply treated as index 0 by the caller's glob-based cache check (see handleSync()).
  *
  * @param array<string,string> $urlsByKey  "mlsId::index" => original (matrixmedia) image URL
+ * @param array<string,string>|null $failures  if an array is passed, filled with
+ *                                          "mlsId::index" => reason for every photo that was not
+ *                                          cached: curl_<code>, http_<code>, bad_body (not an
+ *                                          image at all), not_a_listing_photo (a real image too
+ *                                          small to be a listing photo, e.g. a logo/headshot),
+ *                                          host_not_allowed, write_failed
  * @return array<string,string>            "mlsId::index" => cached relative URL, present only
  *                                          for downloads that succeeded
  */
-function cacheListingImagesMulti(array $urlsByKey): array {
+function cacheListingImagesMulti(array $urlsByKey, ?array &$failures = null): array {
     if (empty($urlsByKey) || !function_exists('curl_multi_init')) {
         return [];
     }
@@ -393,7 +452,10 @@ function cacheListingImagesMulti(array $urlsByKey): array {
             $url = 'https://matrix.recolorado.com' . $url;
         }
 
-        if (!isAllowedMediaHost($url)) continue;
+        if (!isAllowedMediaHost($url)) {
+            if (is_array($failures)) $failures[$safeKey] = 'host_not_allowed';
+            continue;
+        }
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -420,13 +482,31 @@ function cacheListingImagesMulti(array $urlsByKey): array {
         if ($running > 0) curl_multi_select($multi);
     } while ($running > 0);
 
+    // curl_errno() isn't reliable for handles driven through curl_multi; the per-transfer result
+    // code only comes back via curl_multi_info_read().
+    $handleId = function ($handle) { return is_object($handle) ? spl_object_id($handle) : (int)$handle; };
+    $curlCodes = [];
+    while ($info = curl_multi_info_read($multi)) {
+        $curlCodes[$handleId($info['handle'])] = (int)$info['result'];
+    }
+
     $results = [];
     foreach ($handles as $safeKey => $ch) {
         $body = curl_multi_getcontent($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE) ?: '';
+        $curlCode = $curlCodes[$handleId($ch)] ?? 0;
 
-        if ($body !== false && $httpCode === 200 && (strpos($contentType, 'image/') === 0 || strlen($body) >= 100) && looksLikeRealPhotoBody($body)) {
+        $reason = '';
+        if ($curlCode !== 0 || !is_string($body) || $httpCode === 0) {
+            $reason = 'curl_' . $curlCode;
+        } elseif ($httpCode !== 200) {
+            $reason = 'http_' . $httpCode;
+        } elseif (!(strpos($contentType, 'image/') === 0 || strlen($body) >= 100) || !looksLikeRealPhotoBody($body)) {
+            // A body that decodes as an image but is too small is a logo/headshot we skip on
+            // purpose; anything else is Matrix's fake-200 response or an error page.
+            $reason = @getimagesizefromstring($body) !== false ? 'not_a_listing_photo' : 'bad_body';
+        } else {
             $ext = 'jpg';
             if (strpos($contentType, 'png') !== false) $ext = 'png';
             elseif (strpos($contentType, 'webp') !== false) $ext = 'webp';
@@ -437,8 +517,11 @@ function cacheListingImagesMulti(array $urlsByKey): array {
             $filePath = MEDIA_DIR . '/' . $fileName;
             if (file_put_contents($filePath, $body) !== false) {
                 $results[$safeKey] = 'media/' . $fileName;
+            } else {
+                $reason = 'write_failed';
             }
         }
+        if ($reason !== '' && is_array($failures)) $failures[$safeKey] = $reason;
 
         curl_multi_remove_handle($multi, $ch);
         if (PHP_VERSION_ID < 80000) @curl_close($ch);
@@ -450,6 +533,7 @@ function cacheListingImagesMulti(array $urlsByKey): array {
 
 function handleList(PDO $pdo) {
     try {
+        repairUncachedMatrixPhotos($pdo);
         repairInvalidPrimaryPreviews($pdo);
         $currentUserId = $_SESSION['user_id'] ?? null;
         if (!$currentUserId && isset($_GET['user_id'])) {
@@ -491,6 +575,30 @@ function handleList(PDO $pdo) {
         $stmt->execute([':user_id' => $currentUserId]);
         $rows = $stmt->fetchAll();
 
+        // Price-drop flag for the property cards. handleSync() logs a price_reduced /
+        // price_increased activity every time a sync sees a different price, so the latest of
+        // those per listing tells us whether its most recent move was a cut. An increase after a
+        // cut clears the flag, and so does a logged new_price that no longer matches the current
+        // price (the row was changed by something other than the tracked sync path).
+        $latestPriceChange = [];
+        try {
+            $changeStmt = $pdo->query("
+                SELECT a.mls_id, a.activity_type, a.details_json, a.created_at
+                FROM property_activity a
+                JOIN (
+                    SELECT mls_id, MAX(id) AS last_id
+                    FROM property_activity
+                    WHERE activity_type IN ('price_reduced', 'price_increased')
+                    GROUP BY mls_id
+                ) latest ON latest.last_id = a.id
+            ");
+            foreach ($changeStmt->fetchAll() as $change) {
+                $latestPriceChange[(string)$change['mls_id']] = $change;
+            }
+        } catch (Throwable $e) {
+            $latestPriceChange = [];
+        }
+
         foreach ($rows as &$row) {
             $row['gallery_images'] = json_decode($row['gallery_images'] ?? '[]', true) ?: [];
             $row['tags_json'] = json_decode($row['tags_json'] ?? '[]', true) ?: [];
@@ -507,6 +615,23 @@ function handleList(PDO $pdo) {
             $row['hoa_fee'] = (float)$row['hoa_fee'];
             $row['annual_tax'] = (float)$row['annual_tax'];
             $row['original_price'] = isset($row['original_price']) ? (float)$row['original_price'] : 0;
+            $row['price_drop'] = null;
+            $change = $latestPriceChange[(string)$row['mls_id']] ?? null;
+            if ($change && $change['activity_type'] === 'price_reduced') {
+                $changeDetails = json_decode($change['details_json'] ?? '{}', true) ?: [];
+                $dropOld = (float)($changeDetails['old_price'] ?? 0);
+                $dropNew = (float)($changeDetails['new_price'] ?? 0);
+                if ($dropOld > $dropNew && $dropNew > 0 && abs($dropNew - $row['price']) < 1) {
+                    $row['price_drop'] = [
+                        'old_price' => $dropOld,
+                        'new_price' => $dropNew,
+                        'amount' => $dropOld - $dropNew,
+                        'pct' => round((($dropOld - $dropNew) / $dropOld) * 100, 1),
+                        // SQLite CURRENT_TIMESTAMP is UTC; this is when a sync noticed the cut.
+                        'detected_at' => str_replace(' ', 'T', (string)$change['created_at']) . 'Z',
+                    ];
+                }
+            }
             $row['favorite'] = (int)$row['favorite'];
             $row['hidden'] = (int)$row['hidden'];
             $row['shared_with_realtor'] = (int)$row['shared_with_realtor'];
@@ -782,6 +907,7 @@ function handleSync(PDO $pdo) {
     }
 
     $syncedCount = 0;
+    $upsertedMlsIds = [];   // mls_id => true for every listing whose photo fields the upsert below just overwrote
     $skippedCount = 0;
 
     try {
@@ -944,6 +1070,7 @@ function handleSync(PDO $pdo) {
                 ':original_price' => $incomingPrice
             ]);
             $syncedCount++;
+            $upsertedMlsIds[$mlsId] = true;
             if ($stmtSighting) {
                 $stmtSighting->execute([':user_id' => $targetUserId, ':search_key' => $searchKey, ':mls_id' => $mlsId, ':search_name' => $searchName]);
             }
@@ -1013,6 +1140,7 @@ function handleSync(PDO $pdo) {
     // re-downloaded after this upgrade.
     $photoFetchJobs = [];      // "mlsId::idx" => remote url, for photos not yet cached
     $existingByMls = [];       // mls_id => [idx => local relative url, ...] already on disk
+    $index0Fallback = [];      // mls_id => usable index-0 file already on disk, used if a deep scrape's index-0 re-fetch fails
     foreach ($properties as $item) {
         $mlsId = trim($item['mls_id'] ?? '');
         if (empty($mlsId)) continue;
@@ -1027,6 +1155,11 @@ function handleSync(PDO $pdo) {
             foreach (array_values($item['gallery_images']) as $idx => $url) {
                 if (empty($url)) continue;
 
+                // Older bookmarklets send the agent/office image (Type=15) in slot 10. Skip it
+                // without re-indexing, so the photos after it keep the file names they were
+                // already cached under.
+                if (isNonListingMatrixImage((string)$url)) continue;
+
                 // Index 0 is special. A routine cheap refresh (list-view only, handled in the
                 // "else" branch below) may have already cached Matrix's small search-result
                 // thumbnail here as "{safeId}_0.*" (or the legacy "{safeId}.*" name) before this
@@ -1038,6 +1171,13 @@ function handleSync(PDO $pdo) {
                 // this branch) only ever runs once per mls_id.
                 if ($idx === 0) {
                     $photoFetchJobs[$mlsId . '::0'] = $url;
+                    // If that re-fetch fails, keep showing whatever usable index-0 file is
+                    // already on disk (normally the list-view thumbnail) rather than nothing.
+                    $prior0 = glob(MEDIA_DIR . '/' . $safeId . '_0.*') ?: (glob(MEDIA_DIR . '/' . $safeId . '.*') ?: []);
+                    $prior0Relative = $prior0 ? 'media/' . basename($prior0[0]) : '';
+                    if ($prior0Relative !== '' && hasUsableCachedPhoto($prior0Relative)) {
+                        $index0Fallback[$mlsId] = $prior0Relative;
+                    }
                     continue;
                 }
 
@@ -1089,7 +1229,23 @@ function handleSync(PDO $pdo) {
         }
     }
 
-    $newlyCached = empty($photoFetchJobs) ? [] : cacheListingImagesMulti($photoFetchJobs);
+    $photoFailures = [];       // "mlsId::idx" => reason, for photos that could not be cached
+    $newlyCached = empty($photoFetchJobs) ? [] : cacheListingImagesMulti($photoFetchJobs, $photoFailures);
+
+    // One retry for failures that could be transient (timeout, non-200, Matrix's fake-200 body).
+    $retryJobs = [];
+    foreach ($photoFailures as $key => $reason) {
+        if ($reason === 'not_a_listing_photo' || $reason === 'host_not_allowed') continue;
+        if (isset($photoFetchJobs[$key])) $retryJobs[$key] = $photoFetchJobs[$key];
+    }
+    if (!empty($retryJobs)) {
+        $retryFailures = [];
+        $newlyCached += cacheListingImagesMulti($retryJobs, $retryFailures);
+        foreach (array_keys($retryJobs) as $key) {
+            if (isset($retryFailures[$key])) $photoFailures[$key] = $retryFailures[$key];
+            else unset($photoFailures[$key]);
+        }
+    }
 
     // Merge freshly-downloaded photos with whatever was already on disk, then write back
     // main_image_url (index 0), the full gallery array, and photo_count for each listing that
@@ -1098,6 +1254,9 @@ function handleSync(PDO $pdo) {
     foreach ($newlyCached as $key => $localUrl) {
         [$mlsId, $idx] = explode('::', $key, 2);
         $byMls[$mlsId][(int)$idx] = $localUrl;
+    }
+    foreach ($index0Fallback as $mlsId => $relative) {
+        if (!isset($byMls[$mlsId][0])) $byMls[$mlsId][0] = $relative;
     }
 
     if (!empty($byMls)) {
@@ -1111,6 +1270,38 @@ function handleSync(PDO $pdo) {
                 ':count' => count($galleryUrls),
                 ':mls_id' => $cachedMlsId
             ]);
+        }
+    }
+
+    // The upsert above stored the raw Matrix URLs from the payload. For a listing that ended up
+    // with no cached photo at all, nothing has replaced them, and the dashboard can't load them
+    // (see UNCACHED_MATRIX_PHOTO_SQL) - blank them so the "no photo" placeholder shows instead
+    // of a gallery of blank images.
+    $stmtNoPhotos = $pdo->prepare("UPDATE properties SET main_image_url = '', gallery_images = '[]', photo_count = 0 WHERE mls_id = :mls_id AND " . UNCACHED_MATRIX_PHOTO_SQL);
+    foreach (array_keys($upsertedMlsIds) as $upsertedMlsId) {
+        if (empty($byMls[$upsertedMlsId])) $stmtNoPhotos->execute([':mls_id' => (string)$upsertedMlsId]);
+    }
+
+    // Photo failures used to be silent, and the listing was still stamped as fully scraped.
+    // Log them per listing and clear the stamp so the next deep scrape re-walks the gallery.
+    $failuresByMls = [];
+    foreach ($photoFailures as $key => $reason) {
+        if ($reason === 'not_a_listing_photo') continue;
+        [$failedMlsId, $failedIdx] = array_pad(explode('::', (string)$key, 2), 2, '0');
+        $failuresByMls[$failedMlsId][(int)$failedIdx] = $reason;
+    }
+    if (!empty($failuresByMls)) {
+        $photoLogUser = getScrapeTokenUsername($pdo) ?? ($_SESSION['username'] ?? null);
+        $stmtRequeue = $pdo->prepare('UPDATE properties SET full_scrape_completed_at = NULL WHERE mls_id = :mls_id');
+        foreach ($failuresByMls as $failedMlsId => $reasonsByIdx) {
+            $failedMlsId = (string)$failedMlsId;
+            $stmtRequeue->execute([':mls_id' => $failedMlsId]);
+            logEvent($pdo, 'sync', 'warn', 'Photo download failed for ' . count($reasonsByIdx) . ' photo(s); listing queued for re-scrape', $failedMlsId, [
+                'failed' => count($reasonsByIdx),
+                'cached' => count($byMls[$failedMlsId] ?? []),
+                'reasons' => array_count_values($reasonsByIdx),
+                'failed_indexes' => array_keys($reasonsByIdx)
+            ], $photoLogUser);
         }
     }
 

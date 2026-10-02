@@ -1293,6 +1293,41 @@ body {
     color: var(--text-primary);
 }
 
+/* Price-drop pill on the property card (see buildPriceDropPill in js/views.js).
+   Muted by default; .is-recent = the cut was spotted in the last 14 days. */
+.card-price-drop-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
+    align-self: center;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: nowrap;
+    border-radius: 9999px;
+    color: var(--accent-emerald-bright, #4F7A63);
+    background: rgba(79, 122, 99, 0.12);
+    border: 1px solid rgba(79, 122, 99, 0.4);
+    cursor: help;
+}
+.card-price-drop-pill svg {
+    width: 0.95em;
+    height: 0.95em;
+    stroke-width: 2.75;
+}
+.card-price-drop-pill .card-price-drop-pct {
+    font-weight: 600;
+    opacity: 0.85;
+}
+.card-price-drop-pill.is-recent {
+    color: #E8FAF0;
+    background: #1F7A4A;
+    border-color: rgba(110, 185, 135, 0.7);
+    box-shadow: 0 2px 8px rgba(31, 122, 74, 0.35);
+}
+
 .card-address {
     font-size: 0.95rem;
     font-weight: 600;

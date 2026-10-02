@@ -400,6 +400,13 @@ function getEngineCode() {
         imgs.forEach(img => {
             const src = img.currentSrc || img.src || img.getAttribute('src') || '';
             if (!src) return;
+            // Listing photos are always Type=1. Matrix also renders the agent/office image
+            // through GetMedia.ashx (Type=15, carrying its own Number=10), and it used to claim
+            // slot 10 and shadow the real photo #10 on every listing with more than 10 photos
+            // (confirmed in prod, Oct 2026: every gallery was missing index 10). Skip anything
+            // that declares a Type other than 1.
+            const typeMatch = src.match(/[?&]Type=(\d+)/i);
+            if (typeMatch && typeMatch[1] !== '1') return;
             const numMatch = src.match(/[?&]Number=(\d+)/i);
             const num = numMatch ? parseInt(numMatch[1], 10) : seen.size;
             if (!seen.has(num)) seen.set(num, src);

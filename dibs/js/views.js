@@ -374,6 +374,45 @@ export function switchView(viewName) {
         return Math.max(0, Math.round((Date.now() - dt.getTime()) / 86400000));
     }
 
+    // Price-drop pill for the property card. Prefers the server's price_drop (the latest
+    // sync-detected cut); falls back to original_price (first price Dibs ever saw) when a listing
+    // is below it but has no logged event. "Recent" = noticed within the last 14 days.
+    const PRICE_DROP_RECENT_DAYS = 14;
+    function fmtDropAmount(n) {
+        if (n >= 1000) {
+            const k = n / 1000;
+            return `$${(k >= 10 || Number.isInteger(k) ? Math.round(k) : k.toFixed(1))}K`;
+        }
+        return `$${Math.round(n).toLocaleString()}`;
+    }
+    export function buildPriceDropPill(p) {
+        const price = Number(p.price) || 0;
+        const firstSeen = Number(p.original_price) || 0;
+        const d = p.price_drop;
+        let amount = 0, pct = 0, oldPrice = 0, when = null;
+        if (d && Number(d.amount) > 0) {
+            amount = Number(d.amount);
+            pct = Number(d.pct) || 0;
+            oldPrice = Number(d.old_price) || 0;
+            const dt = d.detected_at ? new Date(d.detected_at) : null;
+            if (dt && !Number.isNaN(dt.getTime())) when = dt;
+        } else if (firstSeen > price && price > 0) {
+            amount = firstSeen - price;
+            pct = Math.round((amount / firstSeen) * 1000) / 10;
+            oldPrice = firstSeen;
+        } else {
+            return '';
+        }
+        const ageDays = when ? (Date.now() - when.getTime()) / 86400000 : Infinity;
+        const isRecent = ageDays <= PRICE_DROP_RECENT_DAYS;
+        const totalDrop = firstSeen > price ? firstSeen - price : 0;
+        const tipParts = [`Price dropped from $${oldPrice.toLocaleString()} to $${price.toLocaleString()} (-${pct}%)`];
+        if (when) tipParts.push(`spotted on the ${when.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} sync`);
+        if (totalDrop > amount + 1) tipParts.push(`$${totalDrop.toLocaleString()} total below the first price Dibs saw`);
+        const tip = tipParts.join(' · ');
+        return `<span class="card-price-drop-pill${isRecent ? ' is-recent' : ''}" title="${escapeHtml(tip)}" aria-label="${escapeHtml(tip)}"><i data-lucide="trending-down"></i> ${fmtDropAmount(amount)}${pct ? ` <span class="card-price-drop-pct">${pct}%</span>` : ''}</span>`;
+    }
+
     export function buildPropertyCardHtml(p) {
         const ppsqft = p.sqft_finished ? Math.round(p.price / p.sqft_finished) : 0;
         const dom = getCardDaysOnMarket(p);
@@ -415,6 +454,7 @@ export function switchView(viewName) {
                 <div class="card-body">
                     <div class="card-price-row">
                         <span class="card-price font-serif">$${p.price.toLocaleString()}</span>
+                        ${buildPriceDropPill(p)}
                     </div>
                     <div>
                         <div class="card-address">${escapeHtml(displayAddr)}</div>
