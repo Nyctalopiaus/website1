@@ -7,7 +7,7 @@
  * side effects (setting window.openDetailModal etc.) is enough.
  */
 import { state, elements, CONFIG } from './state.js';
-import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, isSafeMediaUrl, NO_PHOTO_IMG, getStatusBadgeClass } from './properties.js';
+import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, isSafeMediaUrl, NO_PHOTO_IMG, getStatusBadgeClass, getCompScore, buildCompScoreBadge } from './properties.js';
 import { apiFetch, savePreferencesToServer } from './api.js';
 import { applyFiltersAndRender } from './filters.js';
 import { showToast } from './toast.js';
@@ -342,6 +342,7 @@ window.deleteCustomReactionChip = function(event, chipText) {
                             <span class="badge ${getStatusBadgeClass(p.status)}">${escapeHtml(p.status || 'Active')}</span>
                             ${matrixBadgeModal}
                             ${ppsqft ? `<span class="score-badge" style="font-size:0.9rem;">$${ppsqft} / SqFt</span>` : ''}
+                            <span id="modal-comp-score-slot">${buildCompScoreBadge(p, true)}</span>
                         </div>
                         <h2 style="font-size:1.4rem; font-weight:700; color:var(--text-primary);">
                             ${escapeHtml(displayAddrModal)}
@@ -363,6 +364,7 @@ window.deleteCustomReactionChip = function(event, chipText) {
                         <button type="button" class="btn btn-secondary" onclick="openPhotoViewer('${p.mls_id}', null, { fromDetail: true })">
                             <i data-lucide="images"></i> View Photos (${currentGalleryImages.length})
                         </button>
+                        <span id="modal-comps-action-slot" style="display:contents;">${buildCompsActionButton(p)}</span>
                         <button class="btn btn-secondary realtor-or-admin-only" onclick="addMlsToPlaylist('${p.mls_id}')" style="${(state.currentUserProfile?.role === 'realtor' || state.currentUserProfile?.role === 'admin' || state.isAdmin) ? '' : 'display:none;'}">
                             <i data-lucide="folder-plus"></i> Add to Playlist
                         </button>
@@ -513,6 +515,9 @@ window.deleteCustomReactionChip = function(event, chipText) {
                     </div>
                 </div>
 
+                <!-- Price vs. Comps (RentCast, on demand - see window.checkComps) -->
+                <div id="detail-comps" data-mls="${escapeHtml(String(p.mls_id))}">${buildCompsSectionHtml(p)}</div>
+
                 <!-- Section 4: Financials, Taxes & HOA -->
                 <div>
                     <div class="modal-section-title"><i data-lucide="wallet"></i> Financials, Taxes & HOA</div>
@@ -579,6 +584,121 @@ window.deleteCustomReactionChip = function(event, chipText) {
         }
 
         window.loadPropertyActivity(mlsId);
+    };
+
+    // ---- Comps (RentCast) -------------------------------------------------------------------
+    // Lookups only ever happen from the buttons below: the free RentCast plan allows 50 a month,
+    // so nothing fetches comps automatically. Results are stored server-side per listing and come
+    // back with the normal property list, so reopening a home costs nothing.
+    const COMPS_MONTHLY_LOOKUPS = 50;
+    const compsMoney = n => '$' + Math.round(Number(n) || 0).toLocaleString();
+    const compsDate = value => {
+        const d = value ? new Date(value) : null;
+        return (d && !Number.isNaN(d.getTime())) ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    };
+
+    function buildCompsActionButton(p) {
+        const id = escapeHtml(String(p.mls_id));
+        return getCompScore(p)
+            ? `<button type="button" class="btn btn-secondary" onclick="jumpToPropertyDetailSection('detail-comps')"><i data-lucide="scale"></i> View Comps</button>`
+            : `<button type="button" class="btn btn-secondary" data-comps-btn onclick="checkComps('${id}')"><i data-lucide="scale"></i> Check Comps</button>`;
+    }
+
+    function buildCompsSectionHtml(p) {
+        const id = escapeHtml(String(p.mls_id));
+        const title = `<div class="modal-section-title"><i data-lucide="scale"></i> Price vs. Comps</div>`;
+        const s = getCompScore(p);
+        if (!s) {
+            return `${title}
+                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-secondary" data-comps-btn onclick="checkComps('${id}')"><i data-lucide="scale"></i> Check Comps</button>
+                    <span class="comps-note" style="margin:0;">Looks up comparable listings on RentCast and scores this price against them. Each check uses one of your ${COMPS_MONTHLY_LOOKUPS} monthly lookups.</span>
+                </div>`;
+        }
+
+        const comps = Array.isArray(p.comps) ? p.comps : [];
+        const low = Number(p.comp_range_low) || 0;
+        const high = Number(p.comp_range_high) || 0;
+        const diffText = `${s.diff < 0 ? '-' : '+'}${compsMoney(Math.abs(s.diff))}`;
+        const subj = p.comp_subject || {};
+        const subjParts = [];
+        if (subj.bedrooms) subjParts.push(`${subj.bedrooms} bd`);
+        if (subj.bathrooms) subjParts.push(`${subj.bathrooms} ba`);
+        if (subj.squareFootage) subjParts.push(`${Number(subj.squareFootage).toLocaleString()} sqft`);
+        if (subj.yearBuilt) subjParts.push(`built ${subj.yearBuilt}`);
+        const checked = compsDate(p.comp_fetched_at);
+
+        const rows = comps.map(c => {
+            const sqft = Number(c.squareFootage) || 0;
+            const price = Number(c.price) || 0;
+            const offMarket = String(c.status || '').toLowerCase() !== 'active';
+            const when = offMarket ? (compsDate(c.removedDate) ? `Off market ${compsDate(c.removedDate)}` : 'Off market') : 'Active';
+            return `<tr>
+                <td>${escapeHtml(c.formattedAddress || '')}</td>
+                <td>${price ? compsMoney(price) : 'N/A'}</td>
+                <td>${c.bedrooms ?? '?'} / ${c.bathrooms ?? '?'}</td>
+                <td>${sqft ? sqft.toLocaleString() : 'N/A'}</td>
+                <td>${(price && sqft) ? compsMoney(price / sqft) : 'N/A'}</td>
+                <td>${c.distance != null ? Number(c.distance).toFixed(2) + ' mi' : ''}</td>
+                <td>${escapeHtml(when)}</td>
+                <td>${c.correlation != null ? Math.round(Number(c.correlation) * 100) + '%' : ''}</td>
+            </tr>`;
+        }).join('');
+
+        return `${title}
+            <div class="modal-grid-4">
+                <div class="modal-detail-box"><span class="modal-detail-lbl">Price Score</span><span class="modal-detail-val">${buildCompScoreBadge(p, true)}</span></div>
+                <div class="modal-detail-box"><span class="modal-detail-lbl">Comp-Based Value</span><span class="modal-detail-val">${compsMoney(s.estimate)}</span></div>
+                <div class="modal-detail-box"><span class="modal-detail-lbl">Likely Range</span><span class="modal-detail-val">${(low && high) ? `${compsMoney(low)} - ${compsMoney(high)}` : 'N/A'}</span></div>
+                <div class="modal-detail-box"><span class="modal-detail-lbl">List Price vs. Value</span><span class="modal-detail-val">${diffText}</span></div>
+            </div>
+            <div class="comps-note">
+                Based on ${comps.length} comparable listing${comps.length === 1 ? '' : 's'} from RentCast${checked ? `, checked ${escapeHtml(checked)}` : ''}.
+                ${subjParts.length ? `RentCast valued this home as ${escapeHtml(subjParts.join(' / '))}.` : ''}
+                Comp prices are listing prices (active or recently off market), not confirmed closing prices.
+                The score re-calculates on its own if this home's price changes.
+            </div>
+            ${rows ? `<div class="comps-table-wrap"><table class="room-table">
+                <thead><tr><th>Comparable</th><th>Price</th><th>Bd / Ba</th><th>SqFt</th><th>$/SqFt</th><th>Distance</th><th>Status</th><th>Match</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table></div>` : ''}
+            <div style="margin-top:0.75rem;">
+                <button type="button" class="btn btn-secondary" data-comps-btn onclick="checkComps('${id}', true)"><i data-lucide="refresh-cw"></i> Refresh Comps</button>
+            </div>`;
+    }
+
+    function refreshCompsUi(p) {
+        const section = document.getElementById('detail-comps');
+        if (!section || section.dataset.mls !== String(p.mls_id)) return;
+        section.innerHTML = buildCompsSectionHtml(p);
+        const scoreSlot = document.getElementById('modal-comp-score-slot');
+        if (scoreSlot) scoreSlot.innerHTML = buildCompScoreBadge(p, true);
+        const actionSlot = document.getElementById('modal-comps-action-slot');
+        if (actionSlot) actionSlot.innerHTML = buildCompsActionButton(p);
+        if (window.lucide) window.lucide.createIcons();
+    }
+
+    window.checkComps = function(mlsId, force = false) {
+        const p = state.allProperties.find(x => String(x.mls_id) === String(mlsId));
+        if (!p) return;
+        if (force && !confirm(`Refresh comps for this home? This uses one of your ${COMPS_MONTHLY_LOOKUPS} monthly RentCast lookups.`)) return;
+        document.querySelectorAll('[data-comps-btn]').forEach(btn => { btn.disabled = true; btn.textContent = 'Checking comps...'; });
+        apiFetch(CONFIG.API_URL + '?action=check_comps', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mls_id: mlsId, force: !!force })
+        }).then(data => {
+            if (!data || !data.success || !data.comps) throw new Error((data && data.error) || 'Comps lookup failed');
+            Object.assign(p, data.comps);
+            refreshCompsUi(p);
+            applyFiltersAndRender();
+            const s = getCompScore(p);
+            const usage = data.usage ? ` (${data.usage.used} of ${data.usage.cap} lookups used)` : '';
+            showToast(s ? `Price score ${s.score}: ${s.pctText}${usage}` : 'Comps saved', 'success');
+        }).catch(error => {
+            refreshCompsUi(p);
+            showToast(error.message || 'Comps lookup failed', 'error');
+        });
     };
 
     window.loadPropertyActivity = function(mlsId) {

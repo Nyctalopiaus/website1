@@ -2,6 +2,7 @@ import { elements, state } from './state.js';
 import { getPropertyReviewStatus, escapeHtml } from './properties.js';
 import { showToast } from './toast.js';
 import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './api.js';
+import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
 
 
     export function resetFilters() {
@@ -12,7 +13,7 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
             beds: 0, bedsMax: null, baths: 0, bathsFullMin: null, baths34Min: null, bathsHalfMin: null, levels: '', basement: '',
             sqftMin: null, sqftMax: null, sqftTotMin: null, sqftAboveMin: null, sqftBelowMin: null, propertyType: '',
             yearMin: null, yearMax: null, acresMin: null, acresMax: null, parkingMin: null, garageMin: null,
-            hoaMax: null, noHoaOnly: false, taxMax: null, taxYear: null,
+            hoaMax: null, noHoaOnly: false, taxMax: null, taxYear: null, priceDropsOnly: false,
             city: '', zip: '', schoolDistrict: '',
             status: 'all', ratingMin: 0, matrixStatus: 'all', appliances: '', flooring: '', fireplaceOnly: false, realtorNotesOnly: false,
             favoritesOnly: false, possibilitiesOnly: false, realtorSharedOnly: false, hasNotesOnly: false, showHidden: true
@@ -108,6 +109,7 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
             if (f.garageMin !== null && (p.garage_spaces || 0) < f.garageMin) return false;
 
             // 8. Financials & Taxes
+            if (f.priceDropsOnly && !hasPriceDrop(p)) return false;
             if (f.noHoaOnly && (p.hoa_fee || 0) > 0) return false;
             if (f.hoaMax !== null && p.hoa_fee > f.hoaMax) return false;
             if (f.taxMax !== null && p.annual_tax > f.taxMax) return false;
@@ -170,6 +172,7 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         if (f.acresMax !== null) chips.push({ label: `Max Acres: ${f.acresMax}`, clear: () => { f.acresMax = null; } });
         if (f.parkingMin !== null) chips.push({ label: `Parking: ${f.parkingMin}+`, clear: () => { f.parkingMin = null; } });
         if (f.garageMin !== null) chips.push({ label: `Garage: ${f.garageMin}+`, clear: () => { f.garageMin = null; } });
+        if (f.priceDropsOnly) chips.push({ label: `Price Drops Only`, icon: 'trending-down', clear: () => { setPriceDropsOnly(false); } });
         if (f.noHoaOnly) chips.push({ label: `No HOA`, icon: 'ban', clear: () => { f.noHoaOnly = false; } });
         if (f.hoaMax !== null) chips.push({ label: `Max HOA: $${f.hoaMax}/yr`, clear: () => { f.hoaMax = null; } });
         if (f.taxMax !== null) chips.push({ label: `Max Tax: $${f.taxMax}/yr`, clear: () => { f.taxMax = null; } });
@@ -736,6 +739,29 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
         }
     }
 
+    // Price Drops tile (Search Intelligence): turning it on filters to reduced listings and
+    // sorts biggest drop first; turning it off puts back whatever sort was active before.
+    let sortBeforePriceDrops = null;
+    function setSort(value) {
+        state.currentSort = value;
+        localStorage.setItem('scout_current_sort', value);
+        if (elements.sortSelect) elements.sortSelect.value = value;
+    }
+    function setPriceDropsOnly(on) {
+        state.filters.priceDropsOnly = on;
+        if (on) {
+            if (state.currentSort !== 'drop-desc') sortBeforePriceDrops = state.currentSort;
+            setSort('drop-desc');
+        } else {
+            if (state.currentSort === 'drop-desc' && sortBeforePriceDrops) setSort(sortBeforePriceDrops);
+            sortBeforePriceDrops = null;
+        }
+    }
+    window.togglePriceDropFilter = function() {
+        setPriceDropsOnly(!state.filters.priceDropsOnly);
+        applyFiltersAndRender();
+    };
+
     export function sortProperties() {
         const props = state.filteredProperties;
         switch (state.currentSort) {
@@ -758,6 +784,20 @@ import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './a
             case 'rating-desc':
                 props.sort((a, b) => (b.rating || 0) - (a.rating || 0));
                 break;
+            case 'dom-asc':
+            case 'dom-desc': {
+                // Same days-on-market number the card shows; listings with no value sort last.
+                const dir = state.currentSort === 'dom-asc' ? 1 : -1;
+                const dom = new Map(props.map(p => [p, getCardDaysOnMarket(p)]));
+                props.sort((a, b) => {
+                    const da = dom.get(a), db = dom.get(b);
+                    if (da === null && db === null) return 0;
+                    if (da === null) return 1;
+                    if (db === null) return -1;
+                    return (da - db) * dir;
+                });
+                break;
+            }
             case 'date-desc':
             default:
                 props.sort((a, b) => new Date(b.list_date || 0) - new Date(a.list_date || 0));

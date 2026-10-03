@@ -2,7 +2,7 @@
  * Nycto's MLS Property Scout - View Switching & Renderers (grid/table/matrix)
  */
 import { state, elements } from './state.js';
-import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG, getStatusBadgeClass } from './properties.js';
+import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG, getStatusBadgeClass, buildCompScoreBadge } from './properties.js';
 import { renderMap, highlightMapMarker, unhighlightMapMarker, getPropertiesInView } from './map.js';
 import { showToast } from './toast.js';
 import { updateCompareButtons } from './compare.js';
@@ -135,7 +135,9 @@ export function updateKPIs() {
             ? `<div class="user-panel-card-compare" title="All ${filtered.length}: $${overall.avgPrice.toLocaleString()} avg · $${overall.avgPpsqft} / SqFt">Price ${pctDiff(avgPrice, overall.avgPrice)} · $/SqFt ${pctDiff(avgPpsqft, overall.avgPpsqft)} vs all ${filtered.length}</div>`
             : '';
 
-        const priceDropCount = shown.filter(p => p.price_reduced || p.price_drop || (p.original_price && p.original_price > p.price)).length;
+        const priceDropCount = shown.filter(hasPriceDrop).length;
+        const dropsOnly = !!state.filters.priceDropsOnly;
+        const dropsClickable = dropsOnly || priceDropCount > 0;
         
         function parseListDate(dateStr) {
             if (!dateStr) return null;
@@ -193,13 +195,13 @@ export function updateKPIs() {
                         <div class="user-panel-card-sub">${shownActiveCount} Active listings</div>
                     </div>
 
-                    <div class="user-panel-card" title="Properties with recent price reductions">
+                    <div class="user-panel-card"${dropsClickable ? ` role="button" tabindex="0" onclick="if(window.togglePriceDropFilter) window.togglePriceDropFilter();" onkeydown="if(event.key==='Enter'&&window.togglePriceDropFilter) window.togglePriceDropFilter();"` : ''} style="${dropsClickable ? 'cursor:pointer;' : ''}${dropsOnly ? 'outline:2px solid var(--accent-emerald);' : ''}" title="${dropsOnly ? 'Showing price drops only. Click to show all listings again.' : 'Click to show only price drops, biggest first'}">
                         <div class="user-panel-card-header">
                             <span class="user-panel-card-label">Price Drops</span>
                             <i data-lucide="trending-down" style="color:${priceDropCount ? 'var(--accent-emerald)' : 'var(--accent-gold)'};"></i>
                         </div>
                         <div class="user-panel-card-value">${priceDropCount}</div>
-                        <div class="user-panel-card-sub">${priceDropCount ? 'Recent price cuts' : 'Active reductions'}</div>
+                        <div class="user-panel-card-sub">${dropsOnly ? 'Showing only these · click to clear' : (priceDropCount ? 'Recent price cuts' : 'Active reductions')}</div>
                     </div>
 
                     <div class="user-panel-card" title="Average listing price and price per sqft">
@@ -357,7 +359,7 @@ export function switchView(viewName) {
     showToast(`Switched view to ${viewName.toUpperCase()}`, 'info');
 }
 
-    function getCardDaysOnMarket(p) {
+    export function getCardDaysOnMarket(p) {
         if (typeof p.days_on_market === 'number') return p.days_on_market;
         if (p.days_on_market != null && p.days_on_market !== '' && !isNaN(Number(p.days_on_market))) return Number(p.days_on_market);
         if (!p.list_date) return null;
@@ -385,6 +387,12 @@ export function switchView(viewName) {
         }
         return `$${Math.round(n).toLocaleString()}`;
     }
+    // One definition of "has a price drop", shared by the KPI tile count and the Price Drops
+    // Only filter so clicking the tile always shows exactly the listings it counted.
+    export function hasPriceDrop(p) {
+        return !!(p.price_reduced || p.price_drop || (p.original_price && p.original_price > p.price));
+    }
+
     export function buildPriceDropPill(p) {
         const price = Number(p.price) || 0;
         const firstSeen = Number(p.original_price) || 0;
@@ -470,6 +478,7 @@ export function switchView(viewName) {
                         <div class="stat-item"><span class="stat-val">$${ppsqft}</span><span class="stat-lbl">$/SqFt</span></div>
                     </div>
                     <div class="card-scores">
+                        ${buildCompScoreBadge(p)}
                         ${dom !== null ? `<span class="score-badge" title="Days on market"><i data-lucide="clock" style="width:0.85em;height:0.85em;vertical-align:-0.1em;"></i> ${dom} ${dom === 1 ? 'day' : 'days'} on market</span>` : ''}
                         <span class="score-badge">Built: ${p.year_built || 'N/A'}</span>
                         <span class="score-badge">Lot: ${p.lot_acres ? p.lot_acres + ' acres' : (p.lot_sqft ? p.lot_sqft.toLocaleString() + ' sqft' : 'N/A')}</span>

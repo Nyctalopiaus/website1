@@ -20,7 +20,10 @@ export async function renderClientNextSteps() {
     const properties = state.allProperties || [];
     const favorites = properties.filter(property => property.favorite).length;
     const possibilities = properties.filter(property => !property.hidden && !property.favorite && Number(property.possibility) === 1).length;
-    const reviewNeeded = properties.filter(property => !property.hidden && !property.favorite && property.rating === 0).length;
+    // Only Active listings count as needing review: a Pending/Closed/Withdrawn home that was never
+    // reviewed isn't something the client still has to act on.
+    const reviewNeeded = properties.filter(property => !property.hidden && !property.favorite && property.rating === 0
+        && String(property.status || '').trim().toLowerCase() === 'active').length;
     let showings = [];
     try {
         const res = await fetch('backend/api.php?action=get_my_showings', { credentials: 'include' }).then(response => response.json());
@@ -84,6 +87,14 @@ export async function renderClientNextSteps() {
 }
 
 window.focusClientNextStep = function(status) {
+    // Keep the grid in step with the number on the card: To Review counts Active listings only,
+    // while Favorites and Consideration count every MLS status.
+    const mlsStatusSelect = document.getElementById('filter-status');
+    const wantedMlsStatus = status === 'none' ? 'Active' : 'all';
+    if (mlsStatusSelect && mlsStatusSelect.value !== wantedMlsStatus) {
+        mlsStatusSelect.value = wantedMlsStatus;
+        mlsStatusSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
     const select = document.getElementById('filter-matrix-status-top');
     if (select) {
         select.value = status;

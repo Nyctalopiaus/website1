@@ -1385,6 +1385,40 @@ body {
     border: 1px solid var(--border-color);
 }
 
+/* Price score from a Check Comps lookup (see getCompScore() in js/properties.js) */
+.comp-score-badge svg {
+    width: 0.9em;
+    height: 0.9em;
+}
+
+.comp-score-badge .comp-score-pct {
+    font-weight: 500;
+    opacity: 0.85;
+}
+
+.comp-score-badge.is-good {
+    background-color: var(--badge-active-bg);
+    color: var(--badge-active-text);
+    border-color: var(--badge-active-border);
+}
+
+.comp-score-badge.is-high {
+    background-color: rgba(176, 70, 58, 0.12);
+    color: var(--accent-red);
+    border-color: rgba(176, 70, 58, 0.32);
+}
+
+.comps-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.6rem;
+}
+
+.comps-table-wrap {
+    overflow-x: auto;
+    margin-top: 0.75rem;
+}
+
 .card-notes-preview {
     font-size: 0.8rem;
     color: var(--accent-gold);

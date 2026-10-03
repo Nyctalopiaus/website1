@@ -565,10 +565,13 @@ function handleList(PDO $pdo) {
                 COALESCE(u.possibility, 0) as possibility,
                 u.mls_status_baseline, u.mls_status_seen,
                 COALESCE(u.mls_status_conflict, 0) as mls_status_conflict,
-                u.mls_notes_json, u.mls_note_outbox, u.mls_note_sent_at
+                u.mls_notes_json, u.mls_note_outbox, u.mls_note_sent_at,
+                c.estimate AS comp_estimate, c.range_low AS comp_range_low, c.range_high AS comp_range_high,
+                c.fetched_at AS comp_fetched_at, c.comps_json AS comps_json, c.subject_json AS comp_subject_json
             FROM properties p
             LEFT JOIN user_metadata u ON p.mls_id = u.mls_id AND u.user_id = :user_id
             LEFT JOIN property_visibility v ON p.mls_id = v.mls_id
+            LEFT JOIN property_comps c ON p.mls_id = c.mls_id
             WHERE COALESCE(v.is_hidden, 0) = 0
             ORDER BY p.updated_at DESC
         ");
@@ -636,7 +639,21 @@ function handleList(PDO $pdo) {
             $row['hidden'] = (int)$row['hidden'];
             $row['shared_with_realtor'] = (int)$row['shared_with_realtor'];
             $row['raw_mls_json'] = json_decode($row['raw_mls_json'] ?? '{}', true) ?: null;
+
+            // Stored comps from a "Check Comps" lookup (backend/comps.php). The price score is
+            // worked out in the browser from comp_estimate and the current price, so it stays
+            // right when the price changes without another lookup.
+            $hasComps = $row['comp_estimate'] !== null && (float)$row['comp_estimate'] > 0;
+            $row['comps'] = $hasComps ? (json_decode($row['comps_json'] ?? '[]', true) ?: []) : [];
+            $row['comp_subject'] = $hasComps ? (json_decode($row['comp_subject_json'] ?? 'null', true) ?: null) : null;
+            $row['comp_estimate'] = $hasComps ? (float)$row['comp_estimate'] : null;
+            $row['comp_range_low'] = $hasComps ? (float)$row['comp_range_low'] : null;
+            $row['comp_range_high'] = $hasComps ? (float)$row['comp_range_high'] : null;
+            // SQLite CURRENT_TIMESTAMP is UTC.
+            $row['comp_fetched_at'] = ($hasComps && !empty($row['comp_fetched_at'])) ? str_replace(' ', 'T', (string)$row['comp_fetched_at']) . 'Z' : null;
+            unset($row['comps_json'], $row['comp_subject_json']);
         }
+        unset($row);
 
         $json = json_encode(['success' => true, 'properties' => $rows], JSON_INVALID_UTF8_SUBSTITUTE);
         if ($json === false) {

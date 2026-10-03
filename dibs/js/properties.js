@@ -181,6 +181,34 @@ export const NO_PHOTO_IMG = 'data:image/svg+xml;charset=UTF-8,' + encodeURICompo
     export function isSafeMediaUrl(url) {
         return typeof url === 'string' && /^https?:\/\//i.test(url);
     }
+/**
+ * Price score from a "Check Comps" lookup: how the current list price sits against the value
+ * RentCast derived from comparable listings (p.comp_estimate). 50 = priced right at that value,
+ * each 1% under adds 5 points and each 1% over takes 5 off, clamped to 0-100 (so 10% under is
+ * 100 and 10% over is 0). Worked out here rather than stored, so a price change re-scores the
+ * home against the comps already on file without another lookup. Returns null if never checked.
+ */
+export function getCompScore(p) {
+    const estimate = Number(p && p.comp_estimate) || 0;
+    const price = Number(p && p.price) || 0;
+    if (!estimate || !price) return null;
+    const pct = ((price - estimate) / estimate) * 100;
+    const score = Math.max(0, Math.min(100, Math.round(50 - pct * 5)));
+    const absPct = Math.abs(pct);
+    const pctLabel = absPct >= 10 ? String(Math.round(absPct)) : absPct.toFixed(1).replace(/\.0$/, '');
+    const pctText = absPct < 0.5 ? 'in line with comps' : `${pctLabel}% ${pct < 0 ? 'under' : 'over'} comps`;
+    const tone = score >= 65 ? 'good' : (score >= 35 ? 'fair' : 'high');
+    return { score, pct, pctText, tone, estimate, price, diff: price - estimate };
+}
+
+/** Badge for the card and the detail header; empty string when comps haven't been checked. */
+export function buildCompScoreBadge(p, large = false) {
+    const s = getCompScore(p);
+    if (!s) return '';
+    const tip = `Price score ${s.score}/100: list price $${s.price.toLocaleString()} is ${s.pctText} (comp-based value $${Math.round(s.estimate).toLocaleString()})`;
+    return `<span class="score-badge comp-score-badge is-${s.tone}"${large ? ' style="font-size:0.9rem;"' : ''} title="${escapeHtml(tip)}" aria-label="${escapeHtml(tip)}"><i data-lucide="scale"></i> Price score ${s.score} <span class="comp-score-pct">${escapeHtml(s.pctText)}</span></span>`;
+}
+
 export function getStatusBadgeClass(status) {
     const st = (status || 'Active').toLowerCase().trim();
     if (st.includes('active')) return 'badge-active';

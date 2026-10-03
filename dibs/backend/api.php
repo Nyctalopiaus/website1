@@ -10,6 +10,7 @@ require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/properties.php';
 require_once __DIR__ . '/collections.php';
+require_once __DIR__ . '/comps.php';
 
 $action = $_GET['action'] ?? $_POST['action'] ?? 'list';
 
@@ -203,6 +204,12 @@ switch ($action) {
         requireAuth();
         requireCsrf();
         handleUpdateCoordinates($pdo);
+        break;
+
+    case 'check_comps':
+        requireAuth();
+        requireCsrf();
+        handleCheckComps($pdo);
         break;
 
     case 'delete':

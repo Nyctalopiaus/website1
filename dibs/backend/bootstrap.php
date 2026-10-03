@@ -527,6 +527,28 @@ try {
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read)", 'idx_notifications_user');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_showing_itinerary_client ON showing_itinerary(client_id, updated_at DESC)", 'showing_itinerary.client_updated');
 
+    // Comps (see backend/comps.php). property_comps holds the latest RentCast result per listing;
+    // comps_api_calls is one row per RentCast request, which the monthly lookup cap counts.
+    runMigration($pdo, "CREATE TABLE IF NOT EXISTS property_comps (
+        mls_id TEXT PRIMARY KEY,
+        estimate REAL,
+        range_low REAL,
+        range_high REAL,
+        comps_json TEXT DEFAULT '[]',
+        subject_json TEXT,
+        list_price_at_fetch REAL,
+        fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        fetched_by_user_id INTEGER
+    )", 'property_comps');
+    runMigration($pdo, "CREATE TABLE IF NOT EXISTS comps_api_calls (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        mls_id TEXT,
+        user_id INTEGER,
+        http_code INTEGER,
+        called_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )", 'comps_api_calls');
+    runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_comps_api_calls_time ON comps_api_calls(called_at)", 'idx_comps_api_calls_time');
+
     purgeUserScopedMlsJson($pdo);
 
     // Seed default admin user if users table is empty
