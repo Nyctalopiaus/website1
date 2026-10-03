@@ -1141,13 +1141,46 @@
                         <div class="kpi-value" id="cleanup-stat-reclaimable" style="color: var(--accent-emerald);">0 MB</div>
                         <div class="kpi-sub">Total recoverable disk space</div>
                     </div>
-                    <div class="kpi-card" style="padding: 1rem; border-color: rgba(184, 122, 42, 0.35);">
+                    <div class="kpi-card" id="cleanup-card-image-issues" role="button" tabindex="0" aria-expanded="false" aria-controls="cleanup-image-health-panel" title="Show the listings behind this number" style="padding: 1rem; border-color: rgba(184, 122, 42, 0.35); cursor: pointer;">
                         <div class="kpi-card-header">
                             <span class="kpi-label">Image Health Issues</span>
                             <span class="kpi-card-icon"><i data-lucide="image-off"></i></span>
                         </div>
                         <div class="kpi-value" id="cleanup-stat-image-issues" style="color: var(--badge-pending);">0</div>
-                        <div class="kpi-sub">Missing or invalid primary previews</div>
+                        <div class="kpi-sub" id="cleanup-stat-image-issues-sub">Bad or missing photos · click to review</div>
+                    </div>
+                </div>
+
+                <!-- Image Health Panel (toggled by the Image Health Issues card) -->
+                <div id="cleanup-image-health-panel" style="display: none; background: var(--bg-panel); border: 1px solid rgba(184, 122, 42, 0.35); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                        <div>
+                            <div style="font-weight: 600;"><i data-lucide="image-off"></i> Image Health: Re-scrape Candidates</div>
+                            <div id="cleanup-image-health-summary" style="font-size: 0.78rem; color: var(--text-muted);"></div>
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                            <button class="btn btn-primary btn-compact" id="btn-image-health-retry" type="button" title="Queue the ticked listings for a fresh deep image scrape"><i data-lucide="image-plus"></i> <span id="btn-image-health-retry-label">Mark for Image Re-scrape</span></button>
+                            <button class="btn btn-secondary btn-compact" id="btn-image-health-close" type="button">Close</button>
+                        </div>
+                    </div>
+                    <div style="max-height: 260px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                        <table class="matrix-table" style="width: 100%; font-size: 0.82rem;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 36px; text-align: center;">
+                                        <input type="checkbox" id="image-health-select-all" aria-label="Select all listings" style="accent-color: var(--accent-emerald); cursor: pointer;">
+                                    </th>
+                                    <th>Listing</th>
+                                    <th>Status</th>
+                                    <th>Photos</th>
+                                    <th>Issue</th>
+                                    <th>Re-scrape</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cleanup-image-health-tbody">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -1698,6 +1731,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=3.2"></script>
+    <script type="module" src="app.js?v=3.3"></script>
 </body>
 </html>

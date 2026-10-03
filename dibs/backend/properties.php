@@ -16,6 +16,10 @@
  */
 const MIN_REAL_PHOTO_PIXEL_AREA = 40000;
 
+// Listings with fewer distinct photos than this show up in the admin Image Health panel as
+// re-scrape candidates (the agent may have added photos since the last deep scrape).
+const LOW_PHOTO_COUNT_THRESHOLD = 5;
+
 /**
  * Guards against a specific bad response Matrix's media host sometimes returns for the
  * *first* photo slot: HTTP 200, Content-Type reported as an "image/*" type, but a body that's
@@ -1825,8 +1829,16 @@ function handleAdminCleanupPreview(PDO $pdo) {
         // of sitting on disk unnoticed. main_image_url is still checked even when it also appears
         // in gallery_images (harmless double-check; dedup happens naturally since both add the
         // same mls_id to $imageIssues at most once).
+        //
+        // The same pass also flags listings with fewer than LOW_PHOTO_COUNT_THRESHOLD distinct
+        // photos, so the admin can queue them for a re-scrape in case the agent added more since.
+        // Those are reported separately (low_photo_count / image_health_listings) and deliberately
+        // do NOT feed invalid_primary_preview_count: a listing that genuinely has 3 photos would
+        // otherwise keep the "image health" warning lit forever.
         $imageIssues = [];
-        $imageStmt = $pdo->query('SELECT mls_id, main_image_url, gallery_images FROM properties');
+        $imageHealthListings = [];
+        $lowPhotoCount = 0;
+        $imageStmt = $pdo->query('SELECT mls_id, address, city, state, status, main_image_url, gallery_images, full_scrape_completed_at FROM properties');
         while ($imageRow = $imageStmt->fetch(PDO::FETCH_ASSOC)) {
             $mlsIdForIssue = (string)$imageRow['mls_id'];
             $urlsToCheck = [(string)($imageRow['main_image_url'] ?? '')];
@@ -1837,12 +1849,38 @@ function handleAdminCleanupPreview(PDO $pdo) {
                 }
             }
 
+            $hasBadPhoto = false;
             foreach ($urlsToCheck as $urlToCheck) {
                 if ($urlToCheck === '') continue;
                 if (!hasUsableCachedPhoto($urlToCheck)) {
                     $imageIssues[] = $mlsIdForIssue;
+                    $hasBadPhoto = true;
                     break;
                 }
+            }
+
+            $distinctPhotos = [];
+            foreach ($urlsToCheck as $urlToCheck) {
+                if ($urlToCheck !== '') $distinctPhotos[$urlToCheck] = true;
+            }
+            $distinctPhotoCount = count($distinctPhotos);
+            $hasFewPhotos = $distinctPhotoCount < LOW_PHOTO_COUNT_THRESHOLD;
+            if ($hasFewPhotos) $lowPhotoCount++;
+
+            if ($hasBadPhoto || $hasFewPhotos) {
+                $imageHealthListings[] = [
+                    'mls_id' => $mlsIdForIssue,
+                    'address' => $imageRow['address'] ?? '',
+                    'city' => $imageRow['city'] ?? '',
+                    'state' => $imageRow['state'] ?? '',
+                    'status' => $imageRow['status'] ?: 'Unknown',
+                    'main_image_url' => (string)($imageRow['main_image_url'] ?? ''),
+                    'photo_count' => $distinctPhotoCount,
+                    'has_bad_photo' => $hasBadPhoto,
+                    'has_few_photos' => $hasFewPhotos,
+                    // NULL stamp = already queued; the next deep scrape re-walks its gallery.
+                    'rescrape_queued' => empty($imageRow['full_scrape_completed_at'])
+                ];
             }
         }
         $missingAddressRows = $pdo->query("SELECT mls_id, address, city, state, zip, updated_at FROM properties WHERE address IS NULL OR TRIM(address) = '' OR LOWER(TRIM(address)) = 'address unavailable' ORDER BY updated_at DESC")->fetchAll(PDO::FETCH_ASSOC);
@@ -1867,12 +1905,15 @@ function handleAdminCleanupPreview(PDO $pdo) {
                 'total_media_bytes' => $mediaBytesTotal,
                 'invalid_primary_preview_count' => count($imageIssues),
                 'invalid_primary_preview_mls_ids' => $imageIssues,
+                'low_photo_count' => $lowPhotoCount,
+                'low_photo_threshold' => LOW_PHOTO_COUNT_THRESHOLD,
                 'missing_address_count' => $missingAddressCount,
                 'missing_address_listings' => $missingAddressRows,
                 'status_counts' => $statusCounts
             ],
             'properties' => $propertiesList,
-            'orphans' => $orphansList
+            'orphans' => $orphansList,
+            'image_health_listings' => $imageHealthListings
         ]);
     } catch (Throwable $t) {
         http_response_code(500);

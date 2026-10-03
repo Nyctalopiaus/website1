@@ -16,6 +16,13 @@ let cleanupData = {
 
 let selectedMlsIds = new Set();
 
+// Image Health panel state. Kept separate from selectedMlsIds on purpose: that set feeds the
+// delete/cleanup action, and the listings in this panel are mostly healthy active ones that
+// must never end up in it.
+let imageHealthSelectedIds = new Set();
+let imageHealthPanelOpen = false;
+let imageHealthAwaitingData = false;
+
 function formatBytes(bytes) {
     if (!bytes || bytes <= 0) return '0 B';
     if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB';
@@ -40,6 +47,7 @@ export function openAdminCleanupModal() {
     selectedMlsIds.clear();
     if (elements.cleanupSelectAll) elements.cleanupSelectAll.checked = false;
     if (elements.cleanupIncludeOrphans) elements.cleanupIncludeOrphans.checked = false;
+    closeImageHealthPanel();
     fetchAdminCleanupPreview();
 }
 
@@ -68,6 +76,7 @@ export function fetchAdminCleanupPreview() {
                 updateCleanupStats(data.summary, data.properties, data.orphans);
                 populateStatusFilter(data.summary.status_counts, data.summary);
                 renderAdminCleanupTable();
+                renderImageHealthPanel();
             } else {
                 showToast(data.error || 'Failed to load cleanup preview data', 'error');
             }
@@ -111,6 +120,9 @@ function updateCleanupStats(summary, properties, orphans) {
     const totalReclaimable = (summary.off_market_photos_bytes || 0) + (summary.stale_active_photos_bytes || 0) + (summary.orphan_bytes || 0);
     if (elements.cleanupStatReclaimable) elements.cleanupStatReclaimable.innerText = formatBytes(totalReclaimable);
     if (elements.cleanupStatImageIssues) elements.cleanupStatImageIssues.innerText = summary.invalid_primary_preview_count || 0;
+    if (elements.cleanupStatImageIssuesSub) {
+        elements.cleanupStatImageIssuesSub.innerText = `Bad or missing photos · ${summary.low_photo_count || 0} under ${summary.low_photo_threshold || 5} photos · click to review`;
+    }
 
     if (elements.cleanupOrphanSummaryText) {
         elements.cleanupOrphanSummaryText.innerText = `${summary.orphan_files_count || 0} files, ${formatBytes(summary.orphan_bytes)}`;
@@ -313,26 +325,196 @@ export function clearSelection() {
     renderAdminCleanupTable();
 }
 
+async function requestImageRetry(mlsIds) {
+    try {
+        const res = await apiFetch(CONFIG.API_URL + '?action=admin_retry_listing_images', {
+            method: 'POST',
+            body: JSON.stringify({ mls_ids: mlsIds })
+        });
+        if (res?.success) {
+            showToast(`${res.marked_count} listing(s) marked for image re-scrape`, 'success');
+            return true;
+        }
+        showToast(res?.error || 'Failed to mark listings for image re-scrape', 'error');
+    } catch (e) {
+        showToast('Failed to mark listings for image re-scrape', 'error');
+    }
+    return false;
+}
+
 export async function markSelectedForImageRetry() {
     if (!selectedMlsIds.size) {
         showToast('Select at least one listing first', 'warning');
         return;
     }
-    try {
-        const res = await apiFetch(CONFIG.API_URL + '?action=admin_retry_listing_images', {
-            method: 'POST',
-            body: JSON.stringify({ mls_ids: [...selectedMlsIds] })
-        });
-        if (res?.success) {
-            showToast(`${res.marked_count} listing(s) marked for image re-scrape`, 'success');
-            selectedMlsIds.clear();
-            fetchAdminCleanupPreview();
-        } else {
-            showToast(res?.error || 'Failed to mark listings for image re-scrape', 'error');
-        }
-    } catch (e) {
-        showToast('Failed to mark listings for image re-scrape', 'error');
+    if (await requestImageRetry([...selectedMlsIds])) {
+        selectedMlsIds.clear();
+        fetchAdminCleanupPreview();
     }
+}
+
+// ---- Image Health panel ------------------------------------------------------------------
+// Opened by clicking the "Image Health Issues" card. Lists every listing (any status, not just
+// the cleanup candidates in the main table) that has a bad cached photo or fewer photos than
+// the backend's low-photo threshold, and queues the ticked ones for a deep image re-scrape.
+
+function getImageHealthListings() {
+    // Bad photos first, then not-yet-queued before queued, then fewest photos first.
+    return (cleanupData.image_health_listings || []).slice().sort((a, b) =>
+        (Number(!!b.has_bad_photo) - Number(!!a.has_bad_photo))
+        || (Number(!!a.rescrape_queued) - Number(!!b.rescrape_queued))
+        || ((a.photo_count || 0) - (b.photo_count || 0)));
+}
+
+function selectDefaultImageHealthListings() {
+    // Everything that isn't already waiting on a re-scrape.
+    imageHealthSelectedIds = new Set(
+        getImageHealthListings().filter(l => !l.rescrape_queued).map(l => l.mls_id)
+    );
+}
+
+function updateImageHealthSelectionUi(listings) {
+    const count = imageHealthSelectedIds.size;
+    if (elements.btnImageHealthRetryLabel) {
+        elements.btnImageHealthRetryLabel.innerText = count ? `Mark ${count} for Image Re-scrape` : 'Mark for Image Re-scrape';
+    }
+    if (elements.btnImageHealthRetry) elements.btnImageHealthRetry.disabled = count === 0;
+    if (elements.imageHealthSelectAll) {
+        elements.imageHealthSelectAll.checked = listings.length > 0 && count === listings.length;
+        elements.imageHealthSelectAll.indeterminate = count > 0 && count < listings.length;
+    }
+}
+
+function renderImageHealthPanel() {
+    if (!imageHealthPanelOpen || !elements.cleanupImageHealthTbody) return;
+
+    const listings = getImageHealthListings();
+    const threshold = cleanupData.summary?.low_photo_threshold || 5;
+
+    if (imageHealthAwaitingData && cleanupData.summary) {
+        // The card was clicked before the audit finished loading; apply the default selection now.
+        imageHealthAwaitingData = false;
+        selectDefaultImageHealthListings();
+    }
+
+    // Drop selections for listings that left the list after a refresh.
+    const validIds = new Set(listings.map(l => l.mls_id));
+    imageHealthSelectedIds.forEach(id => { if (!validIds.has(id)) imageHealthSelectedIds.delete(id); });
+
+    if (elements.cleanupImageHealthSummary) {
+        const bad = listings.filter(l => l.has_bad_photo).length;
+        const few = listings.filter(l => l.has_few_photos).length;
+        const queued = listings.filter(l => l.rescrape_queued).length;
+        elements.cleanupImageHealthSummary.innerText =
+            `${bad} with a bad or missing photo · ${few} with under ${threshold} photos · ${queued} already queued. ` +
+            'Marked listings get their gallery re-walked on the next deep scrape.';
+    }
+
+    if (!listings.length) {
+        elements.cleanupImageHealthTbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">
+                    ${cleanupData.summary ? `No listings have bad photos or fewer than ${threshold} photos.` : 'Loading audit data...'}
+                </td>
+            </tr>
+        `;
+        updateImageHealthSelectionUi(listings);
+        return;
+    }
+
+    elements.cleanupImageHealthTbody.innerHTML = listings.map(l => {
+        const thumb = l.main_image_url
+            ? `<img src="${escapeHtml(l.main_image_url)}" loading="lazy" style="width:40px; height:30px; object-fit:cover; border-radius:4px;" alt="thumb">`
+            : `<div style="width:40px; height:30px; background:var(--bg-card); border-radius:4px; display:flex; align-items:center; justify-content:center;"><i data-lucide="image-off" style="width:0.9em; height:0.9em;"></i></div>`;
+
+        const issues = [];
+        if (l.has_bad_photo) issues.push(`<span class="badge" style="background:rgba(176, 70, 58, 0.12); color:var(--accent-red); border:1px solid rgba(176, 70, 58, 0.3);">Bad photo</span>`);
+        if (l.has_few_photos) issues.push(`<span class="badge" style="background:rgba(234, 179, 8, 0.15); color:#D97706; border:1px solid rgba(234, 179, 8, 0.3);">Under ${threshold} photos</span>`);
+
+        const queuedHtml = l.rescrape_queued
+            ? `<span style="font-size:0.75rem; font-weight:600; color:var(--accent-emerald);"><i data-lucide="clock" style="width:11px; height:11px; margin-right:3px;"></i>Queued</span>`
+            : `<span style="font-size:0.75rem; color:var(--text-muted);">Not queued</span>`;
+
+        return `
+            <tr>
+                <td style="text-align:center;">
+                    <input type="checkbox"
+                           class="image-health-checkbox"
+                           data-mls-id="${escapeHtml(l.mls_id)}"
+                           ${imageHealthSelectedIds.has(l.mls_id) ? 'checked' : ''}
+                           style="accent-color: var(--accent-emerald); cursor:pointer;">
+                </td>
+                <td>
+                    <div style="display:flex; align-items:center; gap:0.6rem;">
+                        ${thumb}
+                        <div>
+                            <div style="font-weight:600;">${escapeHtml(l.address || 'Address N/A')}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(l.city)}, ${escapeHtml(l.state)} • MLS #${escapeHtml(l.mls_id)}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><span class="badge ${getStatusBadgeClass(l.status)}">${escapeHtml(l.status)}</span></td>
+                <td>${l.photo_count || 0} photo${l.photo_count === 1 ? '' : 's'}</td>
+                <td><div style="display:flex; flex-wrap:wrap; gap:0.3rem;">${issues.join('')}</div></td>
+                <td>${queuedHtml}</td>
+            </tr>
+        `;
+    }).join('');
+    if (window.lucide) window.lucide.createIcons();
+
+    elements.cleanupImageHealthTbody.onchange = (e) => {
+        const cb = e.target.closest('.image-health-checkbox');
+        if (!cb) return;
+        if (cb.checked) imageHealthSelectedIds.add(cb.dataset.mlsId);
+        else imageHealthSelectedIds.delete(cb.dataset.mlsId);
+        updateImageHealthSelectionUi(listings);
+    };
+    updateImageHealthSelectionUi(listings);
+}
+
+export function toggleImageHealthPanel() {
+    if (imageHealthPanelOpen) {
+        closeImageHealthPanel();
+        return;
+    }
+    imageHealthPanelOpen = true;
+    imageHealthAwaitingData = !cleanupData.summary;
+    selectDefaultImageHealthListings();
+    if (elements.cleanupImageHealthPanel) elements.cleanupImageHealthPanel.style.display = '';
+    if (elements.cleanupCardImageIssues) elements.cleanupCardImageIssues.setAttribute('aria-expanded', 'true');
+    renderImageHealthPanel();
+    if (elements.cleanupImageHealthPanel) elements.cleanupImageHealthPanel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+export function closeImageHealthPanel() {
+    imageHealthPanelOpen = false;
+    imageHealthAwaitingData = false;
+    imageHealthSelectedIds.clear();
+    if (elements.cleanupImageHealthPanel) elements.cleanupImageHealthPanel.style.display = 'none';
+    if (elements.cleanupCardImageIssues) elements.cleanupCardImageIssues.setAttribute('aria-expanded', 'false');
+}
+
+export function toggleImageHealthSelectAll(e) {
+    if (e.target.checked) {
+        imageHealthSelectedIds = new Set(getImageHealthListings().map(l => l.mls_id));
+    } else {
+        imageHealthSelectedIds.clear();
+    }
+    renderImageHealthPanel();
+}
+
+export async function markImageHealthForRetry() {
+    if (!imageHealthSelectedIds.size) {
+        showToast('Tick at least one listing first', 'warning');
+        return;
+    }
+    if (elements.btnImageHealthRetry) elements.btnImageHealthRetry.disabled = true;
+    const ok = await requestImageRetry([...imageHealthSelectedIds]);
+    if (ok) {
+        imageHealthSelectedIds.clear();
+        fetchAdminCleanupPreview();
+    }
+    renderImageHealthPanel();
 }
 
 export function toggleSelectAll(e) {

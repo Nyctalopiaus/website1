@@ -32,7 +32,8 @@ import { openCompareMatrix, closeCompareMatrix, clearCompare } from './js/compar
 import {
     openAdminCleanupModal, closeAdminCleanupModal, fetchAdminCleanupPreview,
     renderAdminCleanupTable, selectCandidateHomes, selectStaleCandidates, clearSelection, toggleSelectAll, markSelectedForImageRetry,
-    handleAdminCleanupExecute, updateCleanupSelectionSummary
+    handleAdminCleanupExecute, updateCleanupSelectionSummary,
+    toggleImageHealthPanel, closeImageHealthPanel, toggleImageHealthSelectAll, markImageHealthForRetry
 } from './js/adminCleanup.js';
 import {
     openPlaylistsModal, closePlaylistsModal, handleCreatePlaylistSubmit
@@ -439,6 +440,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.btnCleanupSelectStale) elements.btnCleanupSelectStale.addEventListener('click', selectStaleCandidates);
         if (elements.btnCleanupClearSelection) elements.btnCleanupClearSelection.addEventListener('click', clearSelection);
         if (elements.btnCleanupRetryImages) elements.btnCleanupRetryImages.addEventListener('click', markSelectedForImageRetry);
+        if (elements.cleanupCardImageIssues) {
+            elements.cleanupCardImageIssues.addEventListener('click', toggleImageHealthPanel);
+            elements.cleanupCardImageIssues.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleImageHealthPanel();
+                }
+            });
+        }
+        if (elements.btnImageHealthClose) elements.btnImageHealthClose.addEventListener('click', closeImageHealthPanel);
+        if (elements.imageHealthSelectAll) elements.imageHealthSelectAll.addEventListener('change', toggleImageHealthSelectAll);
+        if (elements.btnImageHealthRetry) elements.btnImageHealthRetry.addEventListener('click', markImageHealthForRetry);
         if (elements.cleanupSelectAll) elements.cleanupSelectAll.addEventListener('change', toggleSelectAll);
         if (elements.cleanupIncludeOrphans) elements.cleanupIncludeOrphans.addEventListener('change', updateCleanupSelectionSummary);
         if (elements.btnAdminCleanupSubmit) elements.btnAdminCleanupSubmit.addEventListener('click', handleAdminCleanupExecute);
