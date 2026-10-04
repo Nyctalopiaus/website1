@@ -706,6 +706,51 @@ function resetLocalStateForAccount(username) {
     }
 
     // Event Log Modal — the admin view onto event_log
+    //
+    // event_log timestamps are SQLite CURRENT_TIMESTAMP values: UTC, with no zone marker. They are
+    // parsed as UTC and shown in the viewer's own time zone by default, or in whichever zone the
+    // Time Zone dropdown picks (remembered per browser).
+    const EVENT_LOG_TZ_STORAGE_KEY = 'dibs_event_log_tz';
+    const EVENT_LOG_TIMEZONES = [
+        ['America/New_York', 'Eastern'],
+        ['America/Chicago', 'Central'],
+        ['America/Denver', 'Mountain'],
+        ['America/Phoenix', 'Arizona (no DST)'],
+        ['America/Los_Angeles', 'Pacific'],
+        ['America/Anchorage', 'Alaska'],
+        ['Pacific/Honolulu', 'Hawaii'],
+        ['UTC', 'UTC']
+    ];
+    let lastEventLogs = [];
+    let eventLogTimezone = ''; // '' = the browser's own time zone
+
+    function parseEventLogTime(ts) {
+        const iso = String(ts).trim().replace(' ', 'T');
+        // No zone marker means UTC; without the Z the browser would read it as local time.
+        return new Date(/(Z|[+-]\d{2}:?\d{2})$/i.test(iso) ? iso : iso + 'Z');
+    }
+
+    function initEventLogTimezoneSelect() {
+        const select = document.getElementById('event-log-timezone');
+        if (!select || select.dataset.ready) return;
+        select.dataset.ready = '1';
+
+        let localZone = '';
+        try { localZone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* label stays generic */ }
+        select.innerHTML = `<option value="">My local time${localZone ? ` (${escapeHtml(localZone)})` : ''}</option>`
+            + EVENT_LOG_TIMEZONES.map(([zone, label]) => `<option value="${zone}">${label}</option>`).join('');
+
+        try { eventLogTimezone = localStorage.getItem(EVENT_LOG_TZ_STORAGE_KEY) || ''; } catch (e) { /* storage blocked */ }
+        if (!EVENT_LOG_TIMEZONES.some(([zone]) => zone === eventLogTimezone)) eventLogTimezone = '';
+        select.value = eventLogTimezone;
+
+        select.addEventListener('change', () => {
+            eventLogTimezone = select.value;
+            try { localStorage.setItem(EVENT_LOG_TZ_STORAGE_KEY, eventLogTimezone); } catch (e) { /* storage blocked */ }
+            renderEventLogTable(lastEventLogs);
+        });
+    }
+
     export function openEventLogModal() {
         if (!state.authenticated || !state.isAdmin) {
             return showToast('Admin privileges required', 'error');
@@ -713,6 +758,7 @@ function resetLocalStateForAccount(username) {
         closeUserMenu();
         closeAdminMenu();
         if (elements.modalEventLog) elements.modalEventLog.classList.add('active');
+        initEventLogTimezoneSelect();
         fetchEventLogs();
     }
     export function fetchEventLogs() {
@@ -740,6 +786,7 @@ function resetLocalStateForAccount(username) {
     }
     export function renderEventLogTable(logs) {
         if (!elements.eventLogTableBody) return;
+        lastEventLogs = logs;
 
         // Update count badge
         const countBadge = document.getElementById('event-log-count-badge');
@@ -754,9 +801,17 @@ function resetLocalStateForAccount(username) {
 
         const formatLogTime = (ts) => {
             if (!ts) return 'N/A';
-            const d = new Date(ts.replace(' ', 'T'));
+            const d = parseEventLogTime(ts);
             if (isNaN(d.getTime())) return ts;
-            return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+            // e.g. "Oct 3, 9:04 AM MDT" — the zone abbreviation is per row so it stays right across DST changes.
+            const opts = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' };
+            if (eventLogTimezone) opts.timeZone = eventLogTimezone;
+            try {
+                return d.toLocaleString(undefined, opts);
+            } catch (e) {
+                delete opts.timeZone;
+                return d.toLocaleString(undefined, opts);
+            }
         };
 
         elements.eventLogTableBody.innerHTML = logs.map(l => {

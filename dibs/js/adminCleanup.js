@@ -149,8 +149,80 @@ function populateStatusFilter(statusCounts, summary) {
     }
 }
 
+// ---- Cleanup table column sorting ---------------------------------------------------------
+// Keyed by <th> position in the cleanup table's header row (index 0 is the select-all box).
+// key null = the backend's own order (non-active first, then oldest sync first).
+const CLEANUP_SORT_COLUMNS = [null, 'listing', 'status', 'sync', 'price', 'saved', 'photos', 'bytes'];
+const CLEANUP_SORT_TEXT_KEYS = new Set(['listing', 'status']);
+let cleanupSort = { key: null, dir: 1 };
+
+function cleanupSortValue(p, key) {
+    switch (key) {
+        case 'listing': return p.address || '';
+        case 'status': return p.is_stale_active ? 'Active (Stale)' : (p.status || '');
+        case 'sync': return Number(p.days_since_sync) || 0;
+        case 'price': return Number(p.price) || 0;
+        // Favorites first, then user notes, then agent notes, then nothing saved.
+        case 'saved': return (p.favorite ? 4 : 0) + (p.user_notes ? 2 : 0) + (p.realtor_notes ? 1 : 0);
+        case 'photos': return Number(p.media_files_count) || 0;
+        case 'bytes': return Number(p.media_bytes) || 0;
+        default: return 0;
+    }
+}
+
+function sortCleanupProperties(props) {
+    const { key, dir } = cleanupSort;
+    if (!key) return props;
+    const isText = CLEANUP_SORT_TEXT_KEYS.has(key);
+    return props.sort((a, b) => {
+        const av = cleanupSortValue(a, key);
+        const bv = cleanupSortValue(b, key);
+        const cmp = isText
+            ? String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' })
+            : av - bv;
+        return cmp * dir;
+    });
+}
+
+// First click: A-Z for text columns, largest first for numeric ones. Second click reverses,
+// third click returns to the default order.
+function cycleCleanupSort(key) {
+    const firstDir = CLEANUP_SORT_TEXT_KEYS.has(key) ? 1 : -1;
+    if (cleanupSort.key !== key) cleanupSort = { key, dir: firstDir };
+    else if (cleanupSort.dir === firstDir) cleanupSort = { key, dir: -firstDir };
+    else cleanupSort = { key: null, dir: 1 };
+    renderAdminCleanupTable();
+}
+
+function syncCleanupSortHeaders() {
+    const headRow = elements.cleanupPropertiesTbody.closest('table')?.querySelector('thead tr');
+    if (!headRow) return;
+    [...headRow.children].forEach((th, i) => {
+        const key = CLEANUP_SORT_COLUMNS[i];
+        if (!key) return;
+        if (!th.dataset.sortKey) {
+            th.dataset.sortKey = key;
+            th.dataset.sortLabel = th.textContent.trim();
+            th.style.cursor = 'pointer';
+            th.style.userSelect = 'none';
+            th.title = 'Click to sort';
+            th.tabIndex = 0;
+            th.addEventListener('click', () => cycleCleanupSort(key));
+            th.addEventListener('keydown', (e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                cycleCleanupSort(key);
+            });
+        }
+        const active = cleanupSort.key === key;
+        th.textContent = th.dataset.sortLabel + (active ? (cleanupSort.dir === 1 ? ' \u25B2' : ' \u25BC') : '');
+        th.setAttribute('aria-sort', active ? (cleanupSort.dir === 1 ? 'ascending' : 'descending') : 'none');
+    });
+}
+
 export function renderAdminCleanupTable() {
     if (!elements.cleanupPropertiesTbody) return;
+    syncCleanupSortHeaders();
 
     const filterStatus = elements.cleanupFilterStatus ? elements.cleanupFilterStatus.value.toLowerCase() : 'all';
     const protectFavorites = elements.cleanupProtectFavorites ? elements.cleanupProtectFavorites.checked : true;
@@ -164,6 +236,7 @@ export function renderAdminCleanupTable() {
         }
         return true;
     });
+    sortCleanupProperties(filteredProps);
 
     if (!filteredProps.length) {
         elements.cleanupPropertiesTbody.innerHTML = `
@@ -358,6 +431,21 @@ export async function markSelectedForImageRetry() {
 // the cleanup candidates in the main table) that has a bad cached photo or fewer photos than
 // the backend's low-photo threshold, and queues the ticked ones for a deep image re-scrape.
 
+// "When a sync last saw this listing", from the backend's seconds_since_sync.
+function formatSyncAge(seconds) {
+    if (seconds === null || seconds === undefined) return 'Never';
+    if (seconds < 3600) return `${Math.max(1, Math.round(seconds / 60))} min ago`;
+    if (seconds < 86400) return `${Math.round(seconds / 3600)} hr ago`;
+    const days = Math.floor(seconds / 86400);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+}
+
+// Queued, but no scrape has touched it in over a day: the search no longer returns it, so the
+// queue can't be worked off until one does.
+function isQueuedButUnreached(l) {
+    return !!l.rescrape_queued && (l.seconds_since_sync === null || l.seconds_since_sync === undefined || l.seconds_since_sync >= 86400);
+}
+
 function getImageHealthListings() {
     // Bad photos first, then not-yet-queued before queued, then fewest photos first.
     return (cleanupData.image_health_listings || []).slice().sort((a, b) =>
@@ -405,15 +493,17 @@ function renderImageHealthPanel() {
         const bad = listings.filter(l => l.has_bad_photo).length;
         const few = listings.filter(l => l.has_few_photos).length;
         const queued = listings.filter(l => l.rescrape_queued).length;
+        const unreached = listings.filter(isQueuedButUnreached).length;
         elements.cleanupImageHealthSummary.innerText =
             `${bad} with a bad or missing photo · ${few} with under ${threshold} photos · ${queued} already queued. ` +
-            'Marked listings get their gallery re-walked on the next deep scrape.';
+            'Marked listings get their gallery re-walked on the next deep scrape.' +
+            (unreached ? ` ${unreached} queued listing${unreached === 1 ? ' has' : 's have'} not been seen by a scrape in over a day, so no search is returning ${unreached === 1 ? 'it' : 'them'} to re-scrape.` : '');
     }
 
     if (!listings.length) {
         elements.cleanupImageHealthTbody.innerHTML = `
             <tr>
-                <td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-muted);">
+                <td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">
                     ${cleanupData.summary ? `No listings have bad photos or fewer than ${threshold} photos.` : 'Loading audit data...'}
                 </td>
             </tr>
@@ -434,6 +524,11 @@ function renderImageHealthPanel() {
         const queuedHtml = l.rescrape_queued
             ? `<span style="font-size:0.75rem; font-weight:600; color:var(--accent-emerald);"><i data-lucide="clock" style="width:11px; height:11px; margin-right:3px;"></i>Queued</span>`
             : `<span style="font-size:0.75rem; color:var(--text-muted);">Not queued</span>`;
+
+        const unreached = isQueuedButUnreached(l);
+        const syncedTitle = (l.last_synced_at ? new Date(l.last_synced_at).toLocaleString() : 'No sync has recorded this listing')
+            + (unreached ? ' - queued, but no scrape has reached it since' : '');
+        const syncedHtml = `<span title="${escapeHtml(syncedTitle)}" style="font-size:0.75rem; white-space:nowrap; ${unreached ? 'font-weight:600; color:var(--accent-gold);' : 'color:var(--text-muted);'}">${formatSyncAge(l.seconds_since_sync)}</span>`;
 
         return `
             <tr>
@@ -456,6 +551,7 @@ function renderImageHealthPanel() {
                 <td><span class="badge ${getStatusBadgeClass(l.status)}">${escapeHtml(l.status)}</span></td>
                 <td>${l.photo_count || 0} photo${l.photo_count === 1 ? '' : 's'}</td>
                 <td><div style="display:flex; flex-wrap:wrap; gap:0.3rem;">${issues.join('')}</div></td>
+                <td>${syncedHtml}</td>
                 <td>${queuedHtml}</td>
             </tr>
         `;

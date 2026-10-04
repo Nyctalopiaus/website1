@@ -1021,6 +1021,10 @@
                     <option value="client">Client App</option>
                     <option value="system">System Core</option>
                 </select>
+                <label class="filter-label" for="event-log-timezone" style="margin: 0;">Time Zone</label>
+                <select id="event-log-timezone" class="select-input" style="width: auto; height: 36px; padding: 0 0.85rem;">
+                    <option value="">My local time</option>
+                </select>
                 <button class="btn btn-secondary" id="btn-refresh-event-log" style="height: 36px; padding: 0 0.9rem; font-size: 0.85rem;"><i data-lucide="refresh-cw"></i> Refresh</button>
             </div>
 
@@ -1174,6 +1178,7 @@
                                     <th>Status</th>
                                     <th>Photos</th>
                                     <th>Issue</th>
+                                    <th title="When a sync last saw this listing. A queued listing is only re-scraped when a deep scrape reaches it.">Last Synced</th>
                                     <th>Re-scrape</th>
                                 </tr>
                             </thead>

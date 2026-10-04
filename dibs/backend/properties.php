@@ -1704,7 +1704,7 @@ function handleAdminCleanupPreview(PDO $pdo) {
             WHERE LOWER(p.status) != 'active' OR p.status IS NULL
                OR (LOWER(p.status) = 'active' AND (
                    COALESCE(p.price_checked_at, p.updated_at) IS NULL 
-                   OR (strftime('%s', 'now') - strftime('%s', COALESCE(p.price_checked_at, p.updated_at))) >= :stale_seconds
+                   OR (strftime('%s', 'now') - strftime('%s', COALESCE(p.price_checked_at, p.updated_at))) >= CAST(:stale_seconds AS INTEGER)
                ))
             GROUP BY p.mls_id
             ORDER BY CASE WHEN LOWER(p.status) = 'active' THEN 1 ELSE 0 END ASC, p.status ASC, days_since_sync DESC
@@ -1838,7 +1838,9 @@ function handleAdminCleanupPreview(PDO $pdo) {
         $imageIssues = [];
         $imageHealthListings = [];
         $lowPhotoCount = 0;
-        $imageStmt = $pdo->query('SELECT mls_id, address, city, state, status, main_image_url, gallery_images, full_scrape_completed_at FROM properties');
+        // price_checked_at is stamped on every sync upsert, so it's "when a sync last saw this
+        // listing". (updated_at is no good for that: marking for re-scrape bumps it.)
+        $imageStmt = $pdo->query("SELECT mls_id, address, city, state, status, main_image_url, gallery_images, full_scrape_completed_at, price_checked_at, CAST(strftime('%s', 'now') - strftime('%s', price_checked_at) AS INTEGER) AS seconds_since_sync FROM properties");
         while ($imageRow = $imageStmt->fetch(PDO::FETCH_ASSOC)) {
             $mlsIdForIssue = (string)$imageRow['mls_id'];
             $urlsToCheck = [(string)($imageRow['main_image_url'] ?? '')];
@@ -1879,7 +1881,12 @@ function handleAdminCleanupPreview(PDO $pdo) {
                     'has_bad_photo' => $hasBadPhoto,
                     'has_few_photos' => $hasFewPhotos,
                     // NULL stamp = already queued; the next deep scrape re-walks its gallery.
-                    'rescrape_queued' => empty($imageRow['full_scrape_completed_at'])
+                    'rescrape_queued' => empty($imageRow['full_scrape_completed_at']),
+                    // A queued listing only gets re-scraped when a deep scrape actually reaches it;
+                    // the sync age shows which ones the latest run never saw. SQLite timestamps
+                    // are UTC, hence the explicit Z.
+                    'last_synced_at' => !empty($imageRow['price_checked_at']) ? str_replace(' ', 'T', (string)$imageRow['price_checked_at']) . 'Z' : null,
+                    'seconds_since_sync' => $imageRow['seconds_since_sync'] !== null ? max(0, (int)$imageRow['seconds_since_sync']) : null
                 ];
             }
         }
