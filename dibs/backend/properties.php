@@ -567,6 +567,7 @@ function handleList(PDO $pdo) {
                 COALESCE(u.tags_json, '[]') as tags_json,
                 COALESCE(u.shared_with_realtor, 0) as shared_with_realtor,
                 COALESCE(u.possibility, 0) as possibility,
+                COALESCE(u.ai_analysis, '') as ai_analysis,
                 u.mls_status_baseline, u.mls_status_seen,
                 COALESCE(u.mls_status_conflict, 0) as mls_status_conflict,
                 u.mls_notes_json, u.mls_note_outbox, u.mls_note_sent_at,
@@ -1515,6 +1516,19 @@ function handleUpdateUserData(PDO $pdo) {
         if ((int)$data['possibility'] && !isset($data['hidden'])) $fields[] = "hidden = 0";
     } elseif ((!empty($data['favorite']) || !empty($data['hidden']))) {
         $fields[] = "possibility = 0";
+    }
+
+    // Long-form AI write-up pasted by the user (Markdown text, rendered by js/aiAnalysis.js).
+    // Private to this user: not selected by any realtor view and never part of an MLS sync.
+    if (array_key_exists('ai_analysis', $data)) {
+        $aiAnalysis = trim((string)($data['ai_analysis'] ?? ''));
+        if (strlen($aiAnalysis) > 200000) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'AI analysis is too long (200 KB max).']);
+            return;
+        }
+        $fields[] = "ai_analysis = :ai_analysis";
+        $params[':ai_analysis'] = $aiAnalysis;
     }
 
     // "Send to MLS" outbox. Empty string / null cancels. Portal notes are capped at 500 chars

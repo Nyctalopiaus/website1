@@ -5881,3 +5881,181 @@ body {
     }
 }
 
+
+/* AI Analysis (detail modal): rendered Markdown pasted from an AI chat. See js/aiAnalysis.js */
+.ai-analysis-body {
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 1rem 1.15rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
+}
+
+.ai-analysis-body.is-expanded {
+    max-height: none;
+}
+
+.ai-analysis-body > :first-child {
+    margin-top: 0;
+}
+
+.ai-analysis-body > :last-child {
+    margin-bottom: 0;
+}
+
+.ai-analysis-body h1,
+.ai-analysis-body h2,
+.ai-analysis-body h3,
+.ai-analysis-body h4,
+.ai-analysis-body h5,
+.ai-analysis-body h6 {
+    font-weight: 700;
+    line-height: 1.3;
+    margin: 1.1em 0 0.45em;
+    color: var(--text-primary);
+}
+
+.ai-analysis-body h1 { font-size: 1.2rem; }
+.ai-analysis-body h2 { font-size: 1.08rem; }
+.ai-analysis-body h3 { font-size: 1rem; }
+.ai-analysis-body h4,
+.ai-analysis-body h5,
+.ai-analysis-body h6 { font-size: 0.92rem; }
+
+.ai-analysis-body p {
+    margin: 0 0 0.75em;
+}
+
+.ai-analysis-body ul,
+.ai-analysis-body ol {
+    margin: 0 0 0.75em;
+    padding-left: 1.5rem;
+}
+
+.ai-analysis-body ul { list-style: disc; }
+.ai-analysis-body ul ul { list-style: circle; }
+.ai-analysis-body ol { list-style: decimal; }
+
+.ai-analysis-body li {
+    margin: 0.2em 0;
+}
+
+.ai-analysis-body li > ul,
+.ai-analysis-body li > ol {
+    margin: 0.2em 0;
+}
+
+.ai-analysis-body strong { font-weight: 700; }
+.ai-analysis-body em { font-style: italic; }
+
+.ai-analysis-body a {
+    color: var(--accent-gold);
+    text-decoration: underline;
+}
+
+.ai-analysis-body code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85em;
+    background: rgba(91, 124, 153, 0.08);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+}
+
+.ai-analysis-body pre {
+    background: rgba(91, 124, 153, 0.08);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+    overflow-x: auto;
+    margin: 0 0 0.75em;
+}
+
+.ai-analysis-body pre code {
+    background: none;
+    padding: 0;
+}
+
+.ai-analysis-body blockquote {
+    margin: 0 0 0.75em;
+    padding: 0.1rem 0 0.1rem 0.9rem;
+    border-left: 3px solid var(--accent-gold);
+    color: var(--text-muted);
+}
+
+.ai-analysis-body hr {
+    border: 0;
+    border-top: 1px solid var(--border-color);
+    margin: 1em 0;
+}
+
+.ai-analysis-table-wrap {
+    overflow-x: auto;
+    margin: 0 0 0.75em;
+}
+
+.ai-analysis-body table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.85rem;
+}
+
+.ai-analysis-body th,
+.ai-analysis-body td {
+    border: 1px solid var(--border-color);
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+    vertical-align: top;
+}
+
+.ai-analysis-body th {
+    background: rgba(91, 124, 153, 0.08);
+    font-weight: 700;
+}
+
+.ai-analysis-input {
+    width: 100%;
+    min-height: 320px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+.ai-analysis-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.6rem;
+}
+
+.ai-analysis-key-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.6rem 0.9rem;
+    margin-top: 0.75rem;
+    padding: 0.9rem 1rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.ai-analysis-key-panel .ai-analysis-actions,
+.ai-analysis-key-panel .comps-note {
+    grid-column: 1 / -1;
+    margin-top: 0;
+}
+
+.ai-analysis-key-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}

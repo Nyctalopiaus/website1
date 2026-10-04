@@ -12,6 +12,7 @@ import { apiFetch, savePreferencesToServer } from './api.js';
 import { applyFiltersAndRender } from './filters.js';
 import { showToast } from './toast.js';
 import { renderClientNextSteps } from './clientNextSteps.js';
+import { buildAiAnalysisSectionHtml, getOpenAiAnalysisDraft, isAiAnalysisTooLong } from './aiAnalysis.js';
 
 // Matrix's portal has no per-listing URL (a listing's detail view is a postback on the search's
 // result set, and the address bar never changes), so the best Dibs can link to is the search page
@@ -385,6 +386,7 @@ window.deleteCustomReactionChip = function(event, chipText) {
                     <button type="button" class="btn btn-secondary" style="font-size:0.78rem; padding:0.35rem 0.6rem;" onclick="window.jumpToPropertyDetailSection('detail-overview')"><i data-lucide="house"></i> Overview</button>
                     <button type="button" class="btn btn-secondary" style="font-size:0.78rem; padding:0.35rem 0.6rem;" onclick="window.jumpToPropertyDetailSection('detail-photos')"><i data-lucide="images"></i> Photos</button>
                     <button type="button" class="btn btn-secondary" style="font-size:0.78rem; padding:0.35rem 0.6rem;" onclick="window.jumpToPropertyDetailSection('detail-notes')"><i data-lucide="notebook-pen"></i> Notes</button>
+                    <button type="button" class="btn btn-secondary" style="font-size:0.78rem; padding:0.35rem 0.6rem;" onclick="window.jumpToPropertyDetailSection('detail-ai-analysis')"><i data-lucide="bot"></i> AI Analysis</button>
                     <button type="button" class="btn btn-secondary" style="font-size:0.78rem; padding:0.35rem 0.6rem;" onclick="window.jumpToPropertyDetailSection('detail-activity')"><i data-lucide="history"></i> Activity</button>
                 </div>
 
@@ -528,6 +530,9 @@ window.deleteCustomReactionChip = function(event, chipText) {
                         <div class="modal-detail-box"><span class="modal-detail-lbl">HOA Fee</span><span class="modal-detail-val">${p.hoa_fee ? '$' + p.hoa_fee + '/yr' : 'No HOA'}</span></div>
                     </div>
                 </div>
+
+                <!-- AI Analysis: pasted long-form write-up, rendered from Markdown (js/aiAnalysis.js) -->
+                ${buildAiAnalysisSectionHtml(p)}
 
                 <!-- Section 5: Rating & Notes -->
                 <div id="detail-notes" style="background:var(--bg-input); padding:1.25rem; border-radius:var(--radius-md); border:1px solid var(--border-color); display:flex; flex-direction:column; gap:1.25rem;">
@@ -924,16 +929,27 @@ window.deleteCustomReactionChip = function(event, chipText) {
         const userNotes = document.getElementById('modal-user-notes').value;
         const realtorNotes = document.getElementById('modal-realtor-notes').value;
 
+        // An analysis still open in its editor is saved with the notes rather than dropped
+        // when this closes the modal.
+        const aiDraft = getOpenAiAnalysisDraft(mlsId);
+        if (aiDraft !== null && isAiAnalysisTooLong(aiDraft)) {
+            showToast('That analysis is too long to save (200 KB max).', 'error');
+            return;
+        }
+        const payload = { mls_id: mlsId, user_notes: userNotes, realtor_notes: realtorNotes };
+        if (aiDraft !== null) payload.ai_analysis = aiDraft.trim();
+
         const p = state.allProperties.find(item => item.mls_id === mlsId);
         if (p) {
             p.user_notes = userNotes;
             p.realtor_notes = realtorNotes;
+            if (aiDraft !== null) p.ai_analysis = payload.ai_analysis;
         }
 
         apiFetch(CONFIG.API_URL + '?action=update_user_data', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mls_id: mlsId, user_notes: userNotes, realtor_notes: realtorNotes })
+            body: JSON.stringify(payload)
         }).then(() => {
             elements.modalDetail.classList.remove('active');
             applyFiltersAndRender();

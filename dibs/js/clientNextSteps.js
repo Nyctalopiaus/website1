@@ -22,7 +22,9 @@ export async function renderClientNextSteps() {
     const possibilities = properties.filter(property => !property.hidden && !property.favorite && Number(property.possibility) === 1).length;
     // Only Active listings count as needing review: a Pending/Closed/Withdrawn home that was never
     // reviewed isn't something the client still has to act on.
-    const reviewNeeded = properties.filter(property => !property.hidden && !property.favorite && property.rating === 0
+    // Same definition as getPropertyReviewStatus() === 'none' (what the Unreviewed filter uses), so
+    // the card and the grid it opens always agree. rating is no longer part of review status.
+    const reviewNeeded = properties.filter(property => !property.hidden && !property.favorite && Number(property.possibility) !== 1
         && String(property.status || '').trim().toLowerCase() === 'active').length;
     let showings = [];
     try {

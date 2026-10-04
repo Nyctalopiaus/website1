@@ -513,6 +513,8 @@ try {
     // only ever sent deliberately, once).
     runMigration($pdo, "ALTER TABLE properties ADD COLUMN matrix_key TEXT", 'properties.matrix_key');
     runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN possibility INTEGER DEFAULT 0", 'user_metadata.possibility');
+    // Long-form AI analysis pasted per user+listing (Markdown text). Dibs-only: never synced to the MLS.
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN ai_analysis TEXT DEFAULT ''", 'user_metadata.ai_analysis');
     runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN mls_status_baseline TEXT DEFAULT NULL", 'user_metadata.mls_status_baseline');
     runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN mls_status_conflict INTEGER DEFAULT 0", 'user_metadata.mls_status_conflict');
     runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN mls_status_seen TEXT DEFAULT NULL", 'user_metadata.mls_status_seen');
