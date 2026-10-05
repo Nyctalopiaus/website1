@@ -206,6 +206,12 @@ switch ($action) {
         handleUpdateCoordinates($pdo);
         break;
 
+    case 'geocode_fallback':
+        requireAuth();
+        requireCsrf();
+        handleGeocodeFallback($pdo);
+        break;
+
     case 'check_comps':
         requireAuth();
         requireCsrf();

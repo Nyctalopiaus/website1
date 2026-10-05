@@ -119,31 +119,50 @@ export const NO_PHOTO_IMG = 'data:image/svg+xml;charset=UTF-8,' + encodeURICompo
             if (!cleanAddr || cleanAddr === 'Address Unavailable') return;
             const query = `${cleanAddr}, ${p.city || ''}, ${p.state || 'CO'} ${p.zip || ''}`.trim();
 
+            const applyCoords = (lat, lng) => {
+                p.latitude = lat;
+                p.longitude = lng;
+                localStorage.setItem(cacheKey, JSON.stringify({ lat, lng }));
+                if (state.activeView === 'map') {
+                    renderMap({ autoFit: false });
+                }
+            };
+
+            // OpenStreetMap doesn't know every address (newer subdivisions especially), so when
+            // it comes back empty, ask the backend to try the US Census geocoder (it saves on a hit).
+            const censusFallback = () => apiFetch(CONFIG.API_URL + '?action=geocode_fallback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mls_id: p.mls_id, address: query })
+            }).then(res => {
+                const lat = parseFloat(res && res.latitude);
+                const lng = parseFloat(res && res.longitude);
+                if (res && res.found && isValidCoord(lat, lng)) {
+                    applyCoords(lat, lng);
+                } else {
+                    console.warn('No geocoder could place', query);
+                }
+            }).catch(() => {});
+
             setTimeout(() => {
                 fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
                     .then(r => r.json())
                     .then(data => {
-                        if (data && data.length > 0) {
-                            const lat = parseFloat(data[0].lat);
-                            const lng = parseFloat(data[0].lon);
-                            if (isValidCoord(lat, lng)) {
-                                p.latitude = lat;
-                                p.longitude = lng;
-                                localStorage.setItem(cacheKey, JSON.stringify({ lat, lng }));
+                        const lat = data && data.length > 0 ? parseFloat(data[0].lat) : NaN;
+                        const lng = data && data.length > 0 ? parseFloat(data[0].lon) : NaN;
+                        if (!isValidCoord(lat, lng)) return censusFallback();
 
-                                apiFetch(CONFIG.API_URL + '?action=update_coordinates', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ mls_id: p.mls_id, latitude: lat, longitude: lng })
-                                }).catch(() => {});
-
-                                if (state.activeView === 'map') {
-                                    renderMap({ autoFit: false });
-                                }
-                            }
-                        }
+                        apiFetch(CONFIG.API_URL + '?action=update_coordinates', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ mls_id: p.mls_id, latitude: lat, longitude: lng })
+                        }).catch(() => {});
+                        applyCoords(lat, lng);
                     })
-                    .catch(err => console.warn('Geocoding lookup failed for', query, err));
+                    .catch(err => {
+                        console.warn('Geocoding lookup failed for', query, err);
+                        return censusFallback();
+                    });
             }, idx * 1100);
         });
     }

@@ -29,6 +29,7 @@ import {
     selectRecommendNone, rankRecommendSelection, backToRecommendSelection, copyRecommendResults
 } from './js/recommend.js';
 import { openCompareMatrix, closeCompareMatrix, clearCompare } from './js/compare.js';
+import './js/aiRank.js'; // toolbar "AI Ranking" button and its modal; wires itself up
 import {
     openAdminCleanupModal, closeAdminCleanupModal, fetchAdminCleanupPreview,
     renderAdminCleanupTable, selectCandidateHomes, selectStaleCandidates, clearSelection, toggleSelectAll, markSelectedForImageRetry,

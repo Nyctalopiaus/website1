@@ -1676,6 +1676,52 @@ function handleUpdateCoordinates(PDO $pdo) {
 }
 
 /**
+ * Fallback geocoder for addresses OpenStreetMap/Nominatim doesn't know (typically newer
+ * subdivisions). Uses the free US Census geocoder, which sends no CORS headers, so the
+ * lookup has to run server-side. Saves the coordinates when a match is found.
+ */
+function handleGeocodeFallback(PDO $pdo) {
+    $data = json_decode(file_get_contents('php://input'), true);
+    $mlsId = is_array($data) ? trim((string)($data['mls_id'] ?? '')) : '';
+    $address = is_array($data) ? trim((string)($data['address'] ?? '')) : '';
+    if ($mlsId === '' || $address === '' || strlen($address) > 200) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid parameters for geocode_fallback']);
+        exit;
+    }
+
+    $ch = curl_init('https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?' . http_build_query([
+        'address' => $address,
+        'benchmark' => 'Public_AR_Current',
+        'format' => 'json'
+    ]));
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_TIMEOUT => 20,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_HTTPHEADER => ['Accept: application/json']
+    ]);
+    $raw = curl_exec($ch);
+    if (PHP_VERSION_ID < 80000) @curl_close($ch);
+
+    $body = is_string($raw) ? json_decode($raw, true) : null;
+    $coords = is_array($body) ? ($body['result']['addressMatches'][0]['coordinates'] ?? null) : null;
+    $lat = is_array($coords) ? (float)($coords['y'] ?? 0) : 0.0;
+    $lng = is_array($coords) ? (float)($coords['x'] ?? 0) : 0.0;
+
+    if ($lat < 24 || $lat > 50 || $lng < -125 || $lng > -65) {
+        echo json_encode(['success' => true, 'found' => false, 'mls_id' => $mlsId]);
+        return;
+    }
+
+    $stmt = $pdo->prepare("UPDATE properties SET latitude = :lat, longitude = :lng, updated_at = CURRENT_TIMESTAMP WHERE mls_id = :mls_id");
+    $stmt->execute([':lat' => $lat, ':lng' => $lng, ':mls_id' => $mlsId]);
+
+    echo json_encode(['success' => true, 'found' => true, 'mls_id' => $mlsId, 'latitude' => $lat, 'longitude' => $lng]);
+}
+
+/**
  * Preview property and media cleanup candidates for Admin.
  * Returns non-Active listings, media file counts/sizes on disk, orphan media files, and DB status summary.
  */

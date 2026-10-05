@@ -104,7 +104,12 @@ import { isValidCoord, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './p
         // Known Denver metro coordinates lookup for quick mapping if lat/lng is unpopulated
         const cityCoords = {
             'aurora': [39.7294, -104.8319],
+            'castle pines': [39.4580, -104.8961],
+            'castle rock': [39.3722, -104.8561],
             'centennial': [39.5791, -104.8772],
+            'elizabeth': [39.3603, -104.5969],
+            'franktown': [39.3889, -104.7533],
+            'lone tree': [39.5361, -104.8964],
             'denver': [39.7392, -104.9903],
             'littleton': [39.6133, -105.0166],
             'englewood': [39.6478, -104.9878],

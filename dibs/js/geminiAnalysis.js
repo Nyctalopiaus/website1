@@ -365,12 +365,12 @@ export function buildPropertyAnalysisPrompt(p, activity, searchAvailable = true)
 
 // ---- Gemini call --------------------------------------------------------------------------
 
-async function callGemini(apiKey, model, systemPrompt, userPrompt, useSearch) {
+async function callGemini(apiKey, model, systemPrompt, userPrompt, useSearch, extraConfig = {}) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
     const body = {
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: { maxOutputTokens: 65536, temperature: 0.4 }
+        generationConfig: { maxOutputTokens: 65536, temperature: 0.4, ...extraConfig }
     };
     if (useSearch) body.tools = [{ google_search: {} }];
 
@@ -467,4 +467,85 @@ export async function generatePropertyAnalysis(p) {
         parts.push('## Sources\n' + result.sources.slice(0, 12).map(s => `- [${s.title}](${s.uri})`).join('\n'));
     }
     return parts.join('\n\n');
+}
+
+// ---- Building blocks for the multi-home ranking (js/aiRank.js) -----------------------------
+
+const RAW_SKIP_KEYS = /photo|image|gallery|thumb|url|href|html|description|remarks|latitude|longitude|^lat$|^lng$|^lon$/i;
+
+/** Every filled-in MLS field that isn't already a named line on the fact sheet, flattened. */
+function otherMlsLines(p, maxChars) {
+    const lines = [];
+    let used = 0;
+    const walk = (value, path, depth) => {
+        if (used >= maxChars || depth > 3 || value === null || value === undefined) return;
+        if (Array.isArray(value)) {
+            const flat = value.filter(v => v !== null && typeof v !== 'object' && has(v)).map(String);
+            if (flat.length) walk(flat.join(', '), path, depth);
+            return;
+        }
+        if (typeof value === 'object') {
+            Object.keys(value).forEach(key => { if (!RAW_SKIP_KEYS.test(key)) walk(value[key], path ? `${path}.${key}` : key, depth + 1); });
+            return;
+        }
+        if (!has(value) || !path) return;
+        const line = `- ${path.replace(/_/g, ' ')}: ${String(value).replace(/\s+/g, ' ').trim().slice(0, 300)}`;
+        used += line.length;
+        if (used <= maxChars) lines.push(line);
+    };
+    walk(rawMls(p), '', 0);
+    return lines;
+}
+
+/**
+ * One home's fact sheet for a prompt that compares several homes: the same listing, comps and
+ * buyer lines the single-home analysis uses (without the per-comp table), every other filled-in
+ * MLS field, and the AI Analysis already saved on the card, trimmed to analysisBudget characters.
+ */
+export function buildRankingFactSheet(p, analysisBudget = 8000) {
+    const raw = rawMls(p);
+    const remarks = String(raw.description || p.description || '').replace(/\s+/g, ' ').trim();
+    const comps = compsLines(p);
+    const compsEnd = comps.indexOf('');
+    const review = p.hidden ? 'disliked / hidden' : (p.favorite ? 'favorite' : (num(p.possibility) === 1 ? 'possibility' : 'not reviewed'));
+    // The saved write-up's link list is noise here, and its lookups are already in the prose.
+    let analysis = String(p.ai_analysis || '').replace(/\n##\s+Sources[\s\S]*$/i, '').trim();
+    const trimmed = analysis.length > analysisBudget;
+    if (trimmed) analysis = analysis.slice(0, analysisBudget);
+    const other = otherMlsLines(p, 2500);
+
+    return [
+        ...listingLines(p, [], false),
+        `- Buyer's review status: ${review}${num(p.rating) ? `, rated ${p.rating} of 5` : ''}`,
+        '',
+        '### Public remarks',
+        remarks ? remarks.slice(0, 1800) : '(none captured)',
+        '',
+        '### Comps and price score',
+        ...(compsEnd === -1 ? comps : comps.slice(0, compsEnd)),
+        '',
+        "### Buyer's own input",
+        ...buyerLines(p),
+        ...(other.length ? ['', '### Other MLS fields on file', ...other] : []),
+        '',
+        '### AI analysis saved on this home in Dibs',
+        analysis ? analysis + (trimmed ? '\n[trimmed for length]' : '') : '(none saved for this home)'
+    ].join('\n');
+}
+
+/** One no-search Gemini call that must answer with a single JSON object. Throws with a readable message. */
+export async function generateGeminiJson(systemPrompt, userPrompt) {
+    const apiKey = getUsableGeminiKey();
+    const model = getGeminiModel();
+    if (!apiKey) throw new Error('Unlock or add your Gemini API key first.');
+    const result = await callGemini(apiKey, model, systemPrompt, userPrompt, false, { responseMimeType: 'application/json', temperature: 0.3 });
+    if (result.cutOff) throw new Error('Gemini ran out of room before it finished. Narrow the filters to fewer homes and try again.');
+    const text = result.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    try {
+        return { data: JSON.parse(start >= 0 && end > start ? text.slice(start, end + 1) : text), model };
+    } catch (e) {
+        throw new Error('Gemini sent back a response Dibs could not read. Try again.');
+    }
 }

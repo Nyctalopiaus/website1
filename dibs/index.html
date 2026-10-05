@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
     <!-- Leaflet CSS for Interactive Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="stylesheet" href="styles.css?v=2.7">
+    <link rel="stylesheet" href="styles.css?v=2.9">
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Lucide Icons (replaces emoji glyphs in the header/KPI chrome) -->
@@ -245,6 +245,9 @@
                     <button class="view-btn" data-view="table"><i data-lucide="table"></i> Table View</button>
                     <button class="view-btn" data-view="matrix"><i data-lucide="scale"></i> Compare Matrix</button>
                 </div>
+
+                <!-- AI Ranking: Gemini ranks every home in the current filter (js/aiRank.js) -->
+                <button type="button" class="btn-ai-rank" id="btn-ai-rank" title="Have Gemini rank the homes in the current filter by which is the best purchase, and why"><i data-lucide="sparkles"></i> AI Ranking</button>
 
                 <div class="sort-control-group">
                     <label for="sort-select" class="sort-label">Sort By:</label>
@@ -1299,6 +1302,18 @@
         </div>
     </div>
 
+    <!-- AI Ranking: Gemini's best-purchase ranking of the filtered homes. Body rendered by js/aiRank.js -->
+    <div class="modal-overlay" id="modal-ai-rank">
+        <div class="modal-content ai-rank-modal">
+            <button class="modal-close" aria-label="Close" id="modal-ai-rank-close"><i data-lucide="x"></i></button>
+            <div class="ai-rank-header">
+                <h2><i data-lucide="sparkles"></i> AI Purchase Ranking</h2>
+                <p>The homes in your current filter, ranked by which is the best purchase and why.</p>
+            </div>
+            <div id="ai-rank-body"></div>
+        </div>
+    </div>
+
     <!-- User Profile Modal -->
     <div class="modal-overlay" id="modal-user-profile">
         <div class="modal-content" style="max-width: 580px; width: 92vw;">
@@ -1750,6 +1765,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=3.3"></script>
+    <script type="module" src="app.js?v=3.4"></script>
 </body>
 </html>
