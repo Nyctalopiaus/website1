@@ -32,6 +32,11 @@ if (!function_exists('requireAdmin')) {
         $isPrimaryAdmin = ($_SESSION['username'] ?? '') === 'admin';
         $role = $_SESSION['role'] ?? ($_SESSION['is_admin'] ? 'admin' : 'client');
         if (!$isPrimaryAdmin && empty($_SESSION['is_admin']) && $role !== 'admin') {
+            $deniedPdo = $GLOBALS['pdo'] ?? null;
+            if ($deniedPdo instanceof PDO) {
+                $deniedAction = substr(preg_replace('/[^A-Za-z0-9_]/', '', (string)($_GET['action'] ?? $_POST['action'] ?? '')), 0, 40);
+                logEventThrottled($deniedPdo, 'system', 'warn', "Admin-only action '$deniedAction' refused for user " . ($_SESSION['username'] ?? '?'), null, ['role' => $role, 'ip' => $_SERVER['REMOTE_ADDR'] ?? null]);
+            }
             http_response_code(403);
             echo json_encode(['error' => 'Forbidden. Admin privileges required.']);
             exit;
@@ -301,7 +306,11 @@ function handleCreateScrapeToken(PDO $pdo) {
 
     $exp = $pdo->prepare('SELECT expires_at FROM scrape_tokens WHERE token_hash = :h');
     $exp->execute([':h' => $tokenHash]);
-    echo json_encode(['success' => true, 'token' => $token, 'expires_in_days' => 30, 'expires_at' => $exp->fetchColumn() ?: null]);
+    $expiresAt = $exp->fetchColumn() ?: null;
+    $exp->closeCursor();
+    // The token itself is never logged - only that one was made, and that it replaced the last.
+    logEvent($pdo, 'system', 'info', 'New bookmarklet scrape token generated; any earlier token for this account no longer works', null, ['expires_at' => $expiresAt]);
+    echo json_encode(['success' => true, 'token' => $token, 'expires_in_days' => 30, 'expires_at' => $expiresAt]);
 }
 
 // Read-only: when does this account's current scrape token expire? Never creates or revokes a
@@ -645,8 +654,10 @@ function handleDeleteUser(PDO $pdo) {
         return;
     }
 
+    $stmtCheck->closeCursor();
     $stmtDel = $pdo->prepare("DELETE FROM users WHERE id = :id");
     $stmtDel->execute([':id' => $targetUserId]);
+    logEvent($pdo, 'system', 'warn', "User deleted: {$user['username']} (id $targetUserId)");
 
     echo json_encode(['success' => true]);
 }
@@ -666,20 +677,85 @@ function handleViewLoginLogs(PDO $pdo) {
 function handleViewEventLog(PDO $pdo) {
     requireAdmin();
     $source = $_GET['source'] ?? '';
+
+    // Paging: ?page= (1-based) and ?per_page= (one of the sizes the modal's dropdown offers).
+    // With no params this returns the newest 200 rows, which is what the admin dashboard's
+    // summary call relies on.
+    $perPage = (int)($_GET['per_page'] ?? 200);
+    if (!in_array($perPage, [50, 100, 200, 500], true)) $perPage = 200;
+    $page = max(1, (int)($_GET['page'] ?? 1));
+
+    $eventSelect = "SELECT id, timestamp, source, level, mls_id, message, context_json, username FROM event_log";
+    $loginSelect = "SELECT id, timestamp, 'login' AS source, status AS level, '' AS mls_id, (username || ' - ' || reason || ' (IP: ' || ip_address || ')') AS message, user_agent AS context_json, username FROM login_attempts";
+
+    // Which rows to draw from; every other filter is applied on top of this, so the filters
+    // behave the same whether one source or all of them is showing.
     if ($source === 'login') {
-        $stmt = $pdo->query("SELECT id, timestamp, 'login' AS source, status AS level, '' AS mls_id, (username || ' - ' || reason || ' (IP: ' || ip_address || ')') AS message, user_agent AS context_json, username FROM login_attempts ORDER BY id DESC LIMIT 200");
+        $base = $loginSelect;
     } else if ($source !== '' && in_array($source, ['sync', 'scrape', 'client', 'system'], true)) {
-        $stmt = $pdo->prepare("SELECT id, timestamp, source, level, mls_id, message, context_json, username FROM event_log WHERE source = :source ORDER BY id DESC LIMIT 200");
-        $stmt->execute([':source' => $source]);
+        $base = "$eventSelect WHERE source = " . $pdo->quote($source);
     } else {
-        $stmt = $pdo->query("
-            SELECT id, timestamp, source, level, mls_id, message, context_json, username FROM (
-                SELECT id, timestamp, source, level, mls_id, message, context_json, username FROM event_log
-                UNION ALL
-                SELECT id, timestamp, 'login' AS source, status AS level, '' AS mls_id, (username || ' - ' || reason || ' (IP: ' || ip_address || ')') AS message, user_agent AS context_json, username FROM login_attempts
-            ) ORDER BY timestamp DESC LIMIT 200
-        ");
+        $base = "$eventSelect UNION ALL $loginSelect";
     }
+
+    $where = [];
+    $params = [];
+
+    // Time bounds: UTC "YYYY-MM-DD HH:MM:SS", the same form the timestamp columns are stored
+    // in (the modal converts from whatever time zone it is displaying). Both ends inclusive.
+    foreach (['from' => '>=', 'to' => '<='] as $key => $op) {
+        $value = trim((string)($_GET[$key] ?? ''));
+        if ($value !== '' && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $value)) {
+            $where[] = "timestamp $op :$key";
+            $params[":$key"] = $value;
+        }
+    }
+
+    // Level. Login rows carry SUCCESS/FAILED instead of info/warn/error.
+    $levelGroups = [
+        'info' => ['info'],
+        'warn' => ['warn', 'warning'],
+        'error' => ['error'],
+        'success' => ['success'],
+        'failed' => ['failed', 'fail', 'failure'],
+    ];
+    $level = strtolower(trim((string)($_GET['level'] ?? '')));
+    if (isset($levelGroups[$level])) {
+        $where[] = "LOWER(COALESCE(level, 'info')) IN ('" . implode("', '", $levelGroups[$level]) . "')";
+    }
+
+    // User: exact username, case-insensitive. "system" means rows with no user attached.
+    $user = trim((string)($_GET['user'] ?? ''));
+    if ($user !== '') {
+        if (strtolower($user) === 'system') {
+            $where[] = "(username IS NULL OR username = '')";
+        } else {
+            $where[] = 'LOWER(username) = LOWER(:user)';
+            $params[':user'] = $user;
+        }
+    }
+
+    $mlsId = trim((string)($_GET['mls_id'] ?? ''));
+    if ($mlsId !== '') {
+        $where[] = 'mls_id = :mls_id';
+        $params[':mls_id'] = $mlsId;
+    }
+
+    $whereSql = $where ? ' WHERE ' . implode(' AND ', $where) : '';
+
+    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM ($base)$whereSql");
+    $countStmt->execute($params);
+    $total = (int)$countStmt->fetchColumn();
+    $countStmt->closeCursor();
+
+    $totalPages = max(1, (int)ceil($total / $perPage));
+    if ($page > $totalPages) $page = $totalPages;
+
+    $stmt = $pdo->prepare("SELECT id, timestamp, source, level, mls_id, message, context_json, username FROM ($base)$whereSql ORDER BY timestamp DESC, id DESC LIMIT :limit OFFSET :offset");
+    foreach ($params as $key => $value) $stmt->bindValue($key, $value);
+    $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', ($page - 1) * $perPage, PDO::PARAM_INT);
+    $stmt->execute();
     $logs = $stmt->fetchAll();
-    echo json_encode(['success' => true, 'logs' => $logs]);
+    echo json_encode(['success' => true, 'logs' => $logs, 'total' => $total, 'page' => $page, 'per_page' => $perPage, 'total_pages' => $totalPages]);
 }

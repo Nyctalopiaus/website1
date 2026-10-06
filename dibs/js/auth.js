@@ -724,6 +724,61 @@ function resetLocalStateForAccount(username) {
     let lastEventLogs = [];
     let eventLogTimezone = ''; // '' = the browser's own time zone
 
+    // Paging state for the event log modal. The server does the paging (view_event_log's
+    // page/per_page params); these mirror what it last returned.
+    const EVENT_LOG_PER_PAGE_STORAGE_KEY = 'dibs_event_log_per_page';
+    const EVENT_LOG_PER_PAGE_OPTIONS = [50, 100, 200, 500];
+    let eventLogPerPage = 100;
+    let eventLogPage = 1;
+    let eventLogTotal = 0;
+    let eventLogTotalPages = 1;
+    let eventLogLastFilterKey = null; // the filter set the current page number belongs to
+
+    // Turns a datetime-local value ("2026-10-06T07:15", a wall-clock time in whichever zone the
+    // log is being displayed in) into the UTC "YYYY-MM-DD HH:MM:SS" the server stores and
+    // compares against. endOfMinute makes a "To" bound include the whole minute it names.
+    function eventLogBoundToUtc(value, endOfMinute) {
+        const m = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+        if (!m) return '';
+        const [y, mo, d, h, mi] = m.slice(1, 6).map(Number);
+        const sec = m[6] !== undefined ? Number(m[6]) : (endOfMinute ? 59 : 0);
+        let date;
+        if (!eventLogTimezone) {
+            date = new Date(y, mo - 1, d, h, mi, sec); // browser's own zone
+        } else {
+            // Find the instant whose wall-clock time in eventLogTimezone is the one entered:
+            // start from that wall time read as UTC, see what the zone shows for it, and shift
+            // by the difference (twice, so a DST change between the two guesses settles).
+            const wanted = Date.UTC(y, mo - 1, d, h, mi, sec);
+            let guess = wanted;
+            try {
+                const fmt = new Intl.DateTimeFormat('en-US', { timeZone: eventLogTimezone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
+                for (let i = 0; i < 2; i++) {
+                    const p = {};
+                    fmt.formatToParts(new Date(guess)).forEach(part => { p[part.type] = Number(part.value); });
+                    guess += wanted - Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+                }
+            } catch (e) { /* unknown zone: fall back to treating the value as UTC */ }
+            date = new Date(guess);
+        }
+        if (isNaN(date.getTime())) return '';
+        return date.toISOString().slice(0, 19).replace('T', ' ');
+    }
+
+    // Query-string fragment for the filter controls (everything except paging).
+    function eventLogFilterQuery() {
+        const val = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+        const parts = [];
+        const add = (key, value) => { if (value) parts.push(key + '=' + encodeURIComponent(value)); };
+        add('source', elements.eventLogSourceFilter ? elements.eventLogSourceFilter.value : '');
+        add('from', eventLogBoundToUtc(val('event-log-from'), false));
+        add('to', eventLogBoundToUtc(val('event-log-to'), true));
+        add('level', val('event-log-level'));
+        add('user', val('event-log-user'));
+        add('mls_id', val('event-log-mls'));
+        return parts.join('&');
+    }
+
     function parseEventLogTime(ts) {
         const iso = String(ts).trim().replace(' ', 'T');
         // No zone marker means UTC; without the Z the browser would read it as local time.
@@ -747,8 +802,112 @@ function resetLocalStateForAccount(username) {
         select.addEventListener('change', () => {
             eventLogTimezone = select.value;
             try { localStorage.setItem(EVENT_LOG_TZ_STORAGE_KEY, eventLogTimezone); } catch (e) { /* storage blocked */ }
-            renderEventLogTable(lastEventLogs);
+            // From/To are entered in the displayed zone, so a time filter has to be re-run.
+            const hasTimeFilter = ['event-log-from', 'event-log-to'].some(id => { const el = document.getElementById(id); return el && el.value; });
+            if (hasTimeFilter) fetchEventLogs();
+            else renderEventLogTable(lastEventLogs);
         });
+    }
+
+    function goToEventLogPage(page) {
+        const target = Math.min(Math.max(1, page), eventLogTotalPages);
+        if (target === eventLogPage) return;
+        eventLogPage = target;
+        fetchEventLogs();
+        const content = document.querySelector('#modal-event-log .modal-content');
+        if (content) content.scrollTop = 0;
+    }
+
+    function initEventLogPaging() {
+        const perPageSelect = document.getElementById('event-log-per-page');
+        if (perPageSelect && !perPageSelect.dataset.ready) {
+            perPageSelect.dataset.ready = '1';
+            let stored = 0;
+            try { stored = parseInt(localStorage.getItem(EVENT_LOG_PER_PAGE_STORAGE_KEY), 10); } catch (e) { /* storage blocked */ }
+            if (EVENT_LOG_PER_PAGE_OPTIONS.includes(stored)) eventLogPerPage = stored;
+            perPageSelect.value = String(eventLogPerPage);
+            perPageSelect.addEventListener('change', () => {
+                const picked = parseInt(perPageSelect.value, 10);
+                eventLogPerPage = EVENT_LOG_PER_PAGE_OPTIONS.includes(picked) ? picked : 100;
+                try { localStorage.setItem(EVENT_LOG_PER_PAGE_STORAGE_KEY, String(eventLogPerPage)); } catch (e) { /* storage blocked */ }
+                eventLogPage = 1;
+                fetchEventLogs();
+            });
+        }
+
+        // Filter controls: reload when one changes (fetchEventLogs() goes back to page 1 itself
+        // whenever the filters differ from the last load). Text boxes apply on Enter or blur.
+        const filterBar = document.getElementById('event-log-filters');
+        if (filterBar && !filterBar.dataset.ready) {
+            filterBar.dataset.ready = '1';
+            filterBar.addEventListener('change', (e) => {
+                if (e.target.matches('input, select')) fetchEventLogs();
+            });
+            filterBar.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.target.matches('input')) { e.preventDefault(); fetchEventLogs(); }
+            });
+            const clearBtn = document.getElementById('btn-clear-event-log-filters');
+            if (clearBtn) clearBtn.addEventListener('click', () => {
+                filterBar.querySelectorAll('input, select').forEach(el => { el.value = ''; });
+                if (elements.eventLogSourceFilter) elements.eventLogSourceFilter.value = '';
+                fetchEventLogs();
+            });
+            // Username suggestions for the User box; free text still works if this fails.
+            const userList = document.getElementById('event-log-user-list');
+            if (userList) {
+                apiFetch(CONFIG.API_URL + '?action=list_users')
+                    .then(data => {
+                        const names = (data && Array.isArray(data.users) ? data.users : []).map(u => u.username).filter(Boolean);
+                        userList.innerHTML = ['System', ...names].map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+                    })
+                    .catch(() => {});
+            }
+        }
+
+        // Both pagers (above and below the table) are re-rendered on every load, so listen on
+        // the containers rather than on the buttons themselves.
+        document.querySelectorAll('#modal-event-log .event-log-pager').forEach(pager => {
+            if (pager.dataset.ready) return;
+            pager.dataset.ready = '1';
+            pager.addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-page]');
+                if (!btn || btn.disabled) return;
+                const to = btn.dataset.page;
+                if (to === 'first') goToEventLogPage(1);
+                else if (to === 'prev') goToEventLogPage(eventLogPage - 1);
+                else if (to === 'next') goToEventLogPage(eventLogPage + 1);
+                else if (to === 'last') goToEventLogPage(eventLogTotalPages);
+            });
+            pager.addEventListener('change', (e) => {
+                if (e.target.matches('select.event-log-page-select')) goToEventLogPage(parseInt(e.target.value, 10) || 1);
+            });
+        });
+    }
+
+    function renderEventLogPager() {
+        const pagers = document.querySelectorAll('#modal-event-log .event-log-pager');
+        if (!pagers.length) return;
+        const from = eventLogTotal ? (eventLogPage - 1) * eventLogPerPage + 1 : 0;
+        const to = Math.min(eventLogPage * eventLogPerPage, eventLogTotal);
+        const btnStyle = 'height: 32px; padding: 0 0.7rem; font-size: 0.8rem;';
+        const atFirst = eventLogPage <= 1;
+        const atLast = eventLogPage >= eventLogTotalPages;
+        let pageOptions = '';
+        for (let p = 1; p <= eventLogTotalPages; p++) {
+            pageOptions += `<option value="${p}"${p === eventLogPage ? ' selected' : ''}>${p}</option>`;
+        }
+        const html = `
+            <span style="margin-right: auto;">Showing ${from.toLocaleString()}–${to.toLocaleString()} of ${eventLogTotal.toLocaleString()}, newest first</span>
+            <button class="btn btn-secondary" data-page="first" style="${btnStyle}"${atFirst ? ' disabled' : ''}>« Newest</button>
+            <button class="btn btn-secondary" data-page="prev" style="${btnStyle}"${atFirst ? ' disabled' : ''}>‹ Newer</button>
+            <label style="display: inline-flex; align-items: center; gap: 0.4rem; margin: 0;">Page
+                <select class="select-input event-log-page-select" aria-label="Go to page" style="width: auto; height: 32px; padding: 0 0.6rem;">${pageOptions}</select>
+                of ${eventLogTotalPages.toLocaleString()}
+            </label>
+            <button class="btn btn-secondary" data-page="next" style="${btnStyle}"${atLast ? ' disabled' : ''}>Older ›</button>
+            <button class="btn btn-secondary" data-page="last" style="${btnStyle}"${atLast ? ' disabled' : ''}>Oldest »</button>
+        `;
+        pagers.forEach(pager => { pager.innerHTML = html; });
     }
 
     export function openEventLogModal() {
@@ -759,20 +918,29 @@ function resetLocalStateForAccount(username) {
         closeAdminMenu();
         if (elements.modalEventLog) elements.modalEventLog.classList.add('active');
         initEventLogTimezoneSelect();
+        initEventLogPaging();
+        eventLogPage = 1; // opening the log always starts at the newest events
         fetchEventLogs();
     }
     export function fetchEventLogs() {
         if (!elements.eventLogTableBody) return;
         elements.eventLogTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Loading events...</td></tr>`;
 
-        const source = elements.eventLogSourceFilter ? elements.eventLogSourceFilter.value : '';
-        let url = CONFIG.API_URL + '?action=view_event_log';
-        if (source) url += '&source=' + encodeURIComponent(source);
+        // A different set of filters is a different list, so start it from its first page.
+        const filterQuery = eventLogFilterQuery();
+        if (filterQuery !== eventLogLastFilterKey) eventLogPage = 1;
+        eventLogLastFilterKey = filterQuery;
+        let url = CONFIG.API_URL + '?action=view_event_log&page=' + eventLogPage + '&per_page=' + eventLogPerPage;
+        if (filterQuery) url += '&' + filterQuery;
 
         apiFetch(url)
             .then(data => {
                 if (data.success && Array.isArray(data.logs)) {
+                    eventLogTotal = Number.isFinite(Number(data.total)) ? Number(data.total) : data.logs.length;
+                    eventLogTotalPages = Math.max(1, Number(data.total_pages) || 1);
+                    eventLogPage = Math.min(Math.max(1, Number(data.page) || 1), eventLogTotalPages);
                     renderEventLogTable(data.logs);
+                    renderEventLogPager();
                 } else {
                     showToast(data.error || 'Failed to load event log', 'error');
                 }
@@ -791,11 +959,13 @@ function resetLocalStateForAccount(username) {
         // Update count badge
         const countBadge = document.getElementById('event-log-count-badge');
         if (countBadge) {
-            countBadge.textContent = `${logs.length} ${logs.length === 1 ? 'Event Entry' : 'Event Entries'}`;
+            // Total across all pages, not just the rows on this one.
+            const total = Math.max(eventLogTotal, logs.length);
+            countBadge.textContent = `${total.toLocaleString()} ${total === 1 ? 'Event Entry' : 'Event Entries'}`;
         }
 
         if (!logs.length) {
-            elements.eventLogTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">No events logged yet</td></tr>`;
+            elements.eventLogTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:1.5rem; color:var(--text-muted);">${eventLogLastFilterKey ? 'No events match these filters' : 'No events logged yet'}</td></tr>`;
             return;
         }
 

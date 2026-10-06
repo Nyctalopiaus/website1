@@ -335,9 +335,10 @@ function handleDeleteCollection(PDO $pdo) {
     $realtorId = (int)$_SESSION['user_id'];
     $isAdmin = ($_SESSION['username'] ?? '') === 'admin' || !empty($_SESSION['is_admin']);
 
-    $stmtCheck = $pdo->prepare("SELECT realtor_id FROM collections WHERE id = :id");
+    $stmtCheck = $pdo->prepare("SELECT * FROM collections WHERE id = :id");
     $stmtCheck->execute([':id' => $collectionId]);
     $existing = $stmtCheck->fetch();
+    $stmtCheck->closeCursor();
 
     if (!$existing) {
         http_response_code(404);
@@ -353,6 +354,7 @@ function handleDeleteCollection(PDO $pdo) {
 
     $stmtDel = $pdo->prepare("DELETE FROM collections WHERE id = :id");
     $stmtDel->execute([':id' => $collectionId]);
+    logEvent($pdo, 'system', 'warn', 'Playlist deleted: ' . (trim((string)($existing['title'] ?? '')) ?: "#$collectionId") . " (id $collectionId)");
 
     echo json_encode(['success' => true, 'id' => $collectionId]);
 }

@@ -101,13 +101,65 @@ function logEvent(PDO $pdo, string $source, string $level, string $message, ?str
 
         // Cheap retention: trim on write instead of a scheduled job (there's no cron in this
         // PHP-built-in-server setup). Runs roughly every 50 writes, not every one.
+        // Keeps 14 days of events, and never fewer than the newest 5,000 rows however old they
+        // are; a hard cap of 50,000 rows bounds the table if something logs in a loop. (One full
+        // deep scrape of ~140 listings writes roughly 300 rows.)
         if (random_int(1, 50) === 1) {
-            $pdo->exec("DELETE FROM event_log WHERE id NOT IN (SELECT id FROM event_log ORDER BY id DESC LIMIT 5000)");
+            $pdo->exec("DELETE FROM event_log WHERE timestamp < datetime('now', '-14 days')
+                        AND id <= COALESCE((SELECT id FROM event_log ORDER BY id DESC LIMIT 1 OFFSET 5000), 0)");
+            $pdo->exec("DELETE FROM event_log WHERE id <= COALESCE((SELECT id FROM event_log ORDER BY id DESC LIMIT 1 OFFSET 50000), 0)");
         }
     } catch (Throwable $t) {
         // Logging must never break the caller.
     }
 }
+
+/**
+ * logEvent() for things that can repeat many times in a row (a bookmarklet with a dead token
+ * retries on every listing; a listing with no geocoder match is asked about again on each map
+ * load). Skips the write when the same source + message was already logged in the last
+ * $minutes, so one problem is one line instead of hundreds.
+ */
+function logEventThrottled(PDO $pdo, string $source, string $level, string $message, ?string $mlsId = null, $context = null, int $minutes = 10): void {
+    try {
+        $seen = $pdo->prepare("SELECT 1 FROM event_log WHERE source = :source AND message = :message AND timestamp > datetime('now', :window) LIMIT 1");
+        $seen->execute([':source' => $source, ':message' => $message, ':window' => '-' . max(1, $minutes) . ' minutes']);
+        $already = $seen->fetchColumn();
+        $seen->closeCursor();
+        if ($already) return;
+    } catch (Throwable $t) {
+        // Can't tell - log it rather than risk dropping it.
+    }
+    logEvent($pdo, $source, $level, $message, $mlsId, $context);
+}
+
+/**
+ * Catch-all for anything a handler didn't catch itself. Most handlers have no try/catch of their
+ * own, so before this an unexpected error (a database lock while saving a note, say) ended the
+ * request with nothing in the event log. Records it there and in PHP's error log (the event_log
+ * write can fail for the same reason the request did), and still answers in JSON so the app
+ * shows an error instead of choking on a blank or HTML response.
+ */
+set_exception_handler(function (Throwable $t) {
+    $action = substr(preg_replace('/[^A-Za-z0-9_]/', '', (string)($_GET['action'] ?? $_POST['action'] ?? 'list')), 0, 40);
+    error_log("Dibs unhandled error in action '$action': " . $t->getMessage() . ' at ' . $t->getFile() . ':' . $t->getLine());
+    $pdo = $GLOBALS['pdo'] ?? null;
+    if ($pdo instanceof PDO) {
+        logEvent($pdo, 'system', 'error', "Unhandled error in action '$action': " . $t->getMessage(), null, ['type' => get_class($t), 'file' => basename($t->getFile()), 'line' => $t->getLine()]);
+    }
+    if (!headers_sent()) http_response_code(500);
+    echo json_encode(['success' => false, 'error' => clientErrorMessage($t)]);
+});
+
+// Fatal errors that aren't exceptions (out of memory, time limit) skip the handler above.
+register_shutdown_function(function () {
+    $e = error_get_last();
+    if (!$e || !in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) return;
+    $pdo = $GLOBALS['pdo'] ?? null;
+    if (!($pdo instanceof PDO)) return;
+    $action = substr(preg_replace('/[^A-Za-z0-9_]/', '', (string)($_GET['action'] ?? $_POST['action'] ?? 'list')), 0, 40);
+    logEvent($pdo, 'system', 'error', "Fatal error in action '$action': " . $e['message'], null, ['file' => basename((string)$e['file']), 'line' => $e['line']]);
+});
 
 /**
  * Runs one schema migration, logging anything that isn't the expected "column/index already

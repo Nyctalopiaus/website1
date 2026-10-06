@@ -20,6 +20,20 @@ import { elements, state } from './state.js';
         });
     }
 
+    // Records something in the server's event log (Admin > System Event Log, source "client"),
+    // for failures the app handles itself and so never reach app.js's global error capture.
+    // Fire-and-forget: logging must never break or slow the feature that called it.
+    export function logClientEvent(level, message, context, mlsId) {
+        try {
+            fetch('backend/api.php?action=client_log', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source: 'client', level, message: String(message).slice(0, 2000), context: context || null, mls_id: mlsId || null })
+            }).catch(() => {});
+        } catch (e) { /* nothing to do */ }
+    }
+
     export function fetchSavedFilters() {
         return apiFetch('backend/api.php?action=get_saved_filters');
     }

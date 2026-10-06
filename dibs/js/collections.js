@@ -53,6 +53,12 @@ window.goToPropertyCard = function(mlsId) {
     }
 };
 
+window.openInlineCarouselCurrent = function() {
+    const st = window.inlineCarouselState;
+    const p = st.properties && st.properties[st.currentIndex];
+    if (p) window.goToPropertyCard(p.mls_id);
+};
+
 window.renderInlineCarouselSlide = function() {
     const container = document.getElementById('inline-playlist-carousel');
     if (!container) return;
@@ -63,40 +69,62 @@ window.renderInlineCarouselSlide = function() {
     }
     const idx = window.inlineCarouselState.currentIndex;
     const p = props[idx];
-    const displayAddr = escapeHtml(p.address || `MLS #${p.mls_id}`);
+    const displayAddr = p.address || `MLS #${p.mls_id}`;
     const imgUrl = p.main_image_url || NO_PHOTO_IMG;
     const ppsqft = p.sqft_finished ? Math.round(p.price / p.sqft_finished) : 0;
-    
-    let revStatusBadge = '';
     const rawStatus = getPropertyReviewStatus(p);
-    if (rawStatus === 'favorite') revStatusBadge = `<span style="font-size:0.72rem; background:#d97706; color:#fff; padding:2px 7px; border-radius:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,0.15); display:inline-flex; align-items:center; gap:3px;"><i data-lucide="star"></i> Liked</span>`;
-    else if (rawStatus === 'possibility') revStatusBadge = `<span style="font-size:0.72rem; background:#0284c7; color:#fff; padding:2px 7px; border-radius:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,0.15); display:inline-flex; align-items:center; gap:3px;"><i data-lucide="circle-help"></i> Possibility</span>`;
 
-    container.innerHTML = `
-        <div class="inline-carousel-thumb" style="width:90px; height:68px; border-radius:6px; overflow:hidden; border:1px solid var(--border-color); flex-shrink:0; position:relative; background:var(--bg-card); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.08);" onclick="window.goToPropertyCard('${p.mls_id}')" title="Click to view house details">
-            <img src="${imgUrl}" alt="${displayAddr}" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s ease;" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" onmouseenter="this.style.transform='scale(1.06)'" onmouseleave="this.style.transform='scale(1)'">
+    // Build the slide shell ONCE, then only patch text/src on each tick. Rebuilding the markup and
+    // calling lucide.createIcons() every 3.5s re-created every icon on the whole page (lucide swaps
+    // already-rendered SVGs too), which is what made the page flicker.
+    if (!container.querySelector('[data-ic="img"]')) {
+        const badgeStyle = 'font-size:0.72rem; color:#fff; padding:2px 7px; border-radius:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,0.15); align-items:center; gap:3px; display:none;';
+        container.innerHTML = `
+        <div class="inline-carousel-thumb" style="width:90px; height:68px; border-radius:6px; overflow:hidden; border:1px solid var(--border-color); flex-shrink:0; position:relative; background:var(--bg-card); cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.08);" onclick="window.openInlineCarouselCurrent()" title="Click to view house details">
+            <img data-ic="img" alt="" style="width:100%; height:100%; object-fit:cover; transition:transform 0.3s ease;" referrerpolicy="no-referrer" onmouseenter="this.style.transform='scale(1.06)'" onmouseleave="this.style.transform='scale(1)'">
         </div>
-        <div class="inline-carousel-info" style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px; cursor:pointer;" onclick="window.goToPropertyCard('${p.mls_id}')" title="Click to view house details">
+        <div class="inline-carousel-info" style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px; cursor:pointer;" onclick="window.openInlineCarouselCurrent()" title="Click to view house details">
             <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
-                <span style="font-size:1.1rem; font-weight:800; color:var(--accent-gold); white-space:nowrap; letter-spacing:-0.01em;">$${(p.price || 0).toLocaleString()}</span>
-                ${revStatusBadge}
+                <span data-ic="price" style="font-size:1.1rem; font-weight:800; color:var(--accent-gold); white-space:nowrap; letter-spacing:-0.01em;"></span>
+                <span data-ic="badge-favorite" style="background:#d97706; ${badgeStyle}"><i data-lucide="star"></i> Liked</span>
+                <span data-ic="badge-possibility" style="background:#0284c7; ${badgeStyle}"><i data-lucide="circle-help"></i> Possibility</span>
             </div>
-            <div style="font-size:0.9rem; font-weight:700; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2;" title="${displayAddr}">
-                ${displayAddr}
-            </div>
-            <div style="font-size:0.78rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;">
-                ${p.beds || 0} Bed • ${p.baths || 0} Bath • ${(p.sqft_finished || 0).toLocaleString()} SqFt ${ppsqft ? `($${ppsqft}/sqft)` : ''}
-            </div>
+            <div data-ic="addr" style="font-size:0.9rem; font-weight:700; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2;"></div>
+            <div data-ic="meta" style="font-size:0.78rem; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:500;"></div>
         </div>
         <div class="inline-carousel-nav" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; flex-shrink:0; margin-left:0.25rem;">
             <div style="display:flex; gap:3px;">
                 <button type="button" class="btn btn-secondary" style="padding:0; font-size:0.75rem; border-radius:4px; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center;" onclick="event.stopPropagation(); window.stepInlineCarousel(-1);" title="Previous house"><i data-lucide="chevron-left"></i></button>
                 <button type="button" class="btn btn-gold" style="padding:0; font-size:0.75rem; border-radius:4px; width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center;" onclick="event.stopPropagation(); window.stepInlineCarousel(1);" title="Next house"><i data-lucide="chevron-right"></i></button>
             </div>
-            <span style="font-size:0.72rem; color:var(--accent-emerald); font-weight:800; letter-spacing:0.04em;">${idx + 1} / ${props.length}</span>
+            <span data-ic="count" style="font-size:0.72rem; color:var(--accent-emerald); font-weight:800; letter-spacing:0.04em;"></span>
         </div>
     `;
-    if (window.lucide) window.lucide.createIcons();
+        if (window.lucide) window.lucide.createIcons();
+    }
+
+    const q = (name) => container.querySelector(`[data-ic="${name}"]`);
+    q('price').textContent = `$${(p.price || 0).toLocaleString()}`;
+    q('badge-favorite').style.display = rawStatus === 'favorite' ? 'inline-flex' : 'none';
+    q('badge-possibility').style.display = rawStatus === 'possibility' ? 'inline-flex' : 'none';
+    q('addr').textContent = displayAddr;
+    q('addr').title = displayAddr;
+    q('meta').textContent = `${p.beds || 0} Bed • ${p.baths || 0} Bath • ${(p.sqft_finished || 0).toLocaleString()} SqFt ${ppsqft ? `($${ppsqft}/sqft)` : ''}`;
+    q('count').textContent = `${idx + 1} / ${props.length}`;
+
+    // Swap the photo only after the next one has loaded, so the thumbnail never blanks out.
+    const img = q('img');
+    img.alt = displayAddr;
+    if (img.dataset.want !== imgUrl) {
+        img.dataset.want = imgUrl;
+        const show = (url) => { if (img.dataset.want === imgUrl) img.src = url; };
+        if (!img.getAttribute('src')) img.src = NO_PHOTO_IMG;
+        const pre = new Image();
+        pre.referrerPolicy = 'no-referrer';
+        pre.onload = () => show(imgUrl);
+        pre.onerror = () => show(NO_PHOTO_IMG);
+        pre.src = imgUrl;
+    }
 };
 
 window.initInlinePlaylistCarousel = async function(token, collections) {
@@ -147,7 +175,8 @@ window.initInlinePlaylistCarousel = async function(token, collections) {
 
     if (props.length > 1) {
         window.inlineCarouselState.intervalId = setInterval(() => {
-            if (!window.inlineCarouselState.isPaused) {
+            // Hold still while any modal is open: rebuilding the slide under a blurred overlay makes the page flicker.
+            if (!window.inlineCarouselState.isPaused && !document.querySelector('.modal-overlay.active')) {
                 window.stepInlineCarousel(1);
             }
         }, 3500);

@@ -2,7 +2,7 @@
  * Nycto's MLS Property Scout - View Switching & Renderers (grid/table/matrix)
  */
 import { state, elements } from './state.js';
-import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG, getStatusBadgeClass, buildCompScoreBadge } from './properties.js';
+import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG, getStatusBadgeClass, buildCompScoreBadge, buildAiAnalysisBadge } from './properties.js';
 import { renderMap, highlightMapMarker, unhighlightMapMarker, getPropertiesInView } from './map.js';
 import { showToast } from './toast.js';
 import { updateCompareButtons } from './compare.js';
@@ -478,6 +478,7 @@ export function switchView(viewName) {
                         <div class="stat-item"><span class="stat-val">$${ppsqft}</span><span class="stat-lbl">$/SqFt</span></div>
                     </div>
                     <div class="card-scores">
+                        ${buildAiAnalysisBadge(p)}
                         ${buildCompScoreBadge(p)}
                         ${dom !== null ? `<span class="score-badge" title="Days on market"><i data-lucide="clock" style="width:0.85em;height:0.85em;vertical-align:-0.1em;"></i> ${dom} ${dom === 1 ? 'day' : 'days'} on market</span>` : ''}
                         <span class="score-badge">Built: ${p.year_built || 'N/A'}</span>

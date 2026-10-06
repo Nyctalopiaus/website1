@@ -190,7 +190,10 @@ switch ($action) {
         break;
 
     case 'client_log':
-        requireScrapeToken($pdo);
+        // The bookmarklet authenticates with its scrape token. The Dibs app itself has no token,
+        // so a logged-in session is accepted as well - without that its own error reports
+        // (app.js reportClientError, js/api.js logClientEvent) were all rejected with a 401.
+        if (empty($_SESSION['user_id'])) requireScrapeToken($pdo);
         handleClientLog($pdo);
         break;
 

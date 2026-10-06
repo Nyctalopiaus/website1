@@ -1385,6 +1385,18 @@ body {
     border: 1px solid var(--border-color);
 }
 
+/* "AI analysis" pill: the listing has an AI write-up saved (see buildAiAnalysisBadge() in js/properties.js) */
+.ai-analysis-badge {
+    background-color: rgba(139, 111, 140, 0.14);
+    color: var(--accent-purple);
+    border-color: rgba(139, 111, 140, 0.4);
+}
+
+.ai-analysis-badge svg {
+    width: 0.9em;
+    height: 0.9em;
+}
+
 /* Price score from a Check Comps lookup (see getCompScore() in js/properties.js) */
 .comp-score-badge svg {
     width: 0.9em;

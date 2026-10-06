@@ -62,7 +62,13 @@ function hasUsableCachedPhoto(string $relativeUrl): bool {
 
 function requireScrapeToken(PDO $pdo): void {
     $token = trim((string)($_SERVER['HTTP_X_SCOUT_TOKEN'] ?? ''));
+    $tokenAction = substr(preg_replace('/[^A-Za-z0-9_]/', '', (string)($_GET['action'] ?? $_POST['action'] ?? '')), 0, 40);
+    $tokenContext = ['ip' => $_SERVER['REMOTE_ADDR'] ?? null];
     if ($token === '') {
+        // client_log with no token is just the Dibs app reporting an error while logged out.
+        if ($tokenAction !== 'client_log') {
+            logEventThrottled($pdo, 'system', 'warn', "Scrape request refused on '$tokenAction': no token sent", null, $tokenContext);
+        }
         http_response_code(401);
         echo json_encode(['error' => 'A valid scrape token is required.']);
         exit;
@@ -71,7 +77,15 @@ function requireScrapeToken(PDO $pdo): void {
     $stmt = $pdo->prepare('SELECT user_id FROM scrape_tokens WHERE token_hash = :token_hash AND expires_at > CURRENT_TIMESTAMP LIMIT 1');
     $stmt->execute([':token_hash' => hash('sha256', $token)]);
     $userId = $stmt->fetchColumn();
+    $stmt->closeCursor();
     if (!$userId) {
+        // A token still on file here is one that ran past its 30 days; one that isn't was
+        // replaced when a newer bookmarklet was generated (or was never valid).
+        $known = $pdo->prepare('SELECT 1 FROM scrape_tokens WHERE token_hash = :token_hash LIMIT 1');
+        $known->execute([':token_hash' => hash('sha256', $token)]);
+        $why = $known->fetchColumn() ? 'token expired - generate a new bookmarklet' : 'token not recognized (replaced by a newer bookmarklet, or never valid)';
+        $known->closeCursor();
+        logEventThrottled($pdo, 'system', 'warn', "Scrape request refused on '$tokenAction': $why", null, $tokenContext);
         http_response_code(401);
         echo json_encode(['error' => 'The scrape token is invalid or expired.']);
         exit;
@@ -114,6 +128,7 @@ function recordScrapeRunEvent(PDO $pdo, string $message, $context): void {
     $runStmt = $pdo->prepare("SELECT id, started_at FROM scrape_runs WHERE initiated_by_user_id = :user_id AND status = 'running' ORDER BY id DESC LIMIT 1");
     $runStmt->execute([':user_id' => $userId]);
     $run = $runStmt->fetch(PDO::FETCH_ASSOC);
+    $runStmt->closeCursor(); // release the read lock before the writes below (see handleSync())
 
     if ($status === 'completed' && $run && !empty($run['started_at']) && !empty($metrics['walkComplete'])) {
         try {
@@ -166,6 +181,7 @@ function markListingsMissingFromPortal(PDO $pdo, string $runStartedAt, array $me
         $u = $pdo->prepare('SELECT id FROM users WHERE username = :un LIMIT 1');
         $u->execute([':un' => $syncUser]);
         $targetUserId = (int)($u->fetchColumn() ?: 0);
+        $u->closeCursor();
     }
     if ($targetUserId <= 0) $targetUserId = $tokenUserId;
 
@@ -176,6 +192,7 @@ function markListingsMissingFromPortal(PDO $pdo, string $runStartedAt, array $me
         WHERE s.user_id = :uid AND s.search_key = :k AND $onMarket");
     $countStmt->execute($params);
     $summary['checked'] = (int)$countStmt->fetchColumn();
+    $countStmt->closeCursor();
 
     $missStmt = $pdo->prepare("SELECT p.mls_id, p.address, p.status FROM property_search_sightings s JOIN properties p ON p.mls_id = s.mls_id
         WHERE s.user_id = :uid AND s.search_key = :k AND $onMarket
@@ -278,13 +295,17 @@ function repairUncachedMatrixPhotos(PDO $pdo): void {
             ':mls_id' => $mlsId
         ]);
     }
+    // This clears the "fully scraped" stamp, so the next deep scrape re-walks these galleries.
+    logEvent($pdo, 'system', 'warn', 'Photo repair: ' . count($rows) . ' listing(s) still pointed at Matrix photo URLs; rebuilt from the files on disk and queued for re-scrape', null, ['mls_ids' => array_slice(array_map('strval', $rows), 0, 100)]);
 }
 
 function repairInvalidPrimaryPreviews(PDO $pdo): void {
-    $listings = $pdo->query("SELECT mls_id, main_image_url, gallery_images FROM properties WHERE main_image_url LIKE 'media/%'");
+    // fetchAll() so no read cursor is open while the UPDATEs below run (see handleSync()).
+    $listings = $pdo->query("SELECT mls_id, main_image_url, gallery_images FROM properties WHERE main_image_url LIKE 'media/%'")->fetchAll(PDO::FETCH_ASSOC);
     $update = $pdo->prepare("UPDATE properties SET main_image_url = :url, updated_at = CURRENT_TIMESTAMP WHERE mls_id = :mls_id");
 
-    while ($listing = $listings->fetch(PDO::FETCH_ASSOC)) {
+    $repaired = [];
+    foreach ($listings as $listing) {
         if (hasUsableCachedPhoto((string)$listing['main_image_url'])) continue;
 
         $gallery = json_decode($listing['gallery_images'] ?? '[]', true);
@@ -292,9 +313,13 @@ function repairInvalidPrimaryPreviews(PDO $pdo): void {
         foreach ($gallery as $photoUrl) {
             if (is_string($photoUrl) && hasUsableCachedPhoto($photoUrl)) {
                 $update->execute([':url' => $photoUrl, ':mls_id' => $listing['mls_id']]);
+                $repaired[] = (string)$listing['mls_id'];
                 break;
             }
         }
+    }
+    if ($repaired) {
+        logEvent($pdo, 'system', 'info', 'Photo repair: main photo was missing or unusable on ' . count($repaired) . ' listing(s); switched to the next usable gallery photo', null, ['mls_ids' => array_slice($repaired, 0, 100)]);
     }
 }
 
@@ -821,6 +846,7 @@ function syncMlsUserState(PDO $pdo, int $userId, string $mlsId, array $item): vo
     $stmt = $pdo->prepare('SELECT favorite, hidden, possibility, user_notes, mls_status_baseline, mls_note_outbox FROM user_metadata WHERE user_id = :u AND mls_id = :m');
     $stmt->execute([':u' => $userId, ':m' => $mlsId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+    $stmt->closeCursor(); // release the read lock before the writes below (see handleSync())
 
     $set = [];
     $params = [':u' => $userId, ':m' => $mlsId];
@@ -929,11 +955,16 @@ function handleSync(PDO $pdo) {
     }
 
     $syncedCount = 0;
-    $upsertedMlsIds = [];   // mls_id => true for every listing whose photo fields the upsert below just overwrote
+    $upsertedMlsIds = [];   // mls_id => true for every listing the upsert below just wrote
+    $fullScrapeMlsIds = []; // mls_id => true for deep-scrape items; stamped as fully scraped after the photo phase
     $skippedCount = 0;
 
     try {
 
+    // On conflict, main_image_url/gallery_images keep values that already point at local media/
+    // copies. The photo phase further down rewrites them once it has cached this payload's
+    // photos; replacing them here with raw Matrix URLs meant a sync that died before that phase
+    // left the listing looking un-scraped, so the next deep scrape re-walked its whole gallery.
     $stmtProp = $pdo->prepare("
         INSERT INTO properties (
             mls_id, address, city, state, zip, price, status, beds, baths, levels,
@@ -973,8 +1004,8 @@ function handleSync(PDO $pdo) {
             tax_year = excluded.tax_year,
             list_date = excluded.list_date,
             mls_url = excluded.mls_url,
-            main_image_url = excluded.main_image_url,
-            gallery_images = excluded.gallery_images,
+            main_image_url = CASE WHEN properties.main_image_url LIKE 'media/%' THEN properties.main_image_url ELSE excluded.main_image_url END,
+            gallery_images = CASE WHEN properties.main_image_url LIKE 'media/%' THEN properties.gallery_images ELSE excluded.gallery_images END,
             raw_mls_json = excluded.raw_mls_json,
             latitude = COALESCE(excluded.latitude, properties.latitude),
             longitude = COALESCE(excluded.longitude, properties.longitude),
@@ -991,6 +1022,11 @@ function handleSync(PDO $pdo) {
         $stmtFindUser = $pdo->prepare("SELECT id FROM users WHERE username = :un");
         $stmtFindUser->execute([':un' => $syncUsername]);
         $targetUserId = $stmtFindUser->fetchColumn() ?: null;
+        // PDO keeps a SELECT open after a single fetch, and an open SELECT holds a SQLite read
+        // lock. If another request (e.g. a bookmarklet client_log) starts writing meanwhile, this
+        // request's next write fails instantly with "database is locked" instead of waiting.
+        // Close one-row lookups before writing - same for the other closeCursor() calls here.
+        $stmtFindUser->closeCursor();
     }
     if (!$targetUserId && !empty($data['target_user_id'])) {
         $targetUserId = (int)$data['target_user_id'];
@@ -1034,6 +1070,7 @@ function handleSync(PDO $pdo) {
         $existingPropertyStmt = $pdo->prepare('SELECT status, price, raw_mls_json FROM properties WHERE mls_id = :mls_id');
         $existingPropertyStmt->execute([':mls_id' => $mlsId]);
         $existingPropertyRow = $existingPropertyStmt->fetch(PDO::FETCH_ASSOC);
+        $existingPropertyStmt->closeCursor();
         $isNewProperty = $existingPropertyRow === false;
         $existingStatus = $isNewProperty ? false : $existingPropertyRow['status'];
         $existingPrice = $isNewProperty ? null : (float)$existingPropertyRow['price'];
@@ -1088,11 +1125,14 @@ function handleSync(PDO $pdo) {
                 ':raw_mls_json' => json_encode($sharedMlsData, JSON_INVALID_UTF8_SUBSTITUTE),
                 ':latitude' => (isset($item['latitude']) && (float)$item['latitude'] >= 24 && (float)$item['latitude'] <= 50) ? (float)$item['latitude'] : null,
                 ':longitude' => (isset($item['longitude']) && (float)$item['longitude'] >= -125 && (float)$item['longitude'] <= -65) ? (float)$item['longitude'] : null,
-                ':full_scrape_completed_at' => !empty($item['full_scrape']) ? date('Y-m-d H:i:s') : null,
+                // Stamped after the photo phase instead (see $fullScrapeMlsIds), so a sync that
+                // fails before the photos are cached never marks the listing as fully scraped.
+                ':full_scrape_completed_at' => null,
                 ':original_price' => $incomingPrice
             ]);
             $syncedCount++;
             $upsertedMlsIds[$mlsId] = true;
+            if (!empty($item['full_scrape'])) $fullScrapeMlsIds[$mlsId] = true;
             if ($stmtSighting) {
                 $stmtSighting->execute([':user_id' => $targetUserId, ':search_key' => $searchKey, ':mls_id' => $mlsId, ':search_name' => $searchName]);
             }
@@ -1327,6 +1367,14 @@ function handleSync(PDO $pdo) {
         }
     }
 
+    // Deep-scrape items whose photos all cached cleanly are now fully scraped.
+    if (!empty($fullScrapeMlsIds)) {
+        $stmtStamp = $pdo->prepare('UPDATE properties SET full_scrape_completed_at = CURRENT_TIMESTAMP WHERE mls_id = :mls_id');
+        foreach (array_keys($fullScrapeMlsIds) as $fullMlsId) {
+            if (!isset($failuresByMls[(string)$fullMlsId])) $stmtStamp->execute([':mls_id' => (string)$fullMlsId]);
+        }
+    }
+
         $syncUser = getScrapeTokenUsername($pdo) ?? ($_SESSION['username'] ?? null);
         logEvent($pdo, 'scrape', 'info', "Scrape sync batch complete: {$syncedCount} property listing(s) ingested from Matrix", null, ['total_items' => count($properties)], $syncUser);
         logEvent($pdo, 'sync', 'info', "Sync batch complete: {$syncedCount} synced, {$skippedCount} skipped", null, ['total_items' => count($properties)], $syncUser);
@@ -1335,6 +1383,9 @@ function handleSync(PDO $pdo) {
     } catch (Throwable $t) {
         http_response_code(500);
         $syncUser = getScrapeTokenUsername($pdo) ?? ($_SESSION['username'] ?? null);
+        // error_log() too: when the failure is a database lock, the event_log write below fails
+        // the same way and logEvent() swallows it, leaving no trace of what went wrong.
+        error_log('Dibs handleSync failed: ' . $t->getMessage() . ' at ' . $t->getFile() . ':' . $t->getLine());
         logEvent($pdo, 'sync', 'error', 'handleSync failed: ' . $t->getMessage(), null, ['file' => $t->getFile(), 'line' => $t->getLine()], $syncUser);
         echo json_encode(['success' => false, 'error' => clientErrorMessage($t)]);
     }
@@ -1352,7 +1403,8 @@ function handleScrapeStatus(PDO $pdo) {
     try {
         $stmt = $pdo->query("SELECT mls_id, main_image_url FROM properties WHERE full_scrape_completed_at IS NOT NULL");
         $completed = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        // fetchAll() so the read lock isn't held while every listing's photo file is checked.
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $main = (string)($row['main_image_url'] ?? '');
             if (hasUsableCachedPhoto($main) && !isThumbnailSizedPhoto($main)) {
                 $completed[] = $row['mls_id'];
@@ -1641,8 +1693,17 @@ function handleDeleteProperty(PDO $pdo) {
         exit;
     }
 
+    $addrStmt = $pdo->prepare("SELECT address, city, status FROM properties WHERE mls_id = :mls_id");
+    $addrStmt->execute([':mls_id' => $mlsId]);
+    $doomed = $addrStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    $addrStmt->closeCursor();
+
     $pdo->prepare("DELETE FROM properties WHERE mls_id = :mls_id")->execute([':mls_id' => $mlsId]);
     $pdo->prepare("DELETE FROM user_metadata WHERE mls_id = :mls_id")->execute([':mls_id' => $mlsId]);
+
+    if ($doomed) {
+        logEvent($pdo, 'system', 'warn', 'Listing deleted: ' . (trim((string)$doomed['address']) ?: "MLS #$mlsId"), $mlsId, ['city' => $doomed['city'], 'status' => $doomed['status']]);
+    }
 
     echo json_encode(['success' => true, 'deleted_mls_id' => $mlsId]);
 }
@@ -1703,6 +1764,8 @@ function handleGeocodeFallback(PDO $pdo) {
         CURLOPT_HTTPHEADER => ['Accept: application/json']
     ]);
     $raw = curl_exec($ch);
+    $geocodeHttp = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $geocodeCurlError = curl_error($ch);
     if (PHP_VERSION_ID < 80000) @curl_close($ch);
 
     $body = is_string($raw) ? json_decode($raw, true) : null;
@@ -1711,6 +1774,12 @@ function handleGeocodeFallback(PDO $pdo) {
     $lng = is_array($coords) ? (float)($coords['x'] ?? 0) : 0.0;
 
     if ($lat < 24 || $lat > 50 || $lng < -125 || $lng > -65) {
+        // Once a day per listing at most: the map asks again every time it loads.
+        if (!is_array($body)) {
+            logEventThrottled($pdo, 'system', 'warn', 'Geocode fallback failed: no usable answer from the Census geocoder', $mlsId, ['address' => $address, 'http' => $geocodeHttp, 'curl_error' => $geocodeCurlError], 1440);
+        } else {
+            logEventThrottled($pdo, 'system', 'info', "Geocode fallback found no match for MLS #$mlsId", $mlsId, ['address' => $address], 1440);
+        }
         echo json_encode(['success' => true, 'found' => false, 'mls_id' => $mlsId]);
         return;
     }

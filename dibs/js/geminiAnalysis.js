@@ -22,6 +22,8 @@ const SESSION_KEY_STORAGE = 'certforge_ai_gemini_session_key_v1'; // sessionStor
 const LEGACY_KEY_STORAGE = 'certforge_ai_gemini_key_v1';          // localStorage: old unencrypted key (read only)
 const MODEL_STORAGE = 'dibs_ai_gemini_model_v1';                  // Dibs-only: certforge's quiz helpers want a cheaper model than this does
 const VAULT_PBKDF2_ITERATIONS = 200000;                           // certforge's AI_VAULT_PBKDF2_ITERATIONS
+let jsonSeedBump = 0; // raised each time a JSON reply could not be read; see generateGeminiJson()
+const GEMINI_JSON_SEED = 20261005; // fixed, so re-running the same ranking prompt tends to give the same answer
 export const GEMINI_DEFAULT_MODEL = 'gemini-3.8-flash';
 export const GEMINI_MODEL_SUGGESTIONS = ['gemini-3.8-flash', 'gemini-3.1-pro-preview', 'gemini-3.6-flash', 'gemini-3.5-flash-lite'];
 export const GEMINI_MIN_PIN_LENGTH = 4;
@@ -409,7 +411,7 @@ async function callGemini(apiKey, model, systemPrompt, userPrompt, useSearch, ex
         seen.add(uri);
         sources.push({ uri, title: String(chunk.web.title || 'Source').replace(/[\[\]]/g, '') });
     });
-    return { text, sources, cutOff: candidate?.finishReason === 'MAX_TOKENS' };
+    return { text, sources, cutOff: candidate?.finishReason === 'MAX_TOKENS', finishReason: candidate?.finishReason || '' };
 }
 
 async function fetchActivity(mlsId) {
@@ -533,19 +535,57 @@ export function buildRankingFactSheet(p, analysisBudget = 8000) {
     ].join('\n');
 }
 
-/** One no-search Gemini call that must answer with a single JSON object. Throws with a readable message. */
+/**
+ * Reads the first complete JSON object out of a model reply. Tolerates what Gemini gets wrong in practice:
+ * code fences, chatter before or after, a second copy of the object, raw line breaks inside strings and
+ * trailing commas. Returns null when there is no complete object (for example the reply stopped part-way).
+ */
+function parseJsonObject(raw) {
+    const text = String(raw || '').replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+    const start = text.indexOf('{');
+    if (start < 0) return null;
+    let out = '', depth = 0, inString = false, escaped = false;
+    for (let i = start; i < text.length; i++) {
+        const ch = text[i];
+        if (inString) {
+            if (escaped) escaped = false;
+            else if (ch === '\\') escaped = true;
+            else if (ch === '"') inString = false;
+            out += ch === '\n' ? '\\n' : ch === '\r' ? '\\r' : ch === '\t' ? '\\t' : ch;
+            continue;
+        }
+        out += ch;
+        if (ch === '"') inString = true;
+        else if (ch === '{' || ch === '[') depth++;
+        else if ((ch === '}' || ch === ']') && --depth === 0) break;
+    }
+    if (depth !== 0) return null;
+    for (const candidate of [out, out.replace(/,(\s*[}\]])/g, '$1')]) {
+        try {
+            const data = JSON.parse(candidate);
+            if (data && typeof data === 'object') return data;
+        } catch (e) { /* try the next repair */ }
+    }
+    return null;
+}
+
+/**
+ * One no-search Gemini request that must answer with a single JSON object. Throws with a readable message.
+ * The seed is fixed so the same prompt tends to give the same answer. An unreadable reply moves to the next
+ * seed (and stays there for this page load), because repeating the same seed would repeat the same bad reply;
+ * it is retried once here before giving up.
+ */
 export async function generateGeminiJson(systemPrompt, userPrompt) {
     const apiKey = getUsableGeminiKey();
     const model = getGeminiModel();
     if (!apiKey) throw new Error('Unlock or add your Gemini API key first.');
-    const result = await callGemini(apiKey, model, systemPrompt, userPrompt, false, { responseMimeType: 'application/json', temperature: 0.3 });
-    if (result.cutOff) throw new Error('Gemini ran out of room before it finished. Narrow the filters to fewer homes and try again.');
-    const text = result.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    try {
-        return { data: JSON.parse(start >= 0 && end > start ? text.slice(start, end + 1) : text), model };
-    } catch (e) {
-        throw new Error('Gemini sent back a response Dibs could not read. Try again.');
+    for (let attempt = 0; attempt < 2; attempt++) {
+        const result = await callGemini(apiKey, model, systemPrompt, userPrompt, false, { responseMimeType: 'application/json', temperature: 0.3, seed: GEMINI_JSON_SEED + jsonSeedBump });
+        if (result.cutOff) throw new Error('Gemini ran out of room before it finished. Narrow the filters to fewer homes and try again.');
+        const data = parseJsonObject(result.text);
+        if (data) return { data, model };
+        jsonSeedBump++;
+        console.warn(`[Dibs] Gemini reply was not readable JSON (attempt ${attempt + 1}, finishReason ${result.finishReason || 'none'}, ${result.text.length} chars). Start and end of the reply:`, result.text.slice(0, 1500), '...', result.text.slice(-1500));
     }
+    throw new Error('Gemini sent back a response Dibs could not read. Try again.');
 }

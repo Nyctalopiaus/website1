@@ -6,11 +6,14 @@
  * public remarks, the comps price score, the buyer's notes, tags and review status, and the AI
  * Analysis saved on the card. There is no web search in this call; the per-home lookups already
  * live in those saved analyses. Uses the same PIN-locked Gemini key as the card analysis, and
- * only ever runs from the button. The result is kept in memory until the page is reloaded.
+ * only ever runs from the button. Finished rankings are kept in this browser's local storage (the
+ * last few, per signed-in user), so the same homes and priorities show the saved ranking again,
+ * even after a reload, until "rank again" is used.
  */
 import { state } from './state.js';
 import { cleanDisplayAddress, escapeHtml, getCompScore, NO_PHOTO_IMG } from './properties.js';
 import { showToast } from './toast.js';
+import { logClientEvent } from './api.js';
 import {
     buildRankingFactSheet, generateGeminiJson, getGeminiKeyState, getGeminiModel, unlockGeminiVault
 } from './geminiAnalysis.js';
@@ -18,6 +21,8 @@ import {
 const MAX_HOMES = 30;             // one request; past this the answer gets shallow and slow
 const PROMPT_ANALYSIS_CHARS = 240000; // shared budget for the saved AI analyses across all homes
 const PRIORITIES_STORAGE = 'dibs_ai_rank_priorities_v1';
+const RESULTS_STORAGE = 'dibs_ai_rank_results_v1';
+const MAX_SAVED_RESULTS = 5;      // most recent first; the oldest drops off
 const VERDICTS = ['Top pick', 'Strong contender', 'Worth a look', 'Long shot', 'Pass'];
 
 let view = 'idle';      // idle | unlock | nokey | toomany | loading | result | error
@@ -30,7 +35,10 @@ let timer = null;
 const esc = v => escapeHtml(String(v ?? ''));
 const num = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 const money = v => num(v) ? '$' + Math.round(num(v)).toLocaleString('en-US') : '';
-const text = (v, max = 600) => String(v ?? '').replace(/\*\*|`/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
+// Gemini sometimes fills a "list of sentences" field with objects; flatten those to their text, not "[object Object]".
+const flat = v => v == null ? '' : Array.isArray(v) ? v.map(flat).filter(Boolean).join(', ')
+    : typeof v === 'object' ? Object.values(v).map(flat).filter(Boolean).join(': ') : String(v);
+const text = (v, max = 600) => flat(v).replace(/\*\*|`/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
 const list = (v, max) => (Array.isArray(v) ? v : []).map(item => text(item, 300)).filter(Boolean).slice(0, max);
 
 function getPriorities() {
@@ -66,6 +74,7 @@ Rules:
 - Work only from the fact sheets. You cannot search the web in this run. Never state a price, date, fee or fact that is not in a fact sheet. If something important is missing for a home (no comps checked, no HOA amount, no saved analysis), say so in data_gaps and let it lower your confidence rather than guessing.
 - The score is 0 to 100 for how good a purchase the home is for this buyer at its current list price. Spread the scores so the gaps between homes mean something.
 - Plain text only inside every string: no Markdown, no bullet characters, no line breaks.
+- Every array holds plain strings only: one complete sentence or point per item, never a nested object or array.
 
 Answer with one JSON object and nothing else, in exactly this shape:
 {
@@ -99,7 +108,9 @@ function buildUserPrompt(homes, priorities) {
         priorities || '(none given; infer what matters from the notes, tags and review status on each home)',
         ''
     ];
-    homes.forEach((p, index) => {
+    // Fixed order (by MLS id), so the grid's current sort never changes the prompt, and with it the answer.
+    const ordered = homes.slice().sort((a, b) => String(a.mls_id).localeCompare(String(b.mls_id), 'en', { numeric: true }));
+    ordered.forEach((p, index) => {
         parts.push(`# Home ${index + 1} of ${homes.length} (mls_id: ${p.mls_id})`, buildRankingFactSheet(p, budget), '');
     });
     parts.push(`Rank all ${homes.length} homes now.`);
@@ -140,6 +151,48 @@ function normalizeResult(data, homes) {
     };
 }
 
+// ---- Saved rankings (local storage) -------------------------------------------------------
+
+function readSaved() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(RESULTS_STORAGE) || '[]');
+        return Array.isArray(saved) ? saved : [];
+    } catch (e) { return []; }
+}
+
+/** Stores a finished ranking by home id (not the home objects), replacing any earlier one for the same homes and priorities. */
+function saveResult(r) {
+    const user = String(state.user || '');
+    const entry = {
+        user, signature: r.signature, model: r.model, priorities: r.priorities, filteredTotal: r.filteredTotal, at: r.at.toISOString(),
+        summary: r.summary, tradeoffs: r.tradeoffs, gaps: r.gaps,
+        rows: r.rows.map(({ p, ...row }) => ({ ...row, id: String(p.mls_id) }))
+    };
+    let saved = [entry, ...readSaved().filter(e => !(e.user === user && e.signature === r.signature))].slice(0, MAX_SAVED_RESULTS);
+    while (saved.length) {
+        try { localStorage.setItem(RESULTS_STORAGE, JSON.stringify(saved)); return; }
+        catch (e) { saved = saved.slice(0, -1); } // storage full: let go of the oldest and try again
+    }
+}
+
+/** The saved ranking for exactly these homes and priorities, rebuilt around the current home objects, or null. */
+function loadResult(homes, priorities) {
+    const signature = signatureOf(homes, priorities);
+    const user = String(state.user || '');
+    const entry = readSaved().find(e => e && e.user === user && e.signature === signature);
+    if (!entry || !Array.isArray(entry.rows)) return null;
+    const byId = new Map(homes.map(p => [String(p.mls_id), p]));
+    const rows = entry.rows.filter(row => byId.has(String(row.id))).map(({ id, ...row }) => ({ ...row, p: byId.get(String(id)) }));
+    const at = new Date(entry.at);
+    if (!rows.length || isNaN(at.getTime())) return null;
+    const ranked = new Set(rows.map(row => String(row.p.mls_id)));
+    return {
+        signature, homes, model: entry.model, priorities, filteredTotal: num(entry.filteredTotal) || homes.length, at,
+        summary: entry.summary || '', rows, skipped: homes.filter(p => !ranked.has(String(p.mls_id))),
+        tradeoffs: Array.isArray(entry.tradeoffs) ? entry.tradeoffs : [], gaps: Array.isArray(entry.gaps) ? entry.gaps : []
+    };
+}
+
 // ---- Run ----------------------------------------------------------------------------------
 
 function isOpen() {
@@ -163,11 +216,20 @@ async function run(homes) {
     try {
         const { data, model } = await generateGeminiJson(SYSTEM_PROMPT, buildUserPrompt(homes, priorities));
         last = { signature, homes, model, priorities, filteredTotal, at: new Date(), ...normalizeResult(data, homes) };
+        saveResult(last);
         view = 'result';
         if (!isOpen()) showToast('AI ranking is ready. Open AI Ranking to see it.', 'success');
     } catch (err) {
         errorMessage = err?.message || 'The ranking could not be completed.';
         view = 'error';
+        // The modal shows this once and then it's gone; keep a copy in the event log.
+        logClientEvent('error', 'AI ranking failed: ' + errorMessage, {
+            homes: homes.length,
+            seconds: Math.round((Date.now() - running.startedAt) / 1000),
+            model: getGeminiModel(),
+            http_status: err?.status ?? null,
+            has_priorities: !!priorities
+        });
         if (!isOpen()) showToast('AI ranking failed: ' + errorMessage, 'error');
     } finally {
         running = null;
@@ -189,7 +251,11 @@ function start(force = false) {
         return;
     }
     pending = filtered.slice(0, MAX_HOMES);
-    if (!force && last && last.signature === signatureOf(pending, getPriorities())) { view = 'result'; render(); return; }
+    if (!force) {
+        const priorities = getPriorities();
+        const saved = last && last.signature === signatureOf(pending, priorities) ? last : loadResult(pending, priorities);
+        if (saved) { last = saved; view = 'result'; render(); return; }
+    }
 
     const keyState = getGeminiKeyState();
     if (keyState === 'none') view = 'nokey';

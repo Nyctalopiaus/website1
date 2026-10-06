@@ -17,8 +17,9 @@
  * markup; links are limited to http(s).
  */
 import { CONFIG, state } from './state.js';
-import { apiFetch } from './api.js';
+import { apiFetch, logClientEvent } from './api.js';
 import { showToast } from './toast.js';
+import { buildAiAnalysisBadge } from './properties.js';
 import {
     generatePropertyAnalysis, getGeminiKeyState, getGeminiModel, setGeminiModel, unlockGeminiVault, saveGeminiVault,
     GEMINI_DEFAULT_MODEL, GEMINI_MIN_PIN_LENGTH
@@ -459,6 +460,17 @@ export function buildAiAnalysisSectionHtml(p) {
     return `<div id="detail-ai-analysis" data-mls="${esc(String(p.mls_id))}">${sectionInnerHtml(p)}</div>`;
 }
 
+/** Adds or removes the "AI analysis" pill on this listing's card behind the modal, without a full re-render. */
+function syncCardAiBadge(p) {
+    document.querySelectorAll('.property-card .card-scores').forEach(scores => {
+        const card = scores.closest('.property-card');
+        if (!card || card.dataset.mls !== String(p.mls_id)) return;
+        scores.querySelectorAll('.ai-analysis-badge').forEach(el => el.remove());
+        scores.insertAdjacentHTML('afterbegin', buildAiAnalysisBadge(p));
+    });
+    if (window.lucide) window.lucide.createIcons();
+}
+
 function refreshSection(p) {
     const section = document.getElementById('detail-ai-analysis');
     if (!section || section.dataset.mls !== String(p.mls_id)) return;
@@ -521,6 +533,7 @@ window.saveAiAnalysis = function(mlsId) {
     }).then(data => {
         if (!data || data.success === false || data.error) throw new Error((data && data.error) || 'Unable to save analysis');
         p.ai_analysis = text;
+        syncCardAiBadge(p);
         editingMlsId = null;
         refreshSection(p);
         showToast(text ? 'AI analysis saved' : 'AI analysis cleared', 'success');
@@ -585,6 +598,7 @@ window.generateAiAnalysis = async function(mlsId, skipConfirm = false) {
     generatingMlsId = p.mls_id;
     geminiPanel = null;
     refreshSection(p);
+    const startedAt = Date.now();
     try {
         const markdown = (await generatePropertyAnalysis(p)).trim();
         if (isAiAnalysisTooLong(markdown)) throw new Error('Gemini wrote more than can be saved (200 KB). Try again.');
@@ -595,9 +609,16 @@ window.generateAiAnalysis = async function(mlsId, skipConfirm = false) {
         });
         if (!data || data.success === false || data.error) throw new Error((data && data.error) || 'The analysis was written but could not be saved.');
         p.ai_analysis = markdown;
+        syncCardAiBadge(p);
         showToast('AI analysis saved', 'success');
     } catch (error) {
         showToast(error.message || 'Gemini could not write the analysis', 'error');
+        // The toast is gone in a few seconds; keep a copy in the event log, tagged with the listing.
+        logClientEvent('error', 'AI analysis failed: ' + (error.message || 'Gemini could not write the analysis'), {
+            seconds: Math.round((Date.now() - startedAt) / 1000),
+            model: getGeminiModel(),
+            http_status: error.status ?? null
+        }, p.mls_id);
     } finally {
         generatingMlsId = null;
         refreshSection(p);

@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
     <!-- Leaflet CSS for Interactive Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="stylesheet" href="styles.css?v=2.9">
+    <link rel="stylesheet" href="styles.css?v=3.0">
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Lucide Icons (replaces emoji glyphs in the header/KPI chrome) -->
@@ -1029,10 +1029,40 @@
                 <select id="event-log-timezone" class="select-input" style="width: auto; height: 36px; padding: 0 0.85rem;">
                     <option value="">My local time</option>
                 </select>
+                <label class="filter-label" for="event-log-per-page" style="margin: 0;">Per Page</label>
+                <select id="event-log-per-page" class="select-input" style="width: auto; height: 36px; padding: 0 0.85rem;">
+                    <option value="50">50</option>
+                    <option value="100" selected>100</option>
+                    <option value="200">200</option>
+                    <option value="500">500</option>
+                </select>
                 <button class="btn btn-secondary" id="btn-refresh-event-log" style="height: 36px; padding: 0 0.9rem; font-size: 0.85rem;"><i data-lucide="refresh-cw"></i> Refresh</button>
             </div>
 
-            <div class="user-mgmt-table-wrapper">
+            <div id="event-log-filters" style="display: flex; gap: 0.75rem; align-items: center; margin: -0.5rem 0 1.25rem; flex-wrap: wrap; background: var(--bg-card); padding: 0.75rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <label class="filter-label" for="event-log-from" style="margin: 0;">From</label>
+                <input type="datetime-local" id="event-log-from" class="input-text" style="width: auto; height: 36px; padding: 0 0.85rem;">
+                <label class="filter-label" for="event-log-to" style="margin: 0;">To</label>
+                <input type="datetime-local" id="event-log-to" class="input-text" style="width: auto; height: 36px; padding: 0 0.85rem;">
+                <label class="filter-label" for="event-log-level" style="margin: 0;">Level</label>
+                <select id="event-log-level" class="select-input" style="width: auto; height: 36px; padding: 0 0.85rem;">
+                    <option value="">All Levels</option>
+                    <option value="info">Info</option>
+                    <option value="warn">Warning</option>
+                    <option value="error">Error</option>
+                    <option value="success">Login Success</option>
+                    <option value="failed">Login Failed</option>
+                </select>
+                <label class="filter-label" for="event-log-user" style="margin: 0;">User</label>
+                <input type="text" id="event-log-user" class="input-text" list="event-log-user-list" placeholder="Any user" autocomplete="off" style="width: 150px; height: 36px; padding: 0 0.85rem;">
+                <datalist id="event-log-user-list"></datalist>
+                <label class="filter-label" for="event-log-mls" style="margin: 0;">MLS ID</label>
+                <input type="text" inputmode="numeric" id="event-log-mls" class="input-text" placeholder="Any listing" autocomplete="off" style="width: 130px; height: 36px; padding: 0 0.85rem;">
+                <button class="btn btn-secondary" id="btn-clear-event-log-filters" style="height: 36px; padding: 0 0.9rem; font-size: 0.85rem;"><i data-lucide="filter-x"></i> Clear Filters</button>
+            </div>
+
+            <div class="event-log-pager" data-pos="top" style="display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end; flex-wrap: wrap; margin-bottom: 0.85rem; font-size: 0.85rem; color: var(--text-muted);"></div>
+            <div class="user-mgmt-table-wrapper" style="margin-top: 0;">
                 <table class="user-mgmt-table">
                     <thead>
                         <tr>
@@ -1050,6 +1080,7 @@
                     </tbody>
                 </table>
             </div>
+            <div class="event-log-pager" data-pos="bottom" style="display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end; flex-wrap: wrap; margin-top: 0.85rem; font-size: 0.85rem; color: var(--text-muted);"></div>
         </div>
     </div>
 
@@ -1765,6 +1796,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=3.4"></script>
+    <script type="module" src="app.js?v=3.7"></script>
 </body>
 </html>
