@@ -42,6 +42,7 @@ if (empty($argvList) && file_exists('/proc/self/cmdline')) {
 
 $cliSync = false;
 $targetMarket = null;
+$onlyIfFailed = false;
 
 foreach ($argvList as $arg) {
     if (strpos($arg, 'cli-sync') !== false) {
@@ -50,9 +51,21 @@ foreach ($argvList as $arg) {
     if (preg_match('/(?:--)?market=([a-z0-9_-]+)/i', $arg, $matches)) {
         $targetMarket = strtolower(trim($matches[1]));
     }
+    if ($arg === '--only-if-failed') {
+        $onlyIfFailed = true;
+    }
 }
 
 if ($cliSync || ($isCli && empty($_GET['action']) && !isset($_GET['sync']))) {
+    // Catch-up mode (06:30 cPanel cron loop over all markets): only re-run a market whose last nightly
+    // sync didn't finish as SUCCESS, so a healthy night costs nothing.
+    if ($isCli && $onlyIfFailed && !marketSyncNeedsRetry($targetMarket)) {
+        echo '[' . date('Y-m-d H:i:s T') . '] [CATCH-UP] ' . ($targetMarket ?? 'all') . " last sync was SUCCESS; nothing to retry.\n";
+        exit(0);
+    }
+    if ($onlyIfFailed) {
+        echo '[' . date('Y-m-d H:i:s T') . '] [CATCH-UP] ' . ($targetMarket ?? 'all') . " last sync did not succeed; re-running now.\n";
+    }
     handleSyncRequest(true, $targetMarket);
     exit;
 }

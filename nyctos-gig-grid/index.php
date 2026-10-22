@@ -333,7 +333,9 @@ foreach ($eventsByMonth as $mKey => $mEvents) {
 $uniqueArtistCount = count($allArtistsSet);
 $uniqueVenueCount = count($allVenuesSet);
 
-$lastSyncFile = __DIR__ . '/last_sync.txt';
+// persistLastSyncTimestamp() (services/SyncService.php) writes cache/last_sync.txt; reading the
+// site root instead left this showing "Never" on prod.
+$lastSyncFile = __DIR__ . '/cache/last_sync.txt';
 $lastSyncText = 'Never';
 if (file_exists($lastSyncFile)) {
     $lastSyncTime = trim((string) file_get_contents($lastSyncFile));

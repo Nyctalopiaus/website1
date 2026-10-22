@@ -187,6 +187,46 @@ function persistLastSyncTimestamp() {
     }
 }
 
+function marketSyncStatusPath(?string $market): string {
+    $key = preg_replace('/[^a-z0-9_-]/', '', strtolower((string)($market ?? '')));
+    return dirname(__DIR__) . '/cache/sync_status/' . ($key !== '' ? $key : 'all') . '.json';
+}
+
+/**
+ * Records the outcome of a market's sync run (SUCCESS/DEGRADED/FAILED) so the catch-up cron
+ * (aggregator.php --only-if-failed, run for every market by the 06:30 cron) can re-run just the
+ * markets whose nightly pull didn't come through.
+ */
+function writeMarketSyncStatus(?string $market, string $status, int $ticketmasterEvents): void {
+    $path = marketSyncStatusPath($market);
+    if (!is_dir(dirname($path))) {
+        @mkdir(dirname($path), 0755, true);
+    }
+    $payload = json_encode([
+        'market' => $market ?? 'all',
+        'status' => $status,
+        'ticketmaster_events' => $ticketmasterEvents,
+        'finished_at' => date('c'),
+    ]);
+    if (@file_put_contents($path, $payload, LOCK_EX) === false) {
+        error_log('[SYNC STATUS] Failed to write ' . $path);
+    }
+}
+
+/**
+ * True when the market needs a catch-up run: its last run wasn't a clean SUCCESS, or there is
+ * no successful run within $maxAgeHours (e.g. the nightly cron never fired or died mid-run).
+ */
+function marketSyncNeedsRetry(?string $market, int $maxAgeHours = 20): bool {
+    $raw = @file_get_contents(marketSyncStatusPath($market));
+    $data = $raw !== false ? json_decode($raw, true) : null;
+    if (!is_array($data) || ($data['status'] ?? '') !== 'SUCCESS') {
+        return true;
+    }
+    $finishedTs = strtotime((string)($data['finished_at'] ?? ''));
+    return $finishedTs === false || $finishedTs < time() - ($maxAgeHours * 3600);
+}
+
 function backfillMissingSetlists(EventAggregator $aggregator) {
     $setlistFetched = 0;
 
@@ -499,9 +539,10 @@ function mergeSameTicketingIdEvents(PDO $db, EventAggregator $aggregator, ?calla
             $setSql[] = 'sold_out_flag = :sold_out_flag';
             $setSql[] = 'low_ticket_flag = :low_ticket_flag';
 
-            $updates[':id'] = $canonicalId;
-            $db->prepare('UPDATE events SET ' . implode(', ', $setSql) . ' WHERE event_id = :id')->execute($updates);
-
+            // Losers are removed *before* the survivor's UPDATE below: the merged artist_name is
+            // frequently identical to a loser's own name (e.g. "Morrissey" + "Morrissey & X"
+            // merges to "Morrissey & X"), and updating first collided with that soon-to-be-deleted
+            // loser row on idx_events_dedupe_backstop, so the same group was skipped every night.
             foreach ($groupRows as $loser) {
                 $loserId = $loser['event_id'];
 
@@ -524,6 +565,9 @@ function mergeSameTicketingIdEvents(PDO $db, EventAggregator $aggregator, ?calla
                 $db->prepare('DELETE FROM events WHERE event_id = :id')->execute([':id' => $loserId]);
                 $result['ticket_id_rows_removed']++;
             }
+
+            $updates[':id'] = $canonicalId;
+            $db->prepare('UPDATE events SET ' . implode(', ', $setSql) . ' WHERE event_id = :id')->execute($updates);
 
             $db->commit();
             $result['ticket_id_groups_merged']++;

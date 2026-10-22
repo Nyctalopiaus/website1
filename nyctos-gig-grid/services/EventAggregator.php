@@ -24,6 +24,7 @@ class EventAggregator {
     private $stmtSaveUpdate = null;
     private $stmtSaveInsert = null;
     private $stmtPriceSnapshot = null;
+    private $tmRequestStats = ['ok' => 0, 'failed' => 0, 'aborted' => false];
 
     private $genreClassifier;
     private $locationResolver;
@@ -810,6 +811,14 @@ class EventAggregator {
             $byMarket[$m]['cities'][] = $r;
         }
 
+        // Several cities collapsing onto one search point means placeholder coordinates (how
+        // Wales/Ireland silently searched a single spot in northern England for months).
+        foreach ($byMarket as $m => $profile) {
+            if (count($profile['cities']) > 2 && count($profile['points']) === 1) {
+                $this->log("[WARN] Market '{$m}' has " . count($profile['cities']) . " active cities but only one distinct search point ({$profile['points'][0]['latlong']}); check market_cities coordinates.");
+            }
+        }
+
         return array_values($byMarket);
     }
 
@@ -874,6 +883,18 @@ class EventAggregator {
             '/\s*-\s*[^&\-\|\+]*\btour\b[^\-\|\+&]*/i',
             '/\s*\([^)]*\btour\b[^)]*\)/i'
         ];
+
+        // Ticketmaster lists add-on products as their own "attraction" (e.g. "First Direct
+        // Arena - Premium Packages"), which gets joined into the bill as "Morrissey & First
+        // Direct Arena - Premium Packages". Drop any whole '&'-separated part that is one.
+        if (strpos($clean, '&') !== false) {
+            $keptParts = array_filter(array_map('trim', explode('&', $clean)), function ($part) {
+                return $part !== '' && !preg_match('/\b(premium|vip|hospitality)\s+(packages?|experiences?|upgrades?|tickets?|lounge|seating)\b/i', $part);
+            });
+            if (!empty($keptParts)) {
+                $clean = implode(' & ', $keptParts);
+            }
+        }
 
         foreach ($patterns as $pat) {
             $clean = trim(preg_replace($pat, '', $clean));
@@ -1344,8 +1365,14 @@ class EventAggregator {
                 $targetMarket = 'california';
             } elseif ($region === 'TX' || strtolower($region) === 'texas') {
                 $targetMarket = 'texas';
-            } elseif (in_array($country, ['GB', 'UK', 'GREAT BRITAIN', 'UNITED KINGDOM', 'IRELAND'], true) || in_array(strtolower($region), ['scotland', 'england', 'wales', 'ireland'], true)) {
-                $targetMarket = $this->inferIntlMarketFromCity($city) ?? 'england';
+            } elseif (in_array($country, ['IRELAND', 'IE', 'REPUBLIC OF IRELAND'], true)) {
+                // Republic of Ireland is never England, even for a town missing from market_cities.
+                $targetMarket = 'ireland';
+            } elseif (in_array($country, ['GB', 'UK', 'GREAT BRITAIN', 'UNITED KINGDOM'], true) || in_array(strtolower($region), ['scotland', 'england', 'wales', 'ireland'], true)) {
+                // The Ireland market's GB-side search points (Belfast, Derry) only reach Northern
+                // Ireland, so an unlisted GB town found by that sync is NI, not England.
+                $unlistedDefault = ($hintMarket === 'ireland') ? 'ireland' : 'england';
+                $targetMarket = $this->inferIntlMarketFromCity($city) ?? $unlistedDefault;
             }
 
             if ($targetMarket !== null) {
@@ -1505,6 +1532,7 @@ class EventAggregator {
         $this->log("Starting Ticketmaster API query" . (!empty($targetMarket) ? " for market '{$targetMarket}'" : "") . "...");
         $apiKey = TICKETMASTER_API_KEY;
         $totalIngested = 0;
+        $this->tmRequestStats = ['ok' => 0, 'failed' => 0, 'aborted' => false];
 
         foreach ($this->getMarketIngestionProfiles($targetMarket) as $profile) {
             $marketKey = $profile['market'];
@@ -1526,6 +1554,14 @@ class EventAggregator {
             }
 
             foreach ($queries as $qParam) {
+                // Circuit breaker: two queries failing outright with nothing succeeding means the
+                // API (or this host's network) is down — stop instead of sitting through the
+                // retry backoff for every remaining search point.
+                if ($this->tmRequestStats['ok'] === 0 && $this->tmRequestStats['failed'] >= 2) {
+                    $this->tmRequestStats['aborted'] = true;
+                    $this->log("[ERROR] Ticketmaster unreachable for {$marketKey} after repeated retries; skipping remaining queries this pass.");
+                    break;
+                }
                 for ($page = 0; $page < 5; $page++) {
                     usleep(200000);
 
@@ -1542,7 +1578,11 @@ class EventAggregator {
                     $response = false;
                     $httpCode = 0;
                     $curlError = '';
-                    $maxAttempts = 3;
+                    $maxAttempts = 4;
+                    // Backoff (seconds) before attempts 2..4 for transient failures — DNS/connection
+                    // errors and 5xx. Spans ~1.5 minutes so a brief resolver blip (the 2026-10-15
+                    // "Could not resolve host" run) recovers instead of zeroing out the market.
+                    $transientBackoff = [5, 20, 60];
 
                     for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
                         $ch = curl_init();
@@ -1564,20 +1604,33 @@ class EventAggregator {
                             usleep(1200000);
                             continue;
                         }
+                        $isTransient = ($response === false || $httpCode === 0 || $httpCode >= 500);
+                        if ($isTransient && $attempt < $maxAttempts) {
+                            $waitSec = $transientBackoff[$attempt - 1];
+                            $reason = $httpCode === 0 ? $curlError : "HTTP {$httpCode}";
+                            $this->log("[WARN] Ticketmaster transient failure on page {$page} for {$marketKey} ({$reason}). Retrying in {$waitSec}s (Attempt {$attempt}/{$maxAttempts})...");
+                            sleep($waitSec);
+                            continue;
+                        }
                         break;
                     }
 
+                // A page that still fails after retries ends this query's page loop: later pages
+                // of the same query would only repeat the failure (and the backoff wait).
                 if ($response === false || $httpCode === 0) {
                     $this->log("[ERROR] Ticketmaster failed connection handle on page {$page} for {$marketKey}: {$curlError}");
                     $this->recordConnectionFailure('Ticketmaster', $marketKey, "page={$page} {$curlError}");
-                    continue;
+                    $this->tmRequestStats['failed']++;
+                    break;
                 }
 
                 if ($httpCode !== 200) {
                     $this->log("[ERROR] Ticketmaster API query returned HTTP code {$httpCode} on page {$page} for {$marketKey}");
                     $this->recordHttpNon200('Ticketmaster', $marketKey, $httpCode, "page={$page}");
-                    continue;
+                    $this->tmRequestStats['failed']++;
+                    break;
                 }
+                $this->tmRequestStats['ok']++;
 
                 $data = json_decode($response, true);
                 $eventsList = $data['_embedded']['events'] ?? [];
@@ -1787,15 +1840,36 @@ class EventAggregator {
             $this->log("[TICKETMASTER] Processed {$marketIngested} events for {$marketKey}.");
         }
 
-        $this->log("Processed {$totalIngested} music events from Ticketmaster.");
-        $this->recordSourceRun('Ticketmaster', 'SUCCESS', "API query completed ({$totalIngested} events processed)", 'API', 'all');
+        $health = $this->getTicketmasterHealth();
+        $this->log("Processed {$totalIngested} music events from Ticketmaster (requests ok={$this->tmRequestStats['ok']}, failed={$this->tmRequestStats['failed']}, health={$health}).");
+        $this->recordSourceRun('Ticketmaster', $health, "API query completed ({$totalIngested} events processed, {$this->tmRequestStats['failed']} failed request(s))", 'API', 'all');
         return $totalIngested;
+    }
+
+    /**
+     * Outcome of the most recent fetchTicketmaster() call: SUCCESS, DEGRADED (some requests
+     * failed after retries) or FAILED (nothing came back). Ticketmaster is the primary source
+     * for every market, so the sync run's overall status follows this.
+     */
+    public function getTicketmasterHealth() {
+        if ($this->tmRequestStats['ok'] === 0) {
+            return 'FAILED';
+        }
+        if ($this->tmRequestStats['failed'] > 0 || $this->tmRequestStats['aborted']) {
+            return 'DEGRADED';
+        }
+        return 'SUCCESS';
     }
 
     /**
      * 2. Ingestion: Bandsintown API (Discovery-First Geographic Search)
      */
     public function fetchBandsintown($targetMarket = null) {
+        if (!BANDSINTOWN_ENABLED) {
+            $this->log("[BANDSINTOWN] Skipped: disabled via BANDSINTOWN_ENABLED (app_id is being refused with HTTP 403).");
+            $this->recordSourceRun('Bandsintown', 'SKIPPED', 'Disabled via BANDSINTOWN_ENABLED', 'API', 'all');
+            return 0;
+        }
         $this->log("[BANDSINTOWN] Public location search endpoint is deprecated by provider (HTTP 403). Routing seamlessly to registered artist ingestion pipeline...");
         return $this->fetchBandsintownFallback($targetMarket);
     }

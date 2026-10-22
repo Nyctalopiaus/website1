@@ -11,7 +11,9 @@ if (empty($eventId)) {
 }
 
 $db = getDbConnection();
-$stmt = $db->prepare("SELECT e.*, v.city FROM events e INNER JOIN venues v ON e.venue_id = v.venue_id WHERE e.event_id = :id");
+// LEFT JOIN: ~800 listed events have no linked venues row (venue_id NULL); an INNER JOIN 404'd
+// "Add to calendar" for all of them. City is just omitted from LOCATION in that case.
+$stmt = $db->prepare("SELECT e.*, v.city FROM events e LEFT JOIN venues v ON e.venue_id = v.venue_id WHERE e.event_id = :id");
 $stmt->execute([':id' => $eventId]);
 $event = $stmt->fetch();
 

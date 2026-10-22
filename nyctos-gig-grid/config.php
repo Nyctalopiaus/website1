@@ -71,6 +71,13 @@ if (!defined('TICKETMASTER_API_KEY')) {
 if (!defined('BANDSINTOWN_APP_ID')) {
     define('BANDSINTOWN_APP_ID', cfgEnv('BANDSINTOWN_APP_ID', 'js_nyctos_gig_grid'));
 }
+// Off by default: since at least Oct 2026 Bandsintown answers every request for this app_id
+// with HTTP 403 "explicit deny", so the per-artist fallback (~7,400 calls per market per night)
+// only added runtime. Set to 1 once a working app_id is in place.
+if (!defined('BANDSINTOWN_ENABLED')) {
+    $bandsintownEnabledRaw = strtolower(trim((string)cfgEnv('BANDSINTOWN_ENABLED', '0')));
+    define('BANDSINTOWN_ENABLED', in_array($bandsintownEnabledRaw, ['1', 'true', 'yes', 'on'], true));
+}
 
 // Optional: Paste your free Scrape.do token below to bypass Cloudflare/WAF blocks on venue sites.
 if (!defined('SCRAPE_DO_TOKEN')) {
@@ -341,6 +348,11 @@ if (!defined('AGGREGATOR_ACTION_TOKEN')) {
 if (!defined('EVENT_RETENTION_DAYS')) {
     $retentionRaw = (int)cfgEnv('EVENT_RETENTION_DAYS', '4');
     define('EVENT_RETENTION_DAYS', max(1, $retentionRaw));
+}
+
+// Pause before the one whole-pass Ticketmaster retry when a sync's first pass gets nothing back.
+if (!defined('SYNC_TM_RETRY_DELAY_SECONDS')) {
+    define('SYNC_TM_RETRY_DELAY_SECONDS', max(0, (int)cfgEnv('SYNC_TM_RETRY_DELAY_SECONDS', '300')));
 }
 
 if (!defined('SYNC_REPORT_EMAIL_TO')) {

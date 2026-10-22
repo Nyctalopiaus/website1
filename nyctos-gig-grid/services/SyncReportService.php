@@ -312,8 +312,24 @@ function getSourceRunTallyData(array $report): array {
     return $rows;
 }
 
+/**
+ * Overall run status word. 'status' (SUCCESS/DEGRADED/FAILED, set by handleSyncRequest from
+ * Ticketmaster's health) wins when present; older callers only set the 'success' boolean.
+ */
+function syncReportStatusWord(array $execution): string {
+    $status = strtoupper(trim((string)($execution['status'] ?? '')));
+    if (in_array($status, ['SUCCESS', 'DEGRADED', 'FAILED'], true)) {
+        return $status;
+    }
+    return !empty($execution['success']) ? 'SUCCESS' : 'FAILED';
+}
+
 function renderStatusBadgeHtml(string $status): string {
     switch (strtoupper(trim($status))) {
+        case 'DEGRADED':
+            return '<span style="display:inline-block;padding:3px 8px;border:1px solid #fde68a;background:#fffbeb;color:#92400e;border-radius:999px;font-size:11px;font-weight:700;">DEGRADED</span>';
+        case 'SKIPPED':
+            return '<span style="display:inline-block;padding:3px 8px;border:1px solid #d1d5db;background:#f9fafb;color:#4b5563;border-radius:999px;font-size:11px;font-weight:700;">SKIPPED</span>';
         case 'SUCCESS':
         case 'OK':
             return '<span style="display:inline-block;padding:3px 8px;border:1px solid #86efac;background:#ecfdf5;color:#166534;border-radius:999px;font-size:11px;font-weight:700;">OK</span>';
@@ -388,11 +404,11 @@ function buildSyncReportHtml(array $report): string {
     $runtime = formatSyncRuntime((float)($execution['runtime_seconds'] ?? 0));
     $markets = (array)($execution['markets_processed'] ?? []);
     $marketLabels = array_map('marketLabelForReport', $markets);
-    $statusOk = !empty($execution['success']);
-    $statusWord = $statusOk ? 'SUCCESS' : 'FAILED';
-    $statusBg = $statusOk ? '#ecfdf5' : '#fef2f2';
-    $statusFg = $statusOk ? '#166534' : '#991b1b';
-    $statusBorder = $statusOk ? '#86efac' : '#fca5a5';
+    $statusWord = syncReportStatusWord($execution);
+    $statusOk = $statusWord === 'SUCCESS';
+    $statusBg = $statusOk ? '#ecfdf5' : ($statusWord === 'DEGRADED' ? '#fffbeb' : '#fef2f2');
+    $statusFg = $statusOk ? '#166534' : ($statusWord === 'DEGRADED' ? '#92400e' : '#991b1b');
+    $statusBorder = $statusOk ? '#86efac' : ($statusWord === 'DEGRADED' ? '#fde68a' : '#fca5a5');
 
     $html = '';
     $html .= '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>';
@@ -603,7 +619,7 @@ function buildSyncReportText(array $report): string {
     $runtime = formatSyncRuntime((float)($execution['runtime_seconds'] ?? 0));
     $markets = $execution['markets_processed'] ?? [];
     $marketLabels = array_map('marketLabelForReport', $markets);
-    $success = !empty($execution['success']) ? 'SUCCESS' : 'FAILED';
+    $success = syncReportStatusWord($execution);
 
     $lines = [];
     $lines[] = "NYCTO'S GIG GRID - DAILY SYNC REPORT";
@@ -729,7 +745,7 @@ function sendSyncReportEmail(array $report, callable $logger = null): bool {
     }
 
     $subjectPrefix = defined('SYNC_REPORT_EMAIL_SUBJECT_PREFIX') ? trim((string)SYNC_REPORT_EMAIL_SUBJECT_PREFIX) : '[Nycto Sync]';
-    $statusWord = !empty($report['execution']['success']) ? 'SUCCESS' : 'FAILED';
+    $statusWord = syncReportStatusWord($report['execution'] ?? []);
     $markets = $report['execution']['markets_processed'] ?? [];
     $marketLabels = array_map('marketLabelForReport', $markets);
     $marketTag = !empty($marketLabels) && count($marketLabels) === 1 ? ' [' . $marketLabels[0] . ']' : '';

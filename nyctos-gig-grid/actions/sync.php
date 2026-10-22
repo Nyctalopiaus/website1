@@ -28,7 +28,19 @@ function handleSyncRequest(bool $isCli = false, ?string $targetMarket = null) {
         
         $aggregator->log('[DEBUG] Calling fetchTicketmaster...');
         $tmCount = $aggregator->fetchTicketmaster($targetMarket);
-        
+
+        // Whole-pass retry: fetchTicketmaster() already retries each request with backoff, so
+        // FAILED here means the outage outlasted that (~1.5 min). Give it one more pass after a
+        // longer pause before settling for a failed run; the 06:30 catch-up cron job
+        // (aggregator.php --only-if-failed, one cPanel cron line) is the last line of defence.
+        if ($aggregator->getTicketmasterHealth() === 'FAILED') {
+            $retryDelay = defined('SYNC_TM_RETRY_DELAY_SECONDS') ? (int)SYNC_TM_RETRY_DELAY_SECONDS : 300;
+            $aggregator->log("[WARN] Ticketmaster pass FAILED; retrying the whole pass once in {$retryDelay}s...");
+            sleep(max(0, $retryDelay));
+            $tmCount = $aggregator->fetchTicketmaster($targetMarket);
+        }
+        $tmHealth = $aggregator->getTicketmasterHealth();
+
         $aggregator->log('[DEBUG] Calling fetchBandsintown...');
         $bitCount = $aggregator->fetchBandsintown($targetMarket);
 
@@ -46,9 +58,14 @@ function handleSyncRequest(bool $isCli = false, ?string $targetMarket = null) {
         $aggregator->log('[DEBUG] Calling reconcileEventLocations...');
         $reconciledCount = $aggregator->reconcileEventLocations();
 
-        // Persist last sync timestamp immediately after ingestion completes
-        $aggregator->log('[DEBUG] Persisting last sync timestamp...');
-        persistLastSyncTimestamp();
+        // Persist last sync timestamp immediately after ingestion completes — but only when the
+        // primary source actually delivered, so the site's "Last Sync" stays honest during outages.
+        if ($tmHealth !== 'FAILED') {
+            $aggregator->log('[DEBUG] Persisting last sync timestamp...');
+            persistLastSyncTimestamp();
+        } else {
+            $aggregator->log('[WARN] Not updating last sync timestamp: Ticketmaster returned no data this run.');
+        }
 
         $lastFmNormalizedCount = 0;
         try {
@@ -91,8 +108,9 @@ function handleSyncRequest(bool $isCli = false, ?string $targetMarket = null) {
         $runtimeSeconds = microtime(true) - $syncStartedAt;
         $reportData = $aggregator->getRunReportData([
             'runtime_seconds' => $runtimeSeconds,
-            'success' => true,
+            'success' => $tmHealth !== 'FAILED',
         ]);
+        $reportData['execution']['status'] = $tmHealth;
 
         $configuredMarkets = !empty($targetMarket) ? [$targetMarket] : $aggregator->getConfiguredMarkets();
         if (!empty($configuredMarkets)) {
@@ -104,8 +122,10 @@ function handleSyncRequest(bool $isCli = false, ?string $targetMarket = null) {
             '[SYNC REPORT] Runtime=%s | Markets=%d | Status=%s',
             formatSyncRuntime((float)$reportData['execution']['runtime_seconds']),
             (int)$reportData['execution']['markets_processed_count'],
-            !empty($reportData['execution']['success']) ? 'SUCCESS' : 'FAILED'
+            $tmHealth
         ));
+
+        writeMarketSyncStatus($targetMarket, $tmHealth, (int)$tmCount);
 
         $emailSent = sendSyncReportEmail($reportData, function($msg) use ($aggregator) {
             $aggregator->log($msg);
@@ -115,10 +135,11 @@ function handleSyncRequest(bool $isCli = false, ?string $targetMarket = null) {
             $aggregator->log('[SYNC REPORT] Post-run report email sent successfully.');
         }
 
-        $aggregator->log('[SYNC COMPLETE] Sync completed successfully.');
+        $completionWord = $tmHealth === 'SUCCESS' ? 'successfully' : "with status {$tmHealth}";
+        $aggregator->log("[SYNC COMPLETE] Sync completed {$completionWord}.");
 
         if ($isCli) {
-            syncCliLog('[CLI SYNC] Aggregator process completed successfully!', true);
+            syncCliLog("[CLI SYNC] Aggregator process completed {$completionWord}!", true);
             syncCliLog("Ticketmaster events: $tmCount", true);
             syncCliLog("Bandsintown events: $bitCount", true);
             syncCliLog("Scraped events: $scrapedCount", true);
@@ -129,8 +150,8 @@ function handleSyncRequest(bool $isCli = false, ?string $targetMarket = null) {
             syncCliLog("[MAINTENANCE] Merged {$maintenance['duplicate_groups_merged']} duplicate event group(s), removing {$maintenance['duplicate_rows_removed']} redundant row(s).", true);
             syncCliLog("[MAINTENANCE] Merged {$maintenance['ticket_id_groups_merged']} same-ticket-listing group(s), removing {$maintenance['ticket_id_rows_removed']} redundant row(s).", true);
             syncCliLog("[MAINTENANCE] Flagged {$maintenance['double_bill_groups_flagged']} new possible-double-bill group(s) for review.", true);
-            syncCliLog('[CLI SYNC] Sync completed successfully.', true);
-            exit;
+            syncCliLog("[CLI SYNC] Sync completed {$completionWord}.", true);
+            exit($tmHealth === 'FAILED' ? 1 : 0);
         }
 
         jsonResponse([

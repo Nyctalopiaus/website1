@@ -24,6 +24,7 @@ Disallow: /backend/
 Disallow: /*.db$
 Disallow: /*.json$
 Disallow: /dibs/
+Disallow: /nyctos-gig-grid/ical.php
 Allow: /
 
 Sitemap: https://nycto.ninja/sitemap.xml
