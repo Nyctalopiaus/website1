@@ -7,7 +7,7 @@
  * side effects (setting window.openDetailModal etc.) is enough.
  */
 import { state, elements, CONFIG } from './state.js';
-import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, isSafeMediaUrl, NO_PHOTO_IMG, getStatusBadgeClass, getCompScore, buildCompScoreBadge } from './properties.js';
+import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, isSafeMediaUrl, NO_PHOTO_IMG, getStatusBadgeClass, getCompScore, buildCompScoreBadge, getCompsStaleness } from './properties.js';
 import { apiFetch, savePreferencesToServer } from './api.js';
 import { applyFiltersAndRender } from './filters.js';
 import { showToast } from './toast.js';
@@ -329,7 +329,7 @@ window.deleteCustomReactionChip = function(event, chipText) {
         const calcParams = new URLSearchParams();
         if (p.price) calcParams.set('price', p.price);
         if (p.annual_tax && p.price) calcParams.set('taxRate', ((p.annual_tax / p.price) * 100).toFixed(2));
-        if (p.hoa_fee) calcParams.set('hoaFees', Math.round(p.hoa_fee / 12));
+        if (p.hoa_fee) calcParams.set('hoaFees', Math.round(p.hoa_fee)); // hoa_fee is already monthly (bookmarklet converts annual -> /mo at ingest)
         if (displayAddrModal) calcParams.set('address', displayAddrModal);
         const calcUrl = `/housenomics/?${calcParams.toString()}`;
 
@@ -366,6 +366,7 @@ window.deleteCustomReactionChip = function(event, chipText) {
                             <i data-lucide="images"></i> View Photos (${currentGalleryImages.length})
                         </button>
                         <span id="modal-comps-action-slot" style="display:contents;">${buildCompsActionButton(p)}</span>
+                        ${state.myHome?.address && state.currentUserProfile?.role !== 'realtor' ? `<button type="button" class="btn btn-secondary" onclick="openHomeCompare('${p.mls_id}')"><i data-lucide="house"></i> Compare to My House</button>` : ''}
                         <button class="btn btn-secondary realtor-or-admin-only" onclick="addMlsToPlaylist('${p.mls_id}')" style="${(state.currentUserProfile?.role === 'realtor' || state.currentUserProfile?.role === 'admin' || state.isAdmin) ? '' : 'display:none;'}">
                             <i data-lucide="folder-plus"></i> Add to Playlist
                         </button>
@@ -434,11 +435,11 @@ window.deleteCustomReactionChip = function(event, chipText) {
                         <div class="modal-detail-box"><span class="modal-detail-lbl">Full Bathrooms</span><span class="modal-detail-val">${(p.raw_mls_json && p.raw_mls_json.interior && p.raw_mls_json.interior.baths_full !== undefined) ? p.raw_mls_json.interior.baths_full : 2}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">3/4 Bathrooms</span><span class="modal-detail-val">${(p.raw_mls_json && p.raw_mls_json.interior && p.raw_mls_json.interior.baths_3_4 !== undefined) ? p.raw_mls_json.interior.baths_3_4 : 1}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">Half Bathrooms</span><span class="modal-detail-val">${(p.raw_mls_json && p.raw_mls_json.interior && p.raw_mls_json.interior.baths_1_2 !== undefined) ? p.raw_mls_json.interior.baths_1_2 : 0}</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Above-Grade Finished SqFt</span><span class="modal-detail-val">${(p.raw_mls_json && p.raw_mls_json.interior && p.raw_mls_json.interior.sqft_above_grade) ? p.raw_mls_json.interior.sqft_above_grade.toLocaleString() + ' SqFt' : '1,292 SqFt'}</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Total Area (SqFt)</span><span class="modal-detail-val">${p.sqft_total ? p.sqft_total.toLocaleString() + ' SqFt' : '2,566 SqFt'}</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Finished Living Area</span><span class="modal-detail-val">${p.sqft_finished ? p.sqft_finished.toLocaleString() + ' SqFt' : '2,507 SqFt'}</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Below-Grade Total SqFt</span><span class="modal-detail-val">${(p.raw_mls_json && p.raw_mls_json.interior && p.raw_mls_json.interior.sqft_below_grade_total) ? p.raw_mls_json.interior.sqft_below_grade_total.toLocaleString() + ' SqFt' : '1,274 SqFt'}</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Below-Grade Finished SqFt</span><span class="modal-detail-val">${(p.raw_mls_json && p.raw_mls_json.interior && p.raw_mls_json.interior.sqft_below_grade_finished) ? p.raw_mls_json.interior.sqft_below_grade_finished.toLocaleString() + ' SqFt' : '1,215 SqFt'}</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">Above-Grade Finished SqFt</span><span class="modal-detail-val">${(p.raw_mls_json && p.raw_mls_json.interior && p.raw_mls_json.interior.sqft_above_grade) ? p.raw_mls_json.interior.sqft_above_grade.toLocaleString() + ' SqFt' : 'N/A'}</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">Total Area (SqFt)</span><span class="modal-detail-val">${p.sqft_total ? p.sqft_total.toLocaleString() + ' SqFt' : 'N/A'}</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">Finished Living Area</span><span class="modal-detail-val">${p.sqft_finished ? p.sqft_finished.toLocaleString() + ' SqFt' : 'N/A'}</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">Below-Grade Total SqFt</span><span class="modal-detail-val">${(p.raw_mls_json && p.raw_mls_json.interior && p.raw_mls_json.interior.sqft_below_grade_total) ? p.raw_mls_json.interior.sqft_below_grade_total.toLocaleString() + ' SqFt' : 'N/A'}</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">Below-Grade Finished SqFt</span><span class="modal-detail-val">${(p.raw_mls_json && p.raw_mls_json.interior && p.raw_mls_json.interior.sqft_below_grade_finished) ? p.raw_mls_json.interior.sqft_below_grade_finished.toLocaleString() + ' SqFt' : 'N/A'}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">$/SqFt (Above Grade)</span><span class="modal-detail-val">$${(p.raw_mls_json && p.raw_mls_json.interior && p.raw_mls_json.interior.psf_above_grade) ? p.raw_mls_json.interior.psf_above_grade : '387.00'}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">$/SqFt (Finished)</span><span class="modal-detail-val">$${(p.raw_mls_json && p.raw_mls_json.interior && p.raw_mls_json.interior.psf_finished) ? p.raw_mls_json.interior.psf_finished : '199.44'}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">$/SqFt (Total)</span><span class="modal-detail-val">$${(p.raw_mls_json && p.raw_mls_json.interior && p.raw_mls_json.interior.psf_total) ? p.raw_mls_json.interior.psf_total : '194.86'}</span></div>
@@ -488,9 +489,10 @@ window.deleteCustomReactionChip = function(event, chipText) {
                         <div class="modal-detail-box"><span class="modal-detail-lbl">Total SqFt</span><span class="modal-detail-val">${p.sqft_total ? p.sqft_total.toLocaleString() : 'N/A'}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">Price / SqFt</span><span class="modal-detail-val">${ppsqft ? '$' + ppsqft : 'N/A'}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">Year Built</span><span class="modal-detail-val">${p.year_built || 'N/A'}</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Property Type</span><span class="modal-detail-val">${escapeHtml(p.property_type || 'Single Family Residence')}</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Style / Levels</span><span class="modal-detail-val">${escapeHtml(p.levels || 'Ranch / One Story')}</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Status</span><span class="modal-detail-val">${escapeHtml(p.status || 'Active')}</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">Property Type</span><span class="modal-detail-val">${escapeHtml(p.property_type || 'N/A')}</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">Style / Levels</span><span class="modal-detail-val">${escapeHtml(p.levels || 'N/A')}</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">Status</span><span class="modal-detail-val">${escapeHtml(p.status || 'Unknown')}</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">Driveway Faces (set by you)</span><select class="input-text modal-facing-select" aria-label="Direction the driveway faces" onchange="window.setPropertyFacing('${p.mls_id}', this.value, this)">${['', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'].map(d => `<option value="${d}" ${d === (p.facing || '') ? 'selected' : ''}>${d ? { N: 'North', NE: 'Northeast', E: 'East', SE: 'Southeast', S: 'South', SW: 'Southwest', W: 'West', NW: 'Northwest' }[d] : 'Not set'}</option>`).join('')}</select></div>
                     </div>
                 </div>
 
@@ -502,7 +504,7 @@ window.deleteCustomReactionChip = function(event, chipText) {
                         <div class="modal-detail-box"><span class="modal-detail-lbl">City, State, Zip</span><span class="modal-detail-val">${escapeHtml(p.city || '')}, ${escapeHtml(p.state || '')} ${escapeHtml(p.zip || '')}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">Lot Acres</span><span class="modal-detail-val">${p.lot_acres ? p.lot_acres + ' Acres' : 'N/A'}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">Lot SqFt</span><span class="modal-detail-val">${p.lot_sqft ? p.lot_sqft.toLocaleString() + ' SqFt' : 'N/A'}</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">School District</span><span class="modal-detail-val">${escapeHtml(p.school_district || 'Cherry Creek 5')}</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">School District</span><span class="modal-detail-val">${escapeHtml(p.school_district || 'N/A')}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">MLS ID</span><span class="modal-detail-val">${p.mls_id}</span></div>
                     </div>
                 </div>
@@ -511,9 +513,8 @@ window.deleteCustomReactionChip = function(event, chipText) {
                 <div>
                     <div class="modal-section-title"><i data-lucide="car"></i> Parking & Garage Features</div>
                     <div class="modal-grid-3">
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Garage Spaces</span><span class="modal-detail-val">${p.garage_spaces || (p.parking_total || '2')} Garage Spaces</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Total Parking</span><span class="modal-detail-val">${p.parking_total || '3'} Parking Spaces</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Parking Type</span><span class="modal-detail-val">Attached Garage / Driveway</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">Garage Spaces</span><span class="modal-detail-val">${p.garage_spaces ? p.garage_spaces + ' Garage Spaces' : 'N/A'}</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">Total Parking</span><span class="modal-detail-val">${p.parking_total ? p.parking_total + ' Parking Spaces' : 'N/A'}</span></div>
                     </div>
                 </div>
 
@@ -526,8 +527,8 @@ window.deleteCustomReactionChip = function(event, chipText) {
                     <div class="modal-grid-4">
                         <div class="modal-detail-box"><span class="modal-detail-lbl">List Price</span><span class="modal-detail-val" style="color:var(--accent-gold);">$${p.price.toLocaleString()}</span></div>
                         <div class="modal-detail-box"><span class="modal-detail-lbl">Annual Property Tax</span><span class="modal-detail-val">${p.annual_tax ? '$' + p.annual_tax.toLocaleString() : 'N/A'}</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">Tax Year</span><span class="modal-detail-val">${p.tax_year || '2025'}</span></div>
-                        <div class="modal-detail-box"><span class="modal-detail-lbl">HOA Fee</span><span class="modal-detail-val">${p.hoa_fee ? '$' + p.hoa_fee + '/yr' : 'No HOA'}</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">Tax Year</span><span class="modal-detail-val">${p.tax_year || 'N/A'}</span></div>
+                        <div class="modal-detail-box"><span class="modal-detail-lbl">HOA Fee</span><span class="modal-detail-val">${p.hoa_fee ? '$' + p.hoa_fee.toLocaleString() + '/mo' : 'No HOA'}</span></div>
                     </div>
                 </div>
 
@@ -602,6 +603,199 @@ window.deleteCustomReactionChip = function(event, chipText) {
         return (d && !Number.isNaN(d.getTime())) ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
     };
 
+    // Possible-flip check, read from the last recorded sale RentCast returned with the comps
+    // lookup (comp_subject.lastSaleDate / lastSalePrice). Display only: it never triggers a lookup.
+    // Flagged when the home last sold within FLIP_MAX_HOLD_MONTHS of this listing's list date
+    // and is now listed at least FLIP_MIN_MARKUP above that sale price.
+    const FLIP_MAX_HOLD_MONTHS = 24;
+    const FLIP_MIN_MARKUP = 0.20;
+
+    function parseListDate(value) {
+        const str = String(value || '').trim();
+        let m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+        if (m) return new Date(Date.UTC(m[3].length === 2 ? 2000 + Number(m[3]) : Number(m[3]), Number(m[1]) - 1, Number(m[2])));
+        m = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+        return null;
+    }
+
+    function getLastSale(p) {
+        const subj = p.comp_subject || {};
+        const price = Number(subj.lastSalePrice) || 0;
+        const date = subj.lastSaleDate ? new Date(subj.lastSaleDate) : null;
+        if (!price || !date || Number.isNaN(date.getTime())) return null;
+        const listed = parseListDate(p.list_date) || new Date();
+        const months = (listed.getTime() - date.getTime()) / (86400000 * 30.44);
+        const listPrice = Number(p.price) || 0;
+        const markup = listPrice ? (listPrice - price) / price : null;
+        return {
+            price, date, months, markup,
+            isFlip: months >= 0 && months <= FLIP_MAX_HOLD_MONTHS && markup !== null && markup >= FLIP_MIN_MARKUP
+        };
+    }
+
+    function buildLastSaleHtml(p) {
+        const sale = getLastSale(p);
+        if (!sale) return `<div class="comps-note"><strong>Last sold:</strong> not on file with RentCast, so no flip check for this home.</div>`;
+        // RentCast sale dates are midnight UTC, so format in UTC to avoid showing the day before.
+        const when = sale.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+        const parts = [];
+        if (sale.months >= 0) {
+            parts.push(sale.months < 24 ? `${Math.max(1, Math.round(sale.months))} month${Math.round(sale.months) === 1 ? '' : 's'} before this listing` : `${(sale.months / 12).toFixed(1)} years before this listing`);
+            if (sale.markup !== null) parts.push(`list price is ${sale.markup >= 0 ? '+' : '-'}${Math.abs(sale.markup * 100).toFixed(1)}% vs. that sale`);
+        } else {
+            parts.push('recorded after this listing went up');
+        }
+        const tip = `Sold within ${FLIP_MAX_HOLD_MONTHS} months of this listing and now listed ${Math.round(FLIP_MIN_MARKUP * 100)}% or more above that sale price`;
+        const badge = sale.isFlip
+            ? ` <span class="score-badge comp-score-badge is-high" title="${escapeHtml(tip)}" aria-label="${escapeHtml(tip)}"><i data-lucide="hammer"></i> Possible flip</span>`
+            : '';
+        return `<div class="comps-note" style="color:var(--text-primary);"><strong>Last sold:</strong> ${compsMoney(sale.price)} on ${escapeHtml(when)} (${escapeHtml(parts.join('; '))}).${badge}</div>`;
+    }
+
+    // ---- Derived analysis (no RentCast calls) ---------------------------------------------
+    // Everything below is worked out in the browser from data Dibs already has: the stored
+    // comps, the cached last sale, the MLS list date and the original/current list price.
+
+    const median = arr => {
+        const v = arr.filter(n => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+        if (!v.length) return 0;
+        const mid = Math.floor(v.length / 2);
+        return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+    };
+    const signedPct = (n, digits = 1) => `${n >= 0 ? '+' : '-'}${Math.abs(n).toFixed(digits)}%`;
+
+    // Same sqft basis RentCast was asked to value (above-grade when the MLS had it), so the
+    // subject $/sf lines up with the comps' $/sf.
+    function subjectSqft(p) {
+        const subj = p.comp_subject || {};
+        const raw = p.raw_mls_json || {};
+        return Number(subj.squareFootage) || Number(raw.interior && raw.interior.sqft_above_grade)
+            || Number(p.sqft_finished) || Number(p.sqft_total) || 0;
+    }
+
+    function getPsfVsComps(p) {
+        const comps = Array.isArray(p.comps) ? p.comps : [];
+        const psfs = comps.map(c => (Number(c.price) || 0) / (Number(c.squareFootage) || NaN));
+        const compMedian = median(psfs);
+        const sqft = subjectSqft(p);
+        const price = Number(p.price) || 0;
+        if (!compMedian || !sqft || !price) return null;
+        const psf = price / sqft;
+        return {
+            psf, sqft, compMedian,
+            pct: ((psf - compMedian) / compMedian) * 100,
+            medPrice: median(comps.map(c => Number(c.price) || 0)),
+            medSqft: median(comps.map(c => Number(c.squareFootage) || 0)),
+            medBeds: median(comps.map(c => Number(c.bedrooms) || 0)),
+            medBaths: median(comps.map(c => Number(c.bathrooms) || 0)),
+            medDist: median(comps.map(c => Number(c.distance) || 0))
+        };
+    }
+
+    function daysOnMarket(p) {
+        const listed = parseListDate(p.list_date);
+        if (!listed) return null;
+        return Math.max(0, Math.floor((Date.now() - listed.getTime()) / 86400000));
+    }
+
+    // Seller motivation, 0-100 (higher = more room to negotiate). Four parts, each capped:
+    //   time on market up to 35 (0 at a week, full at 120 days), total price cuts up to 30
+    //   (full at 8% off the original price), equity since last sale up to 20 (full at doubled),
+    //   and list price over comp value up to 15 (full at 10% over). Parts with no data score 0.
+    function getSellerMotivation(p) {
+        const parts = [];
+        const dom = daysOnMarket(p);
+        const domPts = dom == null ? 0 : Math.round(35 * Math.min(1, Math.max(0, dom - 7) / 113));
+        parts.push({ label: 'Time on market', pts: domPts, max: 35, text: dom == null ? 'No list date' : `${dom} day${dom === 1 ? '' : 's'} since MLS list date` });
+
+        const orig = Number(p.original_price) || 0;
+        const price = Number(p.price) || 0;
+        const cutPct = (orig && price && orig > price) ? ((orig - price) / orig) * 100 : 0;
+        const cutPts = Math.round(30 * Math.min(1, cutPct / 8));
+        parts.push({ label: 'Price cuts', pts: cutPts, max: 30, text: cutPct > 0 ? `${compsMoney(orig - price)} (${cutPct.toFixed(1)}%) off ${compsMoney(orig)} first seen` : 'No cuts seen' });
+
+        const sale = getLastSale(p);
+        let eqPts = 0, eqText = p.comp_estimate ? 'Last sale not on file' : 'Needs a comps check';
+        if (sale && sale.markup !== null) {
+            eqPts = Math.round(20 * Math.min(1, Math.max(0, sale.markup)));
+            const yrs = sale.months / 12;
+            eqText = `${signedPct(sale.markup * 100, 0)} vs ${compsMoney(sale.price)} sale${yrs >= 1 ? ` ${yrs.toFixed(0)} yrs ago` : ''}`;
+        }
+        parts.push({ label: 'Equity since last sale', pts: eqPts, max: 20, text: eqText });
+
+        const s = getCompScore(p);
+        const overPts = s ? Math.round(15 * Math.min(1, Math.max(0, s.pct) / 10)) : 0;
+        parts.push({ label: 'Priced over comps', pts: overPts, max: 15, text: s ? `${signedPct(s.pct)} vs comp value` : 'Needs a comps check' });
+
+        const score = parts.reduce((t, x) => t + x.pts, 0);
+        const tone = score >= 55 ? 'good' : (score >= 30 ? 'fair' : 'high');
+        const word = score >= 55 ? 'Motivated' : (score >= 30 ? 'Some room' : 'Firm');
+        return { score, tone, word, parts, dom };
+    }
+
+    function buildMotivationHtml(p) {
+        const m = getSellerMotivation(p);
+        const rows = m.parts.map(x => `<tr><td>${escapeHtml(x.label)}</td><td>${escapeHtml(x.text)}</td><td style="text-align:right;">${x.pts} / ${x.max}</td></tr>`).join('');
+        return `<details class="comps-note" style="color:var(--text-primary);">
+                <summary style="cursor:pointer;"><strong>Seller motivation:</strong>
+                    <span class="score-badge comp-score-badge is-${m.tone}"><i data-lucide="gauge"></i> ${m.score}/100 ${m.word}</span>
+                    <span style="color:var(--text-secondary);">(tap for breakdown)</span></summary>
+                <table class="room-table" style="margin-top:0.5rem;"><tbody>${rows}</tbody></table>
+                <div style="margin-top:0.35rem;">Days count from the MLS list date, so a relisted home may have sat longer than this shows.</div>
+            </details>`;
+    }
+
+    // Offer range. Starts from RentCast's comp value (not a $/sf x sqft estimate, which
+    // overvalues big houses), never above list, then takes off up to 5% for seller motivation
+    // and any renovation budget picked below.
+    const RENO_LEVELS = [
+        { key: 'none', label: 'As-is', psf: 0 },
+        { key: 'light', label: 'Light $35/sf', psf: 35 },
+        { key: 'full', label: 'Full $65/sf', psf: 65 },
+        { key: 'studs', label: 'To the studs $100/sf', psf: 100 }
+    ];
+    const renoLevelByMls = {};
+
+    function getOfferRange(p) {
+        const s = getCompScore(p);
+        if (!s) return null;
+        const m = getSellerMotivation(p);
+        const reno = RENO_LEVELS.find(r => r.key === renoLevelByMls[p.mls_id]) || RENO_LEVELS[0];
+        const renoCost = reno.psf * subjectSqft(p);
+        const motivationOff = 0.05 * (m.score / 100);
+        const base = Math.min(s.price, s.estimate);
+        const round = n => Math.round(n / 1000) * 1000;
+        const high = Number(p.comp_range_high) || Infinity;
+        const fair = round(base * (1 - motivationOff) - renoCost);
+        const conservative = round(fair * 0.95);
+        const competitive = round(Math.min(fair * 1.03, high - renoCost));
+        return { conservative, fair, competitive: Math.max(competitive, fair), list: s.price, base, motivationOff, motivation: m.score, reno, renoCost };
+    }
+
+    function buildOfferRangeHtml(p) {
+        const o = getOfferRange(p);
+        if (!o) return '';
+        const id = escapeHtml(String(p.mls_id));
+        const box = (label, val) => `<div class="modal-detail-box"><span class="modal-detail-lbl">${label}</span><span class="modal-detail-val">${compsMoney(val)} <span style="font-size:0.8em; color:var(--text-secondary);">${signedPct(((val - o.list) / o.list) * 100)} vs list</span></span></div>`;
+        const renoBtns = RENO_LEVELS.map(r => `<button type="button" class="btn btn-compact ${r.key === o.reno.key ? 'btn-primary' : 'btn-secondary'}" onclick="setOfferReno('${id}', '${r.key}')">${escapeHtml(r.label)}</button>`).join(' ');
+        const how = [`starts at ${compsMoney(o.base)} (${o.base < o.list ? 'comp value' : 'list price, since it is under comp value'})`,
+            `${(o.motivationOff * 100).toFixed(1)}% off for seller motivation ${o.motivation}/100`];
+        if (o.renoCost) how.push(`${compsMoney(o.renoCost)} off for renovation ($${o.reno.psf}/sf x ${subjectSqft(p).toLocaleString()} sf)`);
+        return `<div class="modal-section-title" style="margin-top:1rem;"><i data-lucide="hand-coins"></i> Offer Range</div>
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.6rem;">${renoBtns}</div>
+            <div class="modal-grid-4" style="grid-template-columns:repeat(3, minmax(0, 1fr));">
+                ${box('Conservative', o.conservative)}${box('Fair', o.fair)}${box('Competitive', o.competitive)}
+            </div>
+            <div class="comps-note">Fair offer ${escapeHtml(how.join(', '))}. Conservative is 5% under fair; competitive is 3% over, capped at RentCast's high end. A starting point for talking with your agent, not an appraisal.</div>`;
+    }
+
+    window.setOfferReno = function(mlsId, level) {
+        renoLevelByMls[mlsId] = level;
+        const p = state.allProperties.find(x => String(x.mls_id) === String(mlsId));
+        if (p) refreshCompsUi(p);
+    };
+
     function buildCompsActionButton(p) {
         const id = escapeHtml(String(p.mls_id));
         return getCompScore(p)
@@ -618,7 +812,8 @@ window.deleteCustomReactionChip = function(event, chipText) {
                 <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
                     <button type="button" class="btn btn-secondary" data-comps-btn onclick="checkComps('${id}')"><i data-lucide="scale"></i> Check Comps</button>
                     <span class="comps-note" style="margin:0;">Looks up comparable listings on RentCast and scores this price against them. Each check uses one of your ${COMPS_MONTHLY_LOOKUPS} monthly lookups.</span>
-                </div>`;
+                </div>
+                ${buildMotivationHtml(p)}`;
         }
 
         const comps = Array.isArray(p.comps) ? p.comps : [];
@@ -632,6 +827,25 @@ window.deleteCustomReactionChip = function(event, chipText) {
         if (subj.squareFootage) subjParts.push(`${Number(subj.squareFootage).toLocaleString()} sqft`);
         if (subj.yearBuilt) subjParts.push(`built ${subj.yearBuilt}`);
         const checked = compsDate(p.comp_fetched_at);
+        const staleness = getCompsStaleness(p);
+        let checkedAt = checked ? `, checked ${escapeHtml(checked)}` : '';
+        if (checked && staleness && staleness.atFetch) {
+            checkedAt += ` at ${compsMoney(staleness.atFetch)} list`;
+            if (Math.abs(staleness.priceDiff) >= 1) {
+                checkedAt += ` (now ${compsMoney(p.price)}, ${staleness.priceDiff < 0 ? '-' : '+'}${compsMoney(Math.abs(staleness.priceDiff))} / ${staleness.pricePct >= 0 ? '+' : ''}${staleness.pricePct.toFixed(1)}%)`;
+            }
+        }
+        const staleNote = (staleness && staleness.stale)
+            ? `<div class="comps-stale-note"><i data-lucide="clock-alert"></i> Comps may be stale: ${escapeHtml(staleness.reasons.join('; '))}. Consider re-checking before an offer.</div>`
+            : '';
+        const psf = getPsfVsComps(p);
+        const psfBox = psf
+            ? `<div class="modal-detail-box"><span class="modal-detail-lbl">$/SqFt vs. Comps</span><span class="modal-detail-val">${compsMoney(psf.psf)} vs ${compsMoney(psf.compMedian)} <span style="font-size:0.8em; color:var(--text-secondary);">${signedPct(psf.pct)}</span></span></div>`
+            : '';
+        const footRows = psf ? `<tfoot>
+                <tr style="font-weight:600;"><td>Median of comps</td><td>${compsMoney(psf.medPrice)}</td><td>${psf.medBeds} / ${psf.medBaths}</td><td>${Math.round(psf.medSqft).toLocaleString()}</td><td>${compsMoney(psf.compMedian)}</td><td>${psf.medDist.toFixed(2)} mi</td><td></td><td></td></tr>
+                <tr style="font-weight:600;"><td>This home</td><td>${compsMoney(p.price)}</td><td>${p.beds || '?'} / ${p.baths || '?'}</td><td>${psf.sqft.toLocaleString()}</td><td>${compsMoney(psf.psf)}</td><td></td><td>${signedPct(psf.pct)} $/sf</td><td></td></tr>
+            </tfoot>` : '';
 
         const rows = comps.map(c => {
             const sqft = Number(c.squareFootage) || 0;
@@ -656,17 +870,22 @@ window.deleteCustomReactionChip = function(event, chipText) {
                 <div class="modal-detail-box"><span class="modal-detail-lbl">Comp-Based Value</span><span class="modal-detail-val">${compsMoney(s.estimate)}</span></div>
                 <div class="modal-detail-box"><span class="modal-detail-lbl">Likely Range</span><span class="modal-detail-val">${(low && high) ? `${compsMoney(low)} - ${compsMoney(high)}` : 'N/A'}</span></div>
                 <div class="modal-detail-box"><span class="modal-detail-lbl">List Price vs. Value</span><span class="modal-detail-val">${diffText}</span></div>
+                ${psfBox}
             </div>
+            ${buildLastSaleHtml(p)}
+            ${buildMotivationHtml(p)}
+            ${staleNote}
             <div class="comps-note">
-                Based on ${comps.length} comparable listing${comps.length === 1 ? '' : 's'} from RentCast${checked ? `, checked ${escapeHtml(checked)}` : ''}.
+                Based on ${comps.length} comparable listing${comps.length === 1 ? '' : 's'} from RentCast${checkedAt}.
                 ${subjParts.length ? `RentCast valued this home as ${escapeHtml(subjParts.join(' / '))}.` : ''}
                 Comp prices are listing prices (active or recently off market), not confirmed closing prices.
                 The score re-calculates on its own if this home's price changes.
             </div>
             ${rows ? `<div class="comps-table-wrap"><table class="room-table">
                 <thead><tr><th>Comparable</th><th>Price</th><th>Bd / Ba</th><th>SqFt</th><th>$/SqFt</th><th>Distance</th><th>Status</th><th>Match</th></tr></thead>
-                <tbody>${rows}</tbody>
+                <tbody>${rows}</tbody>${footRows}
             </table></div>` : ''}
+            ${buildOfferRangeHtml(p)}
             <div style="margin-top:0.75rem;">
                 <button type="button" class="btn btn-secondary" data-comps-btn onclick="checkComps('${id}', true)"><i data-lucide="refresh-cw"></i> Refresh Comps</button>
             </div>`;

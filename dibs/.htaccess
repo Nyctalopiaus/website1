@@ -1,0 +1,9 @@
+# Make browsers check for a newer copy of the app's code on every load, so a deploy is picked up
+# without a hard refresh (Oct 2026: Chrome kept serving an old js/geminiAnalysis.js after deploys).
+# "no-cache" still lets the browser reuse its copy - the server just answers 304 Not Modified when
+# the file hasn't changed - so this costs almost nothing. Photos and other media are left alone.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(html|js|css)$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>

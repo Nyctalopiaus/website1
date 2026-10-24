@@ -5,7 +5,7 @@
  */
 import { apiFetch } from './api.js';
 import { CONFIG, elements, state } from './state.js';
-import { applyFiltersAndRender, syncTopBarFromState } from './filters.js';
+import { applyFiltersAndRender, syncTopBarFromState, getSelectedCities } from './filters.js';
 import { renderClientNextSteps } from './clientNextSteps.js';
 
 // Local, network-independent fallback for listings with no cached photo. A former external
@@ -45,7 +45,17 @@ export const NO_PHOTO_IMG = 'data:image/svg+xml;charset=UTF-8,' + encodeURICompo
             }
         };
 
-        updateSelectOptions('filter-city', 'All Cities', cities);
+        // City is a multi-select checklist. Keep any already-selected city listed even if no
+        // current listing is in it, so a saved selection isn't silently dropped.
+        const cityEl = document.getElementById('filter-city');
+        if (cityEl) {
+            const selected = getSelectedCities(state.filters.city);
+            selected.forEach(c => cities.add(c));
+            const sortedCities = Array.from(cities).sort((a, b) => a.localeCompare(b));
+            cityEl.innerHTML = sortedCities.length
+                ? sortedCities.map(c => `<label class="multi-check-item"><input type="checkbox" value="${escapeHtml(c)}"${selected.includes(c) ? ' checked' : ''}> <span>${escapeHtml(c)}</span></label>`).join('')
+                : '<div class="multi-check-empty">No cities loaded yet</div>';
+        }
         updateSelectOptions('filter-zip', 'All Zip Codes', zips);
         updateSelectOptions('filter-school-district', 'All School Districts', districts);
     }
@@ -207,6 +217,26 @@ export const NO_PHOTO_IMG = 'data:image/svg+xml;charset=UTF-8,' + encodeURICompo
  * 100 and 10% over is 0). Worked out here rather than stored, so a price change re-scores the
  * home against the comps already on file without another lookup. Returns null if never checked.
  */
+// Comps staleness hint. Display only: never triggers a RentCast lookup. Comps are "stale" when
+// they're older than COMPS_STALE_DAYS, or the list price has moved more than COMPS_STALE_PRICE_PCT
+// since they were pulled. The comp score itself already follows the current price.
+export const COMPS_STALE_DAYS = 45;
+export const COMPS_STALE_PRICE_PCT = 3;
+export function getCompsStaleness(p) {
+    if (!p || !p.comp_estimate || !p.comp_fetched_at) return null;
+    const fetched = new Date(p.comp_fetched_at);
+    if (Number.isNaN(fetched.getTime())) return null;
+    const ageDays = Math.floor((Date.now() - fetched.getTime()) / 86400000);
+    const atFetch = Number(p.comp_list_price_at_fetch) || 0;
+    const price = Number(p.price) || 0;
+    const priceDiff = (atFetch && price) ? price - atFetch : 0;
+    const pricePct = (atFetch && price) ? (priceDiff / atFetch) * 100 : 0;
+    const reasons = [];
+    if (ageDays >= COMPS_STALE_DAYS) reasons.push(`comps are ${ageDays} days old`);
+    if (Math.abs(pricePct) >= COMPS_STALE_PRICE_PCT) reasons.push(`price ${priceDiff < 0 ? 'down' : 'up'} ${Math.abs(pricePct).toFixed(1)}% since checked`);
+    return { stale: reasons.length > 0, ageDays, atFetch, priceDiff, pricePct, reasons };
+}
+
 export function getCompScore(p) {
     const estimate = Number(p && p.comp_estimate) || 0;
     const price = Number(p && p.price) || 0;

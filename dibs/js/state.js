@@ -32,7 +32,7 @@
             sqftMin: null, sqftMax: null, sqftTotMin: null, sqftAboveMin: null, sqftBelowMin: null, propertyType: '',
             yearMin: null, yearMax: null, acresMin: null, acresMax: null, parkingMin: null, garageMin: null,
             hoaMax: null, noHoaOnly: false, taxMax: null, taxYear: null,
-            city: '', zip: '', schoolDistrict: '',
+            city: [], zip: '', schoolDistrict: '',
             status: 'all', ratingMin: 0, matrixStatus: 'all', selectedClientId: 'all', appliances: '', flooring: '', fireplaceOnly: false, realtorNotesOnly: false,
             favoritesOnly: false, possibilitiesOnly: false, realtorSharedOnly: false, hasNotesOnly: false, showHidden: true
         }

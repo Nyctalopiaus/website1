@@ -11,6 +11,8 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/properties.php';
 require_once __DIR__ . '/collections.php';
 require_once __DIR__ . '/comps.php';
+require_once __DIR__ . '/rates.php';
+require_once __DIR__ . '/myhome.php';
 
 $action = $_GET['action'] ?? $_POST['action'] ?? 'list';
 
@@ -219,6 +221,46 @@ switch ($action) {
         requireAuth();
         requireCsrf();
         handleCheckComps($pdo);
+        break;
+
+    case 'get_my_home':
+        requireAuth();
+        handleGetMyHome($pdo);
+        break;
+
+    case 'save_my_home':
+        requireAuth();
+        requireCsrf();
+        handleSaveMyHome($pdo);
+        break;
+
+    case 'fill_my_home':
+        requireAuth();
+        requireCsrf();
+        handleFillMyHome($pdo);
+        break;
+
+    case 'check_my_home_value':
+        requireAuth();
+        requireCsrf();
+        handleCheckMyHomeValue($pdo);
+        break;
+
+    case 'get_mortgage_rates':
+        requireAuth();
+        handleGetMortgageRates($pdo);
+        break;
+
+    case 'save_rate_quote':
+        requireAuth();
+        requireCsrf();
+        handleSaveRateQuote($pdo);
+        break;
+
+    case 'delete_rate_quote':
+        requireAuth();
+        requireCsrf();
+        handleDeleteRateQuote($pdo);
         break;
 
     case 'delete':

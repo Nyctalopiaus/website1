@@ -2642,7 +2642,9 @@ export function updateStrategyComparisonUI(recast, proceeds, bridgeLoanAmount, r
 
   // Tradeoff Summary Line
   if (domRefs.stratCompSummaryText) {
-    if (availableAfterBridge <= 0) {
+    if (availableAfterBridge <= 0 && proceeds.netProceeds > 0) {
+      domRefs.stratCompSummaryText.textContent = `ℹ Your bridge loan payoff uses up all of the sale proceeds, so there's nothing left over to recast, prepay, or keep — all three options end up the same.`;
+    } else if (availableAfterBridge <= 0) {
       domRefs.stratCompSummaryText.textContent = `ℹ Enter house sale details to compare real numbers between recasting, an extra payment, and keeping the cash.`;
     } else if (isCash) {
       domRefs.stratCompSummaryText.innerHTML =

@@ -21,7 +21,7 @@ import { apiFetch, logClientEvent } from './api.js';
 import { showToast } from './toast.js';
 import { buildAiAnalysisBadge } from './properties.js';
 import {
-    generatePropertyAnalysis, getGeminiKeyState, getGeminiModel, setGeminiModel, unlockGeminiVault, saveGeminiVault,
+    generatePropertyAnalysis, buildCopyablePrompt, getGeminiKeyState, getGeminiModel, setGeminiModel, unlockGeminiVault, saveGeminiVault,
     GEMINI_DEFAULT_MODEL, GEMINI_MIN_PIN_LENGTH
 } from './geminiAnalysis.js';
 import './aiSetup.js'; // user-menu "AI Setup" modal for the same key
@@ -406,6 +406,133 @@ function geminiPanelHtml(id) {
         </div>`;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Fair value math check (Oct 2026). Gemini's grid math is usually right, but it has written a
+// fair value that didn't match its own adjusted comps (median $722,950 -> wrote $710,000). This
+// re-does the arithmetic from the pasted Markdown: each comp row (sold price + adjustments =
+// adjusted price) and the rounded median against the "Fair value estimate" in At a glance.
+// ---------------------------------------------------------------------------------------------
+const MONEY_RE = /([+\-−–])?\s*\$\s*([\d,]+(?:\.\d+)?)/;
+
+function parseMoneyCell(cell) {
+    const m = String(cell || '').match(MONEY_RE);
+    if (!m) return null;
+    const n = parseFloat(m[2].replace(/,/g, ''));
+    if (!isFinite(n)) return null;
+    return m[1] && m[1] !== '+' ? -n : n;
+}
+
+function splitRow(line) {
+    return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+}
+
+/** Returns null when the analysis has no adjustment grid; otherwise what the math says. */
+export function checkFairValueMath(markdown) {
+    const lines = String(markdown || '').split('\n');
+    let stated = null;
+    for (const line of lines) {
+        const cells = line.includes('|') ? splitRow(line) : [];
+        if (cells.length >= 2 && /fair value estimate/i.test(cells[0])) {
+            if (!/not|–\s*\$|to \$/i.test(cells[1])) stated = parseMoneyCell(cells[1]);
+            break;
+        }
+    }
+
+    // The grid: a table whose last header cell says "Adjusted".
+    for (let i = 0; i < lines.length - 2; i++) {
+        if (!lines[i].includes('|')) continue;
+        const header = splitRow(lines[i]);
+        if (header.length < 3 || !/adjusted/i.test(header[header.length - 1])) continue;
+        if (!/^\s*\|?\s*:?-{3,}/.test(lines[i + 1])) continue;
+
+        const comps = [];
+        for (let j = i + 2; j < lines.length && lines[j].includes('|'); j++) {
+            const cells = splitRow(lines[j]);
+            const money = cells.slice(1).map(parseMoneyCell);
+            const sold = money.find(v => v !== null);
+            const adjusted = money[money.length - 1];
+            if (sold == null || adjusted == null) continue;
+            const firstIdx = money.indexOf(sold);
+            const adjustments = money.slice(firstIdx + 1, money.length - 1).filter(v => v !== null);
+            const expected = sold + adjustments.reduce((a, b) => a + b, 0);
+            comps.push({ name: cells[0].replace(/\*\*/g, ''), sold, adjusted, expected, rowOff: Math.abs(expected - adjusted) > 1000 });
+        }
+        if (comps.length < 2) return null;
+
+        // A comp listed twice (Oct 2026: 15443 E Powers Dr on 15956 E Crestridge) counts once.
+        const seen = new Set();
+        const dupes = [];
+        const unique = comps.filter(c => {
+            const key = c.name.toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z0-9]/g, '');
+            if (seen.has(key)) { dupes.push(c); return false; }
+            seen.add(key);
+            return true;
+        });
+        if (unique.length < 2) return null;
+
+        const sorted = unique.map(c => c.adjusted).sort((a, b) => a - b);
+        const mid = Math.floor(sorted.length / 2);
+        const median = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+        const rounded = Math.round(median / 5000) * 5000;
+        const fairValueOff = stated != null && Math.abs(stated - rounded) > 2500;
+        const badRows = unique.filter(c => c.rowOff);
+        return { comps: unique, dupes, median, rounded, stated, fairValueOff, badRows, ok: !fairValueOff && !badRows.length && !dupes.length && stated != null };
+    }
+    return null;
+}
+
+function usd(n) {
+    return '$' + Math.round(n).toLocaleString('en-US');
+}
+
+const CORRECTED_MARK = 'Dibs: median of the adjusted comps';
+
+/**
+ * Dibs sets fair value, not Gemini (Oct 2026: Gemini moved its own median down by $10K-$70K on
+ * 5 of 6 homes). When the At a glance figure doesn't match the rounded median of the grid (with
+ * duplicates removed), it is replaced, and Gemini's number is kept beside it for the record.
+ * Returns the text unchanged when there is no grid or nothing to correct.
+ */
+export function correctFairValue(markdown) {
+    const text = String(markdown || '');
+    const r = checkFairValueMath(text);
+    if (!r || text.includes(CORRECTED_MARK)) return { text, changed: false };
+    if (r.stated != null && !r.fairValueOff) return { text, changed: false };
+    const lines = text.split('\n');
+    const idx = lines.findIndex(l => l.includes('|') && /fair value estimate/i.test(splitRow(l)[0] || ''));
+    if (idx === -1) return { text, changed: false };
+    const was = splitRow(lines[idx])[1] || '';
+    lines[idx] = `| Fair value estimate | ${usd(r.rounded)} (${CORRECTED_MARK}; Gemini wrote ${was.replace(/\|/g, '/').trim() || 'none'}) |`;
+    return { text: lines.join('\n'), changed: true, from: was, to: r.rounded };
+}
+
+function mathCheckHtml(text) {
+    const r = checkFairValueMath(text);
+    if (!r) return '';
+    const corrected = String(text).includes(CORRECTED_MARK)
+        ? ` Dibs set the fair value from the grid; Gemini's own figure is kept in the At a glance table. Its suggested offer range may still be built on its figure.` : '';
+    if (r.ok) {
+        return `<div class="comps-note" style="margin:0 0 0.5rem;"><i data-lucide="check-circle" style="width:0.9em;height:0.9em;"></i> Math check passed: ${r.comps.length} adjusted comps, median ${usd(r.median)}, fair value ${usd(r.rounded)}.${corrected}</div>`;
+    }
+    const issues = [];
+    if (r.dupes.length) issues.push(`Listed more than once (counted once): ${r.dupes.map(c => esc(c.name)).join(', ')}. Without the duplicate, fair value is ${usd(r.rounded)}.`);
+    if (r.stated == null) issues.push(`The analysis gives no single fair value to check. The adjusted comps have a median of ${usd(r.median)}, which rounds to <strong>${usd(r.rounded)}</strong>.`);
+    if (r.fairValueOff) issues.push(`It says fair value is <strong>${usd(r.stated)}</strong>, but its own adjusted comps (${r.comps.map(c => usd(c.adjusted)).join(', ')}) have a median of ${usd(r.median)}, which rounds to <strong>${usd(r.rounded)}</strong>.`);
+    r.badRows.forEach(c => issues.push(`${esc(c.name)}: the sold price plus its adjustments comes to ${usd(c.expected)}, but the grid says ${usd(c.adjusted)}.`));
+    return `<div style="margin:0 0 0.75rem; padding:0.6rem 0.8rem; border:1px solid rgba(234,179,8,0.4); background:rgba(234,179,8,0.12); border-radius:6px; font-size:0.85rem;">
+        <strong><i data-lucide="alert-triangle" style="width:1em;height:1em;"></i> Math check failed</strong>
+        <ul style="margin:0.35rem 0 0; padding-left:1.2rem;">${issues.map(t => `<li>${t}</li>`).join('')}</ul>
+    </div>`;
+}
+
+function warnIfMathOff(text, correction) {
+    if (correction && correction.changed) {
+        showToast(`Gemini's fair value didn't match its own comp grid. Dibs set it to ${usd(correction.to)}.`, 'info');
+    }
+    const r = checkFairValueMath(text);
+    if (r && !r.ok) showToast('Saved, but some of the comp math doesn\'t add up. See the warning at the top of the analysis.', 'error');
+}
+
 function sectionInnerHtml(p) {
     const id = esc(String(p.mls_id));
     const text = String(p.ai_analysis || '');
@@ -431,11 +558,13 @@ function sectionInnerHtml(p) {
         ? `<div class="comps-note">Gemini is reading this listing's Dibs data and searching the web. This usually takes under a minute; you can keep browsing and it will be saved here when it finishes.</div>`
         : '';
     const panel = geminiPanel && !generating ? geminiPanelHtml(id) : '';
+    const copyBtn = `<button type="button" class="btn btn-secondary" onclick="copyGeminiPrompt('${id}')" title="Copy a prompt with this home's Dibs data to paste into the Gemini app"><i data-lucide="clipboard-copy"></i> Copy Gemini Prompt</button>`;
 
     if (!hasText) {
         return `${title}
             <div class="ai-analysis-actions">
                 ${generateBtn}
+                ${copyBtn}
                 <button type="button" class="btn btn-secondary" onclick="editAiAnalysis('${id}')" ${generating ? 'disabled' : ''}><i data-lucide="clipboard-paste"></i> Paste an Analysis</button>
             </div>
             ${generatingNote}${panel}
@@ -443,11 +572,13 @@ function sectionInnerHtml(p) {
     }
 
     return `${title}
+        ${mathCheckHtml(text)}
         <div class="ai-analysis-body${expanded ? ' is-expanded' : ''}" id="ai-analysis-body">${renderMarkdown(text)}</div>
         <div class="ai-analysis-actions">
             <button type="button" class="btn btn-secondary" onclick="editAiAnalysis('${id}')" ${generating ? 'disabled' : ''}><i data-lucide="pencil"></i> Edit</button>
             <button type="button" class="btn btn-secondary" onclick="toggleAiAnalysisExpand('${id}')"><i data-lucide="${expanded ? 'minimize-2' : 'maximize-2'}"></i> ${expanded ? 'Collapse' : 'Show All'}</button>
             ${generateBtn}
+            ${copyBtn}
         </div>
         ${generatingNote}${panel}`;
 }
@@ -521,7 +652,8 @@ window.saveAiAnalysis = function(mlsId) {
     const p = findProperty(mlsId);
     const input = document.getElementById('ai-analysis-input');
     if (!p || !input) return;
-    const text = input.value.trim();
+    const correction = correctFairValue(input.value.trim());
+    const text = correction.text;
     if (isAiAnalysisTooLong(text)) {
         showToast('That analysis is too long to save (200 KB max).', 'error');
         return;
@@ -537,6 +669,7 @@ window.saveAiAnalysis = function(mlsId) {
         editingMlsId = null;
         refreshSection(p);
         showToast(text ? 'AI analysis saved' : 'AI analysis cleared', 'success');
+        warnIfMathOff(text, correction);
     }).catch(error => showToast(error.message || 'Unable to save analysis', 'error'));
 };
 
@@ -580,6 +713,18 @@ window.submitGeminiKeyPanel = async function(mlsId) {
     window.generateAiAnalysis(mlsId, true);
 };
 
+window.copyGeminiPrompt = async function(mlsId) {
+    const p = findProperty(mlsId);
+    if (!p) return;
+    try {
+        const prompt = await buildCopyablePrompt(p);
+        await navigator.clipboard.writeText(prompt);
+        showToast('Prompt copied. Paste it into Gemini, attach garage, backyard and floor-plan photos if you have them, then paste the answer back here.', 'success');
+    } catch (error) {
+        showToast(error.message || 'Could not copy the prompt', 'error');
+    }
+};
+
 window.generateAiAnalysis = async function(mlsId, skipConfirm = false) {
     const p = findProperty(mlsId);
     if (!p) return;
@@ -600,7 +745,8 @@ window.generateAiAnalysis = async function(mlsId, skipConfirm = false) {
     refreshSection(p);
     const startedAt = Date.now();
     try {
-        const markdown = (await generatePropertyAnalysis(p)).trim();
+        const correction = correctFairValue((await generatePropertyAnalysis(p)).trim());
+        const markdown = correction.text;
         if (isAiAnalysisTooLong(markdown)) throw new Error('Gemini wrote more than can be saved (200 KB). Try again.');
         const data = await apiFetch(CONFIG.API_URL + '?action=update_user_data', {
             method: 'POST',
@@ -611,6 +757,7 @@ window.generateAiAnalysis = async function(mlsId, skipConfirm = false) {
         p.ai_analysis = markdown;
         syncCardAiBadge(p);
         showToast('AI analysis saved', 'success');
+        warnIfMathOff(markdown, correction);
     } catch (error) {
         showToast(error.message || 'Gemini could not write the analysis', 'error');
         // The toast is gone in a few seconds; keep a copy in the event log, tagged with the listing.

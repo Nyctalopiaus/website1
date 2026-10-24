@@ -366,7 +366,12 @@ export function selectCandidateHomes() {
     const protectFavorites = elements.cleanupProtectFavorites ? elements.cleanupProtectFavorites.checked : true;
     selectedMlsIds.clear();
 
+    // The cleanup list holds every non-Active listing plus stale Actives. Only truly off-market
+    // ones belong here: skip stale Actives (they have their own button) and anything still in
+    // play — Pending, Under Contract, Coming Soon, Active Under Contract.
+    const stillInPlay = /pending|under contract|coming soon|active/i;
     (cleanupData.properties || []).forEach(p => {
+        if (p.is_stale_active || stillInPlay.test(p.status || '')) return;
         if (!protectFavorites || !p.is_protected) {
             selectedMlsIds.add(p.mls_id);
         }

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Only these destinations are allowed. Your WiGLE key can only ever be sent to api.wigle.net. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com/leaflet@1.9.4/; style-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/ https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://tile.openstreetmap.org https://unpkg.com/leaflet@1.9.4/; connect-src 'self' https://api.wigle.net https://nominatim.openstreetmap.org; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
+<title>Ghost Town · Wardriving planner for WiGLE</title>
+<meta name="description" content="Plan wardriving routes for WiGLE: find neighborhoods full of networks nobody has logged in years.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0f1726">
+<meta property="og:title" content="Ghost Town — find the neighborhoods WiGLE forgot">
+<meta property="og:description" content="A wardriving planner that maps where WiGLE's data has gone stale, so every drive logs new networks.">
+<meta property="og:type" content="website">
+<link rel="icon" href="../favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="style.css?v=11">
+</head>
+<body>
+<header class="header">
+  <div class="logo">
+    <a href="../" class="btn-back">← Back to Lab</a>
+    <h1 class="logo-text">Ghost Town</h1>
+  </div>
+  <div class="header-actions">
+    <button type="button" id="keyBtn" class="btn-key" data-state="off" title="Your WiGLE API key">
+      <span aria-hidden="true">🔑</span> <span>Add WiGLE key</span>
+    </button>
+    <button type="button" id="helpBtn" class="btn-quickstart" title="How to use Ghost Town">
+      <span aria-hidden="true">ℹ️</span> <span>Quick Start</span>
+    </button>
+  </div>
+</header>
+
+<div class="app">
+<aside id="panel" aria-label="Controls">
+  <p class="lede">Find the neighborhoods WiGLE forgot: places full of networks nobody has logged in years.</p>
+
+  <form id="areaForm" class="block">
+    <div class="field-row">
+      <label class="grow">Zip code <input id="zip" inputmode="numeric" maxlength="5" pattern="\d{5}" required placeholder="92802" autocomplete="postal-code"></label>
+      <label>Radius
+        <span class="unit-input"><input id="radius" type="number" min="0.5" max="15" step="0.5" value="3"><span>km</span></span>
+      </label>
+    </div>
+    <div class="field-row">
+      <label class="grow">Cell size
+        <select id="size"><option value="4">About 2 km</option><option value="2" selected>About 1 km</option><option value="1">About 500 m</option></select>
+      </label>
+    </div>
+    <fieldset class="types">
+      <legend>Count these</legend>
+      <label class="chip"><input type="checkbox" name="type" value="wifi" checked><span>WiFi</span></label>
+      <label class="chip"><input type="checkbox" name="type" value="bluetooth"><span>Bluetooth</span></label>
+      <label class="chip"><input type="checkbox" name="type" value="cell"><span>Cell towers</span></label>
+    </fieldset>
+    <button type="submit" class="btn-primary">Show area</button>
+  </form>
+
+  <section id="budget" class="block budget" aria-live="polite">
+    <div class="budget-head"><span id="budgetText">No queries used today</span></div>
+    <div class="meter" role="presentation"><div id="budgetFill"></div></div>
+    <p id="budgetHint" class="hint"></p>
+  </section>
+
+  <section id="scanSection" class="block" hidden>
+    <label class="slider-label">Stale if nobody has seen it in <strong id="ageLabel">4 years</strong>
+      <input id="age" type="range" min="1" max="6" step="1" value="4">
+    </label>
+    <div class="actions">
+      <button id="scanBtn" type="button" class="btn-primary">Count cells</button>
+      <button id="stopBtn" type="button" class="btn-quiet" hidden>Stop</button>
+    </div>
+    <p id="needed" class="hint"></p>
+    <button id="refreshBtn" type="button" class="btn-quiet small" hidden></button>
+    <div id="summary" class="summary"></div>
+  </section>
+
+  <section id="rankSection" class="block" hidden>
+    <h2>Best cells to drive</h2>
+    <ol id="ranked" class="ranked"></ol>
+  </section>
+
+  <p id="msg" class="msg" role="status" aria-live="polite"></p>
+
+  <section class="block data-block">
+    <h2>Your data</h2>
+    <p class="hint">Everything you count stays in this browser. Export it to back up or move to another device.</p>
+    <div class="actions">
+      <button id="exportBtn" type="button" class="btn-quiet small">Export</button>
+      <label class="btn-quiet small file-btn">Import<input id="importInput" type="file" accept="application/json,.json" hidden></label>
+      <button id="diagBtn" type="button" class="btn-quiet small">Diagnostics</button>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <p>© Nycto's Project Lab • Ghost Town • Network data © <a href="https://wigle.net" target="_blank" rel="noopener noreferrer">WiGLE.net</a> contributors</p>
+  </footer>
+</aside>
+
+<main class="map-wrap">
+  <div id="map" aria-label="Map of counted cells"></div>
+
+  <div id="demoBanner" class="banner" hidden>
+    <span>You're looking at sample data for <strong id="demoPlace">Centennial, CO</strong>. Add your WiGLE key to scan your own area.</span>
+    <button type="button" id="demoKeyBtn" class="btn-primary small">Add WiGLE key</button>
+  </div>
+
+  <div id="legend" class="legend-card" aria-label="Map legend">
+    <div class="ramp"><span>Recently driven</span><span class="ramp-bar"></span><span>Gone stale</span></div>
+    <div class="legend-row"><span class="sw sw-empty"></span>Almost no networks ever: empty land or never driven</div>
+    <div class="legend-row"><span class="sw sw-half"></span>Half counted</div>
+    <div class="legend-row"><span class="sw sw-todo"></span>Not counted yet</div>
+  </div>
+
+  <section id="cellCard" class="cell-card" hidden aria-labelledby="cellTitle">
+    <button type="button" id="cellClose" class="icon-btn" aria-label="Close cell details">×</button>
+    <h2 id="cellTitle"></h2>
+    <p id="cellWhere" class="hint"></p>
+    <p id="cellStory" class="story"></p>
+    <div id="cellBar" class="split-bar" hidden><div class="stale"></div></div>
+    <dl id="cellFacts" class="facts"></dl>
+    <div class="card-actions">
+      <button type="button" id="splitBtn" class="btn-quiet"></button>
+      <button type="button" id="devBtn" class="btn-primary"></button>
+      <button type="button" id="devStop" class="btn-quiet" hidden>Stop download</button>
+    </div>
+    <p id="devProgress" class="hint"></p>
+
+    <div id="devPanel" class="dev-panel" hidden>
+      <div class="dev-head">
+        <h3>Devices in this cell</h3>
+        <label class="toggle"><input type="checkbox" id="devShow" checked> <span>Show on map</span></label>
+      </div>
+      <div class="filters">
+        <fieldset>
+          <legend>Type</legend>
+          <div id="fType" class="chips"></div>
+        </fieldset>
+        <fieldset>
+          <legend>Last seen</legend>
+          <div class="seg" role="radiogroup">
+            <label><input type="radio" name="fAge" value="all" checked><span>Any time</span></label>
+            <label><input type="radio" name="fAge" value="stale"><span>Stale</span></label>
+            <label><input type="radio" name="fAge" value="fresh"><span>Recent</span></label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Security</legend>
+          <div class="seg" role="radiogroup">
+            <label><input type="radio" name="fSec" value="all" checked><span>All</span></label>
+            <label><input type="radio" name="fSec" value="open"><span>Open only</span></label>
+          </div>
+        </fieldset>
+      </div>
+      <p id="devCount" class="hint"></p>
+    </div>
+  </section>
+</main>
+</div>
+
+<!-- WiGLE key setup -->
+<dialog id="keyDialog" aria-labelledby="keyTitle">
+  <form id="keyForm" class="dlg-body" autocomplete="off">
+    <h2 id="keyTitle">Your WiGLE API key</h2>
+    <p class="hint">Find it on <a href="https://wigle.net/account" target="_blank" rel="noopener noreferrer">wigle.net/account</a> under API Token. Copy the API Name and the API Token.</p>
+    <label>API Name <input id="apiName" class="txt" spellcheck="false" required></label>
+    <label>API Token <input id="apiToken" class="txt" type="password" spellcheck="false" required></label>
+    <div class="field-row">
+      <label class="grow">PIN, 4 or more characters <input id="pin" class="txt" type="password" minlength="4" required></label>
+      <label class="grow">Confirm PIN <input id="pin2" class="txt" type="password" minlength="4" required></label>
+    </div>
+    <p class="note"><strong>Stays local.</strong> Your key is encrypted with your PIN (AES-GCM) and saved only in this browser. It goes straight from this browser to WiGLE and never passes through nycto.ninja. Queries come out of your own WiGLE daily allowance, and you can regenerate the token on WiGLE at any time.</p>
+    <p id="keyErr" class="err" role="alert"></p>
+    <div class="actions">
+      <button type="submit" class="btn-primary">Save and unlock</button>
+      <button type="button" id="keyCancel" class="btn-quiet">Cancel</button>
+      <button type="button" id="lockBtn" class="btn-quiet" hidden>Lock now</button>
+      <button type="button" id="forgetBtn" class="btn-quiet danger" hidden>Remove key</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Unlock saved key -->
+<dialog id="unlockDialog" aria-labelledby="unlockTitle">
+  <form id="unlockForm" class="dlg-body" autocomplete="off">
+    <h2 id="unlockTitle">Unlock your WiGLE key</h2>
+    <p class="hint">Your key is encrypted on this device. Enter your PIN to use it until you close this tab.</p>
+    <label>PIN <input id="unlockPin" class="txt" type="password" required></label>
+    <p id="unlockErr" class="err" role="alert"></p>
+    <div class="actions">
+      <button type="submit" class="btn-primary">Unlock</button>
+      <button type="button" id="unlockCancel" class="btn-quiet">Cancel</button>
+      <button type="button" id="unlockForget" class="btn-quiet danger">Forgot PIN? Remove key</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Diagnostics -->
+<dialog id="diagDialog" aria-labelledby="diagTitle">
+  <div class="dlg-body">
+    <h2 id="diagTitle">Diagnostics</h2>
+    <p id="diagSummary" class="hint"></p>
+    <p class="hint">Every WiGLE request (what was asked, the response, timing), zip lookups, key events and errors. Your API key and PIN are never recorded. Newest first; the last 500 entries stay in this browser.</p>
+    <ol id="diagLog" class="diag-log"></ol>
+    <div class="actions">
+      <button id="diagCopy" type="button" class="btn-primary">Copy report</button>
+      <button id="diagDownload" type="button" class="btn-quiet">Download report</button>
+      <button id="diagClear" type="button" class="btn-quiet danger">Clear log</button>
+      <button id="diagClose" type="button" class="btn-quiet">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Quick Start -->
+<dialog id="help" aria-labelledby="helpTitle">
+  <div class="dlg-body help-body">
+    <button id="helpClose" type="button" class="icon-btn" aria-label="Close">×</button>
+    <h2 id="helpTitle">How to hunt ghost towns</h2>
+    <p>WiGLE scores you for networks nobody has logged yet. Ghost Town finds neighborhoods full of networks
+      nobody has seen in years. Most of those routers have since been replaced, and the replacements are new to WiGLE.</p>
+
+    <h3>Your key and your budget</h3>
+    <ul>
+      <li>Add your own WiGLE API key with the 🔑 button. It's encrypted with a PIN, stays in this browser and goes straight to WiGLE.</li>
+      <li>Every count or download page costs one query from your WiGLE daily allowance. New accounts get only a few a day; the allowance grows as you upload.</li>
+      <li>The budget bar shows today's usage. The first time WiGLE stops a scan, Ghost Town learns your daily limit and shows what's left.</li>
+      <li>Nothing is paid for twice. Counts are saved on one fixed grid, so overlapping areas reuse them, and they only refresh after 90 days when you ask.</li>
+    </ul>
+
+    <h3>The efficient workflow</h3>
+    <ol>
+      <li>Show your zip with cells of about 2 km, WiFi only, stale after 4 years. Each cell costs about 2 queries.</li>
+      <li>Count cells. Each cell is finished before the next one starts, so even a small allowance gives you complete answers.</li>
+      <li>Click the most promising cell and choose <em>Split into 4 smaller cells</em>. That spends a few queries on one spot instead of recounting the whole area.</li>
+      <li>On your best small cell, choose <em>Download devices</em> to see individual networks. Filter for the stale ones and plan your route through them.</li>
+    </ol>
+
+    <h3>Reading the map</h3>
+    <ul>
+      <li>Cells shade from blue (recently driven) to glowing pink (gone stale). Brighter cells hold more networks.</li>
+      <li>Gray cells have almost no networks on record. Check the streets underneath: a built-up gray cell has probably never been driven.</li>
+      <li>Rank by how many networks are stale, not the percentage: 400 stale out of 500 beats 9 out of 10.</li>
+    </ul>
+
+    <h3>Tips</h3>
+    <ul>
+      <li>Only tick Bluetooth or Cell towers if you'll log them; each extra type doubles the cost.</li>
+      <li>Neighborhoods near colleges and apartment complexes turn over fastest, since tenants bring new routers every year or two.</li>
+      <li>Driving and uploading raises your WiGLE allowance, so each drive makes Ghost Town cheaper to use.</li>
+    </ul>
+  </div>
+</dialog>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script type="module" src="js/app.js?v=11"></script>
+</body>
+</html>

@@ -104,9 +104,12 @@ export function exportFavoritesToHomeward() {
         }
     }
 
-    const all = state.allProperties || [];
-    const favorites = all.filter(p => p.favorite || getPropertyReviewStatus(p) === 'favorite');
-    sendPropertiesToHomeward(favorites);
+    // Send exactly the homes the current filters show (status, review status, cities, price, etc.),
+    // not every favorite ever saved — e.g. filter to Liked/Favorites + Active to map a tour.
+    const shown = state.filteredProperties || [];
+    sendPropertiesToHomeward(shown, {
+        emptyMessage: 'No properties match your current filters to map in Homeward.'
+    });
 }
 
 export function downloadTourCalendarICS(properties, client) {

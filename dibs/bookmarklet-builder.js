@@ -678,6 +678,13 @@ function getEngineCode() {
         const parkingMatch = text.match(/(\d+)\s*Parking Total/i) || text.match(/Parking Total\s*\n?\s*(\d+)/i);
         const parkingTotal = parkingMatch ? cleanInt(parkingMatch[1]) : 0;
 
+        // Results card glues these together, e.g. "Single Family Residence/House4Beds4BathsTri-LevelLevels"
+        // or "...3BathsOneLevels" (confirmed live Oct 2026). Detail view puts the value after the label.
+        const levelsMatch = text.match(/Baths\s*([A-Za-z][A-Za-z0-9 \-\/+]{0,30}?)\s*Levels/i) || text.match(/\bLevels:?[ \t]*\n?[ \t]*([A-Za-z][A-Za-z0-9 \-\/+]{0,30})/);
+        const levels = levelsMatch ? levelsMatch[1].trim() : '';
+        const typeMatch = text.match(/([A-Za-z][A-Za-z ]{2,40}\/[A-Za-z][A-Za-z ]{1,30}?)\s*\d+\s*Beds/);
+        const propertyType = typeMatch ? typeMatch[1].trim() : '';
+
         const garageMatch = text.match(/(\d+)\s*Garage Spaces/i);
         const garageSpaces = garageMatch ? cleanInt(garageMatch[1]) : 0;
 
@@ -791,6 +798,8 @@ function getEngineCode() {
             lot_sqft: lotSqft,
             year_built: yearBuilt,
             school_district: schoolDistrict,
+            levels: levels,
+            property_type: propertyType,
             parking_total: parkingTotal,
             garage_spaces: garageSpaces,
             hoa_fee: hoaFee,
@@ -810,6 +819,34 @@ function getEngineCode() {
         if (matrixKey && /^\d{4,20}$/.test(matrixKey) && matrixKey !== mlsId) result.matrix_key = matrixKey;
         if (description) result.description = description;
         if (hasInterior) result.interior = interior;
+        // Detail-view spec fields (confirmed live Oct 2026: "Levels" -> "One", "Property Sub Type"
+        // -> "Single Family Residence", "Structure Type" -> "House", etc.). These win over the
+        // list-view regex guesses above. The extra keys land in raw_mls_json, where the map/land
+        // details popup (js/propertyMapModal.js) already looks for them by these names.
+        if (labeledFields['Levels']) result.levels = labeledFields['Levels'];
+        if (labeledFields['Property Sub Type']) {
+            result.property_type = labeledFields['Property Sub Type'] + (labeledFields['Structure Type'] ? '/' + labeledFields['Structure Type'] : '');
+        }
+        const extraFields = {
+            'Parcel Number': 'parcel_number',
+            'Tax Legal Description': 'tax_legal_description',
+            'Subdivision Name': 'subdivision_name',
+            'Structure Type': 'structure_type',
+            'Property Sub Type': 'property_sub_type',
+            'Architectural Style': 'architectural_style',
+            'List Office Name': 'list_office_name'
+        };
+        Object.keys(extraFields).forEach(label => {
+            if (labeledFields[label]) result[extraFields[label]] = labeledFields[label];
+        });
+        if (labeledFields['Original List Price']) {
+            const olp = toNum(labeledFields['Original List Price']);
+            if (olp) result.original_list_price = olp;
+        }
+        // Never send a blank levels/property_type: the backend keeps what it has, but raw_mls_json
+        // is a straight merge and a blank would overwrite a good value there.
+        if (!result.levels) delete result.levels;
+        if (!result.property_type) delete result.property_type;
         return result;
     }
 

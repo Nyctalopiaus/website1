@@ -1585,7 +1585,7 @@ export function generateOutlookSummary(results, context = {}) {
         icon: 'icon-info',
         text: `You're keeping the leftover sale proceeds as cash instead of applying them to the new loan — this payment won't change once the sale closes.`
       });
-    } else if (activeRecast.monthlySavings > 0) {
+    } else if (activeRecast.monthlySavings >= 1) {
       lines.push({
         tone: 'good',
         icon: 'icon-trend-down',

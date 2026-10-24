@@ -11,7 +11,7 @@
  * even after a reload, until "rank again" is used.
  */
 import { state } from './state.js';
-import { cleanDisplayAddress, escapeHtml, getCompScore, NO_PHOTO_IMG } from './properties.js';
+import { cleanDisplayAddress, escapeHtml, getCompScore, getPropertyReviewStatus, NO_PHOTO_IMG } from './properties.js';
 import { showToast } from './toast.js';
 import { logClientEvent } from './api.js';
 import {
@@ -24,6 +24,14 @@ const PRIORITIES_STORAGE = 'dibs_ai_rank_priorities_v1';
 const RESULTS_STORAGE = 'dibs_ai_rank_results_v1';
 const MAX_SAVED_RESULTS = 5;      // most recent first; the oldest drops off
 const VERDICTS = ['Top pick', 'Strong contender', 'Worth a look', 'Long shot', 'Pass'];
+// Triage mode: used when every home being ranked is in the buyer's Possibilities bucket.
+const ACTIONS = ['Move to Favorites', 'Keep as Possibility', "Don't Consider"];
+const ACTION_META = {
+    'Move to Favorites': { icon: 'star', tone: 'top', blurb: 'Strong enough to pursue: tour it or get ready to offer.' },
+    'Keep as Possibility': { icon: 'circle-help', tone: 'fair', blurb: 'Still a reasonable option, with open questions or trade-offs.' },
+    "Don't Consider": { icon: 'ban', tone: 'pass', blurb: 'A concrete reason to drop it. Empty is fine.' }
+};
+const isTriageSet = homes => homes.length > 0 && homes.every(p => getPropertyReviewStatus(p) === 'possibility');
 
 let view = 'idle';      // idle | unlock | nokey | toomany | loading | result | error
 let pending = [];       // homes the next run will use
@@ -52,7 +60,9 @@ function setPriorities(value) {
     } catch (e) { /* priorities just won't be remembered */ }
 }
 
-const signatureOf = (homes, priorities) => homes.map(p => String(p.mls_id)).sort().join(',') + '|' + priorities;
+// v2: absolute verdicts + possibilities triage. Bumping it retires rankings saved under the old rules.
+const RANK_RULES_VERSION = 'v2';
+const signatureOf = (homes, priorities) => RANK_RULES_VERSION + '|' + homes.map(p => String(p.mls_id)).sort().join(',') + '|' + priorities;
 
 // ---- Prompt -------------------------------------------------------------------------------
 
@@ -70,9 +80,12 @@ How to judge "best purchase", in this order:
 Rules:
 - Rank every home you were given exactly once. Do not drop any and do not invent any. Use each home's mls_id exactly as written.
 - Compare the homes against each other. Say what specifically puts one above the next; cite the numbers.
-- Be skeptical on the buyer's behalf. Never repeat listing marketing language as fact.
+- Be skeptical on the buyer's behalf. Never repeat listing marketing language as fact. Skeptical does not mean inventing a weakness: if a home has no real problem, say so.
 - Work only from the fact sheets. You cannot search the web in this run. Never state a price, date, fee or fact that is not in a fact sheet. If something important is missing for a home (no comps checked, no HOA amount, no saved analysis), say so in data_gaps and let it lower your confidence rather than guessing.
-- The score is 0 to 100 for how good a purchase the home is for this buyer at its current list price. Spread the scores so the gaps between homes mean something.
+- Rank is relative; verdict and score are NOT. The rank orders the homes against each other. The verdict and the score judge each home on its own, against the buyer's priorities and what a sensible buyer should pay, exactly as you would if it were the only home in the list.
+- There is no quota for any verdict. Never mark a home Pass or Long shot just because it ranks last or because the other homes are better. If every home here is a reasonable purchase, it is correct for none of them to be Pass or Long shot, and for several to share the same verdict. The buyer often re-runs this after removing the weak homes; a list that has already been cleaned up should come back clean.
+- What each verdict means: Top pick = an excellent purchase they should pursue now. Strong contender = a good purchase with minor trade-offs. Worth a look = a reasonable option with real trade-offs or open questions. Long shot = significant problems; only worth it if something changes, such as a price cut. Pass = a concrete dealbreaker (a stated priority it fails, a serious condition or cost risk, or clearly poor value) that you can name in risks.
+- The score is 0 to 100 for how good a purchase the home is for this buyer at its current list price, on that same absolute scale: two similarly good homes get similar scores. Do not stretch scores apart to make the gaps look meaningful.
 - Plain text only inside every string: no Markdown, no bullet characters, no line breaks.
 - Every array holds plain strings only: one complete sentence or point per item, never a nested object or array.
 
@@ -96,6 +109,61 @@ Answer with one JSON object and nothing else, in exactly this shape:
   "tradeoffs": ["3 to 5 sentences on the trade-offs between homes that decided the order"],
   "data_gaps": ["missing information that limited this ranking, naming the home; an empty array if none"]
 }`;
+
+const TRIAGE_PROMPT = `
+
+Every home in this run is in the buyer's "Possibilities" bucket: homes they liked enough to keep but haven't committed to. Besides the ranking, sort each home into one action (add an "action" field to each ranking entry, one of: ${ACTIONS.join(' | ')}):
+- Move to Favorites: good enough that the buyer should actively pursue it (tour it, prepare an offer). Usually Top pick or Strong contender.
+- Keep as Possibility: still a reasonable option, but with trade-offs or open questions that are worth resolving first.
+- Don't Consider: only when there is a concrete reason you can name in risks (a stated priority it fails, a dealbreaker, clearly poor value). Do not move a home here just because it ranks last.
+The same no-quota rule applies: any section may be empty. If all the possibilities are decent, none belong in Don't Consider. Keep the action consistent with the verdict.`;
+
+// The same shape as the prompt above, handed to Gemini as a response schema so the reply is
+// held to it while it is written (see generateGeminiJson()). Keep the two in step.
+const STR = { type: 'STRING' };
+const STR_LIST = { type: 'ARRAY', items: STR };
+const RANKING_SCHEMA = {
+    type: 'OBJECT',
+    properties: {
+        summary: STR,
+        ranking: {
+            type: 'ARRAY',
+            items: {
+                type: 'OBJECT',
+                properties: {
+                    mls_id: STR,
+                    rank: { type: 'INTEGER' },
+                    score: { type: 'INTEGER' },
+                    verdict: { type: 'STRING', enum: VERDICTS },
+                    headline: STR,
+                    why: STR,
+                    strengths: STR_LIST,
+                    risks: STR_LIST,
+                    offer_strategy: STR,
+                    verify: STR_LIST
+                },
+                required: ['mls_id', 'rank', 'score', 'verdict', 'headline', 'why', 'strengths', 'risks', 'offer_strategy', 'verify'],
+                propertyOrdering: ['mls_id', 'rank', 'score', 'verdict', 'headline', 'why', 'strengths', 'risks', 'offer_strategy', 'verify']
+            }
+        },
+        tradeoffs: STR_LIST,
+        data_gaps: STR_LIST
+    },
+    required: ['summary', 'ranking', 'tradeoffs', 'data_gaps'],
+    propertyOrdering: ['summary', 'ranking', 'tradeoffs', 'data_gaps']
+};
+
+/** Schema for this run; triage runs add the required "action" field to each ranking entry. */
+function schemaFor(triage) {
+    if (!triage) return RANKING_SCHEMA;
+    const item = RANKING_SCHEMA.properties.ranking.items;
+    const props = { ...item.properties, action: { type: 'STRING', enum: ACTIONS } };
+    const order = [...item.propertyOrdering.slice(0, 4), 'action', ...item.propertyOrdering.slice(4)];
+    return {
+        ...RANKING_SCHEMA,
+        properties: { ...RANKING_SCHEMA.properties, ranking: { type: 'ARRAY', items: { ...item, properties: props, required: [...item.required, 'action'], propertyOrdering: order } } }
+    };
+}
 
 function buildUserPrompt(homes, priorities) {
     const budget = Math.max(3000, Math.min(16000, Math.floor(PROMPT_ANALYSIS_CHARS / homes.length)));
@@ -134,6 +202,7 @@ function normalizeResult(data, homes) {
             rank: index + 1,
             score: Math.max(0, Math.min(100, Math.round(num(row.score)))),
             verdict: VERDICTS.find(v => v.toLowerCase() === text(row.verdict).toLowerCase()) || text(row.verdict, 30) || 'Worth a look',
+            action: ACTIONS.find(a => a.toLowerCase() === text(row.action).toLowerCase()) || '',
             headline: text(row.headline, 160),
             why: text(row.why, 1200),
             strengths: list(row.strengths, 4),
@@ -214,7 +283,8 @@ async function run(homes) {
     }, 1000);
 
     try {
-        const { data, model } = await generateGeminiJson(SYSTEM_PROMPT, buildUserPrompt(homes, priorities));
+        const triage = isTriageSet(homes);
+        const { data, model } = await generateGeminiJson(SYSTEM_PROMPT + (triage ? TRIAGE_PROMPT : ''), buildUserPrompt(homes, priorities), schemaFor(triage));
         last = { signature, homes, model, priorities, filteredTotal, at: new Date(), ...normalizeResult(data, homes) };
         saveResult(last);
         view = 'result';
@@ -335,6 +405,20 @@ function rowHtml(row) {
     </details>`;
 }
 
+/** Triage runs (rows carry an action) show three sections; anything else is one ranked list. */
+function listHtml(r) {
+    if (!r.rows.some(row => row.action)) return `<div class="ai-rank-list">${r.rows.map(rowHtml).join('')}</div>`;
+    return ACTIONS.map(action => {
+        const rows = r.rows.filter(row => (row.action || 'Keep as Possibility') === action);
+        const meta = ACTION_META[action];
+        return `<div class="ai-rank-group ai-rank-group--${meta.tone}">
+                <div class="ai-rank-group-title"><i data-lucide="${meta.icon}"></i> ${esc(action)} <span class="ai-rank-group-count">${rows.length}</span></div>
+                <div class="ai-rank-group-blurb">${esc(meta.blurb)}</div>
+                ${rows.length ? `<div class="ai-rank-list">${rows.map(rowHtml).join('')}</div>` : `<div class="ai-rank-group-empty">${action === "Don't Consider" ? 'Nothing to drop. Every possibility here is a reasonable option.' : 'None this run.'}</div>`}
+            </div>`;
+    }).join('');
+}
+
 function prioritiesHtml() {
     return `<label class="ai-rank-priorities">
             <span>What matters most to you? <em>Optional. Used on the next run and remembered in this browser.</em></span>
@@ -364,7 +448,7 @@ function resultHtml() {
             <div class="ai-rank-summary-pick">${esc(cleanDisplayAddress(top.p.address, top.p.mls_id))}<span>${esc(money(top.p.price))}</span></div>
             ${r.summary ? `<p>${esc(r.summary)}</p>` : ''}
         </div>
-        <div class="ai-rank-list">${r.rows.map(rowHtml).join('')}</div>
+        ${listHtml(r)}
         ${r.skipped.length ? `<div class="ai-rank-notice"><i data-lucide="info"></i><span>Gemini left ${r.skipped.length === 1 ? 'one home' : r.skipped.length + ' homes'} out of its answer: ${r.skipped.map(p => esc(cleanDisplayAddress(p.address, p.mls_id))).join(', ')}. Run it again to include ${r.skipped.length === 1 ? 'it' : 'them'}.</span></div>` : ''}
         ${r.tradeoffs.length ? `<div class="ai-rank-section"><div class="ai-rank-section-title"><i data-lucide="git-compare"></i> What decided the order</div><ul>${r.tradeoffs.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
         ${r.gaps.length ? `<div class="ai-rank-section ai-rank-section--muted"><div class="ai-rank-section-title"><i data-lucide="circle-help"></i> Missing information</div><ul>${r.gaps.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : ''}
@@ -384,7 +468,7 @@ function bodyHtml() {
         const count = running ? running.count : pending.length;
         return `<div class="ai-rank-state">
                 <div class="ai-rank-spinner"></div>
-                <h3>Gemini is comparing ${count} homes</h3>
+                <h3>Gemini is comparing ${count} homes${isTriageSet(pending) ? ' and sorting your possibilities' : ''}</h3>
                 <p>Reading each home's listing details, comps, your notes and saved AI analysis, then ranking them against each other. This usually takes under a minute. <span id="ai-rank-elapsed"></span></p>
                 <p class="comps-note">You can close this and keep browsing; the ranking will be here when you come back.</p>
             </div>`;
@@ -450,7 +534,7 @@ function resultAsText() {
     if (r.summary) lines.push(r.summary, '');
     r.rows.forEach(row => {
         const p = row.p;
-        lines.push(`${row.rank}. ${cleanDisplayAddress(p.address, p.mls_id)}, ${p.city || ''} | ${money(p.price)} | ${row.score}/100 | ${row.verdict}`);
+        lines.push(`${row.rank}. ${cleanDisplayAddress(p.address, p.mls_id)}, ${p.city || ''} | ${money(p.price)} | ${row.score}/100 | ${row.verdict}${row.action ? ' | ' + row.action : ''}`);
         if (row.headline) lines.push(`   ${row.headline}`);
         if (row.why) lines.push(`   ${row.why}`);
         row.strengths.forEach(s => lines.push(`   + ${s}`));

@@ -567,6 +567,9 @@ try {
     runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN possibility INTEGER DEFAULT 0", 'user_metadata.possibility');
     // Long-form AI analysis pasted per user+listing (Markdown text). Dibs-only: never synced to the MLS.
     runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN ai_analysis TEXT DEFAULT ''", 'user_metadata.ai_analysis');
+    // Direction the driveway faces (N, NE, E, SE, S, SW, W, NW), for snow melt; set by hand on the card. No listing
+    // source provides it, so it's user-entered per user+listing. Dibs-only: never synced to the MLS.
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN facing TEXT DEFAULT ''", 'user_metadata.facing');
     runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN mls_status_baseline TEXT DEFAULT NULL", 'user_metadata.mls_status_baseline');
     runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN mls_status_conflict INTEGER DEFAULT 0", 'user_metadata.mls_status_conflict');
     runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN mls_status_seen TEXT DEFAULT NULL", 'user_metadata.mls_status_seen');
@@ -602,6 +605,26 @@ try {
         called_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )", 'comps_api_calls');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_comps_api_calls_time ON comps_api_calls(called_at)", 'idx_comps_api_calls_time');
+
+    // My Home (see backend/myhome.php): one row per user, the house they would be selling.
+    runMigration($pdo, "CREATE TABLE IF NOT EXISTS my_homes (
+        user_id INTEGER PRIMARY KEY,
+        address TEXT, city TEXT, state TEXT, zip TEXT,
+        latitude REAL, longitude REAL,
+        beds INTEGER, baths REAL, levels TEXT,
+        sqft_total INTEGER, sqft_finished INTEGER,
+        lot_sqft INTEGER, year_built INTEGER, property_type TEXT,
+        garage_spaces INTEGER, garage_notes TEXT,
+        basement TEXT, fence TEXT, driveway_facing TEXT,
+        hoa_fee REAL, annual_tax REAL, tax_year INTEGER,
+        main_image_url TEXT,
+        my_price REAL, mortgage_payoff REAL, mortgage_rate REAL, mortgage_pi REAL,
+        sell_cost_pct REAL DEFAULT 7, extra_cash REAL DEFAULT 0,
+        my_comps_json TEXT DEFAULT '[]',
+        ai_notes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )", 'my_homes');
 
     purgeUserScopedMlsJson($pdo);
 

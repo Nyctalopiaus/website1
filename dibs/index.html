@@ -17,12 +17,12 @@
     <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
     <!-- Leaflet CSS for Interactive Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="stylesheet" href="styles.css?v=3.0">
+    <link rel="stylesheet" href="styles.css?v=3.11">
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Lucide Icons (replaces emoji glyphs in the header/KPI chrome) -->
     <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js"></script>
-    <script src="bookmarklet-builder.js?v=2.0"></script>
+    <script src="bookmarklet-builder.js?v=2.2"></script>
 </head>
 <body>
     <!-- Ambient Luxury Architectural Background Overlay -->
@@ -57,7 +57,7 @@
                 <button class="btn btn-secondary admin-only" id="btn-admin-operations-direct" onclick="if(window.switchView){window.switchView('admin');}" title="Admin Operations Command Center" style="display: none;">
                     <i data-lucide="shield-check"></i> Admin Operations
                 </button>
-                <button class="btn btn-secondary" id="btn-top-map-homeward" title="Plot & view tour route of favorites in Homeward">
+                <button class="btn btn-secondary" id="btn-top-map-homeward" title="Plot & view a tour route of the homes your current filters show in Homeward">
                     <i data-lucide="map"></i> Map in Homeward
                 </button>
                 <button class="btn btn-primary" id="btn-export-modal"><i data-lucide="download"></i> Export / Share</button>
@@ -83,7 +83,7 @@
                         <div class="dropdown-header admin-only">Realtor & Listing Tools</div>
                         <button class="dropdown-item" id="btn-global-property-mgmt" onclick="if(window.openGlobalPropertyManagementModal){window.openGlobalPropertyManagementModal();}"><i data-lucide="settings-2"></i> Global Property Visibility</button>
                         <button class="dropdown-item" id="btn-recommend"><i data-lucide="sparkles"></i> Top Picks (AI Curator)</button>
-                        <button class="dropdown-item" id="btn-export-homeward" title="Plot & view tour route of favorites in Homeward"><i data-lucide="map"></i> Map in Homeward</button>
+                        <button class="dropdown-item" id="btn-export-homeward" title="Plot & view a tour route of the homes your current filters show in Homeward"><i data-lucide="map"></i> Map in Homeward</button>
                     </div>
                 </div>
 
@@ -96,6 +96,7 @@
                         </button>
                         <div class="dropdown-menu" id="user-dropdown-menu">
                             <button class="dropdown-item" id="btn-user-profile"><i data-lucide="user-cog"></i> My Profile</button>
+                            <button class="dropdown-item" id="btn-user-my-home"><i data-lucide="house"></i> My Home</button>
                             <button class="dropdown-item" id="btn-user-password"><i data-lucide="key-round"></i> Change Password</button>
                             <button class="dropdown-item" id="btn-user-ai-setup"><i data-lucide="sparkles"></i> AI Setup</button>
                             <div class="dropdown-divider"></div>
@@ -259,6 +260,7 @@
                         <option value="price-desc">Price: High to Low</option>
                         <option value="sqft-desc">SqFt: High to Low</option>
                         <option value="ppsqft-asc">Price/SqFt: Low to High</option>
+                        <option value="compscore-desc">Price Score: Best Value First</option>
                         <option value="rating-desc">My Rating: Highest</option>
                     </select>
                 </div>
@@ -598,16 +600,17 @@
                 <div class="drawer-tab-panel" id="tab-finances">
                     <div class="drawer-section-grid">
                         <div class="filter-group">
-                            <label class="filter-label">Max Annual HOA Fee ($/yr)</label>
+                            <label class="filter-label">Max Monthly HOA Fee ($/mo)</label>
                             <select id="drawer-hoa-max" class="select-input">
                                 <option value="">Any Max HOA Fee</option>
                                 <option value="0">$0 (No HOA Fee)</option>
-                                <option value="1200">Max $1,200 / yr (~$100/mo)</option>
-                                <option value="2400">Max $2,400 / yr (~$200/mo)</option>
-                                <option value="3600">Max $3,600 / yr (~$300/mo)</option>
-                                <option value="4800">Max $4,800 / yr (~$400/mo)</option>
-                                <option value="6000">Max $6,000 / yr (~$500/mo)</option>
-                                <option value="9000">Max $9,000 / yr (~$750/mo)</option>
+                                <option value="50">Max $50 / mo</option>
+                                <option value="100">Max $100 / mo</option>
+                                <option value="200">Max $200 / mo</option>
+                                <option value="300">Max $300 / mo</option>
+                                <option value="400">Max $400 / mo</option>
+                                <option value="500">Max $500 / mo</option>
+                                <option value="750">Max $750 / mo</option>
                             </select>
                         </div>
                         <div class="filter-group" style="display:flex; align-items:flex-end;">
@@ -645,10 +648,10 @@
                 <div class="drawer-tab-panel" id="tab-location">
                     <div class="drawer-section-grid">
                         <div class="filter-group">
-                            <label class="filter-label">City</label>
-                            <select id="filter-city" class="select-input">
-                                <option value="">All Cities</option>
-                            </select>
+                            <label class="filter-label">Cities <button type="button" id="filter-city-clear" class="multi-check-clear">Clear</button></label>
+                            <div id="filter-city" class="multi-check-list" role="group" aria-label="Cities">
+                                <div class="multi-check-empty">No cities loaded yet</div>
+                            </div>
                         </div>
                         <div class="filter-group">
                             <label class="filter-label">Zip Code</label>
@@ -912,7 +915,7 @@
                     <div class="export-card-icon"><i data-lucide="file-spreadsheet"></i></div>
                     <div class="export-card-info">
                         <div class="export-card-title">CSV / Spreadsheet</div>
-                        <div class="export-card-sub">Formatted table data for Excel, Numbers & Sheets</div>
+                        <div class="export-card-sub">Your Table View columns, for Excel, Numbers & Sheets</div>
                     </div>
                 </button>
 
@@ -927,8 +930,8 @@
                 <button type="button" class="export-action-card card-secondary" id="btn-print-pdf">
                     <div class="export-card-icon"><i data-lucide="printer"></i></div>
                     <div class="export-card-info">
-                        <div class="export-card-title">Print / PDF Report</div>
-                        <div class="export-card-sub">Printable luxury listing overview & report</div>
+                        <div class="export-card-title">PDF Report</div>
+                        <div class="export-card-sub">One-page-wide report of your Table View columns</div>
                     </div>
                 </button>
             </div>
@@ -1345,6 +1348,18 @@
         </div>
     </div>
 
+    <!-- My Home: the user's own house, for comparing listings against it. Body rendered by js/myHome.js -->
+    <div class="modal-overlay" id="modal-my-home">
+        <div class="modal-content my-home-modal">
+            <button class="modal-close" aria-label="Close" id="modal-my-home-close"><i data-lucide="x"></i></button>
+            <div class="my-home-header">
+                <h2><i data-lucide="house"></i> <span id="my-home-title">My Home</span></h2>
+                <p id="my-home-subtitle">The house you'd sell. Every listing can be compared against it.</p>
+            </div>
+            <div id="my-home-body"></div>
+        </div>
+    </div>
+
     <!-- User Profile Modal -->
     <div class="modal-overlay" id="modal-user-profile">
         <div class="modal-content" style="max-width: 580px; width: 92vw;">
@@ -1418,6 +1433,17 @@
 
     <!-- Password Management Modal -->
     <!-- AI Setup: Gemini key + model, shared with certforge. Body rendered by js/aiSetup.js -->
+    <div class="modal-overlay" id="modal-rates">
+        <div class="modal-content rates-modal" style="max-width: 880px; width: 94vw;">
+            <button class="modal-close" aria-label="Close" id="modal-rates-close"><i data-lucide="x"></i></button>
+            <div class="modal-header-with-badge">
+                <h2><i data-lucide="landmark"></i> Mortgage Rates</h2>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">Market averages by loan type, with the quotes you've gotten from lenders</p>
+            <div id="rates-modal-body"></div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="modal-ai-setup">
         <div class="modal-content" style="max-width: 540px; width: 92vw;">
             <button class="modal-close" aria-label="Close" id="modal-ai-setup-close"><i data-lucide="x"></i></button>
@@ -1796,6 +1822,18 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=3.7"></script>
+    <!-- Compare to my house: one listing vs My Home. Body rendered by js/homeCompare.js; last so it stacks over the detail modal -->
+    <div class="modal-overlay" id="modal-home-compare">
+        <div class="modal-content my-home-modal">
+            <button class="modal-close" aria-label="Close" id="modal-home-compare-close"><i data-lucide="x"></i></button>
+            <div class="my-home-header">
+                <h2><i data-lucide="arrow-left-right"></i> Compare to My House</h2>
+                <p>What changes if you sell your home and buy this one.</p>
+            </div>
+            <div id="home-compare-body"></div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js?v=3.19"></script>
 </body>
 </html>

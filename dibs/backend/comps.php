@@ -27,6 +27,13 @@
 const COMPS_LOOKUP_CAP = 50;
 const COMPS_LOOKUP_WINDOW_DAYS = 31;
 const COMPS_PER_LOOKUP = 15;
+// Only this login may spend RentCast lookups (new checks and refreshes). Everyone else still
+// sees comps already on file; they come back with the normal property list.
+const COMPS_LOOKUP_USERNAME = 'jhankins';
+
+function canLookupComps(): bool {
+    return strcasecmp((string)($_SESSION['username'] ?? ''), COMPS_LOOKUP_USERNAME) === 0;
+}
 
 function getRentcastApiKey(): string {
     foreach ([getenv('RENTCAST_API_KEY'), $_SERVER['RENTCAST_API_KEY'] ?? null, $_ENV['RENTCAST_API_KEY'] ?? null] as $env) {
@@ -56,7 +63,8 @@ function getRentcastApiKey(): string {
 }
 
 function compsLookupUsage(PDO $pdo): array {
-    $used = (int)$pdo->query("SELECT COUNT(*) FROM comps_api_calls WHERE called_at >= datetime('now', '-" . COMPS_LOOKUP_WINDOW_DAYS . " days')")->fetchColumn();
+    // http_code 0 = the request never reached RentCast (DNS/connect failure), so it cost no lookup.
+    $used = (int)$pdo->query("SELECT COUNT(*) FROM comps_api_calls WHERE http_code > 0 AND called_at >= datetime('now', '-" . COMPS_LOOKUP_WINDOW_DAYS . " days')")->fetchColumn();
     return ['used' => $used, 'cap' => COMPS_LOOKUP_CAP, 'window_days' => COMPS_LOOKUP_WINDOW_DAYS];
 }
 
@@ -94,13 +102,14 @@ function formatPropertyComps(array $row): array {
         'comp_range_high' => (float)$row['range_high'],
         // SQLite CURRENT_TIMESTAMP is UTC.
         'comp_fetched_at' => !empty($row['fetched_at']) ? str_replace(' ', 'T', (string)$row['fetched_at']) . 'Z' : null,
+        'comp_list_price_at_fetch' => (float)($row['list_price_at_fetch'] ?? 0) > 0 ? (float)$row['list_price_at_fetch'] : null,
         'comps' => is_array($comps) ? $comps : [],
         'comp_subject' => is_array($subject) ? $subject : null,
     ];
 }
 
 function loadPropertyComps(PDO $pdo, string $mlsId): ?array {
-    $stmt = $pdo->prepare('SELECT estimate, range_low, range_high, fetched_at, comps_json, subject_json FROM property_comps WHERE mls_id = :mls_id');
+    $stmt = $pdo->prepare('SELECT estimate, range_low, range_high, fetched_at, comps_json, subject_json, list_price_at_fetch FROM property_comps WHERE mls_id = :mls_id');
     $stmt->execute([':mls_id' => $mlsId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     return $row ? formatPropertyComps($row) : null;
@@ -137,6 +146,13 @@ function handleCheckComps(PDO $pdo) {
                 echo json_encode(['success' => true, 'cached' => true, 'comps' => $existing, 'usage' => compsLookupUsage($pdo)], JSON_INVALID_UTF8_SUBSTITUTE);
                 return;
             }
+        }
+
+        if (!canLookupComps()) {
+            http_response_code(403);
+            logEvent($pdo, 'system', 'warn', 'Comps lookup refused for user ' . ($_SESSION['username'] ?? '?'), $mlsId);
+            echo json_encode(['success' => false, 'error' => 'Only ' . COMPS_LOOKUP_USERNAME . ' can pull new comps. Comps already on file are still shown.']);
+            return;
         }
 
         $apiKey = getRentcastApiKey();

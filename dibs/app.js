@@ -23,12 +23,15 @@ import { switchView, renderActiveView } from './js/views.js';
 import {
     openCommandPalette, closeCommandPalette, handleCmdPaletteSearch
 } from './js/commandPalette.js';
-import { exportCSV, exportJSON, exportFavoritesToHomeward } from './js/export.js';
+import { exportJSON, exportFavoritesToHomeward } from './js/export.js';
+import { exportTableCSV, exportTablePDF } from './js/tableColumns.js';
 import {
     openRecommendModal, closeRecommendModal, selectRecommendFavorites, selectRecommendAddPossibilities,
     selectRecommendNone, rankRecommendSelection, backToRecommendSelection, copyRecommendResults
 } from './js/recommend.js';
 import { openCompareMatrix, closeCompareMatrix, clearCompare } from './js/compare.js';
+import './js/homeCompare.js'; // "Compare to my house" panel
+import './js/myHome.js'; // "My Home" card pinned in the grid and its modal; wires itself up
 import './js/aiRank.js'; // toolbar "AI Ranking" button and its modal; wires itself up
 import {
     openAdminCleanupModal, closeAdminCleanupModal, fetchAdminCleanupPreview,
@@ -458,9 +461,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elements.btnAdminCleanupSubmit) elements.btnAdminCleanupSubmit.addEventListener('click', handleAdminCleanupExecute);
 
         // Export Actions
-        elements.btnExportCsv.addEventListener('click', exportCSV);
+        elements.btnExportCsv.addEventListener('click', exportTableCSV);
         elements.btnExportJson.addEventListener('click', exportJSON);
-        elements.btnPrintPdf.addEventListener('click', () => window.print());
+        elements.btnPrintPdf.addEventListener('click', exportTablePDF);
 
         // Side-by-Side Property Comparison Matrix & Dock
         document.getElementById('btn-open-compare-matrix')?.addEventListener('click', openCompareMatrix);

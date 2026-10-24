@@ -1,13 +1,66 @@
 /**
  * Nycto's MLS Property Scout - View Switching & Renderers (grid/table/matrix)
  */
+import { ensureMyHomeLoaded } from './myHome.js';
+import { ratesTileHtml } from './rates.js';
 import { state, elements } from './state.js';
-import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG, getStatusBadgeClass, buildCompScoreBadge, buildAiAnalysisBadge } from './properties.js';
+import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG, getStatusBadgeClass, buildCompScoreBadge, buildAiAnalysisBadge, getCompsStaleness } from './properties.js';
 import { renderMap, highlightMapMarker, unhighlightMapMarker, getPropertiesInView } from './map.js';
 import { showToast } from './toast.js';
 import { updateCompareButtons } from './compare.js';
 import { renderAdminView } from './adminView.js';
 import { apiFetch } from './api.js';
+import { CONFIG } from './state.js';
+import { getVisibleColumns, tableToolbarHtml, bindTableToolbar } from './tableColumns.js';
+
+const FACING_DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+const FACING_NAMES = { N: 'North', NE: 'Northeast', E: 'East', SE: 'Southeast', S: 'South', SW: 'Southwest', W: 'West', NW: 'Northwest' };
+
+// Sun on the driveway for snow melt: south-ish gets winter sun, north-ish stays shaded.
+function facingSunClass(d) {
+    if (d === 'S' || d === 'SE' || d === 'SW') return 'is-sunny';
+    if (d === 'N' || d === 'NE' || d === 'NW') return 'is-shady';
+    return '';
+}
+function facingTitle(d) {
+    if (!d) return 'Set which direction the driveway faces (for snow melt)';
+    const sun = facingSunClass(d);
+    return `Driveway faces ${FACING_NAMES[d]}` + (sun === 'is-sunny' ? ' (sun helps melt snow)' : sun === 'is-shady' ? ' (mostly shaded in winter)' : ' (partial sun)');
+}
+
+// Hand-set "which way the driveway faces" picker. No listing source has this, so it's a
+// per-user value saved to user_metadata.facing. Clicks are kept from opening the detail modal.
+function buildFacingBadge(p) {
+    const cur = FACING_DIRECTIONS.includes(p.facing) ? p.facing : '';
+    const opts = [`<option value="" ${cur ? '' : 'selected'}>${cur ? 'Clear' : 'Driveway: ?'}</option>`]
+        .concat(FACING_DIRECTIONS.map(d => `<option value="${d}" ${d === cur ? 'selected' : ''}>Driveway ${d}</option>`)).join('');
+    return `<select class="score-badge card-facing-select ${cur ? 'is-set' : ''} ${facingSunClass(cur)}" title="${facingTitle(cur)}" aria-label="Direction the driveway faces" onclick="event.stopPropagation()" onchange="window.setPropertyFacing('${p.mls_id}', this.value, this)">${opts}</select>`;
+}
+
+window.setPropertyFacing = function(mlsId, value, el) {
+    const p = state.allProperties.find(item => String(item.mls_id) === String(mlsId));
+    const prev = p ? (p.facing || '') : '';
+    apiFetch(CONFIG.API_URL + '?action=update_user_data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mls_id: mlsId, facing: value })
+    }).then(data => {
+        if (!data?.success) throw new Error(data?.error || 'Unable to save driveway direction');
+        if (p) p.facing = value;
+        document.querySelectorAll(`.property-card[data-mls="${CSS.escape(String(mlsId))}"] .card-facing-select`).forEach(sel => {
+            sel.value = value;
+            sel.classList.toggle('is-set', !!value);
+            sel.classList.remove('is-sunny', 'is-shady');
+            if (facingSunClass(value)) sel.classList.add(facingSunClass(value));
+            sel.title = facingTitle(value);
+            sel.options[0].textContent = value ? 'Clear' : 'Driveway: ?';
+        });
+        showToast(value ? `Driveway marked as facing ${FACING_NAMES[value]}` : 'Driveway direction cleared', 'success');
+    }).catch(error => {
+        if (el) el.value = prev;
+        showToast(error.message || 'Unable to save driveway direction', 'error');
+    });
+};
 
 function tryParseTags(jsonStr) {
     if (!jsonStr) return [];
@@ -222,6 +275,8 @@ export function updateKPIs() {
                         <div class="user-panel-card-value">${hasRealDom ? `${avgDom} Days` : avgSqft.toLocaleString()}</div>
                         <div class="user-panel-card-sub">${hasRealDom ? 'Average listing age' : 'Finished living area'}</div>
                     </div>
+
+                    ${ratesTileHtml()}
                 </div>
             </section>
         `;
@@ -393,6 +448,15 @@ export function switchView(viewName) {
         return !!(p.price_reduced || p.price_drop || (p.original_price && p.original_price > p.price));
     }
 
+    // "Comps may be stale" pill, Favorites only so it doesn't clutter the board.
+    export function buildCompsStalePill(p) {
+        if (!p || !p.favorite) return '';
+        const s = getCompsStaleness(p);
+        if (!s || !s.stale) return '';
+        const tip = `Comps may be stale: ${s.reasons.join('; ')}`;
+        return `<span class="card-comps-stale-pill" title="${escapeHtml(tip)}" aria-label="${escapeHtml(tip)}"><i data-lucide="clock-alert"></i> Comps</span>`;
+    }
+
     export function buildPriceDropPill(p) {
         const price = Number(p.price) || 0;
         const firstSeen = Number(p.original_price) || 0;
@@ -463,6 +527,7 @@ export function switchView(viewName) {
                     <div class="card-price-row">
                         <span class="card-price font-serif">$${p.price.toLocaleString()}</span>
                         ${buildPriceDropPill(p)}
+                        ${buildCompsStalePill(p)}
                     </div>
                     <div>
                         <div class="card-address">${escapeHtml(displayAddr)}</div>
@@ -481,6 +546,8 @@ export function switchView(viewName) {
                         ${buildAiAnalysisBadge(p)}
                         ${buildCompScoreBadge(p)}
                         ${dom !== null ? `<span class="score-badge" title="Days on market"><i data-lucide="clock" style="width:0.85em;height:0.85em;vertical-align:-0.1em;"></i> ${dom} ${dom === 1 ? 'day' : 'days'} on market</span>` : ''}
+                        ${buildFacingBadge(p)}
+                        ${state.myHome?.address && state.currentUserProfile?.role !== 'realtor' ? `<button type="button" class="score-badge card-home-compare-btn" onclick="openHomeCompare('${p.mls_id}', event)" title="Compare this listing to my house"><i data-lucide="house"></i> vs My Home</button>` : ''}
                         <span class="score-badge">Built: ${p.year_built || 'N/A'}</span>
                         <span class="score-badge">Lot: ${p.lot_acres ? p.lot_acres + ' acres' : (p.lot_sqft ? p.lot_sqft.toLocaleString() + ' sqft' : 'N/A')}</span>
                         ${p.hoa_fee ? `<span class="score-badge" style="background:#B87A2A; color:#fff;">HOA: $${p.hoa_fee}</span>` : '<span class="score-badge">No HOA</span>'}
@@ -527,6 +594,8 @@ export function switchView(viewName) {
             return;
         }
 
+        // My Home lives in the profile menu now; this just makes sure it's loaded so cards get "vs My Home".
+        if (containerEl === elements.gridContainer && !propsOverride) ensureMyHomeLoaded();
         containerEl.innerHTML = props.map(buildPropertyCardHtml).join('');
         if (window.lucide) window.lucide.createIcons();
         updateCompareButtons();
@@ -542,58 +611,33 @@ export function switchView(viewName) {
     }
     export function renderTable() {
         const props = state.filteredProperties;
-        elements.tableContainer.innerHTML = `
+        const cols = getVisibleColumns();
+        const container = elements.tableContainer;
+        container.innerHTML = `
+            ${tableToolbarHtml(props.length)}
             <table class="scout-table">
                 <thead>
                     <tr>
-                        <th>Status</th>
-                        <th>MLS Review</th>
-                        <th>Address</th>
-                        <th>Price</th>
-                        <th>Beds</th>
-                        <th>Baths</th>
-                        <th>Fin SqFt</th>
-                        <th>$/SqFt</th>
-                        <th>Lot</th>
-                        <th>Built</th>
-                        <th>HOA</th>
-                        <th>Tax</th>
+                        ${cols.map(c => `<th${c.align === 'right' ? ' class="num"' : ''}>${escapeHtml(c.label)}</th>`).join('')}
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${props.map(p => {
-                        const matrixRev = getPropertyReviewStatus(p);
-                        let matrixBadge = '-';
-                        if (matrixRev === 'favorite') matrixBadge = `<span class="badge-matrix-review badge-matrix-fav"><i data-lucide="star"></i> Favorite</span>`;
-                        else if (matrixRev === 'possibility') matrixBadge = `<span class="badge-matrix-review badge-matrix-possibility"><i data-lucide="circle-help"></i> Possibility</span>`;
-                        else if (matrixRev === 'dislike') matrixBadge = `<span class="badge-matrix-review badge-matrix-dislike"><i data-lucide="ban"></i> Disliked</span>`;
-
-                        return `
+                    ${props.map(p => `
                             <tr onclick="openDetailModal('${p.mls_id}')" style="cursor:pointer;">
-                                <td><span class="badge ${getStatusBadgeClass(p.status)}">${escapeHtml(p.status || '')}</span></td>
-                                <td>${matrixBadge}</td>
-                                <td><strong>${escapeHtml(cleanDisplayAddress(p.address, p.mls_id))}</strong><br><small style="color:var(--text-muted);">${escapeHtml(p.city || '')}, ${escapeHtml(p.zip || '')}</small></td>
-                                <td style="font-weight:700; color:var(--accent-gold);">$${p.price.toLocaleString()}</td>
-                                <td>${p.beds}</td>
-                                <td>${p.baths}</td>
-                                <td>${p.sqft_finished ? p.sqft_finished.toLocaleString() : '-'}</td>
-                                <td>$${p.sqft_finished ? Math.round(p.price / p.sqft_finished) : '-'}</td>
-                                <td>${p.lot_acres ? p.lot_acres + ' ac' : '-'}</td>
-                                <td>${p.year_built || '-'}</td>
-                                <td>${p.hoa_fee ? '$' + p.hoa_fee : 'No'}</td>
-                                <td>${p.annual_tax ? '$' + p.annual_tax : '-'}</td>
+                                ${cols.map(c => `<td${c.align === 'right' ? ' class="num"' : ''}${c.key === 'notes' ? ' class="table-notes"' : ''}>${c.html ? c.html(p) : escapeHtml(String(c.text(p) ?? ''))}</td>`).join('')}
                                 <td>
                                     <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.75rem;" onclick="event.stopPropagation(); openDetailModal('${p.mls_id}')">View</button>
                                 </td>
                             </tr>
-                        `;
-                    }).join('')}
+                        `).join('')}
                 </tbody>
             </table>
         `;
+        bindTableToolbar(container);
         if (window.lucide) window.lucide.createIcons();
     }
+    window.renderTable = renderTable;
     export function renderMatrix() {
         let props = [];
         let isCustomSelection = false;
@@ -698,7 +742,7 @@ export function switchView(viewName) {
             { label: 'Price per SqFt', fn: p => `$${p.sqft_finished ? Math.round(p.price / p.sqft_finished) : 'N/A'}`, isWinner: p => p.sqft_finished && Math.round(p.price / p.sqft_finished) === bestPpsqft },
             { label: 'Year Built', fn: p => p.year_built || 'N/A', isWinner: p => p.year_built === bestYearBuilt && bestYearBuilt > 0 },
             { label: 'Lot Size', fn: p => p.lot_acres ? `${p.lot_acres} Acres` : 'N/A' },
-            { label: 'HOA Fee', fn: p => p.hoa_fee ? `$${p.hoa_fee}/yr` : 'No HOA', isWinner: p => (p.hoa_fee || 0) === bestHoaFee },
+            { label: 'HOA Fee', fn: p => p.hoa_fee ? `$${p.hoa_fee}/mo` : 'No HOA', isWinner: p => (p.hoa_fee || 0) === bestHoaFee },
             { label: 'Annual Tax', fn: p => p.annual_tax ? `$${p.annual_tax}` : 'N/A' },
             { label: 'School District', fn: p => escapeHtml(p.school_district || 'N/A') }
         ];

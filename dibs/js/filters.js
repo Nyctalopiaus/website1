@@ -1,5 +1,5 @@
 import { elements, state } from './state.js';
-import { getPropertyReviewStatus, escapeHtml } from './properties.js';
+import { getPropertyReviewStatus, escapeHtml, getCompScore } from './properties.js';
 import { showToast } from './toast.js';
 import { fetchSavedFilters, saveFilterApi, deleteFilterApi, apiFetch } from './api.js';
 import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
@@ -14,7 +14,7 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
             sqftMin: null, sqftMax: null, sqftTotMin: null, sqftAboveMin: null, sqftBelowMin: null, propertyType: '',
             yearMin: null, yearMax: null, acresMin: null, acresMax: null, parkingMin: null, garageMin: null,
             hoaMax: null, noHoaOnly: false, taxMax: null, taxYear: null, priceDropsOnly: false,
-            city: '', zip: '', schoolDistrict: '',
+            city: [], zip: '', schoolDistrict: '',
             status: 'all', ratingMin: 0, matrixStatus: 'all', appliances: '', flooring: '', fireplaceOnly: false, realtorNotesOnly: false,
             favoritesOnly: false, possibilitiesOnly: false, realtorSharedOnly: false, hasNotesOnly: false, showHidden: true
         };
@@ -34,13 +34,29 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
         applyFiltersAndRender();
     }
 
+    // hoa_fee is stored per month. Older saved filters/presets stored hoaMax as an
+    // annual cap (old dropdown values were all >= $1,200/yr), so convert those to monthly.
+    function migrateHoaMax(f) {
+        if (f && typeof f.hoaMax === 'number' && f.hoaMax >= 1000) f.hoaMax = Math.round(f.hoaMax / 12);
+        // City used to be a single-select string; it's now an array of selected cities.
+        if (f) f.city = getSelectedCities(f.city);
+        return f;
+    }
+
+    // Normalizes the city filter (legacy string or array) into a clean array of city names.
+    export function getSelectedCities(val) {
+        if (Array.isArray(val)) return val.map(c => String(c || '').trim()).filter(Boolean);
+        const s = String(val || '').trim();
+        return s ? [s] : [];
+    }
+
     export function restoreUserFiltersFromLocalStorage() {
         try {
             const savedRaw = localStorage.getItem('scout_user_search_filters');
             if (savedRaw) {
                 const savedObj = JSON.parse(savedRaw);
                 if (savedObj && typeof savedObj === 'object') {
-                    state.filters = { ...state.filters, ...savedObj };
+                    state.filters = migrateHoaMax({ ...state.filters, ...savedObj });
                     syncTopBarFromState();
                     syncDrawerInputsFromState();
                 }
@@ -116,7 +132,11 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
             if (f.taxYear !== null && (p.tax_year || 0) !== f.taxYear) return false;
 
             // 9. Location & Scores
-            if (f.city && !String(p.city || '').toLowerCase().includes(f.city.toLowerCase())) return false;
+            const selCities = getSelectedCities(f.city);
+            if (selCities.length) {
+                const pc = String(p.city || '').trim().toLowerCase();
+                if (!selCities.some(c => c.toLowerCase() === pc)) return false;
+            }
             if (f.zip && !String(p.zip || '').includes(f.zip)) return false;
             if (f.schoolDistrict && !String(p.school_district || '').toLowerCase().includes(f.schoolDistrict.toLowerCase())) return false;
 
@@ -174,10 +194,10 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
         if (f.garageMin !== null) chips.push({ label: `Garage: ${f.garageMin}+`, clear: () => { f.garageMin = null; } });
         if (f.priceDropsOnly) chips.push({ label: `Price Drops Only`, icon: 'trending-down', clear: () => { setPriceDropsOnly(false); } });
         if (f.noHoaOnly) chips.push({ label: `No HOA`, icon: 'ban', clear: () => { f.noHoaOnly = false; } });
-        if (f.hoaMax !== null) chips.push({ label: `Max HOA: $${f.hoaMax}/yr`, clear: () => { f.hoaMax = null; } });
+        if (f.hoaMax !== null) chips.push({ label: `Max HOA: $${f.hoaMax}/mo`, clear: () => { f.hoaMax = null; } });
         if (f.taxMax !== null) chips.push({ label: `Max Tax: $${f.taxMax}/yr`, clear: () => { f.taxMax = null; } });
         if (f.taxYear !== null) chips.push({ label: `Tax Year: ${f.taxYear}`, clear: () => { f.taxYear = null; } });
-        if (f.city) chips.push({ label: `City: ${f.city}`, clear: () => { f.city = ''; } });
+        getSelectedCities(f.city).forEach(c => chips.push({ label: `City: ${c}`, clear: () => { f.city = getSelectedCities(f.city).filter(x => x !== c); } }));
         if (f.zip) chips.push({ label: `Zip: ${f.zip}`, clear: () => { f.zip = ''; } });
         if (f.schoolDistrict) chips.push({ label: `School: "${f.schoolDistrict}"`, clear: () => { f.schoolDistrict = ''; } });
         if (f.status !== 'all') chips.push({ label: `Status: ${f.status}`, clear: () => { f.status = 'all'; } });
@@ -303,7 +323,7 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
 
         // Tab 5: Location (tab-location)
         let countLocation = 0;
-        if (f.city) countLocation++;
+        if (getSelectedCities(f.city).length) countLocation++;
         if (f.zip) countLocation++;
         if (f.schoolDistrict) countLocation++;
 
@@ -381,7 +401,8 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
         setVal('drawer-tax-max', f.taxMax);
         setVal('filter-tax-year', f.taxYear);
 
-        setVal('filter-city', f.city);
+        const selCities = getSelectedCities(f.city);
+        document.querySelectorAll('#filter-city input[type="checkbox"]').forEach(cb => { cb.checked = selCities.includes(cb.value); });
         setVal('filter-zip', f.zip);
         setVal('filter-school-district', f.schoolDistrict);
 
@@ -450,7 +471,7 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
         f.taxMax = getNum('drawer-tax-max');
         f.taxYear = getNum('filter-tax-year');
 
-        f.city = getStr('filter-city');
+        f.city = Array.from(document.querySelectorAll('#filter-city input[type="checkbox"]:checked')).map(cb => cb.value);
         f.zip = getStr('filter-zip');
         f.schoolDistrict = getStr('filter-school-district');
 
@@ -480,6 +501,16 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
         const btnClose = document.getElementById('btn-close-filter-console');
         const btnApply = document.getElementById('btn-drawer-apply');
         const btnResetDrawer = document.getElementById('btn-drawer-reset');
+
+        const btnCityClear = document.getElementById('filter-city-clear');
+        if (btnCityClear) {
+            btnCityClear.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.querySelectorAll('#filter-city input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+                syncStateFromDrawerInputs();
+                updateTabBadges();
+            });
+        }
 
         if (modalDrawer) {
             modalDrawer.addEventListener('input', () => {
@@ -704,7 +735,7 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
         }
 
         if (filterData && typeof filterData === 'object') {
-            state.filters = { ...state.filters, ...filterData };
+            state.filters = migrateHoaMax({ ...state.filters, ...filterData });
             syncTopBarFromState();
             syncDrawerInputsFromState();
             applyFiltersAndRender();
@@ -781,6 +812,18 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
                     return ppsqA - ppsqB;
                 });
                 break;
+            case 'compscore-desc': {
+                // Highest price score (most under comps) first; homes without comps checked sort last.
+                const score = new Map(props.map(p => { const s = getCompScore(p); return [p, s ? s.pct : null]; }));
+                props.sort((a, b) => {
+                    const sa = score.get(a), sb = score.get(b);
+                    if (sa === null && sb === null) return 0;
+                    if (sa === null) return 1;
+                    if (sb === null) return -1;
+                    return sa - sb;
+                });
+                break;
+            }
             case 'rating-desc':
                 props.sort((a, b) => (b.rating || 0) - (a.rating || 0));
                 break;

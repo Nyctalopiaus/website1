@@ -45,10 +45,12 @@ function looksLikeRealPhotoBody(string $body): bool {
 // still had a 296x1xx index-0 photo from before the index-0 re-fetch fix). A listing whose main
 // photo is that small isn't "done" — handleScrapeStatus() leaves it out of `completed` so the next
 // deep scrape re-walks its gallery, which re-fetches index 0 at full size.
+// Judged by the longest side: a real portrait photo (e.g. 270x480) is narrow but not a thumbnail,
+// and judging by width alone kept such listings re-scraping on every run (Oct 2026).
 function isThumbnailSizedPhoto(string $relativeUrl): bool {
     if (strpos($relativeUrl, 'media/') !== 0) return false;
     $info = @getimagesize(MEDIA_DIR . '/' . basename($relativeUrl));
-    return $info !== false && $info[0] <= 320;
+    return $info !== false && max($info[0], $info[1]) <= 320;
 }
 
 function hasUsableCachedPhoto(string $relativeUrl): bool {
@@ -593,11 +595,13 @@ function handleList(PDO $pdo) {
                 COALESCE(u.shared_with_realtor, 0) as shared_with_realtor,
                 COALESCE(u.possibility, 0) as possibility,
                 COALESCE(u.ai_analysis, '') as ai_analysis,
+                COALESCE(u.facing, '') as facing,
                 u.mls_status_baseline, u.mls_status_seen,
                 COALESCE(u.mls_status_conflict, 0) as mls_status_conflict,
                 u.mls_notes_json, u.mls_note_outbox, u.mls_note_sent_at,
                 c.estimate AS comp_estimate, c.range_low AS comp_range_low, c.range_high AS comp_range_high,
-                c.fetched_at AS comp_fetched_at, c.comps_json AS comps_json, c.subject_json AS comp_subject_json
+                c.fetched_at AS comp_fetched_at, c.comps_json AS comps_json, c.subject_json AS comp_subject_json,
+                c.list_price_at_fetch AS comp_list_price_at_fetch
             FROM properties p
             LEFT JOIN user_metadata u ON p.mls_id = u.mls_id AND u.user_id = :user_id
             LEFT JOIN property_visibility v ON p.mls_id = v.mls_id
@@ -681,6 +685,8 @@ function handleList(PDO $pdo) {
             $row['comp_range_high'] = $hasComps ? (float)$row['comp_range_high'] : null;
             // SQLite CURRENT_TIMESTAMP is UTC.
             $row['comp_fetched_at'] = ($hasComps && !empty($row['comp_fetched_at'])) ? str_replace(' ', 'T', (string)$row['comp_fetched_at']) . 'Z' : null;
+            // List price when comps were pulled, so the UI can tell if the price has moved since.
+            $row['comp_list_price_at_fetch'] = ($hasComps && (float)($row['comp_list_price_at_fetch'] ?? 0) > 0) ? (float)$row['comp_list_price_at_fetch'] : null;
             unset($row['comps_json'], $row['comp_subject_json']);
         }
         unset($row);
@@ -829,6 +835,10 @@ function reconcileMlsStatus(?string $baseline, string $mlsNow, string $dibsNow):
     $mlsChanged = $mlsNow !== $baseline;
     $dibsChanged = $dibsNow !== $baseline;
     if (!$mlsChanged && !$dibsChanged) return 'noop';
+    // The portal sometimes silently clears a bucket back to "none" (seen when a listing gets
+    // edited, e.g. new photos). Treat that as a reset, not a decision: keep the Dibs status
+    // and re-push it instead of wiping the review.
+    if ($mlsChanged && !$dibsChanged && $mlsNow === 'none') return 'reassert';
     if ($mlsChanged && !$dibsChanged) return 'pull';
     if (!$mlsChanged && $dibsChanged) return 'push';
     return $mlsNow === $dibsNow ? 'converged' : 'conflict';
@@ -876,6 +886,14 @@ function syncMlsUserState(PDO $pdo, int $userId, string $mlsId, array $item): vo
             if ($action === 'converged' && ($item['mls_status_push_result'] ?? '') === 'pushed') {
                 logEvent($pdo, 'sync', 'info', "Dibs status pushed to MLS: $baseline -> $mlsNow", $mlsId);
             }
+        } elseif ($action === 'reassert') {
+            // Leave the Dibs flags alone. Moving the baseline to 'none' makes Dibs differ from
+            // it, so scrape_status queues a push and the bookmarklet's baseline check (MLS still
+            // 'none') lets it through on the next run.
+            $set[] = 'mls_status_baseline = :baseline';
+            $set[] = 'mls_status_conflict = 0';
+            $params[':baseline'] = 'none';
+            logEvent($pdo, 'sync', 'warn', "MLS cleared status ($baseline -> none); keeping Dibs $dibsNow and re-pushing", $mlsId);
         } elseif ($action === 'conflict') {
             $set[] = 'mls_status_conflict = 1';
             logEvent($pdo, 'sync', 'warn', "MLS status conflict: baseline $baseline, MLS now $mlsNow, Dibs now $dibsNow", $mlsId);
@@ -988,13 +1006,13 @@ function handleSync(PDO $pdo) {
             status = excluded.status,
             beds = excluded.beds,
             baths = excluded.baths,
-            levels = excluded.levels,
+            levels = COALESCE(NULLIF(excluded.levels, ''), properties.levels),
             sqft_total = excluded.sqft_total,
             sqft_finished = excluded.sqft_finished,
             lot_sqft = excluded.lot_sqft,
             lot_acres = excluded.lot_acres,
             year_built = excluded.year_built,
-            property_type = excluded.property_type,
+            property_type = COALESCE(NULLIF(excluded.property_type, ''), properties.property_type),
             school_district = excluded.school_district,
             parking_total = excluded.parking_total,
             garage_spaces = excluded.garage_spaces,
@@ -1117,7 +1135,7 @@ function handleSync(PDO $pdo) {
                 ':hoa_exists' => isset($item['hoa_fee']) && $item['hoa_fee'] > 0 ? 1 : 0,
                 ':hoa_fee' => (float)($item['hoa_fee'] ?? 0),
                 ':annual_tax' => (float)($item['annual_tax'] ?? 0),
-                ':tax_year' => (int)($item['tax_year'] ?? date('Y')),
+                ':tax_year' => !empty($item['tax_year']) ? (int)$item['tax_year'] : null, // unknown stays blank, not "this year"
                 ':list_date' => $item['list_date'] ?? date('Y-m-d'),
                 ':mls_url' => $item['mls_url'] ?? '',
                 ':main_image_url' => $item['main_image_url'] ?? '',
@@ -1326,8 +1344,21 @@ function handleSync(PDO $pdo) {
         foreach ($byMls as $cachedMlsId => $photosByIdx) {
             ksort($photosByIdx);
             $galleryUrls = array_values($photosByIdx);
+            // Main photo is normally index 0, but if that one is still thumbnail-sized (some
+            // listings' index 0 never comes back larger — e.g. 812 S Ouray, Oct 2026), use the
+            // first full-size photo instead so handleScrapeStatus() stops re-queuing the listing
+            // on every deep scrape. Gallery order is unchanged.
+            $mainUrl = $galleryUrls[0];
+            if (!hasUsableCachedPhoto($mainUrl) || isThumbnailSizedPhoto($mainUrl)) {
+                foreach ($galleryUrls as $candidateUrl) {
+                    if (hasUsableCachedPhoto($candidateUrl) && !isThumbnailSizedPhoto($candidateUrl)) {
+                        $mainUrl = $candidateUrl;
+                        break;
+                    }
+                }
+            }
             $stmtImg->execute([
-                ':url' => $galleryUrls[0],
+                ':url' => $mainUrl,
                 ':gallery' => json_encode($galleryUrls, JSON_INVALID_UTF8_SUBSTITUTE),
                 ':count' => count($galleryUrls),
                 ':mls_id' => $cachedMlsId
@@ -1581,6 +1612,18 @@ function handleUpdateUserData(PDO $pdo) {
         }
         $fields[] = "ai_analysis = :ai_analysis";
         $params[':ai_analysis'] = $aiAnalysis;
+    }
+
+    // Hand-set driveway direction (see user_metadata.facing). Empty string clears it.
+    if (array_key_exists('facing', $data)) {
+        $facing = strtoupper(trim((string)($data['facing'] ?? '')));
+        if (!in_array($facing, ['', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], true)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Invalid driveway direction.']);
+            return;
+        }
+        $fields[] = "facing = :facing";
+        $params[':facing'] = $facing;
     }
 
     // "Send to MLS" outbox. Empty string / null cancels. Portal notes are capped at 500 chars

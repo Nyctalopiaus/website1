@@ -351,6 +351,7 @@ function buildRealtorDom(container) {
                                 <span><i data-lucide="calendar-clock"></i> ${escapeHtml(targetTimeline)}</span>
                             </div>
                             ${hasSearchBrief ? `<div style="display:grid; gap:0.35rem; margin-top:0.65rem; font-size:0.82rem;"><span>${client.must_haves ? `<strong>Must-haves:</strong> ${escapeHtml(client.must_haves)}` : ''}</span><span>${client.deal_breakers ? `<strong>Deal-breakers:</strong> ${escapeHtml(client.deal_breakers)}` : ''}</span></div>` : ''}
+                            <button type="button" class="btn btn-secondary" style="margin-top:0.65rem;" onclick="window.openMyHomeModal(${client.id})" title="The home this client would sell: details, payoff, value and comps (read-only)"><i data-lucide="house"></i> Client's Home</button>
                         </div>
                     </div>
 
@@ -1108,7 +1109,7 @@ window.openClientTourDossierModal = function() {
                                     </div>
                                     <div style="font-size:0.82rem; margin-top:0.5rem; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; background:var(--bg-input); padding:0.5rem; border-radius:var(--radius-sm);">
                                         <div><strong>Showing Time:</strong> ${showingTime}</div>
-                                        <div><strong>Access / Lockbox:</strong> ${escapeHtml(p.access_notes || 'Keypad / Realtor Door')}</div>
+                                        <div><strong>Access / Lockbox:</strong> ${escapeHtml(p.access_notes || 'None entered')}</div>
                                     </div>
                                 </div>
                             </div>

@@ -44,8 +44,8 @@ export function openPropertyMapModal(mlsId) {
     if (elCity) elCity.innerText = cityStateZip;
     if (elMls) elMls.innerText = `#${prop.mls_id}`;
     if (elStatus) elStatus.innerText = prop.status || 'Active';
-    if (elBedsBaths) elBedsBaths.innerText = `${prop.beds || 0} Beds / ${prop.baths || 0} Baths`;
-    if (elSqft) elSqft.innerText = `${(prop.sqft_finished || 0).toLocaleString()} SqFt`;
+    if (elBedsBaths) elBedsBaths.innerText = `${prop.beds ?? '—'} Beds / ${prop.baths ?? '—'} Baths`;
+    if (elSqft) elSqft.innerText = prop.sqft_finished ? `${prop.sqft_finished.toLocaleString()} SqFt` : 'N/A';
     if (elPpsqft) elPpsqft.innerText = prop.sqft_finished ? `$${Math.round(prop.price / prop.sqft_finished)}` : 'N/A';
 
     // Populate General Description & Physical Land Specs Table
@@ -63,20 +63,24 @@ export function openPropertyMapModal(mlsId) {
     const elOrigPrice = document.getElementById('prop-land-orig-price');
     const elOffice = document.getElementById('prop-land-office');
 
-    const parcelVal = prop.parcel_number || raw.parcel_number || raw.tax_parcel_id || `0${prop.mls_id}41`;
-    const legalVal = prop.tax_legal_description || raw.tax_legal_description || `LOT ${(parseInt(prop.mls_id) % 40) + 1} BLK 1 ${(prop.city || 'METRO').toUpperCase()} SUBDIVISION EX M/R'S`;
-    const subVal = prop.subdivision || raw.subdivision_name || raw.subdivision || `${prop.city || 'Local'} Neighborhood`;
-    const typeVal = prop.property_type || raw.property_type || 'Residential';
-    const subTypeVal = prop.property_sub_type || raw.property_sub_type || 'Single Family Residence';
+    // Only real values: anything the scrape didn't capture shows N/A (these used to be invented).
+    const parcelVal = prop.parcel_number || raw.parcel_number || raw.tax_parcel_id || 'N/A';
+    const legalVal = prop.tax_legal_description || raw.tax_legal_description || 'N/A';
+    const subVal = prop.subdivision || raw.subdivision_name || raw.subdivision || 'N/A';
+    const typeVal = prop.property_type || raw.property_type || 'N/A';
+    const subTypeVal = prop.property_sub_type || raw.property_sub_type || 'N/A';
 
     const lotAcresStr = prop.lot_acres ? `${prop.lot_acres} Acres` : '';
     const lotSqftStr = prop.lot_sqft ? `(${prop.lot_sqft.toLocaleString()} SqFt)` : '';
-    const lotCombined = (lotAcresStr || lotSqftStr) ? `${lotAcresStr} ${lotSqftStr}`.trim() : '0.18 Acres (7,841 SqFt)';
+    const lotCombined = (lotAcresStr || lotSqftStr) ? `${lotAcresStr} ${lotSqftStr}`.trim() : 'N/A';
 
-    const styleVal = `${prop.structure_type || raw.structure_type || 'House'} / ${prop.architectural_style || raw.architectural_style || 'Contemporary'}`;
-    const levelsVal = `${prop.levels || raw.levels || 'One Story'} | Basement: ${prop.basement || raw.basement ? 'Yes' : 'Yes'}`;
-    const origPriceVal = `$${(prop.original_list_price || raw.original_list_price || prop.price || 0).toLocaleString()}`;
-    const officeVal = prop.list_office_name || raw.list_office_name || raw.attribution_contact || 'Buy-Out Company Realty, LLC';
+    const styleParts = [prop.structure_type || raw.structure_type, prop.architectural_style || raw.architectural_style].filter(Boolean);
+    const styleVal = styleParts.length ? styleParts.join(' / ') : 'N/A';
+    const basementVal = prop.basement || raw.basement || (raw.interior && raw.interior.basement) || '';
+    const levelsVal = `${prop.levels || raw.levels || 'N/A'}${basementVal ? ` | Basement: ${basementVal}` : ''}`;
+    const origList = Number(prop.original_list_price || raw.original_list_price) || 0;
+    const origPriceVal = origList ? `$${origList.toLocaleString()}` : 'N/A';
+    const officeVal = prop.list_office_name || raw.list_office_name || raw.attribution_contact || 'N/A';
 
     if (elParcel) elParcel.innerText = parcelVal;
     if (elType) elType.innerText = typeVal;
