@@ -13,3 +13,4 @@ nyctos-gig-grid/config.local.php
 .DS_Store
 Thumbs.db
 desktop.ini
+*.ffs_lock

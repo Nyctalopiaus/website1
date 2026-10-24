@@ -659,7 +659,9 @@ function resetLocalStateForAccount(username) {
 
         elements.userMgmtTableBody.innerHTML = users.map(u => {
             const isSelf = u.username === state.user;
-            const isAdminAcc = u.username === 'admin';
+            // Your own row gets no Edit Role / Delete: the server refuses deleting yourself and
+            // demoting the last admin, whatever the account is called.
+            const isAdminAcc = isSelf;
             const role = u.role || (u.is_admin ? 'admin' : 'client');
             const created = u.created_at ? new Date(u.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
             const lastLogin = formatShortDateTime(u.last_login);

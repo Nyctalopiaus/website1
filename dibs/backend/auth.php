@@ -29,9 +29,8 @@ if (!function_exists('requireAuth')) {
 if (!function_exists('requireAdmin')) {
     function requireAdmin() {
         requireAuth();
-        $isPrimaryAdmin = ($_SESSION['username'] ?? '') === 'admin';
-        $role = $_SESSION['role'] ?? ($_SESSION['is_admin'] ? 'admin' : 'client');
-        if (!$isPrimaryAdmin && empty($_SESSION['is_admin']) && $role !== 'admin') {
+        $role = $_SESSION['role'] ?? (!empty($_SESSION['is_admin']) ? 'admin' : 'client');
+        if (empty($_SESSION['is_admin']) && $role !== 'admin') {
             $deniedPdo = $GLOBALS['pdo'] ?? null;
             if ($deniedPdo instanceof PDO) {
                 $deniedAction = substr(preg_replace('/[^A-Za-z0-9_]/', '', (string)($_GET['action'] ?? $_POST['action'] ?? '')), 0, 40);
@@ -47,9 +46,8 @@ if (!function_exists('requireAdmin')) {
 if (!function_exists('requireRealtorOrAdmin')) {
     function requireRealtorOrAdmin() {
         requireAuth();
-        $isPrimaryAdmin = ($_SESSION['username'] ?? '') === 'admin';
-        $role = $_SESSION['role'] ?? ($_SESSION['is_admin'] ? 'admin' : 'client');
-        if (!$isPrimaryAdmin && empty($_SESSION['is_admin']) && $role !== 'admin' && $role !== 'realtor') {
+        $role = $_SESSION['role'] ?? (!empty($_SESSION['is_admin']) ? 'admin' : 'client');
+        if (empty($_SESSION['is_admin']) && $role !== 'admin' && $role !== 'realtor') {
             http_response_code(403);
             echo json_encode(['error' => 'Forbidden. Realtor or Admin privileges required.']);
             exit;
@@ -121,7 +119,7 @@ function handleCheckAuth(PDO $pdo) {
         echo json_encode(['authenticated' => false]);
         return;
     }
-    $stmt = $pdo->prepare("SELECT id, username, full_name, email, phone, avatar_url, brokerage_name, role, is_admin, realtor_id, target_min_price, target_max_price, target_cities, target_beds, target_timeline, must_haves, deal_breakers, created_at, last_login FROM users WHERE id = :id LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id, public_id, username, full_name, email, phone, avatar_url, brokerage_name, role, is_admin, realtor_id, target_min_price, target_max_price, target_cities, target_beds, target_timeline, must_haves, deal_breakers, created_at, last_login FROM users WHERE id = :id LIMIT 1");
     $stmt->execute([':id' => $_SESSION['user_id']]);
     $user = $stmt->fetch();
     if (!$user) {
@@ -129,8 +127,10 @@ function handleCheckAuth(PDO $pdo) {
         echo json_encode(['authenticated' => false]);
         return;
     }
-    $userRole = ($user['username'] === 'admin') ? 'admin' : ($user['role'] ?? ($_SESSION['is_admin'] ? 'admin' : 'client'));
-    $isAdmin = ($user['username'] === 'admin') ? 1 : (int)($user['is_admin'] ?? 0);
+    $isAdmin = (int)($user['is_admin'] ?? 0) === 1 ? 1 : 0;
+    $userRole = $isAdmin ? 'admin' : ($user['role'] ?: 'client');
+    $_SESSION['is_admin'] = $isAdmin;
+    $_SESSION['role'] = $userRole;
 
     $realtorName = null;
     $realtorAvatar = null;
@@ -158,6 +158,7 @@ function handleCheckAuth(PDO $pdo) {
     echo json_encode([
         'authenticated' => true,
         'user_id' => (int)$user['id'],
+        'public_id' => $user['public_id'] ?? null,
         'username' => $user['username'],
         'full_name' => $user['full_name'] ?? '',
         'email' => $user['email'] ?? '',
@@ -186,7 +187,7 @@ function handleCheckAuth(PDO $pdo) {
 }
 
 function handleLogin(PDO $pdo) {
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $username = trim((string)($input['username'] ?? ''));
     $password = (string)($input['password'] ?? '');
 
@@ -219,8 +220,8 @@ function handleLogin(PDO $pdo) {
     session_regenerate_id(true);
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['username'] = $user['username'];
-    $_SESSION['is_admin'] = ($user['username'] === 'admin') ? 1 : (int)($user['is_admin'] ?? 0);
-    $userRole = ($user['username'] === 'admin') ? 'admin' : ($user['role'] ?? ($_SESSION['is_admin'] ? 'admin' : 'client'));
+    $_SESSION['is_admin'] = (int)($user['is_admin'] ?? 0) === 1 ? 1 : 0;
+    $userRole = $_SESSION['is_admin'] ? 'admin' : ($user['role'] ?: 'client');
     $_SESSION['role'] = $userRole;
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 
@@ -251,6 +252,7 @@ function handleLogin(PDO $pdo) {
     echo json_encode([
         'success' => true,
         'user_id' => (int)$user['id'],
+        'public_id' => $user['public_id'] ?? null,
         'username' => $user['username'],
         'full_name' => $user['full_name'] ?? '',
         'email' => $user['email'] ?? '',
@@ -327,16 +329,16 @@ function handleListUsers(PDO $pdo) {
     requireRealtorOrAdmin();
     $isAdmin = !empty($_SESSION['is_admin']) || ($_SESSION['role'] ?? '') === 'admin';
     if ($isAdmin) {
-        $stmt = $pdo->query("SELECT id, username, COALESCE(full_name, '') as full_name, COALESCE(email, '') as email, COALESCE(phone, '') as phone, created_at, last_login, COALESCE(is_admin, 0) as is_admin, COALESCE(role, 'client') as role, realtor_id FROM users ORDER BY id ASC");
+        $stmt = $pdo->query("SELECT id, public_id, username, COALESCE(full_name, '') as full_name, COALESCE(email, '') as email, COALESCE(phone, '') as phone, created_at, last_login, COALESCE(is_admin, 0) as is_admin, COALESCE(role, 'client') as role, realtor_id FROM users ORDER BY id ASC");
         $users = $stmt->fetchAll();
     } else {
-        $stmt = $pdo->prepare("SELECT id, username, COALESCE(full_name, '') as full_name, COALESCE(email, '') as email, COALESCE(phone, '') as phone, created_at, last_login, COALESCE(is_admin, 0) as is_admin, COALESCE(role, 'client') as role, realtor_id FROM users WHERE id = :realtor_id OR (role = 'client' AND realtor_id = :realtor_id) ORDER BY id ASC");
+        $stmt = $pdo->prepare("SELECT id, public_id, username, COALESCE(full_name, '') as full_name, COALESCE(email, '') as email, COALESCE(phone, '') as phone, created_at, last_login, COALESCE(is_admin, 0) as is_admin, COALESCE(role, 'client') as role, realtor_id FROM users WHERE id = :realtor_id OR (role = 'client' AND realtor_id = :realtor_id) ORDER BY id ASC");
         $stmt->execute([':realtor_id' => (int)$_SESSION['user_id']]);
         $users = $stmt->fetchAll();
     }
     foreach ($users as &$u) {
-        $u['is_admin'] = ($u['username'] === 'admin') ? 1 : (int)$u['is_admin'];
-        if ($u['username'] === 'admin') $u['role'] = 'admin';
+        $u['is_admin'] = (int)$u['is_admin'] === 1 ? 1 : 0;
+        if ($u['is_admin']) $u['role'] = 'admin';
         $u['initials'] = getUserInitials($u['full_name'] ?: $u['username']);
     }
     echo json_encode(['success' => true, 'users' => $users]);
@@ -345,7 +347,7 @@ function handleListUsers(PDO $pdo) {
 function handleCreateUser(PDO $pdo) {
     requireRealtorOrAdmin();
     requireCsrf();
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $username = trim((string)($input['username'] ?? ''));
     $password = (string)($input['password'] ?? '');
 
@@ -358,6 +360,11 @@ function handleCreateUser(PDO $pdo) {
     if (strlen($username) < 3) {
         http_response_code(400);
         echo json_encode(['error' => 'Username must be at least 3 characters long.']);
+        return;
+    }
+    if (dibsIsReservedUsername($username)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'That username is reserved. Choose another.']);
         return;
     }
 
@@ -417,7 +424,7 @@ function handleCreateUser(PDO $pdo) {
 function handleUpdateUserRole(PDO $pdo) {
     requireAdmin();
     requireCsrf();
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $targetUserId = (int)($input['user_id'] ?? 0);
     $role = trim((string)($input['role'] ?? ''));
 
@@ -437,9 +444,9 @@ function handleUpdateUserRole(PDO $pdo) {
         return;
     }
 
-    if ($user['username'] === 'admin') {
+    if (dibsIsLastAdmin($pdo, $targetUserId) && $role !== 'admin' && !(!$role && !empty($input['is_admin']))) {
         http_response_code(400);
-        echo json_encode(['error' => 'The primary admin account\'s role cannot be changed.']);
+        echo json_encode(['error' => 'This is the only admin account, so it has to stay an admin. Make another account an admin first.']);
         return;
     }
 
@@ -478,7 +485,7 @@ function handleUpdateUserRole(PDO $pdo) {
 function handleUpdateProfile(PDO $pdo) {
     requireAuth();
     requireCsrf();
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $userId = (int)$_SESSION['user_id'];
 
     $fullName = trim((string)($input['full_name'] ?? ''));
@@ -577,7 +584,7 @@ function handleUpdateProfile(PDO $pdo) {
 function handleChangePassword(PDO $pdo) {
     requireAuth();
     requireCsrf();
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
 
     // Non-admin users are strictly forced to target only their own session user ID
     $isSelf = !isset($input['user_id']) || ((int)$input['user_id'] === (int)$_SESSION['user_id']);
@@ -593,7 +600,7 @@ function handleChangePassword(PDO $pdo) {
     $newPassword = (string)($input['new_password'] ?? '');
 
     // For self-service password changes, verify current password if provided or required
-    if ($isSelf && empty($input['admin_override'])) {
+    if ($isSelf) {
         if (empty($currentPassword)) {
             http_response_code(400);
             echo json_encode(['error' => 'Current password is required to update your password.']);
@@ -629,7 +636,7 @@ function handleChangePassword(PDO $pdo) {
 function handleDeleteUser(PDO $pdo) {
     requireAdmin();
     requireCsrf();
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $targetUserId = (int)($input['user_id'] ?? 0);
 
     if ($targetUserId <= 0) {
@@ -648,9 +655,14 @@ function handleDeleteUser(PDO $pdo) {
         return;
     }
 
-    if ($user['username'] === 'admin') {
+    if ($targetUserId === (int)$_SESSION['user_id']) {
         http_response_code(400);
-        echo json_encode(['error' => 'Primary admin account cannot be deleted.']);
+        echo json_encode(['error' => 'You cannot delete the account you are signed in with.']);
+        return;
+    }
+    if (dibsIsLastAdmin($pdo, $targetUserId)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'This is the only admin account and cannot be deleted. Make another account an admin first.']);
         return;
     }
 
@@ -758,4 +770,52 @@ function handleViewEventLog(PDO $pdo) {
     $stmt->execute();
     $logs = $stmt->fetchAll();
     echo json_encode(['success' => true, 'logs' => $logs, 'total' => $total, 'page' => $page, 'per_page' => $perPage, 'total_pages' => $totalPages]);
+}
+
+/**
+ * Change your own sign-in name. Everything in Dibs links to the account's id, never its
+ * username, so nothing else needs updating. Requires the current password.
+ */
+function handleChangeUsername(PDO $pdo) {
+    requireAuth();
+    requireCsrf();
+    $input = json_decode(dibsRequestBody(), true) ?? [];
+    $new = strtolower(trim((string)($input['new_username'] ?? '')));
+    $password = (string)($input['current_password'] ?? '');
+    $userId = (int)$_SESSION['user_id'];
+
+    if (!preg_match('/^[a-z0-9._-]{3,40}$/', $new)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Usernames are 3 to 40 characters: letters, numbers, dots, dashes or underscores.']);
+        return;
+    }
+    if (dibsIsReservedUsername($new)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'That username is reserved. Choose another.']);
+        return;
+    }
+    $stmt = $pdo->prepare("SELECT username, password_hash FROM users WHERE id = :id");
+    $stmt->execute([':id' => $userId]);
+    $user = $stmt->fetch();
+    if (!$user || $password === '' || !password_verify($password, $user['password_hash'])) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Your current password is not correct.']);
+        return;
+    }
+    if (strtolower($user['username']) === $new) {
+        echo json_encode(['success' => true, 'username' => $user['username']]);
+        return;
+    }
+    $taken = $pdo->prepare("SELECT 1 FROM users WHERE LOWER(username) = :u AND id != :id");
+    $taken->execute([':u' => $new, ':id' => $userId]);
+    if ($taken->fetchColumn()) {
+        http_response_code(409);
+        echo json_encode(['error' => 'That username is taken. Try another.']);
+        return;
+    }
+    $pdo->prepare("UPDATE users SET username = :u WHERE id = :id")->execute([':u' => $new, ':id' => $userId]);
+    $old = $user['username'];
+    $_SESSION['username'] = $new;
+    logEvent($pdo, 'auth', 'info', 'Username changed', null, ['user_id' => $userId, 'from' => $old, 'to' => $new], $new);
+    echo json_encode(['success' => true, 'username' => $new]);
 }

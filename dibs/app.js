@@ -32,6 +32,10 @@ import {
 import { openCompareMatrix, closeCompareMatrix, clearCompare } from './js/compare.js';
 import './js/homeCompare.js'; // "Compare to my house" panel
 import './js/myHome.js'; // "My Home" card pinned in the grid and its modal; wires itself up
+import './js/account.js'; // My Profile: change sign-in username; wires itself up
+import './js/invites.js'; // realtor view: "Invite client" dialog; wires itself up
+import './js/agentFeed.js'; // realtor view: cross-client activity feed + engagement chips; wires itself up
+import './js/brief.js'; // "My Brief" editor, Fit Score badges and their "why" popover; wires itself up
 import './js/aiRank.js'; // toolbar "AI Ranking" button and its modal; wires itself up
 import {
     openAdminCleanupModal, closeAdminCleanupModal, fetchAdminCleanupPreview,
@@ -57,6 +61,8 @@ import { renderRealtorView } from './js/realtorView.js';
 // attributes in dynamically-rendered HTML, so they must exist on window before any card renders).
 import './js/detailModal.js';
 import './js/photoViewer.js';
+// Phone-only collapsible dashboard / control-bar sections (collapsed by default on load).
+import './js/mobileSections.js';
 
 // Global JS error capture — posts to the same action=client_log endpoint the bookmarklet uses
 // (backend/properties.php's handleClientLog / event_log table), so an error in the main app is

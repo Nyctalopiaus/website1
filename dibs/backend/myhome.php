@@ -27,7 +27,7 @@ const MY_HOME_COMPS_MAX = 30;
 
 function myHomeIsAdmin(): bool {
     $role = $_SESSION['role'] ?? (!empty($_SESSION['is_admin']) ? 'admin' : 'client');
-    return ($_SESSION['username'] ?? '') === 'admin' || !empty($_SESSION['is_admin']) || $role === 'admin';
+    return !empty($_SESSION['is_admin']) || $role === 'admin';
 }
 
 /**
@@ -86,7 +86,7 @@ function handleSaveMyHome(PDO $pdo) {
     try {
         $ownerId = resolveMyHomeOwner($pdo, true);
         if ($ownerId === null) return;
-        $data = json_decode(file_get_contents('php://input'), true);
+        $data = json_decode(dibsRequestBody(), true);
         if (!is_array($data)) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'Expected a JSON object.']);

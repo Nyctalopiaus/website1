@@ -122,7 +122,7 @@ function loadPropertyComps(PDO $pdo, string $mlsId): ?array {
  */
 function handleCheckComps(PDO $pdo) {
     try {
-        $data = json_decode(file_get_contents('php://input'), true) ?: [];
+        $data = json_decode(dibsRequestBody(), true) ?: [];
         $mlsId = trim((string)($data['mls_id'] ?? ''));
         $force = !empty($data['force']);
         if ($mlsId === '') {

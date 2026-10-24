@@ -2,6 +2,7 @@
  * Nycto's MLS Property Scout - View Switching & Renderers (grid/table/matrix)
  */
 import { ensureMyHomeLoaded } from './myHome.js';
+import { fitBadgeHtml } from './brief.js';
 import { ratesTileHtml } from './rates.js';
 import { state, elements } from './state.js';
 import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG, getStatusBadgeClass, buildCompScoreBadge, buildAiAnalysisBadge, getCompsStaleness } from './properties.js';
@@ -519,6 +520,7 @@ export function switchView(viewName) {
                     <img src="${escapeHtml(imgUrl)}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="card-img" alt="${escapeHtml(p.address || 'Property photo')}">
                     <span class="card-status-badge ${getStatusBadgeClass(p.status)}">${escapeHtml(p.status || '')}</span>
                     ${photoBadge}
+                    ${fitBadgeHtml(p.mls_id)}
                     <button class="card-fav-btn ${p.favorite ? 'is-fav' : ''}" onclick="toggleFavorite('${p.mls_id}', event)" aria-label="${p.favorite ? 'Remove from favorites' : 'Add to favorites'}" aria-pressed="${p.favorite ? 'true' : 'false'}" title="${p.favorite ? 'Remove from favorites' : 'Add to favorites'}">
                         <svg class="fav-star-icon" viewBox="0 0 24 24" fill="${p.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 2.5l2.98 6.04 6.67.97-4.83 4.7 1.14 6.65L12 17.77l-5.96 3.13 1.14-6.65-4.83-4.7 6.67-.97L12 2.5z"/></svg>
                     </button>

@@ -177,6 +177,61 @@ function runMigration(PDO $pdo, string $sql, string $label) {
     }
 }
 
+// ---------------------------------------------------------------- account ids and names
+
+/** Request keys that name a user. Each accepts the sequential id or the 32-hex public id. */
+const DIBS_USER_REF_KEYS = ['client_id', 'user_id', 'realtor_id', 'target_user_id', 'subject_user_id'];
+
+/** A user reference -> the internal integer id. Unknown public ids become 0 (matches nothing). */
+function dibsUserIdFromRef(PDO $pdo, $v) {
+    if (is_string($v) && preg_match('/^[a-f0-9]{32}$/', $v)) {
+        static $cache = [];
+        if (!array_key_exists($v, $cache)) {
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE public_id = :p");
+            $stmt->execute([':p' => $v]);
+            $cache[$v] = (int)($stmt->fetchColumn() ?: 0);
+        }
+        return $cache[$v];
+    }
+    return $v;
+}
+
+function dibsTranslateRefs(PDO $pdo, array $data): array {
+    foreach ($data as $k => $v) {
+        if (is_array($v)) $data[$k] = dibsTranslateRefs($pdo, $v);
+        elseif (is_string($k) && in_array($k, DIBS_USER_REF_KEYS, true)) $data[$k] = dibsUserIdFromRef($pdo, $v);
+    }
+    return $data;
+}
+
+/** Rewrites public ids in the query string and form posts before any handler reads them. */
+function dibsTranslateRequestRefs(PDO $pdo): void {
+    $_GET = dibsTranslateRefs($pdo, $_GET);
+    $_POST = dibsTranslateRefs($pdo, $_POST);
+}
+
+/** The JSON request body with public ids already translated. Handlers read this, never php://input. */
+function dibsRequestBody(): string {
+    static $body = null;
+    if ($body !== null) return $body;
+    $raw = (string)file_get_contents('php://input');
+    $data = json_decode($raw, true);
+    $body = is_array($data) && isset($GLOBALS['pdo']) ? json_encode(dibsTranslateRefs($GLOBALS['pdo'], $data)) : $raw;
+    return $body;
+}
+
+/** Sign-in names nobody may take, so no account can pass for the system or an admin. */
+function dibsIsReservedUsername(string $name): bool {
+    return in_array(strtolower(trim($name)), ['admin', 'administrator', 'root', 'system', 'support', 'superuser', 'owner', 'dibs', 'null', 'undefined'], true);
+}
+
+/** True when $userId is the only account with admin rights. */
+function dibsIsLastAdmin(PDO $pdo, int $userId): bool {
+    $stmt = $pdo->prepare("SELECT (SELECT is_admin FROM users WHERE id = :id) = 1 AND (SELECT COUNT(*) FROM users WHERE is_admin = 1) <= 1");
+    $stmt->execute([':id' => $userId]);
+    return (bool)$stmt->fetchColumn();
+}
+
 function purgeUserScopedMlsJson(PDO $pdo): void {
     $rows = $pdo->query('SELECT mls_id, raw_mls_json FROM properties WHERE raw_mls_json IS NOT NULL AND raw_mls_json != \'\'')->fetchAll();
     $update = $pdo->prepare('UPDATE properties SET raw_mls_json = :raw_mls_json WHERE mls_id = :mls_id');
@@ -510,7 +565,12 @@ try {
 
     // Backfill/guarantee: primary admin and admins have role = 'admin'
     try {
-        $pdo->exec("UPDATE users SET is_admin = 1, role = 'admin' WHERE username = 'admin' AND (is_admin IS NULL OR is_admin != 1 OR role != 'admin')");
+        // Admin rights come only from is_admin. The account named 'admin' is promoted only as a
+        // fallback when no admin exists at all (a fresh install), so renaming it is safe and a new
+        // account can never gain admin just by being called 'admin'.
+        if (!(int)$pdo->query("SELECT COUNT(*) FROM users WHERE is_admin = 1")->fetchColumn()) {
+            $pdo->exec("UPDATE users SET is_admin = 1, role = 'admin' WHERE username = 'admin'");
+        }
         $pdo->exec("UPDATE users SET role = 'admin' WHERE is_admin = 1 AND (role IS NULL OR role = '' OR role = 'client')");
         $pdo->exec("UPDATE users SET role = 'client' WHERE role IS NULL OR role = ''");
     } catch (Throwable $t) {}
@@ -625,6 +685,21 @@ try {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )", 'my_homes');
+
+    // RESO-shaped listing store (backend/ingest.php). Triggers on `properties` queue changes;
+    // the drain maps them, so a queue left by the last request is cleared here.
+    require_once __DIR__ . '/ingest.php';
+    resoIngestMigrate($pdo);
+    if ($pdo->query("SELECT 1 FROM reso_dirty LIMIT 1")->fetchColumn()) resoDrainDirty($pdo);
+
+    // Public account ids: random, used in links and API calls instead of the sequential id.
+    // A trigger fills it for every new account, whichever code path creates it.
+    runMigration($pdo, "ALTER TABLE users ADD COLUMN public_id TEXT", 'users.public_id');
+    runMigration($pdo, "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_public_id ON users(public_id)", 'idx_users_public_id');
+    runMigration($pdo, "CREATE TRIGGER IF NOT EXISTS trg_users_public_id AFTER INSERT ON users WHEN NEW.public_id IS NULL
+        BEGIN UPDATE users SET public_id = lower(hex(randomblob(16))) WHERE id = NEW.id; END", 'trg_users_public_id');
+    $pdo->exec("UPDATE users SET public_id = lower(hex(randomblob(16))) WHERE public_id IS NULL OR public_id = ''");
+    dibsTranslateRequestRefs($pdo);
 
     purgeUserScopedMlsJson($pdo);
 

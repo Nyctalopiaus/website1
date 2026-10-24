@@ -13,6 +13,9 @@ require_once __DIR__ . '/collections.php';
 require_once __DIR__ . '/comps.php';
 require_once __DIR__ . '/rates.php';
 require_once __DIR__ . '/myhome.php';
+require_once __DIR__ . '/brief.php';
+require_once __DIR__ . '/feed.php';
+require_once __DIR__ . '/invites.php';
 
 $action = $_GET['action'] ?? $_POST['action'] ?? 'list';
 
@@ -139,6 +142,10 @@ switch ($action) {
         handleCreateUser($pdo);
         break;
 
+    case 'change_username':
+        handleChangeUsername($pdo);
+        break;
+
     case 'change_password':
         handleChangePassword($pdo);
         break;
@@ -179,6 +186,58 @@ switch ($action) {
     case 'list':
         requireAuth();
         handleList($pdo);
+        break;
+
+    case 'create_invite':
+        requireAuth();
+        requireCsrf();
+        handleCreateInvite($pdo);
+        break;
+
+    case 'list_invites':
+        requireAuth();
+        handleListInvites($pdo);
+        break;
+
+    case 'revoke_invite':
+        requireAuth();
+        requireCsrf();
+        handleRevokeInvite($pdo);
+        break;
+
+    // Public: used by join.html before the client has an account (rate-limited per IP).
+    case 'check_invite':
+        handleCheckInvite($pdo);
+        break;
+
+    case 'accept_invite':
+        handleAcceptInvite($pdo);
+        break;
+
+    case 'get_agent_feed':
+        requireAuth();
+        handleGetAgentFeed($pdo);
+        break;
+
+    case 'brief_catalog':
+        requireAuth();
+        handleBriefCatalog($pdo);
+        break;
+
+    case 'get_brief':
+        requireAuth();
+        handleGetBrief($pdo);
+        break;
+
+    case 'save_brief':
+        requireAuth();
+        requireCsrf();
+        handleSaveBrief($pdo);
+        break;
+
+    case 'fit_scores':
+        requireAuth();
+        handleFitScores($pdo);
         break;
 
     case 'sync':
@@ -318,9 +377,9 @@ function handleGetSavedFilters(PDO $pdo) {
     requireAuth();
     $userId = (int)$_SESSION['user_id'];
     $role = $_SESSION['role'] ?? 'client';
-    $isPrimaryAdmin = ($_SESSION['username'] ?? '') === 'admin';
+    $isAdmin = !empty($_SESSION['is_admin']);
 
-    if ($role === 'realtor' || $role === 'admin' || $isPrimaryAdmin) {
+    if ($role === 'realtor' || $role === 'admin' || $isAdmin) {
         $stmt = $pdo->prepare("
             SELECT f.*, u.username as owner_username, c.username as creator_username
             FROM saved_filters f
@@ -382,7 +441,7 @@ function handleGetSavedFilters(PDO $pdo) {
 function handleSaveFilter(PDO $pdo) {
     requireAuth();
     requireCsrf();
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $userId = (int)$_SESSION['user_id'];
 
     $filterId = !empty($input['id']) ? (int)$input['id'] : null;
@@ -452,7 +511,7 @@ function handleSaveFilter(PDO $pdo) {
 function handleDeleteFilter(PDO $pdo) {
     requireAuth();
     requireCsrf();
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $filterId = (int)($input['id'] ?? 0);
     $userId = (int)$_SESSION['user_id'];
 
@@ -517,7 +576,7 @@ function handleUpdatePreferences(PDO $pdo) {
     requireAuth();
     requireCsrf();
     $userId = (int)$_SESSION['user_id'];
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
 
     $stmtFetch = $pdo->prepare("SELECT active_view, current_sort, compare_list_json, active_filters_json, custom_reaction_chips_json, mls_note_chips_json FROM user_preferences WHERE user_id = :user_id");
     $stmtFetch->execute([':user_id' => $userId]);
@@ -593,7 +652,7 @@ function handleGetNotifications(PDO $pdo) {
 function handleMarkNotificationRead(PDO $pdo) {
     requireAuth();
     requireCsrf();
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $userId = (int)$_SESSION['user_id'];
     $notificationId = (int)($input['notification_id'] ?? 0);
     $markAll = !empty($input['mark_all']);

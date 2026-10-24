@@ -9,7 +9,7 @@ function handleListCollections(PDO $pdo) {
     requireAuth();
     $userId = (int)$_SESSION['user_id'];
     $role = $_SESSION['role'] ?? 'client';
-    $isAdmin = ($_SESSION['username'] ?? '') === 'admin' || !empty($_SESSION['is_admin']);
+    $isAdmin = !empty($_SESSION['is_admin']);
 
     if ($role === 'realtor' || $isAdmin) {
         $stmt = $pdo->prepare("
@@ -63,7 +63,7 @@ function handleSaveCollection(PDO $pdo) {
     requireCsrf();
 
     $role = $_SESSION['role'] ?? 'client';
-    $isAdmin = ($_SESSION['username'] ?? '') === 'admin' || !empty($_SESSION['is_admin']);
+    $isAdmin = !empty($_SESSION['is_admin']);
 
     if ($role !== 'realtor' && !$isAdmin) {
         http_response_code(403);
@@ -71,7 +71,7 @@ function handleSaveCollection(PDO $pdo) {
         return;
     }
 
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $collectionId = !empty($input['id']) ? (int)$input['id'] : null;
     $title = trim((string)($input['title'] ?? ''));
     $description = trim((string)($input['description'] ?? ''));
@@ -275,7 +275,7 @@ function handleAddItemsToCollection(PDO $pdo) {
     requireRealtorOrAdmin();
     requireCsrf();
 
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $collectionId = (int)($input['collection_id'] ?? 0);
     $mlsIds = is_array($input['mls_ids'] ?? null) ? $input['mls_ids'] : [];
 
@@ -323,7 +323,7 @@ function handleDeleteCollection(PDO $pdo) {
     requireAuth();
     requireCsrf();
 
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $collectionId = (int)($input['id'] ?? 0);
 
     if ($collectionId <= 0) {
@@ -333,7 +333,7 @@ function handleDeleteCollection(PDO $pdo) {
     }
 
     $realtorId = (int)$_SESSION['user_id'];
-    $isAdmin = ($_SESSION['username'] ?? '') === 'admin' || !empty($_SESSION['is_admin']);
+    $isAdmin = !empty($_SESSION['is_admin']);
 
     $stmtCheck = $pdo->prepare("SELECT * FROM collections WHERE id = :id");
     $stmtCheck->execute([':id' => $collectionId]);

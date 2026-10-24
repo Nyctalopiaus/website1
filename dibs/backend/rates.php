@@ -212,7 +212,7 @@ function handleGetMortgageRates(PDO $pdo) {
 function handleSaveRateQuote(PDO $pdo) {
     try {
         ensureRatesTables($pdo);
-        $data = json_decode(file_get_contents('php://input'), true) ?: [];
+        $data = json_decode(dibsRequestBody(), true) ?: [];
         $userId = (int)($_SESSION['user_id'] ?? 0);
         $type = (string)($data['loan_type'] ?? '');
         $rate = $data['rate'] ?? null;
@@ -244,7 +244,7 @@ function handleSaveRateQuote(PDO $pdo) {
 function handleDeleteRateQuote(PDO $pdo) {
     try {
         ensureRatesTables($pdo);
-        $data = json_decode(file_get_contents('php://input'), true) ?: [];
+        $data = json_decode(dibsRequestBody(), true) ?: [];
         $stmt = $pdo->prepare("DELETE FROM rate_quotes WHERE id = :id AND user_id = :u");
         $stmt->execute([':id' => (int)($data['id'] ?? 0), ':u' => (int)($_SESSION['user_id'] ?? 0)]);
         echo json_encode(['success' => $stmt->rowCount() > 0]);

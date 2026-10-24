@@ -753,7 +753,7 @@ function handleGetPropertyActivity(PDO $pdo) {
 }
 
 function handleUpdateGlobalPropertyVisibility(PDO $pdo) {
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $mlsId = trim((string)($input['mls_id'] ?? ''));
     $isHidden = !empty($input['is_hidden']) ? 1 : 0;
     $reason = trim((string)($input['reason'] ?? ''));
@@ -946,7 +946,7 @@ function syncMlsUserState(PDO $pdo, int $userId, string $mlsId, array $item): vo
 }
 
 function handleSync(PDO $pdo) {
-    $raw = file_get_contents('php://input');
+    $raw = dibsRequestBody();
     $data = json_decode($raw, true);
 
     if (!$data && isset($_POST['payload'])) {
@@ -1406,6 +1406,10 @@ function handleSync(PDO $pdo) {
         }
     }
 
+        // Map this batch into reso_property now rather than on the next request (backend/ingest.php).
+        resoDrainDirty($pdo);
+        if (function_exists('fitAlertsProcess')) fitAlertsProcess($pdo);
+
         $syncUser = getScrapeTokenUsername($pdo) ?? ($_SESSION['username'] ?? null);
         logEvent($pdo, 'scrape', 'info', "Scrape sync batch complete: {$syncedCount} property listing(s) ingested from Matrix", null, ['total_items' => count($properties)], $syncUser);
         logEvent($pdo, 'sync', 'info', "Sync batch complete: {$syncedCount} synced, {$skippedCount} skipped", null, ['total_items' => count($properties)], $syncUser);
@@ -1500,7 +1504,7 @@ function handleScrapeStatus(PDO $pdo) {
  * in the same event_log table logEvent() writes to, so it shows up alongside sync/system events.
  */
 function handleClientLog(PDO $pdo) {
-    $raw = file_get_contents('php://input');
+    $raw = dibsRequestBody();
     $data = json_decode($raw, true) ?? [];
 
     $source = in_array($data['source'] ?? '', ['scrape', 'client'], true) ? $data['source'] : 'client';
@@ -1525,7 +1529,7 @@ function handleClientLog(PDO $pdo) {
 
 function handleUpdateUserData(PDO $pdo) {
     requireAuth();
-    $raw = file_get_contents('php://input');
+    $raw = dibsRequestBody();
     $data = json_decode($raw, true);
     if (!$data && isset($_POST['mls_id'])) {
         $data = $_POST;
@@ -1752,7 +1756,7 @@ function handleDeleteProperty(PDO $pdo) {
 }
 
 function handleUpdateCoordinates(PDO $pdo) {
-    $input = file_get_contents('php://input');
+    $input = dibsRequestBody();
     $data = json_decode($input, true);
     if (!$data || !isset($data['mls_id']) || !isset($data['latitude']) || !isset($data['longitude'])) {
         http_response_code(400);
@@ -1785,7 +1789,7 @@ function handleUpdateCoordinates(PDO $pdo) {
  * lookup has to run server-side. Saves the coordinates when a match is found.
  */
 function handleGeocodeFallback(PDO $pdo) {
-    $data = json_decode(file_get_contents('php://input'), true);
+    $data = json_decode(dibsRequestBody(), true);
     $mlsId = is_array($data) ? trim((string)($data['mls_id'] ?? '')) : '';
     $address = is_array($data) ? trim((string)($data['address'] ?? '')) : '';
     if ($mlsId === '' || $address === '' || strlen($address) > 200) {
@@ -2109,7 +2113,7 @@ function handleAdminCleanupExecute(PDO $pdo) {
     requireAdmin();
     requireCsrf();
 
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $targetMlsIds = is_array($input['target_mls_ids'] ?? null) ? $input['target_mls_ids'] : [];
     $cleanupMode = in_array($input['cleanup_mode'] ?? '', ['full_delete', 'media_only', 'mark_stale'], true) ? $input['cleanup_mode'] : 'full_delete';
     $targetStatus = trim((string)($input['target_status'] ?? 'Stale / Unsynced'));
@@ -2237,7 +2241,7 @@ function handleAdminCleanupExecute(PDO $pdo) {
 }
 
 function handleAdminRetryListingImages(PDO $pdo) {
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $mlsIds = is_array($input['mls_ids'] ?? null) ? $input['mls_ids'] : [];
     if (empty($mlsIds)) {
         http_response_code(400);
@@ -2256,7 +2260,7 @@ function handleAdminRetryListingImages(PDO $pdo) {
 }
 
 function handleAdminUpdatePropertyAddress(PDO $pdo) {
-    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $input = json_decode(dibsRequestBody(), true) ?? $_POST;
     $mlsId = trim((string)($input['mls_id'] ?? ''));
     $address = trim((string)($input['address'] ?? ''));
     $city = trim((string)($input['city'] ?? ''));
@@ -2302,10 +2306,10 @@ function handleGetClientMatrix(PDO $pdo) {
 
     // Fetch assigned clients list for this realtor (or all clients for admin)
     if ($isAdmin) {
-        $stmtClients = $pdo->prepare("SELECT id, username, full_name, email, phone, avatar_url, role, pipeline_stage, target_min_price, target_max_price, target_cities, target_beds, target_timeline, must_haves, deal_breakers, last_active_at, created_at FROM users WHERE role = 'client' ORDER BY id DESC");
+        $stmtClients = $pdo->prepare("SELECT id, public_id, username, full_name, email, phone, avatar_url, role, pipeline_stage, target_min_price, target_max_price, target_cities, target_beds, target_timeline, must_haves, deal_breakers, last_active_at, created_at FROM users WHERE role = 'client' ORDER BY id DESC");
         $stmtClients->execute();
     } else {
-        $stmtClients = $pdo->prepare("SELECT id, username, full_name, email, phone, avatar_url, role, pipeline_stage, target_min_price, target_max_price, target_cities, target_beds, target_timeline, must_haves, deal_breakers, last_active_at, created_at FROM users WHERE role = 'client' AND (realtor_id = :rid OR id = :rid) ORDER BY id DESC");
+        $stmtClients = $pdo->prepare("SELECT id, public_id, username, full_name, email, phone, avatar_url, role, pipeline_stage, target_min_price, target_max_price, target_cities, target_beds, target_timeline, must_haves, deal_breakers, last_active_at, created_at FROM users WHERE role = 'client' AND (realtor_id = :rid OR id = :rid) ORDER BY id DESC");
         $stmtClients->execute([':rid' => $currentUserId]);
     }
     $clients = $stmtClients->fetchAll(PDO::FETCH_ASSOC);
@@ -2474,7 +2478,7 @@ function handleGetClientActivity(PDO $pdo) {
 
 function handleSaveRealtorNotes(PDO $pdo) {
     requireRealtorOrAdmin();
-    $raw = file_get_contents('php://input');
+    $raw = dibsRequestBody();
     $data = json_decode($raw, true) ?: $_POST;
 
     $clientId = (int)($data['client_id'] ?? 0);
@@ -2517,7 +2521,7 @@ function handleSaveRealtorNotes(PDO $pdo) {
 
 function handleUpdateClientPipeline(PDO $pdo) {
     requireRealtorOrAdmin();
-    $raw = file_get_contents('php://input');
+    $raw = dibsRequestBody();
     $data = json_decode($raw, true) ?: $_POST;
 
     $clientId = (int)($data['client_id'] ?? 0);
@@ -2571,7 +2575,7 @@ function handleUpdateClientPipeline(PDO $pdo) {
 
 function handleSaveShowingItinerary(PDO $pdo) {
     requireRealtorOrAdmin();
-    $data = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $data = json_decode(dibsRequestBody(), true) ?? $_POST;
     $clientId = (int)($data['client_id'] ?? 0);
     $mlsId = trim((string)($data['mls_id'] ?? ''));
     $showingTime = trim((string)($data['showing_time'] ?? ''));
@@ -2683,7 +2687,7 @@ function handleGetPropertyMessages(PDO $pdo) {
 
 function handleSendPropertyMessage(PDO $pdo) {
     requireAuth();
-    $raw = file_get_contents('php://input');
+    $raw = dibsRequestBody();
     $data = json_decode($raw, true) ?: $_POST;
 
     $currentUserId = (int)$_SESSION['user_id'];

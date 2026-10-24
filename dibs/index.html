@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
     <!-- Leaflet CSS for Interactive Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="stylesheet" href="styles.css?v=3.11">
+    <link rel="stylesheet" href="styles.css?v=3.19">
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Lucide Icons (replaces emoji glyphs in the header/KPI chrome) -->
@@ -97,6 +97,7 @@
                         <div class="dropdown-menu" id="user-dropdown-menu">
                             <button class="dropdown-item" id="btn-user-profile"><i data-lucide="user-cog"></i> My Profile</button>
                             <button class="dropdown-item" id="btn-user-my-home"><i data-lucide="house"></i> My Home</button>
+                            <button class="dropdown-item" id="btn-user-brief"><i data-lucide="sliders-horizontal"></i> My Brief</button>
                             <button class="dropdown-item" id="btn-user-password"><i data-lucide="key-round"></i> Change Password</button>
                             <button class="dropdown-item" id="btn-user-ai-setup"><i data-lucide="sparkles"></i> AI Setup</button>
                             <div class="dropdown-divider"></div>
@@ -181,6 +182,10 @@
 
     <!-- Unified Control Bar (Search, Filters, Presets, View Switcher & Sorting) -->
     <section class="top-filter-container">
+        <!-- Phone-only header that collapses/expands the control bar (see js/mobileSections.js) -->
+        <button type="button" class="mobile-section-toggle" aria-expanded="true">
+            <span class="mobile-section-toggle-title"><i data-lucide="sliders-horizontal"></i> Search, Filters &amp; Views</span>
+        </button>
         <div class="top-filter-bar">
             <div class="top-filter-row top-filter-row-unified">
                 <!-- Search Box -->
@@ -1360,6 +1365,18 @@
         </div>
     </div>
 
+    <!-- Smart Brief: the criteria every listing's Fit Score is measured against. Body rendered by js/brief.js -->
+    <div class="modal-overlay" id="modal-brief">
+        <div class="modal-content brief-modal">
+            <button class="modal-close" aria-label="Close" id="modal-brief-close"><i data-lucide="x"></i></button>
+            <div class="my-home-header">
+                <h2><i data-lucide="sliders-horizontal"></i> <span id="brief-title">My Brief</span></h2>
+                <p id="brief-subtitle">What a great home looks like. Every listing gets a Fit Score against it.</p>
+            </div>
+            <div id="brief-body"></div>
+        </div>
+    </div>
+
     <!-- User Profile Modal -->
     <div class="modal-overlay" id="modal-user-profile">
         <div class="modal-content" style="max-width: 580px; width: 92vw;">
@@ -1427,6 +1444,20 @@
                         <button type="submit" class="btn btn-gold" id="btn-save-user-profile"><i data-lucide="check"></i> Save Profile</button>
                     </div>
                 </form>
+
+                <!-- Sign-in username (js/account.js). Your account id never changes, so renaming is safe. -->
+                <details class="account-username-box" id="account-username-box">
+                    <summary><i data-lucide="at-sign"></i> Change sign-in username</summary>
+                    <p class="account-username-note">This is the name you sign in with. Your <strong>display name</strong> above is what others see. Everything you've saved stays linked to your account when you change either.</p>
+                    <div class="account-username-grid">
+                        <label class="brief-field brief-field--wide"><span>New username</span>
+                            <input type="text" id="account-new-username" maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="3–40 letters, numbers, . _ -"></label>
+                        <label class="brief-field brief-field--wide"><span>Current password</span>
+                            <input type="password" id="account-username-password" maxlength="200" autocomplete="current-password"></label>
+                    </div>
+                    <p class="invite-error" id="account-username-error" role="alert"></p>
+                    <button type="button" class="btn btn-secondary" id="btn-change-username"><i data-lucide="at-sign"></i> Change username</button>
+                </details>
             </div>
         </div>
     </div>
@@ -1834,6 +1865,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=3.19"></script>
+    <script type="module" src="app.js?v=3.24"></script>
 </body>
 </html>

@@ -14,21 +14,6 @@ import { showToast } from './toast.js';
 import { renderClientNextSteps } from './clientNextSteps.js';
 import { buildAiAnalysisSectionHtml, getOpenAiAnalysisDraft, isAiAnalysisTooLong } from './aiAnalysis.js';
 
-// Matrix's portal has no per-listing URL (a listing's detail view is a postback on the search's
-// result set, and the address bar never changes), so the best Dibs can link to is the search page
-// the house was synced from. Tag that link with dibs_mls=<MLS #>: the portal ignores unknown query
-// params (confirmed live Oct 2026), and the Dibs bookmarklet, when clicked on a page carrying that
-// param, opens that one listing instead of running a scrape.
-function matrixListingUrl(p) {
-    const base = p.mls_url || 'https://matrix.recolorado.com/Matrix/Public/Portal.aspx';
-    try {
-        const u = new URL(base);
-        if (p.mls_id) u.searchParams.set('dibs_mls', String(p.mls_id));
-        return u.toString();
-    } catch (e) {
-        return base;
-    }
-}
 
 
 export const DEFAULT_REACTION_CHIPS = [
@@ -294,8 +279,6 @@ window.deleteCustomReactionChip = function(event, chipText) {
 
         const ppsqft = p.sqft_finished ? Math.round(p.price / p.sqft_finished) : (p.sqft_total ? Math.round(p.price / p.sqft_total) : 0);
 
-        const mlsUrl = matrixListingUrl(p.mls_url ? p : { ...p, mls_url: 'https://matrix.recolorado.com/Matrix/Public/Portal.aspx?L=1&k=2343995XHKSS&p=CS-3939147-0#1' });
-
         const matrixRev = getPropertyReviewStatus(p);
         let matrixBadgeModal = '';
         if (matrixRev === 'favorite') matrixBadgeModal = `<span class="badge-matrix-review badge-matrix-fav" style="font-size:0.85rem; padding:4px 10px;"><i data-lucide="star"></i> Favorite</span>`;
@@ -356,9 +339,6 @@ window.deleteCustomReactionChip = function(event, chipText) {
 
                     <!-- Actions -->
                     <div class="modal-action-bar">
-                        <a href="${escapeHtml(mlsUrl)}" target="_blank" class="btn btn-gold" style="text-decoration:none;">
-                            <i data-lucide="link"></i> View Original Matrix MLS Portal Listing
-                        </a>
                         <a href="${calcUrl}" target="_blank" class="btn btn-secondary" style="text-decoration:none; background:rgba(91,124,153,0.2); color:#6B8CA3; border:1px solid #5B7C99;">
                             <i data-lucide="calculator"></i> Mortgage Calculator
                         </a>

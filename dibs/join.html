@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>Join Dibs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=3.18">
+    <style>
+        body { min-height: 100vh; margin: 0; display: flex; align-items: center; justify-content: center; padding: 24px 16px; box-sizing: border-box; background: var(--bg-main); color: var(--text-primary); font-family: var(--font-sans); }
+        .join-card { width: 100%; max-width: 440px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); padding: 2rem; }
+        .join-brand { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; color: var(--accent-gold); margin: 0 0 1.25rem; }
+        .join-card h1 { font-size: 1.35rem; margin: 0 0 0.4rem; }
+        .join-lead { color: var(--text-muted); margin: 0 0 1.4rem; font-size: 0.92rem; line-height: 1.5; }
+        .join-field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.9rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+        .join-field input { background: var(--bg-panel); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.65rem 0.75rem; font: inherit; font-size: 0.95rem; font-weight: 500; }
+        .join-field input:focus { outline: 2px solid var(--accent-gold); outline-offset: 1px; }
+        .join-hint { font-weight: 500; font-size: 0.75rem; }
+        .join-error { color: var(--accent-red); font-size: 0.85rem; min-height: 1.2em; margin: 0 0 0.6rem; }
+        .join-submit { width: 100%; justify-content: center; padding: 0.75rem; font-size: 0.95rem; }
+        .join-foot { margin-top: 1.1rem; font-size: 0.8rem; color: var(--text-muted); text-align: center; }
+        .join-foot a { color: var(--accent-gold); }
+    </style>
+</head>
+<body>
+    <main class="join-card" id="join">
+        <p class="join-brand">Dibs</p>
+        <p class="join-lead" id="join-status">Checking your invite…</p>
+    </main>
+    <script>
+    (() => {
+        const API = 'backend/api.php';
+        const root = document.getElementById('join');
+        const token = (new URLSearchParams(location.hash.slice(1))).get('t') || '';
+        // Keep the token out of browser history and anything copied from the address bar.
+        if (location.hash) history.replaceState(null, '', location.pathname);
+        const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        function fail(message) {
+            root.innerHTML = `<p class="join-brand">Dibs</p><h1>This link can't be used</h1>
+                <p class="join-lead">${esc(message)}</p><p class="join-foot"><a href="./">Go to Dibs sign-in</a></p>`;
+        }
+
+        async function api(action, opts) {
+            const res = await fetch(`${API}?action=${action}`, Object.assign({ credentials: 'include' }, opts));
+            let body = null;
+            try { body = await res.json(); } catch (e) { /* not JSON */ }
+            if (!res.ok || !body || !body.success) throw new Error(body?.error || 'Something went wrong. Please try again.');
+            return body;
+        }
+
+        async function start() {
+            if (!/^[a-f0-9]{64}$/.test(token)) { fail('This invite link is incomplete. Open the full link from your agent.'); return; }
+            let inv;
+            try {
+                inv = await api(`check_invite&t=${token}`);
+            } catch (e) { fail(e.message); return; }
+            const expires = new Date(inv.expires_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            root.innerHTML = `
+                <p class="join-brand">Dibs</p>
+                <h1>Welcome, ${esc(inv.first_name)}</h1>
+                <p class="join-lead">${esc(inv.agent_name)} invited you to Dibs to search for homes together. Set up your sign-in below. This invite is good until ${esc(expires)}.</p>
+                <form id="join-form" novalidate>
+                    <label class="join-field">The email your invite was sent to <span class="join-hint">(${esc(inv.email_hint)})</span>
+                        <input type="email" name="email" autocomplete="email" required maxlength="254"></label>
+                    <label class="join-field">Choose a username <span class="join-hint">3–40 letters, numbers, dots, dashes or underscores</span>
+                        <input type="text" name="username" autocomplete="username" required minlength="3" maxlength="40" pattern="[A-Za-z0-9._\\-]{3,40}" autocapitalize="none" spellcheck="false"></label>
+                    <label class="join-field">Choose a password <span class="join-hint">At least 10 characters</span>
+                        <input type="password" name="password" autocomplete="new-password" required minlength="10" maxlength="200"></label>
+                    <label class="join-field">Type it again
+                        <input type="password" name="confirm" autocomplete="new-password" required minlength="10" maxlength="200"></label>
+                    <p class="join-error" id="join-error" role="alert"></p>
+                    <button type="submit" class="btn btn-gold join-submit">Create my account</button>
+                </form>
+                <p class="join-foot">Already have an account? <a href="./">Sign in</a></p>`;
+            const form = document.getElementById('join-form');
+            const err = document.getElementById('join-error');
+            form.addEventListener('submit', async ev => {
+                ev.preventDefault();
+                const f = Object.fromEntries(new FormData(form));
+                err.textContent = '';
+                if (!/^[A-Za-z0-9._-]{3,40}$/.test(f.username)) { err.textContent = 'Usernames are 3–40 letters, numbers, dots, dashes or underscores.'; return; }
+                if (f.password.length < 10) { err.textContent = 'Use a password of at least 10 characters.'; return; }
+                if (f.password !== f.confirm) { err.textContent = "The two passwords don't match."; return; }
+                const btn = form.querySelector('button');
+                btn.disabled = true; btn.textContent = 'Creating your account…';
+                try {
+                    await api('accept_invite', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token, email: f.email, username: f.username, password: f.password }) });
+                    root.innerHTML = '<p class="join-brand">Dibs</p><h1>You\'re in</h1><p class="join-lead">Taking you to Dibs…</p>';
+                    location.replace('./');
+                } catch (e) {
+                    err.textContent = e.message;
+                    btn.disabled = false; btn.textContent = 'Create my account';
+                }
+            });
+        }
+        start();
+    })();
+    </script>
+</body>
+</html>

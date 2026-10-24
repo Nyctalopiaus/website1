@@ -4,21 +4,6 @@
  */
 import { apiFetch } from './api.js';
 
-// Matrix's portal has no per-listing URL (a listing's detail view is a postback on the search's
-// result set, and the address bar never changes), so the best Dibs can link to is the search page
-// the house was synced from. Tag that link with dibs_mls=<MLS #>: the portal ignores unknown query
-// params (confirmed live Oct 2026), and the Dibs bookmarklet, when clicked on a page carrying that
-// param, opens that one listing instead of running a scrape.
-function matrixListingUrl(p) {
-    const base = p.mls_url || 'https://matrix.recolorado.com/Matrix/Public/Portal.aspx';
-    try {
-        const u = new URL(base);
-        if (p.mls_id) u.searchParams.set('dibs_mls', String(p.mls_id));
-        return u.toString();
-    } catch (e) {
-        return base;
-    }
-}
 import { state, elements } from './state.js';
 import { showToast } from './toast.js';
 import { cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './properties.js';
@@ -51,52 +36,20 @@ export function setRealtorCcLayout(mode) {
 }
 window.setRealtorCcLayout = setRealtorCcLayout;
 
+// Fit Score = the selected client's Smart Brief score (backend/brief.php, action=fit_scores),
+// loaded in renderRealtorView. Replaces the old client-side estimate, which never went below 62.
 export function calculateFitScore(p, client) {
-    if (!client) return null;
-    let score = 50; // base score
+    if (!client || !state.realtorFitScores) return null;
+    const s = state.realtorFitScores[String(p.mls_id)];
+    if (!s || s.score === null || s.score === undefined) return null;
+    const cls = (s.band === 'perfect' || s.band === 'strong') ? 'fit-score-high' : (s.band === 'fair' ? 'fit-score-medium' : 'fit-score-standard');
+    return { score: s.score, band: s.band, label: `${s.score} Fit`, class: cls };
+}
 
-    if (p.price) {
-        const minP = client.target_min_price || 0;
-        const maxP = client.target_max_price || 0;
-        if (minP > 0 && maxP > 0 && p.price >= minP && p.price <= maxP) {
-            score += 25;
-        } else if (maxP > 0 && p.price <= maxP * 1.1) {
-            score += 15;
-        } else if (minP > 0 || maxP > 0) {
-            score += 5;
-        } else {
-            score += 15;
-        }
-    } else {
-        score += 10;
-    }
-
-    if (p.beds && client.target_beds) {
-        if (p.beds >= client.target_beds) {
-            score += 15;
-        } else if (p.beds === client.target_beds - 1) {
-            score += 5;
-        }
-    } else {
-        score += 10;
-    }
-
-    if (client.target_cities && (p.city || p.address)) {
-        const cities = client.target_cities.toLowerCase().split(',').map(c => c.trim()).filter(Boolean);
-        const pCity = (p.city || '').toLowerCase();
-        const pAddr = (p.address || '').toLowerCase();
-        const isMatch = cities.some(c => pCity.includes(c) || pAddr.includes(c));
-        if (isMatch) score += 10;
-    } else {
-        score += 5;
-    }
-
-    score = Math.min(99, Math.max(62, Math.round(score)));
-    let scoreClass = 'fit-score-standard';
-    if (score >= 85) scoreClass = 'fit-score-high';
-    else if (score >= 75) scoreClass = 'fit-score-medium';
-
-    return { score, label: `${score}% Match`, class: scoreClass };
+// Clickable badge: opens the same "why" popover as the client's grid (js/brief.js).
+function fitScoreBadgeHtml(p, fitScore, size) {
+    if (!fitScore) return '';
+    return `<button type="button" class="fit-score-badge ${fitScore.class}" data-fit-why data-fit-source="realtor" data-fit-mls="${escapeHtml(String(p.mls_id))}" style="font-size:${size}; cursor:pointer;" title="Fit against this client's brief: see why"><i data-lucide="sparkles" style="width:11px; height:11px;"></i> ${fitScore.label}</button>`;
 }
 
 function renderSkeletonLoader(container) {
@@ -132,6 +85,24 @@ export function getActiveClientTourProperties() {
     return [...(matrix.loved || []), ...(matrix.shortlisted || [])];
 }
 
+async function loadRealtorFitScores(clientId) {
+    state.realtorFitScores = {};
+    state.realtorFitClientId = clientId || null;
+    if (!clientId) return;
+    try {
+        const res = await apiFetch(`backend/api.php?action=fit_scores&client_id=${encodeURIComponent(clientId)}`);
+        if (res && res.success && res.scores) state.realtorFitScores = res.scores;
+    } catch (e) {
+        console.warn('Could not load Fit Scores for client', clientId, e);
+    }
+}
+
+// The client's brief was edited (js/brief.js): rescore this client's listings.
+document.addEventListener('dibs:brief-saved', event => {
+    const id = event.detail?.clientId;
+    if (id && String(id) === String(activeClientId)) renderRealtorView(activeClientId);
+});
+
 export async function renderRealtorView(clientId = null) {
     const container = document.getElementById('view-realtor-container');
     if (!container) return;
@@ -166,6 +137,7 @@ export async function renderRealtorView(clientId = null) {
             if (activeSubTab === 'activity' && activeClientId) {
                 await loadClientActivity(activeClientId);
             }
+            await loadRealtorFitScores(activeClientId);
         }
         const overviewRes = await apiFetch('backend/api.php?action=get_realtor_overview');
         if (overviewRes?.success && overviewRes.overview) {
@@ -310,11 +282,15 @@ function buildRealtorDom(container) {
 
 
 
+        <!-- Cross-client activity feed + engagement (js/agentFeed.js fills it) -->
+        <section id="agent-feed-panel" class="agent-feed-panel" aria-label="Client activity"></section>
+
         <div class="realtor-cc-layout">
             <!-- Left Sidebar: Client Roster -->
             <aside class="realtor-roster-sidebar">
                 <div class="sidebar-header">
                     <h3 class="sidebar-title"><i data-lucide="users"></i> Client Roster (${clients.length})</h3>
+                    <button type="button" class="btn btn-secondary roster-invite-btn" onclick="window.openInviteModal()" title="Send a client a link to join Dibs"><i data-lucide="user-plus"></i> Invite client</button>
                 </div>
                 <div class="client-list">
                     ${clients.map(c => {
@@ -327,6 +303,7 @@ function buildRealtorDom(container) {
                                 <div class="client-info">
                                     <div class="client-name">${escapeHtml(c.full_name || c.username)}</div>
                                     <div class="client-stage-pill" style="border-color:${stg.color}; color:${stg.color};"><i data-lucide="${stg.icon}"></i> ${stg.label}</div>
+                                    <span class="client-engagement" data-engagement-for="${c.id}"></span>
                                 </div>
                             </div>
                         `;
@@ -352,6 +329,7 @@ function buildRealtorDom(container) {
                             </div>
                             ${hasSearchBrief ? `<div style="display:grid; gap:0.35rem; margin-top:0.65rem; font-size:0.82rem;"><span>${client.must_haves ? `<strong>Must-haves:</strong> ${escapeHtml(client.must_haves)}` : ''}</span><span>${client.deal_breakers ? `<strong>Deal-breakers:</strong> ${escapeHtml(client.deal_breakers)}` : ''}</span></div>` : ''}
                             <button type="button" class="btn btn-secondary" style="margin-top:0.65rem;" onclick="window.openMyHomeModal(${client.id})" title="The home this client would sell: details, payoff, value and comps (read-only)"><i data-lucide="house"></i> Client's Home</button>
+                            <button type="button" class="btn btn-secondary" style="margin-top:0.65rem;" onclick="window.openBriefModal(${client.id})" title="What this client is looking for; every listing's Fit Score comes from it"><i data-lucide="sliders-horizontal"></i> Client's Brief</button>
                         </div>
                     </div>
 
@@ -404,6 +382,7 @@ function buildRealtorDom(container) {
     `;
 
     if (window.lucide) window.lucide.createIcons();
+    if (window.renderAgentFeedPanel) window.renderAgentFeedPanel();
     if (activeSubTab === 'chat') {
         loadChatMessages(client.id);
     }
@@ -634,7 +613,6 @@ function renderRealtorTableBoard(matrix, clientId) {
         const displayAddr = cleanDisplayAddress(p.address, p.mls_id);
         const ppsqft = p.sqft_finished ? `$${Math.round(p.price / p.sqft_finished)}` : '-';
         const fitScore = calculateFitScore(p, realtorData.selected_client);
-        const mlsUrl = matrixListingUrl(p);
 
         let revBadgeHtml = '';
         if (loved.some(item => String(item.mls_id) === String(p.mls_id))) {
@@ -677,7 +655,6 @@ function renderRealtorTableBoard(matrix, clientId) {
                         <button class="matrix-icon-btn" onclick="event.stopPropagation(); window.openPropertyMapModal('${p.mls_id}')" title="Property Location Map Modal"><i data-lucide="map-pin"></i></button>
                         <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddr + ', ' + (p.city || '') + ' ' + (p.state || 'CO') + ' ' + (p.zip || ''))}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Google Maps Directions"><i data-lucide="map"></i></a>
                         ${p.virtual_tour_url ? `<a href="${escapeHtml(p.virtual_tour_url)}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Virtual Tour"><i data-lucide="video"></i></a>` : ''}
-                        ${mlsUrl ? `<a href="${escapeHtml(mlsUrl)}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Matrix MLS Portal"><i data-lucide="external-link"></i></a>` : ''}
                         <button class="matrix-icon-btn" onclick="event.stopPropagation(); window.openPropertyChat('${p.mls_id}', ${clientId})" title="Discussion Thread"><i data-lucide="message-square"></i></button>
                     </div>
                 </td>
@@ -700,7 +677,7 @@ function renderRealtorTableBoard(matrix, clientId) {
                     ${ppsqft}
                 </td>
                 <td style="padding:0.55rem 0.6rem; white-space:nowrap;">
-                    ${fitScore ? `<span class="fit-score-badge ${fitScore.class}" style="font-size:0.7rem;"><i data-lucide="sparkles" style="width:10px; height:10px;"></i> ${fitScore.label}</span>` : '-'}
+                    ${fitScore ? fitScoreBadgeHtml(p, fitScore, '0.7rem') : '-'}
                 </td>
                 <td style="padding:0.55rem 0.6rem; min-width:240px;">
                     <input type="text" class="input-text" value="${escapeHtml(p.realtor_private_notes || '')}" placeholder="Add private realtor note..." style="font-size:0.78rem; padding:0.25rem 0.5rem; height:28px; width:100%; border-radius:4px;" onblur="window.saveRealtorPrivateNote('${p.mls_id}', ${clientId}, this.value)">
@@ -750,7 +727,7 @@ function renderRealtorPropertyCard(p, clientId) {
     const ppsqft = p.sqft_finished ? `$${Math.round(p.price / p.sqft_finished)}/sqft` : '';
 
     const fitScore = calculateFitScore(p, realtorData.selected_client);
-    const fitBadgeHtml = fitScore ? `<span class="fit-score-badge ${fitScore.class}" title="Calculated match fit based on client search criteria"><i data-lucide="sparkles" style="width:11px; height:11px;"></i> ${fitScore.label}</span>` : '';
+    const fitBadgeHtml = fitScoreBadgeHtml(p, fitScore, '0.72rem');
 
     const statusRaw = p.status || 'Active';
     let statusBg = '#10b981'; // emerald green
@@ -806,7 +783,6 @@ function renderRealtorPropertyCard(p, clientId) {
                         <button class="matrix-icon-btn" onclick="event.stopPropagation(); window.openPropertyMapModal('${p.mls_id}')" title="Property Location Map Modal"><i data-lucide="map-pin"></i></button>
                         <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddr + ', ' + (p.city || '') + ' ' + (p.state || 'CO') + ' ' + (p.zip || ''))}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Google Maps Directions"><i data-lucide="map"></i></a>
                         ${p.virtual_tour_url ? `<a href="${escapeHtml(p.virtual_tour_url)}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Virtual Tour"><i data-lucide="video"></i></a>` : ''}
-                        ${p.mls_url ? `<a href="${escapeHtml(matrixListingUrl(p))}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Matrix MLS Portal"><i data-lucide="external-link"></i></a>` : ''}
                     </div>
                 </div>
 
@@ -1304,6 +1280,30 @@ window.switchRealtorSubTab = async function(tabName) {
         await loadClientActivity(activeClientId);
     }
     buildRealtorDom(document.getElementById('view-realtor-container'));
+};
+
+// Activity feed (js/agentFeed.js): jump to one client's tab. Only re-fetches when the client
+// changes; otherwise just switches tab. Then scrolls the client's workspace into view.
+window.openRealtorClientTab = async function(clientId, tabName) {
+    if (String(clientId) !== String(activeClientId)) {
+        activeSubTab = tabName;
+        try { localStorage.setItem('realtor_active_subtab', tabName); } catch(e){}
+        activeClientId = clientId;
+        try { localStorage.setItem('active_realtor_client_id', clientId); } catch(e){}
+        await renderRealtorView(clientId);
+    } else if (activeSubTab !== tabName) {
+        await window.switchRealtorSubTab(tabName);
+    }
+    const header = document.querySelector('#view-realtor-container .client-workspace-header');
+    if (!header) return;
+    // Land just below whatever stays pinned (site header, realtor KPI strip), measured where it sticks.
+    let pinned = 0;
+    document.querySelectorAll('.header-sticky-wrapper, .realtor-sticky-topbar').forEach(el => {
+        const style = getComputedStyle(el);
+        if (style.position !== 'sticky' && style.position !== 'fixed') return;
+        pinned = Math.max(pinned, (parseFloat(style.top) || 0) + el.offsetHeight);
+    });
+    window.scrollTo({ top: window.scrollY + header.getBoundingClientRect().top - pinned - 12, behavior: 'smooth' });
 };
 
 window.restoreGlobalProperty = async function(mlsId) {
