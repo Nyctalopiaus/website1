@@ -202,8 +202,9 @@ export function renderClientPlaylistBanner(collections) {
     }
 
     let myCollections = collections;
-    if (isClient && state.currentUserProfile?.id) {
-        myCollections = collections.filter(c => c.client_id === state.currentUserProfile.id || !c.client_id);
+    const myId = state.currentUserProfile?.user_id;
+    if (isClient && myId) {
+        myCollections = collections.filter(c => !c.client_id || String(c.client_id) === String(myId));
     }
 
     if (!myCollections.length) {
@@ -1033,7 +1034,7 @@ export async function handleCreatePlaylistSubmit(e) {
     const playlistId = idEl?.value ? parseInt(idEl.value) : null;
     const title = (titleEl?.value || '').trim();
     const description = (descEl?.value || '').trim();
-    const clientId = clientEl?.value ? parseInt(clientEl.value) : null;
+    const clientId = clientEl?.value || null; // account ids are opaque public ids, not numbers
 
     if (!title) return showToast('Please enter a playlist title', 'warning');
 

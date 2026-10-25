@@ -16,7 +16,8 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
             hoaMax: null, noHoaOnly: false, taxMax: null, taxYear: null, priceDropsOnly: false,
             city: [], zip: '', schoolDistrict: '',
             status: 'all', ratingMin: 0, matrixStatus: 'all', appliances: '', flooring: '', fireplaceOnly: false, realtorNotesOnly: false,
-            favoritesOnly: false, possibilitiesOnly: false, realtorSharedOnly: false, hasNotesOnly: false, showHidden: true
+            favoritesOnly: false, possibilitiesOnly: false, realtorSharedOnly: false, hasNotesOnly: false, showHidden: true,
+            excludeToured: false
         };
 
         localStorage.removeItem('scout_filter_status');
@@ -79,6 +80,7 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
             if (f.realtorSharedOnly && !p.shared_with_realtor) return false;
             if (f.hasNotesOnly && !p.user_notes && !p.realtor_notes) return false;
             if (f.realtorNotesOnly && !p.realtor_notes) return false;
+            if (f.excludeToured && p.toured) return false;
 
             // 2. Status & Matrix Review
             if (f.status !== 'all' && p.status !== f.status) return false;
@@ -214,6 +216,7 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
         if (f.possibilitiesOnly) chips.push({ label: `Possibilities Only`, icon: 'circle-help', clear: () => { f.possibilitiesOnly = false; } });
         if (f.realtorSharedOnly) chips.push({ label: `Realtor Shared Only`, icon: 'handshake', clear: () => { f.realtorSharedOnly = false; } });
         if (f.hasNotesOnly) chips.push({ label: `Has Notes`, icon: 'pencil', clear: () => { f.hasNotesOnly = false; } });
+        if (f.excludeToured) chips.push({ label: `Exclude Toured`, icon: 'footprints', clear: () => { f.excludeToured = false; } });
         if (f.selectedClientId && f.selectedClientId !== 'all') {
             const clientSelect = elements.filterClientSelect || document.getElementById('filter-client-select');
             const selectedOpt = clientSelect && clientSelect.selectedIndex >= 0 ? clientSelect.options[clientSelect.selectedIndex] : null;
@@ -417,6 +420,7 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
         setChk('toggle-possibilities', f.possibilitiesOnly);
         setChk('toggle-realtor-shared', f.realtorSharedOnly);
         setChk('toggle-has-notes', f.hasNotesOnly);
+        setChk('toggle-exclude-toured', f.excludeToured);
         setChk('toggle-include-hidden', f.showHidden);
 
         updateTabBadges();
@@ -486,6 +490,7 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
         f.possibilitiesOnly = getChk('toggle-possibilities');
         f.realtorSharedOnly = getChk('toggle-realtor-shared');
         f.hasNotesOnly = getChk('toggle-has-notes');
+        f.excludeToured = getChk('toggle-exclude-toured');
         f.showHidden = getChk('toggle-include-hidden');
 
         if (f.status) localStorage.setItem('scout_filter_status', f.status);

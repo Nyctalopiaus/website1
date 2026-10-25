@@ -107,12 +107,29 @@ function handleGetAgentFeed(PDO $pdo) {
         WHERE a.subject_user_id IN ($in) AND a.actor_user_id = a.subject_user_id AND a.created_at >= :since
         ORDER BY a.created_at DESC");
     $stmt->execute($params);
+    $reqIdx = []; $reqLast = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $cid = (int)$r['cid']; $t = feedTs($r['created_at']);
         if ($t === null) continue;
         $data[$cid]['actions'][] = ['type' => $r['activity_type'], 't' => $t, 'saved' => strncmp((string)$r['message'], 'Saved', 5) === 0];
         if ($t < $feedSince) continue;
         $place = feedPlace($r);
+        // Showing requests: one line per client per batch (adds within 2 hours of each other).
+        if ($r['activity_type'] === 'added_to_tour') {
+            if (strncmp((string)$r['message'], 'Requested', 9) !== 0) continue;
+            $k = $reqIdx[$cid] ?? null;
+            if ($k !== null && $reqLast[$cid] - $t <= 7200) {
+                $reqLast[$cid] = $t;
+                $n = ++$items[$k]['count'];
+                $items[$k]['text'] = "{$name($cid)} requested $n showings";
+                continue;
+            }
+            $reqIdx[$cid] = count($items);
+            $reqLast[$cid] = $t;
+            $items[] = ['kind' => 'showing_request', 'icon' => 'calendar-plus', 'client_id' => $cid, 'client_name' => $name($cid), 'mls_id' => $r['mls_id'],
+                'text' => "{$name($cid)} requested a showing of $place", 'at' => feedIso($t), 'attention' => true, 'action' => 'requests', 'count' => 1];
+            continue;
+        }
         $verb = null; $attention = false; $icon = 'activity';
         switch ($r['activity_type']) {
             case 'favorite_updated':

@@ -17,12 +17,12 @@
     <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
     <!-- Leaflet CSS for Interactive Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="stylesheet" href="styles.css?v=3.19">
+    <link rel="stylesheet" href="styles.css?v=3.30">
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Lucide Icons (replaces emoji glyphs in the header/KPI chrome) -->
     <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js"></script>
-    <script src="bookmarklet-builder.js?v=2.2"></script>
+    <script src="bookmarklet-builder.js?v=2.3"></script>
 </head>
 <body>
     <!-- Ambient Luxury Architectural Background Overlay -->
@@ -48,17 +48,20 @@
             </div>
             <div class="nav-actions">
                 <!-- Tier 1: Primary Direct Header Buttons -->
-                <button class="btn btn-secondary realtor-or-admin-only" id="btn-property-search-direct" onclick="if(window.switchView){window.switchView('grid');}" title="Property Search & Listings Grid" style="display: none;">
+                <button class="btn btn-secondary" id="btn-property-search-direct" data-nav="homes" onclick="if(window.switchView){window.switchView(window.lastHomesView || 'grid');}" title="Browse the homes (grid, map, table or compare)">
                     <i data-lucide="search"></i> Property Search
                 </button>
-                <button class="btn btn-gold realtor-or-admin-only" id="btn-agent-hub-direct" onclick="if(window.switchView){window.switchView('realtor');}" title="Agent Workspace Command Center" style="display: none;">
+                <button class="btn btn-gold realtor-or-admin-only" id="btn-agent-hub-direct" data-nav="realtor" onclick="if(window.switchView){window.switchView('realtor');}" title="Agent Workspace Command Center" style="display: none;">
                     <i data-lucide="briefcase"></i> Agent Hub Workspace
                 </button>
-                <button class="btn btn-secondary admin-only" id="btn-admin-operations-direct" onclick="if(window.switchView){window.switchView('admin');}" title="Admin Operations Command Center" style="display: none;">
+                <button class="btn btn-secondary realtor-or-admin-only" id="btn-schedule-direct" type="button" title="Your schedule across all clients: showings, appointments and conflicts" style="display: none;">
+                    <i data-lucide="calendar-days"></i> Schedule
+                </button>
+                <button class="btn btn-secondary admin-only" id="btn-admin-operations-direct" data-nav="admin" onclick="if(window.switchView){window.switchView('admin');}" title="Admin Operations Command Center" style="display: none;">
                     <i data-lucide="shield-check"></i> Admin Operations
                 </button>
-                <button class="btn btn-secondary" id="btn-top-map-homeward" title="Plot & view a tour route of the homes your current filters show in Homeward">
-                    <i data-lucide="map"></i> Map in Homeward
+                <button class="btn btn-secondary" id="btn-top-map-homeward" data-nav="tour" title="Plan, schedule, and optimize a viewing tour route with interactive navigation">
+                    <i data-lucide="route"></i> Tour Planner
                 </button>
                 <button class="btn btn-primary" id="btn-export-modal"><i data-lucide="download"></i> Export / Share</button>
 
@@ -83,7 +86,7 @@
                         <div class="dropdown-header admin-only">Realtor & Listing Tools</div>
                         <button class="dropdown-item" id="btn-global-property-mgmt" onclick="if(window.openGlobalPropertyManagementModal){window.openGlobalPropertyManagementModal();}"><i data-lucide="settings-2"></i> Global Property Visibility</button>
                         <button class="dropdown-item" id="btn-recommend"><i data-lucide="sparkles"></i> Top Picks (AI Curator)</button>
-                        <button class="dropdown-item" id="btn-export-homeward" title="Plot & view a tour route of the homes your current filters show in Homeward"><i data-lucide="map"></i> Map in Homeward</button>
+                        <button class="dropdown-item" id="btn-export-homeward" title="Plan, schedule, and optimize a viewing tour route with interactive navigation"><i data-lucide="route"></i> Tour Planner</button>
                     </div>
                 </div>
 
@@ -97,6 +100,7 @@
                         <div class="dropdown-menu" id="user-dropdown-menu">
                             <button class="dropdown-item" id="btn-user-profile"><i data-lucide="user-cog"></i> My Profile</button>
                             <button class="dropdown-item" id="btn-user-my-home"><i data-lucide="house"></i> My Home</button>
+                            <button class="dropdown-item" id="btn-user-top-picks"><i data-lucide="trophy"></i> Top Picks</button>
                             <button class="dropdown-item" id="btn-user-brief"><i data-lucide="sliders-horizontal"></i> My Brief</button>
                             <button class="dropdown-item" id="btn-user-password"><i data-lucide="key-round"></i> Change Password</button>
                             <button class="dropdown-item" id="btn-user-ai-setup"><i data-lucide="sparkles"></i> AI Setup</button>
@@ -250,10 +254,14 @@
                     <button class="view-btn" data-view="map"><i data-lucide="map"></i> Map View</button>
                     <button class="view-btn" data-view="table"><i data-lucide="table"></i> Table View</button>
                     <button class="view-btn" data-view="matrix"><i data-lucide="scale"></i> Compare Matrix</button>
+                    <button class="view-btn" data-view="tour"><i data-lucide="route"></i> Tour</button>
                 </div>
 
                 <!-- AI Ranking: Gemini ranks every home in the current filter (js/aiRank.js) -->
                 <button type="button" class="btn-ai-rank" id="btn-ai-rank" title="Have Gemini rank the homes in the current filter by which is the best purchase, and why"><i data-lucide="sparkles"></i> AI Ranking</button>
+
+                <!-- Add these to tour: the homes in the current filter or map area (js/tourBulkAdd.js) -->
+                <button type="button" class="btn btn-secondary btn-add-view-to-tour" id="btn-add-view-to-tour" title="Add the homes you're looking at to the showing tour"><i data-lucide="route"></i> Add these to tour</button>
 
                 <div class="sort-control-group">
                     <label for="sort-select" class="sort-label">Sort By:</label>
@@ -733,9 +741,11 @@
                     <div class="collections-chips-row" style="margin-top:1.25rem;">
                         <span class="filter-label" style="margin-right: 0.5rem; display: inline;"><i data-lucide="star"></i> Quick Toggles:</span>
                         <label class="toggle-chip"><input type="checkbox" id="toggle-favorites"> <i data-lucide="star"></i> Favorites Only</label>
+                        <button type="button" class="toggle-chip" data-open-top-picks title="Rank the favorites you've toured"><i data-lucide="trophy"></i> Top Picks</button>
                         <label class="toggle-chip"><input type="checkbox" id="toggle-possibilities"> <i data-lucide="circle-help"></i> Possibilities Only</label>
                         <label class="toggle-chip"><input type="checkbox" id="toggle-realtor-shared"> <i data-lucide="handshake"></i> Shared with Realtor</label>
                         <label class="toggle-chip"><input type="checkbox" id="toggle-has-notes"> <i data-lucide="pencil"></i> Has Personal Notes</label>
+                        <label class="toggle-chip"><input type="checkbox" id="toggle-exclude-toured"> <i data-lucide="footprints"></i> Exclude Toured Homes</label>
                         <label class="toggle-chip"><input type="checkbox" id="toggle-include-hidden" checked> <i data-lucide="eye"></i> Include Hidden / Disliked</label>
                     </div>
                 </div>
@@ -788,6 +798,10 @@
 
             <div id="view-admin-container" class="realtor-dashboard-wrapper" style="display: none;">
                 <!-- Dynamically populated Admin Operations workspace -->
+            </div>
+
+            <div id="view-tour-container" class="tour-planner-view-wrapper" style="display: none;">
+                <!-- Dynamically populated Tour Planner workspace -->
             </div>
         </section>
     </main>
@@ -1422,11 +1436,29 @@
                             <label class="filter-label" for="profile-brokerage">Brokerage / Agency Name</label>
                             <input type="text" id="profile-brokerage" class="input-text" placeholder="e.g. RE/MAX Professionals" maxlength="150" style="width: 100%;">
                         </div>
-                        <div>
-                            <label class="filter-label" for="profile-avatar">Headshot / Logo Image URL</label>
-                            <input type="url" id="profile-avatar" class="input-text" placeholder="https://example.com/headshot.jpg" maxlength="1000" style="width: 100%;">
-                            <span style="font-size:0.75rem; color:var(--text-muted); margin-top:3px; display:block;">Displayed on client playlist banners and public portal headers.</span>
+                        <!-- Headshot + company logo uploads (js/account.js, backend/branding.php). Used on
+                             printed tour packets and client banners. The headshot path rides along in
+                             the hidden avatar field so Save Profile keeps it. -->
+                        <input type="hidden" id="profile-avatar">
+                        <div class="branding-uploads">
+                            <div class="branding-slot" data-branding-kind="headshot">
+                                <span class="filter-label">Headshot</span>
+                                <div class="branding-preview branding-preview--round" data-branding-preview><i data-lucide="user-round"></i></div>
+                                <div class="branding-actions">
+                                    <label class="btn btn-secondary btn-compact">Upload<input type="file" accept="image/jpeg,image/png" data-branding-file hidden></label>
+                                    <button type="button" class="btn btn-secondary btn-compact" data-branding-remove hidden>Remove</button>
+                                </div>
+                            </div>
+                            <div class="branding-slot" data-branding-kind="logo">
+                                <span class="filter-label">Company logo</span>
+                                <div class="branding-preview" data-branding-preview><i data-lucide="building-2"></i></div>
+                                <div class="branding-actions">
+                                    <label class="btn btn-secondary btn-compact">Upload<input type="file" accept="image/jpeg,image/png" data-branding-file hidden></label>
+                                    <button type="button" class="btn btn-secondary btn-compact" data-branding-remove hidden>Remove</button>
+                                </div>
+                            </div>
                         </div>
+                        <span style="font-size:0.75rem; color:var(--text-muted); margin-top:3px; display:block;">JPG or PNG, up to 4 MB. They print on your tour packets (usually in black and white, so a logo with good contrast works best) and show on client banners. Saved as soon as you pick a file.</span>
                     </div>
                     <div id="profile-client-preferences-group" style="display:none; border-top:1px solid var(--border-color); padding-top:1rem;">
                         <h3 style="font-size:0.95rem;"><i data-lucide="sliders-horizontal"></i> Home Search Preferences</h3>
@@ -1865,6 +1897,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=3.24"></script>
+    <script type="module" src="app.js?v=3.39"></script>
 </body>
 </html>

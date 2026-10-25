@@ -177,13 +177,47 @@ function runMigration(PDO $pdo, string $sql, string $label) {
     }
 }
 
+// ---------------------------------------------------------------- mbstring fallbacks
+// Some PHP builds (this site's local dev server, for one) lack the mbstring extension. These
+// UTF-8-safe stand-ins are only defined when the real functions are missing.
+if (!function_exists('mb_strlen')) {
+    function mb_strlen($s, $encoding = null) { return preg_match_all('/./us', (string)$s); }
+}
+if (!function_exists('mb_substr')) {
+    function mb_substr($s, $start, $length = null, $encoding = null) {
+        preg_match_all('/./us', (string)$s, $m);
+        return implode('', array_slice($m[0], (int)$start, $length === null ? null : (int)$length));
+    }
+}
+if (!function_exists('mb_strtolower')) {
+    function mb_strtolower($s, $encoding = null) { return strtolower((string)$s); }
+}
+if (!function_exists('mb_strpos')) {
+    // Callers only test the result against false, so a byte offset is fine.
+    function mb_strpos($haystack, $needle, $offset = 0, $encoding = null) { return strpos((string)$haystack, (string)$needle, (int)$offset); }
+}
+
 // ---------------------------------------------------------------- account ids and names
 
 /** Request keys that name a user. Each accepts the sequential id or the 32-hex public id. */
 const DIBS_USER_REF_KEYS = ['client_id', 'user_id', 'realtor_id', 'target_user_id', 'subject_user_id'];
 
+/**
+ * Sequential user ids from the browser: false = accept but log a warning (watch mode), true =
+ * refuse (treated as no user). Flip to true once the event log has stayed free of
+ * "Numeric user id received" warnings through normal use.
+ */
+const DIBS_REFUSE_NUMERIC_USER_IDS = false;
+
 /** A user reference -> the internal integer id. Unknown public ids become 0 (matches nothing). */
-function dibsUserIdFromRef(PDO $pdo, $v) {
+function dibsUserIdFromRef(PDO $pdo, $v, string $key = '') {
+    if (is_int($v) || (is_string($v) && ctype_digit($v) && $v !== '')) {
+        if ((int)$v > 0) {
+            $action = substr(preg_replace('/[^A-Za-z0-9_]/', '', (string)($_GET['action'] ?? '')), 0, 40);
+            logEventThrottled($pdo, 'system', 'warn', "Numeric user id received ($action.$key)", null, ['action' => $action, 'key' => $key], 60);
+        }
+        return DIBS_REFUSE_NUMERIC_USER_IDS ? 0 : $v;
+    }
     if (is_string($v) && preg_match('/^[a-f0-9]{32}$/', $v)) {
         static $cache = [];
         if (!array_key_exists($v, $cache)) {
@@ -199,7 +233,7 @@ function dibsUserIdFromRef(PDO $pdo, $v) {
 function dibsTranslateRefs(PDO $pdo, array $data): array {
     foreach ($data as $k => $v) {
         if (is_array($v)) $data[$k] = dibsTranslateRefs($pdo, $v);
-        elseif (is_string($k) && in_array($k, DIBS_USER_REF_KEYS, true)) $data[$k] = dibsUserIdFromRef($pdo, $v);
+        elseif (is_string($k) && in_array($k, DIBS_USER_REF_KEYS, true)) $data[$k] = dibsUserIdFromRef($pdo, $v, $k);
     }
     return $data;
 }
@@ -218,6 +252,61 @@ function dibsRequestBody(): string {
     $data = json_decode($raw, true);
     $body = is_array($data) && isset($GLOBALS['pdo']) ? json_encode(dibsTranslateRefs($GLOBALS['pdo'], $data)) : $raw;
     return $body;
+}
+
+/** Response keys that hold a user id (every user-reference column in the schema). */
+const DIBS_USER_OUT_KEYS = ['user_id', 'client_id', 'realtor_id', 'target_user_id', 'subject_user_id', 'actor_user_id',
+    'accepted_user_id', 'created_by', 'created_by_user_id', 'updated_by', 'updated_by_user_id', 'fetched_by_user_id',
+    'hidden_by_user_id', 'initiated_by_user_id'];
+/** Lists whose items are users, so their "id" is a user id. */
+const DIBS_USER_LIST_KEYS = ['users', 'clients', 'assigned_clients'];
+
+/**
+ * Output side of public ids: rewrites user ids in an API response to public ids before it
+ * leaves the server (api.php wires this up with ob_start). Sequential ids never reach the browser.
+ * "id" is rewritten only on user objects: items of users/clients/assigned_clients, or any object
+ * with a "username". Listing, collection, invite and notification ids are left alone.
+ * Objects stay objects ({} is not turned into []).
+ */
+function dibsPublicizeResponse(string $buffer, ?PDO $pdo): string {
+    // $pdo is passed in by the ob_start closure: by the time PHP flushes output at the end of a
+    // request, globals are already gone, so $GLOBALS['pdo'] can't be used here.
+    $trim = ltrim($buffer);
+    if ($trim === '' || ($trim[0] !== '{' && $trim[0] !== '[')) return $buffer;
+    $data = json_decode($buffer);
+    if ($data === null && json_last_error() !== JSON_ERROR_NONE) return $buffer;
+    if (!$pdo instanceof PDO) return $buffer;
+    static $map = null;
+    if ($map === null) {
+        $map = [];
+        try {
+            foreach ($pdo->query("SELECT id, public_id FROM users WHERE public_id IS NOT NULL") as $row) $map[(int)$row['id']] = $row['public_id'];
+        } catch (Throwable $e) {
+            return $buffer;
+        }
+    }
+    $toPublic = function ($v) use ($map) {
+        if (is_int($v) || (is_string($v) && ctype_digit($v))) return $map[(int)$v] ?? $v;
+        return $v;
+    };
+    $walk = function ($node, bool $userItem = false) use (&$walk, $toPublic) {
+        if (is_array($node)) {
+            foreach ($node as $i => $v) $node[$i] = $walk($v, $userItem);
+            return $node;
+        }
+        if (!is_object($node)) return $node;
+        $isUser = $userItem || property_exists($node, 'username');
+        foreach (get_object_vars($node) as $k => $v) {
+            if (is_array($v) || is_object($v)) {
+                $node->$k = $walk($v, in_array($k, DIBS_USER_LIST_KEYS, true) || $k === 'selected_client');
+            } elseif (in_array($k, DIBS_USER_OUT_KEYS, true) || ($k === 'id' && $isUser)) {
+                $node->$k = $toPublic($v);
+            }
+        }
+        return $node;
+    };
+    $out = json_encode($walk($data), JSON_INVALID_UTF8_SUBSTITUTE | JSON_PRESERVE_ZERO_FRACTION);
+    return $out === false ? $buffer : $out;
 }
 
 /** Sign-in names nobody may take, so no account can pass for the system or an admin. */
@@ -304,6 +393,9 @@ try {
             user_notes TEXT DEFAULT '',
             realtor_notes TEXT DEFAULT '',
             realtor_private_notes TEXT DEFAULT '',
+            toured INTEGER DEFAULT 0,
+            tour_notes TEXT DEFAULT '',
+            toured_at DATETIME DEFAULT NULL,
             tags_json TEXT DEFAULT '[]',
             shared_with_realtor INTEGER DEFAULT 0,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -435,12 +527,29 @@ try {
             showing_time TEXT DEFAULT '',
             access_notes TEXT DEFAULT '',
             feedback TEXT DEFAULT '',
+            status TEXT DEFAULT 'confirmed',
+            status_reason TEXT DEFAULT '',
+            sort_order INTEGER DEFAULT 0,
+            duration_mins INTEGER DEFAULT 20,
             updated_by_user_id INTEGER,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (client_id, mls_id),
             FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE,
             FOREIGN KEY (mls_id) REFERENCES properties(mls_id) ON DELETE CASCADE,
             FOREIGN KEY (updated_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS tour_settings (
+            user_id INTEGER NOT NULL PRIMARY KEY,
+            start_address TEXT DEFAULT '',
+            start_lat REAL DEFAULT NULL,
+            start_lng REAL DEFAULT NULL,
+            start_source TEXT DEFAULT 'my_home',
+            start_time TEXT DEFAULT '',
+            stay_duration_mins INTEGER DEFAULT 20,
+            loop_back INTEGER DEFAULT 1,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
     ");
 
@@ -643,6 +752,48 @@ try {
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_event_log_source ON event_log(source)", 'idx_event_log_source');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read)", 'idx_notifications_user');
     runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_showing_itinerary_client ON showing_itinerary(client_id, updated_at DESC)", 'showing_itinerary.client_updated');
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN toured INTEGER DEFAULT 0", 'user_metadata.toured');
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN tour_notes TEXT DEFAULT ''", 'user_metadata.tour_notes');
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN toured_at DATETIME DEFAULT NULL", 'user_metadata.toured_at');
+    runMigration($pdo, "ALTER TABLE showing_itinerary ADD COLUMN status TEXT DEFAULT 'confirmed'", 'showing_itinerary.status');
+    runMigration($pdo, "ALTER TABLE showing_itinerary ADD COLUMN status_reason TEXT DEFAULT ''", 'showing_itinerary.status_reason');
+    runMigration($pdo, "ALTER TABLE showing_itinerary ADD COLUMN sort_order INTEGER DEFAULT 0", 'showing_itinerary.sort_order');
+    runMigration($pdo, "ALTER TABLE showing_itinerary ADD COLUMN duration_mins INTEGER DEFAULT 20", 'showing_itinerary.duration_mins');
+    runMigration($pdo, "ALTER TABLE tour_settings ADD COLUMN tour_date TEXT DEFAULT ''", 'tour_settings.tour_date');
+    runMigration($pdo, "CREATE TABLE IF NOT EXISTS tour_settings (
+        user_id INTEGER NOT NULL PRIMARY KEY,
+        start_address TEXT DEFAULT '',
+        start_lat REAL DEFAULT NULL,
+        start_lng REAL DEFAULT NULL,
+        start_source TEXT DEFAULT 'my_home',
+        start_time TEXT DEFAULT '',
+        stay_duration_mins INTEGER DEFAULT 20,
+        loop_back INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )", 'tour_settings');
+
+    // Agent schedule (see backend/schedule.php). planned_start/planned_end are the Tour Planner's
+    // computed window for a stop on the tour's date, local time 'YYYY-MM-DD HH:MM' ('' = no date set).
+    runMigration($pdo, "ALTER TABLE users ADD COLUMN logo_url TEXT DEFAULT ''", 'users.logo_url');   // backend/branding.php
+    runMigration($pdo, "ALTER TABLE showing_itinerary ADD COLUMN planned_start TEXT DEFAULT ''", 'showing_itinerary.planned_start');
+    runMigration($pdo, "ALTER TABLE showing_itinerary ADD COLUMN planned_end TEXT DEFAULT ''", 'showing_itinerary.planned_end');
+    runMigration($pdo, "CREATE TABLE IF NOT EXISTS agent_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent_id INTEGER NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'other',
+        title TEXT NOT NULL DEFAULT '',
+        start_at TEXT NOT NULL,
+        end_at TEXT NOT NULL,
+        client_id INTEGER DEFAULT NULL,
+        location TEXT DEFAULT '',
+        notes TEXT DEFAULT '',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (agent_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE SET NULL
+    )", 'agent_events');
+    runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_agent_events_agent_start ON agent_events(agent_id, start_at)", 'idx_agent_events_agent_start');
 
     // Comps (see backend/comps.php). property_comps holds the latest RentCast result per listing;
     // comps_api_calls is one row per RentCast request, which the monthly lookup cap counts.
@@ -699,6 +850,25 @@ try {
     runMigration($pdo, "CREATE TRIGGER IF NOT EXISTS trg_users_public_id AFTER INSERT ON users WHEN NEW.public_id IS NULL
         BEGIN UPDATE users SET public_id = lower(hex(randomblob(16))) WHERE id = NEW.id; END", 'trg_users_public_id');
     $pdo->exec("UPDATE users SET public_id = lower(hex(randomblob(16))) WHERE public_id IS NULL OR public_id = ''");
+
+    // Top Picks ranking (1 = top pick, NULL = unranked) and the per-home 1-5 tour scores from the
+    // printed packet; tour_debriefs holds the whole-tour parts of the scorecard. See
+    // claude/ranking-and-tour-debrief-spec.md in the Dibs project.
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN pick_rank INTEGER DEFAULT NULL", 'user_metadata.pick_rank');
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN ranked_at DATETIME DEFAULT NULL", 'user_metadata.ranked_at');
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN tour_scores_json TEXT DEFAULT NULL", 'user_metadata.tour_scores_json');
+    runMigration($pdo, "CREATE TABLE IF NOT EXISTS tour_debriefs (
+        client_id INTEGER NOT NULL,
+        tour_date TEXT NOT NULL,
+        impressions TEXT DEFAULT '',
+        followups_json TEXT DEFAULT '[]',
+        top3_json TEXT DEFAULT '[]',
+        updated_by_user_id INTEGER,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (client_id, tour_date),
+        FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (updated_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+    )", 'tour_debriefs');
     dibsTranslateRequestRefs($pdo);
 
     purgeUserScopedMlsJson($pdo);

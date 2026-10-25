@@ -319,6 +319,7 @@ export function syncDashboardCollapseState() {
 }
 
     export function renderActiveView() {
+        updateHeaderNav(state.activeView);
         if (state.activeView === 'admin' && !state.isAdmin) {
             state.activeView = 'grid';
             if (window.history && window.history.replaceState) {
@@ -333,6 +334,8 @@ export function syncDashboardCollapseState() {
         if (realtorContainer) realtorContainer.style.display = 'none';
         const adminContainer = document.getElementById('view-admin-container');
         if (adminContainer) adminContainer.style.display = 'none';
+        const tourContainer = document.getElementById('view-tour-container');
+        if (tourContainer) tourContainer.style.display = 'none';
 
         const topGrid = document.querySelector('.user-dashboard-top-grid');
         const statsBar = document.querySelector('.stats-bar');
@@ -353,6 +356,16 @@ export function syncDashboardCollapseState() {
             if (adminContainer) {
                 adminContainer.style.display = 'block';
                 renderAdminView();
+            }
+        } else if (state.activeView === 'tour') {
+            if (topGrid) topGrid.style.display = 'none';
+            if (statsBar) statsBar.style.display = 'none';
+            if (topFilterContainer) topFilterContainer.style.display = 'none';
+            if (tourContainer) {
+                tourContainer.style.display = 'block';
+                if (window.tourViewManager) {
+                    window.tourViewManager.initTourView();
+                }
             }
         } else {
             if (topGrid) topGrid.style.display = 'grid';
@@ -398,6 +411,23 @@ export function syncDashboardCollapseState() {
         updateKPIs();
     });
 import { savePreferencesToServer } from './api.js';
+
+const HOMES_VIEWS = ['grid', 'map', 'table', 'matrix'];
+
+/**
+ * Highlights the header button for the page you're on (Property Search covers the grid, map,
+ * table and compare views) and remembers the last homes view, so "Property Search" returns to it.
+ */
+export function updateHeaderNav(viewName) {
+    const page = HOMES_VIEWS.includes(viewName) ? 'homes' : viewName;
+    if (page === 'homes') window.lastHomesView = viewName;
+    document.querySelectorAll('[data-nav]').forEach(btn => {
+        const current = btn.dataset.nav === page;
+        btn.classList.toggle('nav-current', current);
+        if (current) btn.setAttribute('aria-current', 'page');
+        else btn.removeAttribute('aria-current');
+    });
+}
 
 export function switchView(viewName) {
     document.querySelectorAll('.view-btn').forEach(b => {
@@ -519,8 +549,13 @@ export function switchView(viewName) {
                 <div class="card-media">
                     <img src="${escapeHtml(imgUrl)}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="card-img" alt="${escapeHtml(p.address || 'Property photo')}">
                     <span class="card-status-badge ${getStatusBadgeClass(p.status)}">${escapeHtml(p.status || '')}</span>
+                    ${p.toured ? `<span class="card-toured-badge" title="Toured property"><i data-lucide="footprints"></i> Toured</span>` : ''}
+                    ${p.pick_rank ? `<span class="card-rank-badge" title="Your #${p.pick_rank} pick (Top Picks)"><i data-lucide="trophy"></i> #${p.pick_rank}</span>` : ''}
                     ${photoBadge}
                     ${fitBadgeHtml(p.mls_id)}
+                    <button class="card-tour-quick-btn" onclick="window.handleQuickToggleTour('${p.mls_id}', event)" title="Add to Showing Tour" aria-label="Add to Showing Tour">
+                        <i data-lucide="route"></i>
+                    </button>
                     <button class="card-fav-btn ${p.favorite ? 'is-fav' : ''}" onclick="toggleFavorite('${p.mls_id}', event)" aria-label="${p.favorite ? 'Remove from favorites' : 'Add to favorites'}" aria-pressed="${p.favorite ? 'true' : 'false'}" title="${p.favorite ? 'Remove from favorites' : 'Add to favorites'}">
                         <svg class="fav-star-icon" viewBox="0 0 24 24" fill="${p.favorite ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 2.5l2.98 6.04 6.67.97-4.83 4.7 1.14 6.65L12 17.77l-5.96 3.13 1.14-6.65-4.83-4.7 6.67-.97L12 2.5z"/></svg>
                     </button>
@@ -563,8 +598,26 @@ export function switchView(viewName) {
                         return `<div class="card-reaction-chips" style="display:flex; flex-wrap:wrap; gap:0.25rem; margin-top:0.4rem;">${displayTags.map(t => `<span class="card-reaction-pill">${escapeHtml(t)}</span>`).join('')}${extraCount > 0 ? `<span class="card-reaction-pill pill-more">+${extraCount}</span>` : ''}</div>`;
                     })()}
                     ${p.user_notes ? `<div class="card-notes-preview"><i data-lucide="file-text"></i> ${escapeHtml(p.user_notes)}</div>` : ''}
-                    <div class="card-footer-row">
-                        <label class="card-compare-checkbox-label ${isComparing ? 'is-checked' : ''}" onclick="event.stopPropagation();" title="Select to include in Compare Matrix (up to 4)">
+                    ${p.tour_notes && p.tour_notes.trim() ? `
+                        <div class="card-tour-notes-preview" onclick="event.stopPropagation(); window.openTourNotesPopover('${p.mls_id}', this, event)" title="Click to view & edit tour notes">
+                            <div class="card-tour-notes-tag"><i data-lucide="footprints"></i> Tour Notes (Shared):</div>
+                            <div class="card-tour-notes-content">${p.tour_notes}</div>
+                        </div>
+                    ` : ''}
+                    <div class="card-footer-row" onclick="event.stopPropagation();">
+                        <div class="card-footer-left">
+                            <label class="card-toured-checkbox-label ${p.toured ? 'is-toured' : ''}" title="Mark as toured and record impressions">
+                                <input type="checkbox" class="card-toured-checkbox" data-mls="${p.mls_id}" ${p.toured ? 'checked' : ''} onchange="window.handleToggleToured('${p.mls_id}', event)">
+                                <span class="checkbox-text"><i data-lucide="footprints"></i> ${p.toured ? 'Toured' : 'Mark Toured'}</span>
+                            </label>
+                            ${p.toured ? `
+                                <button type="button" class="btn-tour-notes-trigger ${p.tour_notes && p.tour_notes.trim() ? 'has-notes' : ''}" onclick="window.openTourNotesPopover('${p.mls_id}', this, event)" title="View & edit shared tour notes">
+                                    <i data-lucide="${p.tour_notes && p.tour_notes.trim() ? 'notebook-pen' : 'plus'}"></i>
+                                    <span>${p.tour_notes && p.tour_notes.trim() ? 'Tour Notes' : 'Add Notes'}</span>
+                                </button>
+                            ` : ''}
+                        </div>
+                        <label class="card-compare-checkbox-label ${isComparing ? 'is-checked' : ''}" title="Select to include in Compare Matrix (up to 4)">
                             <input type="checkbox" class="card-compare-checkbox" data-mls="${p.mls_id}" ${isComparing ? 'checked' : ''} onchange="window.handleToggleCompare('${p.mls_id}', event)">
                             <span class="checkbox-text">${isComparing ? '✓ Comparing' : 'Compare'}</span>
                         </label>
@@ -783,3 +836,308 @@ export function switchView(viewName) {
 window.switchView = switchView;
 window.renderActiveView = renderActiveView;
 window.updateKPIs = updateKPIs;
+
+// ==========================================
+// Tour Tracking & Rich-Text Tour Notes Popover
+// ==========================================
+let activeTourNotesMlsId = null;
+let tourNotesDebounceTimer = null;
+
+function sanitizeTourNotes(html) {
+    if (!html) return '';
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const allowedTags = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'UL', 'OL', 'LI', 'P', 'BR', 'DIV', 'SPAN']);
+        
+        function cleanNode(node) {
+            const toRemove = [];
+            for (let i = 0; i < node.childNodes.length; i++) {
+                const child = node.childNodes[i];
+                if (child.nodeType === Node.ELEMENT_NODE) {
+                    if (!allowedTags.has(child.tagName)) {
+                        toRemove.push(child);
+                    } else {
+                        Array.from(child.attributes).forEach(attr => {
+                            if (attr.name.startsWith('on') || (attr.value && attr.value.toLowerCase().includes('javascript:'))) {
+                                child.removeAttribute(attr.name);
+                            }
+                        });
+                        cleanNode(child);
+                    }
+                }
+            }
+            toRemove.forEach(el => el.remove());
+        }
+        cleanNode(doc.body);
+        return doc.body.innerHTML.trim();
+    } catch (e) {
+        return escapeHtml(html);
+    }
+}
+
+function ensureTourPopoverDom() {
+    let overlay = document.getElementById('tour-notes-popover-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'tour-notes-popover-overlay';
+        overlay.className = 'tour-popover-overlay';
+        overlay.innerHTML = `
+            <div class="tour-popover-card" onclick="event.stopPropagation()">
+                <div class="tour-popover-header">
+                    <div class="tour-popover-title-row">
+                        <div class="tour-popover-title">
+                            <i data-lucide="footprints" style="color:#10b981;"></i>
+                            <span>Tour Impressions & Notes</span>
+                        </div>
+                        <div class="tour-popover-addr" id="tour-popover-addr"></div>
+                        <div class="tour-popover-shared-badge">
+                            <i data-lucide="users"></i> Shared with Realtor & Buyer
+                        </div>
+                    </div>
+                    <button type="button" class="tour-popover-close" onclick="window.closeTourNotesPopover()" title="Close">&times;</button>
+                </div>
+                <div class="tour-popover-meta-row" style="padding:0.6rem 1.25rem; background:rgba(16,185,129,0.06); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); font-size:0.82rem;">
+                    <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer; font-weight:600; color:#10b981;">
+                        <input type="checkbox" id="tour-popover-toured-chk" onchange="window.handlePopoverToggleToured(this.checked)" style="accent-color:#10b981; width:16px; height:16px;">
+                        <span>Marked as Toured</span>
+                    </label>
+                    <span id="tour-popover-visited-date" style="color:var(--text-muted); font-size:0.75rem;"></span>
+                </div>
+                <div class="tour-popover-toolbar">
+                    <button type="button" class="tour-toolbar-btn" data-cmd="bold" title="Bold (Ctrl+B)"><strong>B</strong></button>
+                    <button type="button" class="tour-toolbar-btn" data-cmd="italic" title="Italic (Ctrl+I)"><em>I</em></button>
+                    <button type="button" class="tour-toolbar-btn" data-cmd="underline" title="Underline (Ctrl+U)"><span style="text-decoration:underline;">U</span></button>
+                    <div class="tour-toolbar-divider"></div>
+                    <button type="button" class="tour-toolbar-btn" data-cmd="insertUnorderedList" title="Bullet List"><i data-lucide="list"></i></button>
+                    <button type="button" class="tour-toolbar-btn" data-cmd="insertOrderedList" title="Numbered List"><i data-lucide="list-ordered"></i></button>
+                    <div class="tour-toolbar-divider"></div>
+                    <button type="button" class="tour-toolbar-btn" data-cmd="removeFormat" title="Clear Formatting"><i data-lucide="eraser"></i></button>
+                </div>
+                <div class="tour-popover-editor-wrap">
+                    <div id="tour-popover-editor" class="tour-popover-editor" contenteditable="true" spellcheck="true" placeholder="Record showing notes, pros/cons, natural light, layout, neighborhood vibe, or questions for your realtor..."></div>
+                </div>
+                <div class="tour-popover-footer">
+                    <span class="tour-popover-status" id="tour-popover-status">
+                        <i data-lucide="check"></i> <span>Ready</span>
+                    </span>
+                    <button type="button" class="btn btn-gold btn-sm" onclick="window.closeTourNotesPopover()"><i data-lucide="check"></i> Done</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) window.closeTourNotesPopover();
+        });
+
+        overlay.querySelectorAll('.tour-toolbar-btn[data-cmd]').forEach(btn => {
+            btn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                const cmd = btn.dataset.cmd;
+                document.execCommand(cmd, false, null);
+                updateToolbarActiveStates();
+            });
+        });
+
+        const editor = document.getElementById('tour-popover-editor');
+        if (editor) {
+            editor.addEventListener('input', () => {
+                const statusEl = document.getElementById('tour-popover-status');
+                if (statusEl) {
+                    statusEl.className = 'tour-popover-status is-saving';
+                    statusEl.innerHTML = '<i data-lucide="loader-2" class="spin"></i> <span>Saving...</span>';
+                    if (window.lucide) window.lucide.createIcons({ root: statusEl });
+                }
+                clearTimeout(tourNotesDebounceTimer);
+                tourNotesDebounceTimer = setTimeout(() => {
+                    if (activeTourNotesMlsId) {
+                        window.handleSaveTourNotes(activeTourNotesMlsId, editor.innerHTML);
+                    }
+                }, 800);
+            });
+
+            editor.addEventListener('keyup', updateToolbarActiveStates);
+            editor.addEventListener('mouseup', updateToolbarActiveStates);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && overlay.classList.contains('is-active')) {
+                window.closeTourNotesPopover();
+            }
+        });
+    }
+    return overlay;
+}
+
+function updateToolbarActiveStates() {
+    const overlay = document.getElementById('tour-notes-popover-overlay');
+    if (!overlay) return;
+    overlay.querySelectorAll('.tour-toolbar-btn[data-cmd]').forEach(btn => {
+        const cmd = btn.dataset.cmd;
+        try {
+            if (document.queryCommandState(cmd)) {
+                btn.classList.add('is-active');
+            } else {
+                btn.classList.remove('is-active');
+            }
+        } catch(e) {}
+    });
+}
+
+window.handleQuickToggleTour = async function(mlsId, event) {
+    if (event) event.stopPropagation();
+    try {
+        const res = await apiFetch(CONFIG.API_URL + '?action=add_to_tour', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mls_id: mlsId })
+        });
+        if (res && res.success) {
+            const role = state.currentUserProfile?.role;
+            const agent = role === 'realtor' || role === 'admin' || Boolean(state.isAdmin);
+            showToast(agent
+                ? 'Added property to Tour Planner! Click Tour to view route.'
+                : 'Showing requested. It shows as Requested on your tour until your agent confirms.', 'success');
+        } else {
+            showToast(res?.error || 'Could not add to tour', 'error');
+        }
+    } catch (e) {
+        showToast('Error adding to tour', 'error');
+    }
+};
+
+window.handleToggleToured = async function(mlsId, event) {
+    if (event) event.stopPropagation();
+    const isChecked = event ? event.target.checked : true;
+    const p = (state.allProperties || []).find(item => String(item.mls_id) === String(mlsId));
+    if (p) {
+        p.toured = isChecked ? 1 : 0;
+        if (isChecked && !p.toured_at) p.toured_at = new Date().toISOString();
+        if (!isChecked) p.toured_at = null;
+    }
+
+    try {
+        await apiFetch(CONFIG.API_URL + '?action=update_user_data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mls_id: mlsId, toured: isChecked ? 1 : 0 })
+        });
+        showToast(isChecked ? 'Marked as Toured. Add your impressions!' : 'Unmarked as toured', 'info');
+    } catch (e) {
+        showToast('Failed to update tour status', 'error');
+    }
+
+    renderActiveView();
+    if (isChecked) {
+        setTimeout(() => {
+            window.openTourNotesPopover(mlsId);
+        }, 120);
+    }
+};
+
+window.handlePopoverToggleToured = async function(isChecked) {
+    if (!activeTourNotesMlsId) return;
+    const mlsId = activeTourNotesMlsId;
+    const p = (state.allProperties || []).find(item => String(item.mls_id) === String(mlsId));
+    if (p) {
+        p.toured = isChecked ? 1 : 0;
+        if (isChecked && !p.toured_at) p.toured_at = new Date().toISOString();
+        if (!isChecked) p.toured_at = null;
+    }
+    try {
+        await apiFetch(CONFIG.API_URL + '?action=update_user_data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mls_id: mlsId, toured: isChecked ? 1 : 0 })
+        });
+        showToast(isChecked ? 'Marked as Toured' : 'Unmarked as toured', 'info');
+    } catch(e) {}
+
+    const dateEl = document.getElementById('tour-popover-visited-date');
+    if (dateEl) {
+        dateEl.textContent = isChecked && p?.toured_at ? `Visited ${new Date(p.toured_at).toLocaleDateString()}` : '';
+    }
+    renderActiveView();
+};
+
+window.openTourNotesPopover = function(mlsId, triggerEl = null, event = null) {
+    if (event) event.stopPropagation();
+    activeTourNotesMlsId = mlsId;
+    const p = (state.allProperties || []).find(item => String(item.mls_id) === String(mlsId));
+    if (!p) return;
+
+    const overlay = ensureTourPopoverDom();
+    const addrEl = document.getElementById('tour-popover-addr');
+    const chkEl = document.getElementById('tour-popover-toured-chk');
+    const dateEl = document.getElementById('tour-popover-visited-date');
+    const editor = document.getElementById('tour-popover-editor');
+    const statusEl = document.getElementById('tour-popover-status');
+
+    if (addrEl) addrEl.textContent = cleanDisplayAddress(p.address, p.mls_id) + ` (MLS #${p.mls_id})`;
+    if (chkEl) chkEl.checked = Boolean(p.toured);
+    if (dateEl) {
+        dateEl.textContent = p.toured && p.toured_at ? `Visited ${new Date(p.toured_at).toLocaleDateString()}` : '';
+    }
+    if (editor) {
+        editor.innerHTML = p.tour_notes || '';
+    }
+    if (statusEl) {
+        statusEl.className = 'tour-popover-status is-saved';
+        statusEl.innerHTML = '<i data-lucide="check"></i> <span>Ready</span>';
+    }
+
+    overlay.classList.add('is-active');
+    if (window.lucide) window.lucide.createIcons({ root: overlay });
+
+    setTimeout(() => {
+        if (editor) editor.focus();
+    }, 100);
+};
+
+window.closeTourNotesPopover = function() {
+    clearTimeout(tourNotesDebounceTimer);
+    const overlay = document.getElementById('tour-notes-popover-overlay');
+    const editor = document.getElementById('tour-popover-editor');
+    if (overlay) overlay.classList.remove('is-active');
+
+    if (activeTourNotesMlsId && editor) {
+        window.handleSaveTourNotes(activeTourNotesMlsId, editor.innerHTML);
+    }
+    activeTourNotesMlsId = null;
+    renderActiveView();
+};
+
+window.handleSaveTourNotes = async function(mlsId, rawHtml) {
+    const cleanHtml = sanitizeTourNotes(rawHtml);
+    const p = (state.allProperties || []).find(item => String(item.mls_id) === String(mlsId));
+    if (p) {
+        p.tour_notes = cleanHtml;
+    }
+
+    const statusEl = document.getElementById('tour-popover-status');
+    if (statusEl) {
+        statusEl.className = 'tour-popover-status is-saving';
+        statusEl.innerHTML = '<i data-lucide="loader-2" class="spin"></i> <span>Saving to Realtor & Cloud...</span>';
+        if (window.lucide) window.lucide.createIcons({ root: statusEl });
+    }
+
+    try {
+        await apiFetch(CONFIG.API_URL + '?action=update_user_data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mls_id: mlsId, tour_notes: cleanHtml })
+        });
+        if (statusEl) {
+            statusEl.className = 'tour-popover-status is-saved';
+            statusEl.innerHTML = '<i data-lucide="check-check"></i> <span>Saved to Realtor & Cloud</span>';
+            if (window.lucide) window.lucide.createIcons({ root: statusEl });
+        }
+    } catch (e) {
+        if (statusEl) {
+            statusEl.className = 'tour-popover-status';
+            statusEl.innerHTML = '<span style="color:var(--accent-red);"><i data-lucide="alert-circle"></i> Save failed</span>';
+            if (window.lucide) window.lucide.createIcons({ root: statusEl });
+        }
+    }
+};

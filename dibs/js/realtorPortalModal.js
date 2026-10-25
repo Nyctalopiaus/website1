@@ -367,7 +367,7 @@ function renderCompactRealtorTable(container, properties) {
                 ondragstart="window.handleTableRowDragStart(event, '${p.mls_id}')"
                 ondragover="window.handleTableRowDragOver(event)"
                 ondragleave="window.handleTableRowDragLeave(event)"
-                ondrop="window.handleTableRowDrop(event, '${p.mls_id}', ${activeClientId || 'null'})"
+                ondrop="window.handleTableRowDrop(event, '${p.mls_id}', '${activeClientId || ''}')"
                 ondragend="window.handleTableRowDragEnd(event)">
                 <td class="table-drag-handle" style="padding:0.5rem 0.35rem; width:30px;" title="Drag row to reorder">
                     <i data-lucide="grip-vertical" style="width:14px; height:14px;"></i>
@@ -427,7 +427,7 @@ function renderCompactRealtorTable(container, properties) {
         <div class="rp-compact-table-wrapper" style="width:100%; overflow-x:auto; background:var(--bg-card); border-radius:10px; border:1px solid var(--border-color);">
             <div style="display:flex; justify-content:space-between; align-items:center; padding:0.55rem 0.85rem; border-bottom:1px solid var(--border-color); background:var(--bg-input); font-size:0.78rem; color:var(--text-muted);">
                 <span><i data-lucide="grip-vertical" style="width:14px; height:14px; vertical-align:middle; color:var(--accent-gold);"></i> Drag row handles to custom-sort property order.</span>
-                <button class="btn btn-sm btn-secondary" style="font-size:0.75rem; padding:0.2rem 0.55rem;" onclick="window.resetRealtorTableOrder(${activeClientId || 'null'})"><i data-lucide="rotate-ccw"></i> Reset Order</button>
+                <button class="btn btn-sm btn-secondary" style="font-size:0.75rem; padding:0.2rem 0.55rem;" onclick="window.resetRealtorTableOrder('${activeClientId || ''}')"><i data-lucide="rotate-ccw"></i> Reset Order</button>
             </div>
             <table class="rp-compact-table" style="width:100%; border-collapse:collapse; font-size:0.83rem; text-align:left;">
                 <thead>

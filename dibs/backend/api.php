@@ -16,6 +16,13 @@ require_once __DIR__ . '/myhome.php';
 require_once __DIR__ . '/brief.php';
 require_once __DIR__ . '/feed.php';
 require_once __DIR__ . '/invites.php';
+require_once __DIR__ . '/requests.php';
+require_once __DIR__ . '/schedule.php';
+require_once __DIR__ . '/packet.php';
+require_once __DIR__ . '/branding.php';
+
+// Every JSON response leaves with public user ids instead of sequential ones (bootstrap.php).
+ob_start(function (string $buffer) use ($pdo) { return dibsPublicizeResponse($buffer, $pdo); });
 
 $action = $_GET['action'] ?? $_POST['action'] ?? 'list';
 
@@ -104,6 +111,41 @@ switch ($action) {
         requireRealtorOrAdmin();
         requireCsrf();
         handleSaveShowingItinerary($pdo);
+        break;
+
+    case 'get_tour_itinerary':
+        requireAuth();
+        handleGetTourItinerary($pdo);
+        break;
+
+    case 'save_tour_itinerary':
+        requireAuth();
+        requireCsrf();
+        handleSaveTourItinerary($pdo);
+        break;
+
+    case 'update_tour_stop_status':
+        requireAuth();
+        requireCsrf();
+        handleUpdateTourStopStatus($pdo);
+        break;
+
+    case 'set_tour_stop_toured':
+        requireAuth();
+        requireCsrf();
+        handleSetTourStopToured($pdo);
+        break;
+
+    case 'add_to_tour':
+        requireAuth();
+        requireCsrf();
+        handleAddToTour($pdo);
+        break;
+
+    case 'remove_from_tour':
+        requireAuth();
+        requireCsrf();
+        handleRemoveFromTour($pdo);
         break;
 
     case 'list_global_property_visibility':
@@ -219,6 +261,51 @@ switch ($action) {
         handleGetAgentFeed($pdo);
         break;
 
+    case 'list_showing_requests':
+        requireAuth();
+        handleListShowingRequests($pdo);
+        break;
+
+    case 'respond_showing_requests':
+        requireAuth();
+        handleRespondShowingRequests($pdo);
+        break;
+
+    case 'upload_branding_image':
+        requireAuth();
+        handleUploadBrandingImage($pdo);
+        break;
+
+    case 'remove_branding_image':
+        requireAuth();
+        handleRemoveBrandingImage($pdo);
+        break;
+
+    case 'get_tour_packet':
+        requireAuth();
+        handleGetTourPacket($pdo);
+        break;
+
+    case 'tour_packet_photo':
+        requireAuth();
+        handleTourPacketPhoto($pdo);
+        break;
+
+    case 'get_agent_schedule':
+        requireAuth();
+        handleGetAgentSchedule($pdo);
+        break;
+
+    case 'save_agent_event':
+        requireAuth();
+        handleSaveAgentEvent($pdo);
+        break;
+
+    case 'delete_agent_event':
+        requireAuth();
+        handleDeleteAgentEvent($pdo);
+        break;
+
     case 'brief_catalog':
         requireAuth();
         handleBriefCatalog($pdo);
@@ -262,6 +349,28 @@ switch ($action) {
         requireAuth();
         requireCsrf();
         handleUpdateUserData($pdo);
+        break;
+
+    case 'get_tour_debrief':
+        requireAuth();
+        handleGetTourDebrief($pdo);
+        break;
+
+    case 'save_tour_debrief':
+        requireAuth();
+        requireCsrf();
+        handleSaveTourDebrief($pdo);
+        break;
+
+    case 'get_top_picks':
+        requireAuth();
+        handleGetTopPicks($pdo);
+        break;
+
+    case 'set_pick_order':
+        requireAuth();
+        requireCsrf();
+        handleSetPickOrder($pdo);
         break;
 
     case 'update_coordinates':
@@ -389,10 +498,10 @@ function handleGetSavedFilters(PDO $pdo) {
                OR f.created_by_user_id = :user_id 
                OR f.target_user_id = :user_id 
                OR u.realtor_id = :user_id
-               OR :is_admin = 1
+               OR CAST(:is_admin AS INTEGER) = 1
             ORDER BY f.updated_at DESC
         ");
-        $stmt->execute([':user_id' => $userId, ':is_admin' => ($role === 'admin' || $isPrimaryAdmin) ? 1 : 0]);
+        $stmt->execute([':user_id' => $userId, ':is_admin' => ($role === 'admin' || $isAdmin) ? 1 : 0]);
         $rows = $stmt->fetchAll();
 
         foreach ($rows as &$r) {

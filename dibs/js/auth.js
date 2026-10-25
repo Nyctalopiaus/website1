@@ -397,6 +397,7 @@ function resetLocalStateForAccount(username) {
         const clientPrefsGroup = document.getElementById('profile-client-preferences-group');
         if (elBrokerage) elBrokerage.value = p.brokerage_name || '';
         if (elAvatarUrl) elAvatarUrl.value = p.avatar_url || '';
+        if (window.refreshBrandingPreviews) window.refreshBrandingPreviews();
         if (clientPrefsGroup) clientPrefsGroup.style.display = role === 'client' ? 'block' : 'none';
         document.getElementById('profile-target-min-price').value = p.target_min_price || '';
         document.getElementById('profile-target-max-price').value = p.target_max_price || '';
@@ -681,7 +682,7 @@ function resetLocalStateForAccount(username) {
 
             return `
                 <tr>
-                    <td style="font-weight:700; color:var(--text-muted); font-size:0.85rem;">#${u.id}</td>
+                    <td style="font-weight:700; color:var(--text-muted); font-size:0.85rem;" title="${escapeHtml(String(u.id))}">#${escapeHtml(String(u.id).slice(0, 8))}</td>
                     <td>
                         <span style="font-weight:600; font-size:0.92rem; color:var(--text-primary);">${escapeHtml(u.username)}</span>
                         ${roleBadge}
@@ -695,9 +696,9 @@ function resetLocalStateForAccount(username) {
                     <td style="font-size:0.85rem; color:var(--text-muted);">${lastLogin}</td>
                     <td>
                         <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
-                            ${state.isAdmin ? `<button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="promptResetPassword(${u.id}, '${escapeHtml(u.username)}')"><i data-lucide="key-round"></i> Password</button>` : ''}
-                            ${(state.isAdmin && !isAdminAcc) ? `<button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="promptChangeRole(${u.id}, '${escapeHtml(u.username)}', '${role}', ${u.realtor_id || 'null'})"><i data-lucide="user-check"></i> Edit Role</button>` : ''}
-                            ${(state.isAdmin && !isAdminAcc) ? `<button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem; color:var(--accent-red);" onclick="confirmDeleteUser(${u.id}, '${escapeHtml(u.username)}')"><i data-lucide="trash-2"></i> Delete</button>` : ''}
+                            ${state.isAdmin ? `<button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="promptResetPassword('${u.id}', '${escapeHtml(u.username)}')"><i data-lucide="key-round"></i> Password</button>` : ''}
+                            ${(state.isAdmin && !isAdminAcc) ? `<button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="promptChangeRole('${u.id}', '${escapeHtml(u.username)}', '${role}', '${u.realtor_id || ''}')"><i data-lucide="user-check"></i> Edit Role</button>` : ''}
+                            ${(state.isAdmin && !isAdminAcc) ? `<button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem; color:var(--accent-red);" onclick="confirmDeleteUser('${u.id}', '${escapeHtml(u.username)}')"><i data-lucide="trash-2"></i> Delete</button>` : ''}
                             ${!state.isAdmin ? `<span style="font-size:0.75rem; color:var(--text-muted); background:var(--bg-input); padding:0.2rem 0.5rem; border-radius:4px; border:1px solid var(--border-color); display:inline-flex; align-items:center; gap:0.25rem;"><i data-lucide="lock" style="width:11px; height:11px;"></i> View Only</span>` : ''}
                         </div>
                     </td>
@@ -1045,7 +1046,7 @@ function resetLocalStateForAccount(username) {
                 username, 
                 password, 
                 role, 
-                realtor_id: realtorIdVal ? parseInt(realtorIdVal) : null 
+                realtor_id: realtorIdVal || null 
             })
         })
         .then(data => {

@@ -32,10 +32,17 @@ import {
 import { openCompareMatrix, closeCompareMatrix, clearCompare } from './js/compare.js';
 import './js/homeCompare.js'; // "Compare to my house" panel
 import './js/myHome.js'; // "My Home" card pinned in the grid and its modal; wires itself up
+import './js/topPicks.js'; // Top Picks ranking modal (user menu + "Top Picks" chip); wires itself up
+import './js/tourResults.js'; // Tour Results: enter the printed tour packet's ratings/notes; wires itself up
 import './js/account.js'; // My Profile: change sign-in username; wires itself up
 import './js/invites.js'; // realtor view: "Invite client" dialog; wires itself up
 import './js/agentFeed.js'; // realtor view: cross-client activity feed + engagement chips; wires itself up
 import './js/brief.js'; // "My Brief" editor, Fit Score badges and their "why" popover; wires itself up
+import './js/tourBulkAdd.js';
+import './js/showingRequests.js';
+import './js/schedule.js';
+import './js/tourPacket.js';
+import './js/deepLink.js'; // homes toolbar "Add these to tour"; wires itself up
 import './js/aiRank.js'; // toolbar "AI Ranking" button and its modal; wires itself up
 import {
     openAdminCleanupModal, closeAdminCleanupModal, fetchAdminCleanupPreview,
@@ -61,6 +68,7 @@ import { renderRealtorView } from './js/realtorView.js';
 // attributes in dynamically-rendered HTML, so they must exist on window before any card renders).
 import './js/detailModal.js';
 import './js/photoViewer.js';
+import './js/tourView.js';
 // Phone-only collapsible dashboard / control-bar sections (collapsed by default on load).
 import './js/mobileSections.js';
 
@@ -117,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isRealtorUser = role === 'realtor';
         const defaultRoleView = isAdminUser ? 'admin' : (isRealtorUser ? 'realtor' : (savedView || 'grid'));
 
-        const targetView = (hashView && ['grid', 'map', 'table', 'matrix', 'realtor', 'admin'].includes(hashView))
+        const targetView = (hashView && ['grid', 'map', 'table', 'matrix', 'tour', 'realtor', 'admin'].includes(hashView))
             ? hashView
             : (savedView || defaultRoleView);
 
@@ -267,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         window.addEventListener('hashchange', () => {
             const hash = window.location.hash.replace('#', '').toLowerCase();
-            if (['grid', 'map', 'table', 'matrix'].includes(hash) && hash !== state.activeView) {
+            if (['grid', 'map', 'table', 'matrix', 'tour'].includes(hash) && hash !== state.activeView) {
                 switchView(hash);
             }
         });
@@ -288,11 +296,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (elements.btnExportModal) elements.btnExportModal.addEventListener('click', () => elements.modalExport.classList.add('active'));
         if (elements.modalExportClose) elements.modalExportClose.addEventListener('click', () => elements.modalExport.classList.remove('active'));
-        if (elements.btnTopMapHomeward) elements.btnTopMapHomeward.addEventListener('click', exportFavoritesToHomeward);
-        if (elements.btnExportHomeward) elements.btnExportHomeward.addEventListener('click', exportFavoritesToHomeward);
+        if (elements.btnTopMapHomeward) elements.btnTopMapHomeward.addEventListener('click', () => switchView('tour'));
+        if (elements.btnExportHomeward) elements.btnExportHomeward.addEventListener('click', () => switchView('tour'));
         if (elements.btnExportModalHomeward) elements.btnExportModalHomeward.addEventListener('click', () => {
             elements.modalExport.classList.remove('active');
-            exportFavoritesToHomeward();
+            switchView('tour');
         });
 
         // Top Picks Recommendation Modal

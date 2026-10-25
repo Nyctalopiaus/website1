@@ -72,7 +72,9 @@ import { elements, state } from './state.js';
             const res = await fetchUserPreferences();
             if (res && res.success && res.preferences) {
                 const p = res.preferences;
-                if (p.active_view && ['grid', 'map', 'table', 'matrix'].includes(p.active_view)) {
+                // A view named in the link (#tour, #map, ...) wins over the saved preference.
+                const linkedView = /^#(grid|map|table|matrix|tour|realtor|admin)$/.test(window.location.hash);
+                if (!linkedView && p.active_view && ['grid', 'map', 'table', 'matrix'].includes(p.active_view)) {
                     state.activeView = p.active_view;
                     localStorage.setItem('scout_active_view', p.active_view);
                     document.querySelectorAll('.view-btn').forEach(b => {

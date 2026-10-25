@@ -34,7 +34,8 @@
             hoaMax: null, noHoaOnly: false, taxMax: null, taxYear: null,
             city: [], zip: '', schoolDistrict: '',
             status: 'all', ratingMin: 0, matrixStatus: 'all', selectedClientId: 'all', appliances: '', flooring: '', fireplaceOnly: false, realtorNotesOnly: false,
-            favoritesOnly: false, possibilitiesOnly: false, realtorSharedOnly: false, hasNotesOnly: false, showHidden: true
+            favoritesOnly: false, possibilitiesOnly: false, realtorSharedOnly: false, hasNotesOnly: false, showHidden: true,
+            excludeToured: false
         }
     };
 

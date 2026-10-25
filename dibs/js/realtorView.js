@@ -80,9 +80,14 @@ export function getActiveRealtorClient() {
 export function getActiveClientFavorites() {
     return (realtorData.matrix && realtorData.matrix.loved) || [];
 }
-export function getActiveClientTourProperties() {
+export function getActiveClientTourProperties(options = {}) {
     const matrix = realtorData.matrix || {};
-    return [...(matrix.loved || []), ...(matrix.shortlisted || [])];
+    let props = [...(matrix.loved || []), ...(matrix.shortlisted || [])];
+    const excludeToured = options.excludeToured !== undefined ? options.excludeToured : Boolean(realtorData.tourExcludeToured);
+    if (excludeToured) {
+        props = props.filter(p => !p.toured);
+    }
+    return props;
 }
 
 async function loadRealtorFitScores(clientId) {
@@ -203,25 +208,25 @@ function buildRealtorDom(container) {
                         </span>
                     </div>
                     <div class="realtor-kpi-summary-grid mini-grid">
-                        <div class="kpi-card">
+                        <div class="kpi-card" title="Clients searching, touring, writing an offer or under contract (closed clients aren't counted)">
                             <div class="kpi-card-header"><span class="kpi-label">Active Clients</span><span class="kpi-card-icon"><i data-lucide="users"></i></span></div>
                             <div class="kpi-value">${realtorOverview.active_clients || 0}</div>
-                            <div class="kpi-sub">Current client roster</div>
+                            <div class="kpi-sub">Not yet closed</div>
                         </div>
-                        <div class="kpi-card interactive-kpi" onclick="window.handleKpiCardClick('needs-curation')" title="Click to view clients needing curation">
-                            <div class="kpi-card-header"><span class="kpi-label">Needs Curation</span><span class="kpi-card-icon"><i data-lucide="user-check"></i></span></div>
-                            <div class="kpi-value">${realtorOverview.clients_needing_curation ?? (realtorOverview.homes_awaiting_review || 0)}</div>
-                            <div class="kpi-sub">Clients with pending homes</div>
+                        <div class="kpi-card interactive-kpi" onclick="window.handleKpiCardClick('needs-attention')" title="Clients waiting on you: showing requests, messages where they spoke last, and questions you haven't answered">
+                            <div class="kpi-card-header"><span class="kpi-label">Waiting on You</span><span class="kpi-card-icon"><i data-lucide="user-check"></i></span></div>
+                            <div class="kpi-value">${realtorOverview.needs_attention ?? 0}</div>
+                            <div class="kpi-sub">${(() => { const b = realtorOverview.attention_breakdown || {}; const parts = [b.requests ? `${b.requests} with requests` : '', b.replies ? `${b.replies} awaiting reply` : '', b.questions ? `${b.questions} with questions` : ''].filter(Boolean); return parts.length ? parts.join(' · ') : 'Nobody is waiting'; })()}</div>
                         </div>
-                        <div class="kpi-card interactive-kpi" onclick="window.handleKpiCardClick('showings')" title="Click to view scheduled showings">
+                        <div class="kpi-card interactive-kpi" onclick="window.handleKpiCardClick('showings')" title="Confirmed showings from today on, across all clients. Click to open your schedule">
                             <div class="kpi-card-header"><span class="kpi-label">Scheduled Showings</span><span class="kpi-card-icon"><i data-lucide="calendar-clock"></i></span></div>
                             <div class="kpi-value">${realtorOverview.scheduled_showings || 0}</div>
-                            <div class="kpi-sub">Across active clients</div>
+                            <div class="kpi-sub">Confirmed, today on</div>
                         </div>
-                        <div class="kpi-card interactive-kpi" onclick="window.handleKpiCardClick('chat')" title="Click to view messages & follow-ups">
-                            <div class="kpi-card-header"><span class="kpi-label">Unread Follow-Ups</span><span class="kpi-card-icon"><i data-lucide="bell"></i></span></div>
-                            <div class="kpi-value">${realtorOverview.unread_notifications || 0}</div>
-                            <div class="kpi-sub">New client activity</div>
+                        <div class="kpi-card interactive-kpi" onclick="window.handleKpiCardClick('client-activity')" title="Favorites, ratings, notes, questions and other actions your clients took in the last 7 days">
+                            <div class="kpi-card-header"><span class="kpi-label">Client Activity</span><span class="kpi-card-icon"><i data-lucide="activity"></i></span></div>
+                            <div class="kpi-value">${realtorOverview.activity_7d || 0}</div>
+                            <div class="kpi-sub">Actions in the last 7 days</div>
                         </div>
                     </div>
                 </div>
@@ -282,6 +287,9 @@ function buildRealtorDom(container) {
 
 
 
+        <!-- Showing requests waiting on the agent (js/showingRequests.js fills it) -->
+        <section id="showing-requests-panel" class="showing-requests-panel" aria-label="Showing requests" hidden></section>
+
         <!-- Cross-client activity feed + engagement (js/agentFeed.js fills it) -->
         <section id="agent-feed-panel" class="agent-feed-panel" aria-label="Client activity"></section>
 
@@ -298,7 +306,7 @@ function buildRealtorDom(container) {
                         const initial = (c.full_name || c.username || 'C').charAt(0).toUpperCase();
                         const stg = stageOptions.find(s => s.key === (c.pipeline_stage || 'searching')) || stageOptions[0];
                         return `
-                            <div class="client-roster-card ${isSel ? 'active' : ''}" onclick="window.selectRealtorClient(${c.id})">
+                            <div class="client-roster-card ${isSel ? 'active' : ''}" onclick="window.selectRealtorClient('${c.id}')">
                                 <div class="client-avatar">${initial}</div>
                                 <div class="client-info">
                                     <div class="client-name">${escapeHtml(c.full_name || c.username)}</div>
@@ -328,8 +336,10 @@ function buildRealtorDom(container) {
                                 <span><i data-lucide="calendar-clock"></i> ${escapeHtml(targetTimeline)}</span>
                             </div>
                             ${hasSearchBrief ? `<div style="display:grid; gap:0.35rem; margin-top:0.65rem; font-size:0.82rem;"><span>${client.must_haves ? `<strong>Must-haves:</strong> ${escapeHtml(client.must_haves)}` : ''}</span><span>${client.deal_breakers ? `<strong>Deal-breakers:</strong> ${escapeHtml(client.deal_breakers)}` : ''}</span></div>` : ''}
-                            <button type="button" class="btn btn-secondary" style="margin-top:0.65rem;" onclick="window.openMyHomeModal(${client.id})" title="The home this client would sell: details, payoff, value and comps (read-only)"><i data-lucide="house"></i> Client's Home</button>
-                            <button type="button" class="btn btn-secondary" style="margin-top:0.65rem;" onclick="window.openBriefModal(${client.id})" title="What this client is looking for; every listing's Fit Score comes from it"><i data-lucide="sliders-horizontal"></i> Client's Brief</button>
+                            <button type="button" class="btn btn-secondary" style="margin-top:0.65rem;" onclick="window.openMyHomeModal('${client.id}')" title="The home this client would sell: details, payoff, value and comps (read-only)"><i data-lucide="house"></i> Client's Home</button>
+                            <button type="button" class="btn btn-secondary" style="margin-top:0.65rem;" onclick="window.openTopPicksModal('${client.id}')" title="This client's ranked favorites, best first (read-only)"><i data-lucide="trophy"></i> Top Picks</button>
+                            <button type="button" class="btn btn-secondary" style="margin-top:0.65rem;" onclick="window.openTourResults(null, '${client.id}')" title="What this client entered from their tour packet (read-only)"><i data-lucide="clipboard-check"></i> Tour Results</button>
+                            <button type="button" class="btn btn-secondary" style="margin-top:0.65rem;" onclick="window.openBriefModal('${client.id}')" title="What this client is looking for; every listing's Fit Score comes from it"><i data-lucide="sliders-horizontal"></i> Client's Brief</button>
                         </div>
                     </div>
 
@@ -340,7 +350,7 @@ function buildRealtorDom(container) {
                             ${stageOptions.map(stg => `
                                 <button type="button" class="pipeline-chip ${currentStage === stg.key ? 'active' : ''}"
                                         style="${currentStage === stg.key ? `background-color:${stg.color}; color:#fff; border-color:${stg.color};` : ''}"
-                                        onclick="window.updateClientStage(${client.id}, '${stg.key}')">
+                                        onclick="window.updateClientStage('${client.id}', '${stg.key}')">
                                     <i data-lucide="${stg.icon}"></i> ${stg.label}
                                 </button>
                             `).join('')}
@@ -383,6 +393,7 @@ function buildRealtorDom(container) {
 
     if (window.lucide) window.lucide.createIcons();
     if (window.renderAgentFeedPanel) window.renderAgentFeedPanel();
+    if (window.renderShowingRequests) window.renderShowingRequests();
     if (activeSubTab === 'chat') {
         loadChatMessages(client.id);
     }
@@ -476,7 +487,7 @@ function renderStatusMatrixContent(matrix, client) {
                 <div class="matrix-column matrix-col-loved"
                      ondragover="window.handleRealtorColDragOver(event)"
                      ondragleave="window.handleRealtorColDragLeave(event)"
-                     ondrop="window.handleRealtorColDrop(event, 'loved', ${client.id})">
+                     ondrop="window.handleRealtorColDrop(event, 'loved', '${client.id}')">
                     <div class="matrix-col-header">
                         <h4><i data-lucide="heart" class="icon-heart"></i> Loved / Favorites (${loved.length})</h4>
                     </div>
@@ -490,7 +501,7 @@ function renderStatusMatrixContent(matrix, client) {
                 <div class="matrix-column matrix-col-shortlist"
                      ondragover="window.handleRealtorColDragOver(event)"
                      ondragleave="window.handleRealtorColDragLeave(event)"
-                     ondrop="window.handleRealtorColDrop(event, 'shortlisted', ${client.id})">
+                     ondrop="window.handleRealtorColDrop(event, 'shortlisted', '${client.id}')">
                     <div class="matrix-col-header">
                         <h4><i data-lucide="star" class="icon-star"></i> Possibilities (${shortlisted.length})</h4>
                     </div>
@@ -504,7 +515,7 @@ function renderStatusMatrixContent(matrix, client) {
                 <div class="matrix-column matrix-col-disliked"
                      ondragover="window.handleRealtorColDragOver(event)"
                      ondragleave="window.handleRealtorColDragLeave(event)"
-                     ondrop="window.handleRealtorColDrop(event, 'disliked', ${client.id})">
+                     ondrop="window.handleRealtorColDrop(event, 'disliked', '${client.id}')">
                     <div class="matrix-col-header">
                         <h4><i data-lucide="thumbs-down" class="icon-thumbs-down"></i> Disliked / Passed (${disliked.length})</h4>
                     </div>
@@ -518,7 +529,7 @@ function renderStatusMatrixContent(matrix, client) {
                 <div class="matrix-column matrix-col-unreviewed"
                      ondragover="window.handleRealtorColDragOver(event)"
                      ondragleave="window.handleRealtorColDragLeave(event)"
-                     ondrop="window.handleRealtorColDrop(event, 'unreviewed', ${client.id})">
+                     ondrop="window.handleRealtorColDrop(event, 'unreviewed', '${client.id}')">
                     <div class="matrix-col-header">
                         <h4><i data-lucide="eye" class="icon-eye"></i> Unreviewed (${unreviewed.length})</h4>
                     </div>
@@ -630,7 +641,7 @@ function renderRealtorTableBoard(matrix, clientId) {
                 ondragstart="window.handleTableRowDragStart(event, '${p.mls_id}')"
                 ondragover="window.handleTableRowDragOver(event)"
                 ondragleave="window.handleTableRowDragLeave(event)"
-                ondrop="window.handleTableRowDrop(event, '${p.mls_id}', ${clientId})"
+                ondrop="window.handleTableRowDrop(event, '${p.mls_id}', '${clientId}')"
                 ondragend="window.handleTableRowDragEnd(event)">
                 <td class="table-drag-handle" style="padding:0.55rem 0.35rem; width:30px;" title="Drag row to reorder">
                     <i data-lucide="grip-vertical" style="width:14px; height:14px;"></i>
@@ -655,7 +666,7 @@ function renderRealtorTableBoard(matrix, clientId) {
                         <button class="matrix-icon-btn" onclick="event.stopPropagation(); window.openPropertyMapModal('${p.mls_id}')" title="Property Location Map Modal"><i data-lucide="map-pin"></i></button>
                         <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddr + ', ' + (p.city || '') + ' ' + (p.state || 'CO') + ' ' + (p.zip || ''))}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Google Maps Directions"><i data-lucide="map"></i></a>
                         ${p.virtual_tour_url ? `<a href="${escapeHtml(p.virtual_tour_url)}" target="_blank" onclick="event.stopPropagation();" class="matrix-icon-btn" title="Virtual Tour"><i data-lucide="video"></i></a>` : ''}
-                        <button class="matrix-icon-btn" onclick="event.stopPropagation(); window.openPropertyChat('${p.mls_id}', ${clientId})" title="Discussion Thread"><i data-lucide="message-square"></i></button>
+                        <button class="matrix-icon-btn" onclick="event.stopPropagation(); window.openPropertyChat('${p.mls_id}', '${clientId}')" title="Discussion Thread"><i data-lucide="message-square"></i></button>
                     </div>
                 </td>
                 <td style="padding:0.55rem 0.6rem;">
@@ -680,7 +691,7 @@ function renderRealtorTableBoard(matrix, clientId) {
                     ${fitScore ? fitScoreBadgeHtml(p, fitScore, '0.7rem') : '-'}
                 </td>
                 <td style="padding:0.55rem 0.6rem; min-width:240px;">
-                    <input type="text" class="input-text" value="${escapeHtml(p.realtor_private_notes || '')}" placeholder="Add private realtor note..." style="font-size:0.78rem; padding:0.25rem 0.5rem; height:28px; width:100%; border-radius:4px;" onblur="window.saveRealtorPrivateNote('${p.mls_id}', ${clientId}, this.value)">
+                    <input type="text" class="input-text" value="${escapeHtml(p.realtor_private_notes || '')}" placeholder="Add private realtor note..." style="font-size:0.78rem; padding:0.25rem 0.5rem; height:28px; width:100%; border-radius:4px;" onblur="window.saveRealtorPrivateNote('${p.mls_id}', '${clientId}', this.value)">
                 </td>
             </tr>
         `;
@@ -690,7 +701,7 @@ function renderRealtorTableBoard(matrix, clientId) {
         <div class="rp-compact-table-wrapper" style="width:100%; overflow-x:auto; background:var(--bg-card); border-radius:10px; border:1px solid var(--border-color); margin-top:1rem;">
             <div style="display:flex; justify-content:space-between; align-items:center; padding:0.55rem 0.85rem; border-bottom:1px solid var(--border-color); background:var(--bg-input); font-size:0.78rem; color:var(--text-muted);">
                 <span><i data-lucide="grip-vertical" style="width:14px; height:14px; vertical-align:middle; color:var(--accent-gold);"></i> Drag row handles to custom-sort property order.</span>
-                <button class="btn btn-sm btn-secondary" style="font-size:0.75rem; padding:0.2rem 0.55rem;" onclick="window.resetRealtorTableOrder(${clientId})"><i data-lucide="rotate-ccw"></i> Reset Order</button>
+                <button class="btn btn-sm btn-secondary" style="font-size:0.75rem; padding:0.2rem 0.55rem;" onclick="window.resetRealtorTableOrder('${clientId}')"><i data-lucide="rotate-ccw"></i> Reset Order</button>
             </div>
             <table class="rp-compact-table" style="width:100%; border-collapse:collapse; font-size:0.83rem; text-align:left;">
                 <thead>
@@ -745,7 +756,7 @@ function renderRealtorPropertyCard(p, clientId) {
         <div class="realtor-prop-card"
              data-mls-id="${p.mls_id}"
              draggable="true"
-             ondragstart="window.handleRealtorCardDragStart(event, '${p.mls_id}', ${clientId})"
+             ondragstart="window.handleRealtorCardDragStart(event, '${p.mls_id}', '${clientId}')"
              ondragend="window.handleRealtorCardDragEnd(event)"
              style="cursor:grab;"
              onclick="window.openDetailModal('${p.mls_id}')">
@@ -758,7 +769,7 @@ function renderRealtorPropertyCard(p, clientId) {
                     ${fitBadgeHtml}
                 </div>
                 <span class="realtor-card-price">${priceStr}</span>
-                <button class="btn-prop-chat-badge ${p.has_messages ? 'has-msg' : ''}" onclick="event.stopPropagation(); window.openPropertyChat('${p.mls_id}', ${clientId})" title="Property Discussion Thread">
+                <button class="btn-prop-chat-badge ${p.has_messages ? 'has-msg' : ''}" onclick="event.stopPropagation(); window.openPropertyChat('${p.mls_id}', '${clientId}')" title="Property Discussion Thread">
                     <i data-lucide="message-square"></i> Chat
                 </button>
             </div>
@@ -776,7 +787,7 @@ function renderRealtorPropertyCard(p, clientId) {
                 </div>
 
                 <div style="display:flex; gap:0.4rem; align-items:center; justify-content:space-between; margin-top:0.35rem; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-secondary" style="font-size:0.78rem;" onclick="event.stopPropagation(); window.requestClientFeedback('${p.mls_id}', ${clientId})"><i data-lucide="message-circle-question"></i> Request Feedback</button>
+                    <button type="button" class="btn btn-secondary" style="font-size:0.78rem;" onclick="event.stopPropagation(); window.requestClientFeedback('${p.mls_id}', '${clientId}')"><i data-lucide="message-circle-question"></i> Request Feedback</button>
 
                     <div class="rp-quick-actions" style="display:flex; gap:4px; align-items:center;">
                         <button class="matrix-icon-btn" onclick="event.stopPropagation(); window.openDetailModal('${p.mls_id}')" title="Photos Gallery & Details"><i data-lucide="image"></i></button>
@@ -798,7 +809,7 @@ function renderRealtorPropertyCard(p, clientId) {
                     <textarea class="realtor-note-textarea"
                               placeholder="Add private strategy notes, lockbox code, seller motivation..."
                               onclick="event.stopPropagation()"
-                              onblur="window.saveRealtorPrivateNote('${p.mls_id}', ${clientId}, this.value)">${escapeHtml(p.realtor_private_notes || '')}</textarea>
+                              onblur="window.saveRealtorPrivateNote('${p.mls_id}', '${clientId}', this.value)">${escapeHtml(p.realtor_private_notes || '')}</textarea>
                     <span class="note-save-status" id="save-status-${p.mls_id}"></span>
                 </div>
             </div>
@@ -817,15 +828,18 @@ function renderChatThreadContent(client) {
                 <div class="text-center text-muted" style="padding:2rem;">Loading chat messages...</div>
             </div>
             <div class="chat-input-bar">
-                <input type="text" id="realtor-chat-input" class="input-text" placeholder="Type a message to ${escapeHtml(client.full_name || client.username)}..." onkeydown="if(event.key==='Enter') window.sendRealtorChatMessage(${client.id})">
-                <button class="btn btn-gold" onclick="window.sendRealtorChatMessage(${client.id})"><i data-lucide="send"></i> Send</button>
+                <input type="text" id="realtor-chat-input" class="input-text" placeholder="Type a message to ${escapeHtml(client.full_name || client.username)}..." onkeydown="if(event.key==='Enter') window.sendRealtorChatMessage('${client.id}')">
+                <button class="btn btn-gold" onclick="window.sendRealtorChatMessage('${client.id}')"><i data-lucide="send"></i> Send</button>
             </div>
         </div>
     `;
 }
 
 function renderTourPlannerContent(matrix, client) {
-    const tourProps = [...(matrix.loved || []), ...(matrix.shortlisted || [])];
+    const allTourProps = [...(matrix.loved || []), ...(matrix.shortlisted || [])];
+    const touredCount = allTourProps.filter(p => p.toured).length;
+    const isExcluding = Boolean(realtorData.tourExcludeToured);
+    const tourProps = isExcluding ? allTourProps.filter(p => !p.toured) : allTourProps;
     const toShowingInputValue = value => value ? String(value).replace(' ', 'T').slice(0, 16) : '';
 
     return `
@@ -835,7 +849,11 @@ function renderTourPlannerContent(matrix, client) {
                     <h3><i data-lucide="map-pin"></i> Showing & Tour Itinerary Builder</h3>
                     <p style="color:var(--text-muted); font-size:0.88rem;">Curated list of possibilities to show ${escapeHtml(client.full_name || client.username)}.</p>
                 </div>
-                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+                    <label class="tour-exclude-toggle" style="display:inline-flex; align-items:center; gap:0.4rem; font-size:0.82rem; font-weight:600; cursor:pointer; color:var(--text-secondary); background:var(--bg-input); padding:0.35rem 0.65rem; border-radius:6px; border:1px solid var(--border-color); user-select:none;" title="Exclude properties that have already been toured">
+                        <input type="checkbox" id="toggle-tour-exclude-toured" ${isExcluding ? 'checked' : ''} onchange="window.handleToggleTourExcludeToured(this.checked)" style="accent-color:#10b981; width:15px; height:15px; cursor:pointer;">
+                        <span><i data-lucide="footprints" style="width:14px; height:14px; vertical-align:-2px; color:#10b981;"></i> Exclude already toured (${touredCount})</span>
+                    </label>
                     <button class="btn btn-secondary" onclick="window.exportShowingCalendar()"><i data-lucide="calendar"></i> Export Calendar (.ics)</button>
                     <button class="btn btn-secondary" onclick="window.openClientTourDossierModal()"><i data-lucide="file-text"></i> Client Tour Dossier</button>
                     <button class="btn btn-gold" onclick="window.openHomewardTourRoute()"><i data-lucide="map"></i> Map Route in Homeward</button>
@@ -844,7 +862,7 @@ function renderTourPlannerContent(matrix, client) {
 
             ${tourProps.length === 0 ? `
                 <div class="empty-state-box" style="text-align:center; padding:3rem;">
-                    <p style="color:var(--text-muted);">No loved or possibility properties available to build a tour for this client.</p>
+                    <p style="color:var(--text-muted);">${isExcluding ? 'All loved or possibility properties have already been toured.' : 'No loved or possibility properties available to build a tour for this client.'}</p>
                 </div>
             ` : `
                 <div class="tour-list-wrapper">
@@ -857,18 +875,22 @@ function renderTourPlannerContent(matrix, client) {
                                  ondragover="window.handleTourItemDragOver(event)"
                                  ondragleave="window.handleTourItemDragLeave(event)"
                                  ondragend="window.handleTourItemDragEnd(event)"
-                                 ondrop="window.handleTourItemDrop(event, ${idx}, ${client.id})">
+                                 ondrop="window.handleTourItemDrop(event, ${idx}, '${client.id}')">
                                 <div class="tour-drag-handle" title="Click and drag to reorder showing itinerary stop"><i data-lucide="grip-vertical" style="width:18px; height:18px;"></i></div>
                                 <div class="tour-step-badge">${idx + 1}</div>
                                 <div class="tour-prop-info">
-                                    <div class="tour-prop-title">${escapeHtml(displayAddr)}</div>
+                                    <div class="tour-prop-title">
+                                        ${escapeHtml(displayAddr)}
+                                        ${p.toured ? `<span class="badge-toured-sm" style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.7rem; color:#10b981; background:rgba(16,185,129,0.12); padding:0.1rem 0.4rem; border-radius:4px; font-weight:700; margin-left:0.35rem;"><i data-lucide="check-circle-2" style="width:11px; height:11px;"></i> Toured</span>` : ''}
+                                    </div>
                                     <div class="tour-prop-sub">$${(p.price||0).toLocaleString()} • ${p.beds||0}bd / ${p.baths||0}ba</div>
                                 </div>
                                 <div class="tour-inputs">
                                     <input type="datetime-local" class="input-text tour-time-input" id="tour-time-${p.mls_id}" aria-label="Showing date and time" style="width:210px;" value="${escapeHtml(toShowingInputValue(p.showing_time))}">
                                     <input type="text" class="input-text tour-lockbox-input" id="tour-access-${p.mls_id}" placeholder="Access instructions" style="width:180px;" value="${escapeHtml(p.access_notes || '')}">
                                     <input type="text" class="input-text" id="tour-feedback-${p.mls_id}" placeholder="Post-showing feedback" style="width:180px;" value="${escapeHtml(p.feedback || '')}">
-                                    <button type="button" class="btn btn-secondary" style="font-size:0.78rem;" onclick="window.saveShowingItinerary('${p.mls_id}', ${client.id})"><i data-lucide="save"></i> Save</button>
+                                    <button type="button" class="btn btn-secondary" style="font-size:0.78rem;" onclick="window.saveShowingItinerary('${p.mls_id}', '${client.id}')"><i data-lucide="save"></i> Save</button>
+                                    <button type="button" class="btn btn-secondary btn-sm" style="font-size:0.78rem; padding:0.3rem 0.55rem; ${p.tour_notes && p.tour_notes.trim() ? 'color:var(--accent-gold);' : ''}" onclick="window.openTourNotesPopover('${p.mls_id}', this, event)" title="View & edit shared tour impressions"><i data-lucide="${p.tour_notes && p.tour_notes.trim() ? 'notebook-pen' : 'plus'}" style="width:13px; height:13px;"></i> Notes</button>
                                 </div>
                             </div>
                         `;
@@ -878,6 +900,15 @@ function renderTourPlannerContent(matrix, client) {
         </div>
     `;
 }
+
+window.handleToggleTourExcludeToured = function(isChecked) {
+    realtorData.tourExcludeToured = Boolean(isChecked);
+    const subContainer = document.getElementById('realtor-subtab-tour');
+    if (subContainer && realtorData.matrix && realtorData.selected_client) {
+        subContainer.innerHTML = renderTourPlannerContent(realtorData.matrix, realtorData.selected_client);
+        if (window.lucide) window.lucide.createIcons({ root: subContainer });
+    }
+};
 
 // Window Globals for Drag-and-Drop Matrix & Tour Movement
 let draggedMlsId = null;
@@ -1549,7 +1580,7 @@ window.requestClientFeedback = async function(mlsId, clientId) {
 
 function renderPlaylistsTabContent(client) {
     const allCollections = window.cachedCollections || state.collections || [];
-    const clientPlaylists = allCollections.filter(c => !c.client_id || (c.client_id && parseInt(c.client_id) === parseInt(client.id)));
+    const clientPlaylists = allCollections.filter(c => !c.client_id || (c.client_id && String(c.client_id) === String(client.id)));
 
     return `
         <div class="realtor-playlists-container" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1.25rem;">
@@ -1562,7 +1593,7 @@ function renderPlaylistsTabContent(client) {
                         Create, edit, and share custom property collections with your client.
                     </p>
                 </div>
-                <button class="btn btn-gold" onclick="window.openCreatePlaylistForClient(${client.id})">
+                <button class="btn btn-gold" onclick="window.openCreatePlaylistForClient('${client.id}')">
                     <i data-lucide="plus-circle"></i> Create New Playlist
                 </button>
             </div>
@@ -1572,7 +1603,7 @@ function renderPlaylistsTabContent(client) {
                     <i data-lucide="folder-plus" style="width: 48px; height: 48px; color: var(--text-muted);"></i>
                     <h4 style="margin-top: 1rem; color: var(--text-main);">No Playlists Created Yet</h4>
                     <p style="color: var(--text-muted); font-size: 0.88rem;">Group houses into playlists for showings, strategy reviews, or client sharing.</p>
-                    <button class="btn btn-gold" style="margin-top: 0.75rem;" onclick="window.openCreatePlaylistForClient(${client.id})">
+                    <button class="btn btn-gold" style="margin-top: 0.75rem;" onclick="window.openCreatePlaylistForClient('${client.id}')">
                         <i data-lucide="plus"></i> Create First Playlist
                     </button>
                 </div>
@@ -1662,13 +1693,18 @@ window.handleKpiCardClick = function(action) {
             const matrixGrid = document.querySelector('.status-matrix-grid') || document.querySelector('.realtor-filter-toolbar');
             if (matrixGrid) matrixGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 50);
-    } else if (action === 'needs-curation') {
-        const sidebar = document.querySelector('.realtor-roster-sidebar');
-        if (sidebar) sidebar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (action === 'needs-attention' || action === 'needs-curation') {
+        // Showing requests first (they have their own panel), then the feed's "Needs you" list.
+        const req = document.getElementById('showing-requests-panel');
+        if (req && !req.hidden) req.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        else if (window.showAgentFeed) window.showAgentFeed('attention');
+    } else if (action === 'client-activity') {
+        if (window.showAgentFeed) window.showAgentFeed('all');
     } else if (action === 'recent-activity') {
         window.switchRealtorSubTab('activity');
     } else if (action === 'showings') {
-        window.switchRealtorSubTab('tour');
+        // Showings span every client, so open the cross-client schedule.
+        if (window.openSchedule) window.openSchedule(); else window.switchRealtorSubTab('tour');
     } else if (action === 'chat') {
         window.switchRealtorSubTab('chat');
     }
@@ -1830,15 +1866,22 @@ window.handleRealtorBulkAction = async function(action) {
                 body: JSON.stringify({ mls_id: id, client_id: clientId, favorite: 1, hidden: 0, rating: 5 })
             })));
             showToast(`Marked ${mlsIds.length} properties as Loved`, 'success');
-        } else if (action === 'shortlisted' || action === 'add_to_tour') {
+        } else if (action === 'add_to_tour') {
+            await Promise.all(mlsIds.map(id => apiFetch('backend/api.php?action=add_to_tour', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mls_id: id, client_id: clientId })
+            })));
+            showToast(`Added ${mlsIds.length} properties to Tour Planner`, 'success');
+            if (window.switchView) {
+                window.switchView('tour');
+            }
+        } else if (action === 'shortlisted') {
             await Promise.all(mlsIds.map(id => apiFetch('backend/api.php?action=update_user_data', {
                 method: 'POST',
                 body: JSON.stringify({ mls_id: id, client_id: clientId, favorite: 0, hidden: 0, rating: 4, shared_with_realtor: 1 })
             })));
-            showToast(`Added ${mlsIds.length} properties to Possibilities / Tour Itinerary`, 'success');
-            if (action === 'add_to_tour') {
-                window.switchRealtorSubTab('tour');
-            }
+            showToast(`Added ${mlsIds.length} properties to Possibilities`, 'success');
         } else if (action === 'disliked') {
             await Promise.all(mlsIds.map(id => apiFetch('backend/api.php?action=update_user_data', {
                 method: 'POST',

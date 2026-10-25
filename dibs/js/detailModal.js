@@ -350,6 +350,9 @@ window.deleteCustomReactionChip = function(event, chipText) {
                         <button class="btn btn-secondary realtor-or-admin-only" onclick="addMlsToPlaylist('${p.mls_id}')" style="${(state.currentUserProfile?.role === 'realtor' || state.currentUserProfile?.role === 'admin' || state.isAdmin) ? '' : 'display:none;'}">
                             <i data-lucide="folder-plus"></i> Add to Playlist
                         </button>
+                        <button type="button" class="btn btn-secondary" onclick="window.handleQuickToggleTour('${p.mls_id}', event);">
+                            <i data-lucide="route"></i> Add to Tour
+                        </button>
                     </div>
                 </div>
 
@@ -533,6 +536,22 @@ window.deleteCustomReactionChip = function(event, chipText) {
                         <div id="modal-reaction-chips-container">
                             ${window.renderReactionChipsHtml(p)}
                         </div>
+                    </div>
+
+                    <!-- Tour Status & Shared Tour Notes -->
+                    <div style="background:rgba(16, 185, 129, 0.07); padding:1rem; border-radius:8px; border:1px solid rgba(16, 185, 129, 0.25); display:flex; flex-direction:column; gap:0.6rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                            <label style="display:inline-flex; align-items:center; gap:0.5rem; font-weight:700; color:#10b981; font-size:0.95rem; cursor:pointer;">
+                                <input type="checkbox" id="modal-toured-checkbox" ${p.toured ? 'checked' : ''} style="width:16px; height:16px; accent-color:#10b981;">
+                                <i data-lucide="footprints"></i> Marked as Toured
+                            </label>
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                ${p.toured && p.toured_at ? `<span style="font-size:0.75rem; color:var(--text-muted);"><i data-lucide="calendar"></i> Visited ${new Date(p.toured_at).toLocaleDateString()}</span>` : ''}
+                                <button type="button" class="btn btn-secondary btn-sm" style="font-size:0.75rem;" onclick="window.openTourNotesPopover('${p.mls_id}', this, event)"><i data-lucide="sparkles"></i> Popover Editor</button>
+                            </div>
+                        </div>
+                        <div style="font-size:0.78rem; color:var(--text-muted);"><i data-lucide="users" style="width:12px; height:12px; vertical-align:-1px;"></i> Shared with your Realtor & visible in Tour dossiers.</div>
+                        <div id="modal-tour-notes-editor" class="tour-popover-editor" style="background:var(--bg-card); padding:0.65rem 0.85rem; border-radius:6px; border:1px solid var(--border-color); min-height:85px;" contenteditable="true" placeholder="Enter tour notes, layout impressions, condition, light, pros/cons...">${p.tour_notes || ''}</div>
                     </div>
 
                     <div style="display:flex; flex-direction:column; gap:0.5rem;">
@@ -1125,8 +1144,11 @@ window.deleteCustomReactionChip = function(event, chipText) {
     };
 
     window.saveModalNotes = function(mlsId) {
-        const userNotes = document.getElementById('modal-user-notes').value;
-        const realtorNotes = document.getElementById('modal-realtor-notes').value;
+        const userNotes = document.getElementById('modal-user-notes')?.value || '';
+        const realtorNotes = document.getElementById('modal-realtor-notes')?.value || '';
+        const touredVal = document.getElementById('modal-toured-checkbox')?.checked ? 1 : 0;
+        const tourNotesEditor = document.getElementById('modal-tour-notes-editor');
+        const tourNotesVal = tourNotesEditor ? tourNotesEditor.innerHTML.trim() : '';
 
         // An analysis still open in its editor is saved with the notes rather than dropped
         // when this closes the modal.
@@ -1135,13 +1157,23 @@ window.deleteCustomReactionChip = function(event, chipText) {
             showToast('That analysis is too long to save (200 KB max).', 'error');
             return;
         }
-        const payload = { mls_id: mlsId, user_notes: userNotes, realtor_notes: realtorNotes };
+        const payload = {
+            mls_id: mlsId,
+            user_notes: userNotes,
+            realtor_notes: realtorNotes,
+            toured: touredVal,
+            tour_notes: tourNotesVal
+        };
         if (aiDraft !== null) payload.ai_analysis = aiDraft.trim();
 
         const p = state.allProperties.find(item => item.mls_id === mlsId);
         if (p) {
             p.user_notes = userNotes;
             p.realtor_notes = realtorNotes;
+            p.toured = touredVal;
+            p.tour_notes = tourNotesVal;
+            if (touredVal && !p.toured_at) p.toured_at = new Date().toISOString();
+            if (!touredVal) p.toured_at = null;
             if (aiDraft !== null) p.ai_analysis = payload.ai_analysis;
         }
 

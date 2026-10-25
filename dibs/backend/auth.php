@@ -119,7 +119,7 @@ function handleCheckAuth(PDO $pdo) {
         echo json_encode(['authenticated' => false]);
         return;
     }
-    $stmt = $pdo->prepare("SELECT id, public_id, username, full_name, email, phone, avatar_url, brokerage_name, role, is_admin, realtor_id, target_min_price, target_max_price, target_cities, target_beds, target_timeline, must_haves, deal_breakers, created_at, last_login FROM users WHERE id = :id LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id, public_id, username, full_name, email, phone, avatar_url, COALESCE(logo_url, '') AS logo_url, brokerage_name, role, is_admin, realtor_id, target_min_price, target_max_price, target_cities, target_beds, target_timeline, must_haves, deal_breakers, created_at, last_login FROM users WHERE id = :id LIMIT 1");
     $stmt->execute([':id' => $_SESSION['user_id']]);
     $user = $stmt->fetch();
     if (!$user) {
@@ -164,6 +164,7 @@ function handleCheckAuth(PDO $pdo) {
         'email' => $user['email'] ?? '',
         'phone' => $user['phone'] ?? '',
         'avatar_url' => $user['avatar_url'] ?? '',
+        'logo_url' => $user['logo_url'] ?? '',
         'brokerage_name' => $user['brokerage_name'] ?? '',
         'role' => $userRole,
         'is_admin' => $isAdmin,

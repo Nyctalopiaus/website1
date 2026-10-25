@@ -19,7 +19,7 @@ function handleListCollections(PDO $pdo) {
             FROM collections c
             LEFT JOIN users r ON c.realtor_id = r.id
             LEFT JOIN users u ON c.client_id = u.id
-            WHERE c.realtor_id = :user_id OR c.client_id = :user_id OR :is_admin = 1
+            WHERE c.realtor_id = :user_id OR c.client_id = :user_id OR CAST(:is_admin AS INTEGER) = 1
             ORDER BY c.updated_at DESC
         ");
         $stmt->execute([':user_id' => $userId, ':is_admin' => $isAdmin ? 1 : 0]);

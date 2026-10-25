@@ -37,11 +37,29 @@ export function exportJSON() {
     showToast('JSON Database Backup Exported', 'success');
 }
 
+function stripHtml(html) {
+    if (!html) return '';
+    try {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        return tmp.textContent || tmp.innerText || '';
+    } catch(e) {
+        return String(html).replace(/<[^>]*>/g, '');
+    }
+}
+
 function buildHomewardStops(properties) {
     return properties.map((p, idx) => {
         const addressParts = [p.address, p.city, p.state, p.zip].filter(Boolean);
         const fullAddress = addressParts.join(', ') || p.address || 'Property';
         const photo = p.photo_url || (Array.isArray(p.photos) && p.photos.length > 0 ? p.photos[0] : (p.image_url || ''));
+
+        const noteParts = [];
+        if (p.user_notes && p.user_notes.trim()) noteParts.push(`Buyer: ${p.user_notes.trim()}`);
+        if (p.tour_notes && p.tour_notes.trim()) {
+            const cleanTour = stripHtml(p.tour_notes).trim();
+            if (cleanTour) noteParts.push(`Tour Impressions: ${cleanTour}`);
+        }
 
         return {
             id: `scout-fav-${p.mls_id || Date.now() + '-' + idx}`,
@@ -52,10 +70,10 @@ function buildHomewardStops(properties) {
             lotSize: p.lot_acres ? `${p.lot_acres} Acres` : (p.sqft_finished ? `${p.sqft_finished} sqft` : ''),
             sqft: p.sqft_finished ? String(p.sqft_finished) : '',
             hoaNotes: p.hoa_fee ? `$${p.hoa_fee}/mo HOA` : '',
-            notes: p.user_notes || '',
+            notes: noteParts.join('\n\n'),
             photoUrl: photo,
             rating: 5,
-            visited: false
+            visited: Boolean(p.toured)
         };
     });
 }
@@ -64,8 +82,11 @@ function buildHomewardStops(properties) {
 // the Homeward route planner. Used both for a logged-in user's own favorites and for
 // a realtor's client-scoped property lists (favorites, tour itinerary).
 export function sendPropertiesToHomeward(properties, options = {}) {
-    const { emptyMessage = 'No favorited properties found to export to Homeward.' } = options;
-    const props = properties || [];
+    const { emptyMessage = 'No favorited properties found to export to Homeward.', excludeToured = false } = options;
+    let props = properties || [];
+    if (excludeToured) {
+        props = props.filter(p => !p.toured);
+    }
 
     if (!props.length) {
         return showToast(emptyMessage, 'warning');

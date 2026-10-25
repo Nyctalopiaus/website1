@@ -141,7 +141,7 @@ async function submit(form) {
         const res = await apiFetch(`${API}?action=create_invite`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ full_name: data.full_name.trim(), email: data.email.trim(), realtor_id: data.realtor_id ? Number(data.realtor_id) : undefined }),
+            body: JSON.stringify({ full_name: data.full_name.trim(), email: data.email.trim(), realtor_id: data.realtor_id || undefined }),
         });
         if (!res?.success) throw new Error(res?.error || 'Could not create the invite.');
         // The token goes after "#" so it never reaches server logs or Referer headers.

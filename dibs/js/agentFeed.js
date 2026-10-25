@@ -63,7 +63,9 @@ function chipHtml(c) {
 }
 
 function itemHtml(i) {
-    const button = i.action === 'listing' && i.mls_id
+    const button = i.action === 'requests'
+        ? `<button type="button" class="btn btn-secondary feed-item-btn" data-feed-requests="${esc(i.client_id)}">Review requests</button>`
+        : i.action === 'listing' && i.mls_id
         ? `<button type="button" class="btn btn-secondary feed-item-btn" data-feed-listing="${esc(i.mls_id)}">Open listing</button>`
         : i.kind === 'heating'
             ? `<button type="button" class="btn btn-secondary feed-item-btn" data-feed-client="${esc(i.client_id)}" data-feed-to="activity">See activity</button>`
@@ -129,13 +131,25 @@ export async function renderAgentFeedPanel(force = false) {
 
 window.renderAgentFeedPanel = renderAgentFeedPanel;
 
+/** Opens the feed on a tab ('attention' or 'all') and scrolls to it (used by the Agent Hub boxes). */
+window.showAgentFeed = async function (which = 'attention') {
+    tab = which === 'all' ? 'all' : 'attention';
+    expanded = false;
+    collapsed = false;
+    try { localStorage.setItem('dibs_agent_feed_collapsed', '0'); } catch (e) { /* storage unavailable */ }
+    await renderAgentFeedPanel(true);
+    document.getElementById('agent-feed-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
 document.addEventListener('click', event => {
     const t = event.target;
     if (!(t instanceof Element) || !t.closest('#agent-feed-panel')) return;
+    const req = t.closest('[data-feed-requests]');
+    if (req) { window.showShowingRequests?.(req.dataset.feedRequests); return; }
     const listing = t.closest('[data-feed-listing]');
     if (listing) { window.openDetailModal?.(listing.dataset.feedListing); return; }
     const client = t.closest('[data-feed-client]');
-    if (client) { window.openRealtorClientTab?.(Number(client.dataset.feedClient), client.dataset.feedTo || 'chat'); return; }
+    if (client) { window.openRealtorClientTab?.(client.dataset.feedClient, client.dataset.feedTo || 'chat'); return; }
     const tabBtn = t.closest('[data-feed-tab]');
     if (tabBtn) { tab = tabBtn.dataset.feedTab; expanded = false; renderAgentFeedPanel(); return; }
     const action = t.closest('[data-feed]')?.dataset.feed;

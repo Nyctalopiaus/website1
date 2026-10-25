@@ -566,6 +566,47 @@ function getEngineCode() {
         return map;
     }
 
+    // Every labeled field in the full detail view, grouped by the section heading above it
+    // (span.d-section: "General Description", "Interior", "Exterior, Building & Site", "Parking",
+    // "Utilities", "Associations", "Financial", ... — confirmed live Oct 2026). Fields before the
+    // first heading are the summary header's tiles, which repeat the basics, so they're skipped.
+    // Feeds the agent's printed tour packet. Empty outside the detail view.
+    function extractDetailSections(block) {
+        const out = {};
+        let section = '';
+        let count = 0;
+        block.querySelectorAll('span.d-section, span.d-textStrong').forEach(el => {
+            if (el.classList.contains('d-section')) { section = el.textContent.replace(/\s+/g, ' ').trim(); return; }
+            if (!section || count >= 250) return;
+            const row = el.closest('.row');
+            const valueEl = row && row.querySelector('span.d-text');
+            if (!valueEl) return;
+            const label = el.textContent.replace(/:\s*$/, '').replace(/\s+/g, ' ').trim();
+            const value = valueEl.textContent.replace(/\s+/g, ' ').trim();
+            if (!label || !value) return;
+            (out[section] = out[section] || {})[label.slice(0, 80)] = value.slice(0, 1000);
+            count++;
+        });
+        return out;
+    }
+
+    // "Detailed Room Info": the portal renders rooms as divs, not a <table> — each room is its own
+    // #wrapperTable whose .row children have five cells (Type, Features, Dim, Level, Desc); the
+    // first room's wrapper also carries the header row. Confirmed live Oct 2026. Shape matches what
+    // js/detailModal.js renders.
+    function extractRooms(block) {
+        const rooms = [];
+        block.querySelectorAll('[id="wrapperTable"]').forEach(w => {
+            Array.from(w.children).forEach(row => {
+                if (!row.classList || !row.classList.contains('row')) return;
+                const cells = Array.from(row.children).map(c => (c.textContent || '').replace(/\s+/g, ' ').trim());
+                if (cells.length !== 5 || !cells[0] || cells[0] === 'Type') return;
+                if (rooms.length < 40) rooms.push({ type: cells[0], features: cells[1], dim: cells[2], level: cells[3], desc: cells[4] });
+            });
+        });
+        return rooms;
+    }
+
     function parseListingBlock(block) {
         const text = block.innerText || '';
         if (!text.includes('Listing ID') && !text.includes('MLS#') && !text.includes('MLS ID') && !text.includes('Bed')) return null;
@@ -819,6 +860,14 @@ function getEngineCode() {
         if (matrixKey && /^\d{4,20}$/.test(matrixKey) && matrixKey !== mlsId) result.matrix_key = matrixKey;
         if (description) result.description = description;
         if (hasInterior) result.interior = interior;
+        // Full detail capture (detail view only, so a list-view sync never sends these keys and the
+        // backend's raw_mls_json merge keeps what a deep scrape stored).
+        const detailSections = extractDetailSections(block);
+        if (Object.keys(detailSections).length) result.details = detailSections;
+        const rooms = extractRooms(block);
+        if (rooms.length > 0) result.rooms = rooms;
+        if (Object.keys(labeledFields).length > 0) result.labeled_fields = labeledFields;
+
         // Detail-view spec fields (confirmed live Oct 2026: "Levels" -> "One", "Property Sub Type"
         // -> "Single Family Residence", "Structure Type" -> "House", etc.). These win over the
         // list-view regex guesses above. The extra keys land in raw_mls_json, where the map/land
@@ -834,7 +883,47 @@ function getEngineCode() {
             'Structure Type': 'structure_type',
             'Property Sub Type': 'property_sub_type',
             'Architectural Style': 'architectural_style',
-            'List Office Name': 'list_office_name'
+            'List Office Name': 'list_office_name',
+            'Heating': 'heating',
+            'Cooling': 'cooling',
+            'HVAC Description': 'hvac_description',
+            'Foundation': 'foundation',
+            'Interior Features': 'interior_features',
+            'Security Features': 'security_features',
+            'Window Features': 'window_features',
+            'Laundry': 'laundry',
+            'Parking Features': 'parking_features',
+            'Parking Type': 'parking_type',
+            'Association Name': 'association_name',
+            'Association Type': 'association_type',
+            'Assoc Fee/Frequency': 'association_fee_frequency',
+            'Assoc Fee Annual': 'association_fee_annual',
+            'Assoc Fee Tot Annl': 'association_fee_annual',
+            'Assoc Fee Ind': 'association_includes',
+            'Assoc Amenities': 'association_amenities',
+            'Pets Allowed': 'pets_allowed',
+            'Restriction Covenants YN': 'restriction_covenants',
+            'Senior Community': 'senior_community',
+            'Fencing': 'fencing',
+            'Lot Features': 'lot_features',
+            'Elementary School': 'elementary_school',
+            'Middle/Junior Sch': 'middle_school',
+            'Middle Or Junior School': 'middle_school',
+            'High School': 'high_school',
+            'Construction Materials': 'construction_materials',
+            'Roof': 'roof',
+            'Exterior Features': 'exterior_features',
+            'Patio/Porch Feat': 'patio_porch',
+            'Patio And Porch Features': 'patio_porch',
+            'Direction Faces': 'direction_faces',
+            'Builder Name': 'builder_name',
+            'Water Source': 'water_source',
+            'Sewer': 'sewer',
+            'Utilities': 'utilities',
+            'Electric': 'electric',
+            'Walk Score': 'walk_score',
+            'Days in MLS': 'days_in_mls',
+            'Days In MLS': 'days_in_mls'
         };
         Object.keys(extraFields).forEach(label => {
             if (labeledFields[label]) result[extraFields[label]] = labeledFields[label];
