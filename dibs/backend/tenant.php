@@ -31,6 +31,15 @@ function dibsPlatformDb(string $dataDir): PDO {
     )");
     // Brokerage #1 is the original install; its database stays where it has always been.
     $pdo->exec("INSERT OR IGNORE INTO brokerages (id, slug, name, db_file) VALUES (1, 'main', '', 'properties.db')");
+    // Platform console (backend/platform.php): the first admin for a new brokerage is set there;
+    // the brokerage's database creates that account on its first request, then these are cleared.
+    foreach (["ALTER TABLE brokerages ADD COLUMN setup_admin_username TEXT DEFAULT NULL",
+              "ALTER TABLE brokerages ADD COLUMN setup_admin_hash TEXT DEFAULT NULL",
+              "ALTER TABLE brokerages ADD COLUMN setup_admin_name TEXT DEFAULT NULL",
+              "ALTER TABLE brokerages ADD COLUMN contact_email TEXT DEFAULT ''",
+              "ALTER TABLE brokerages ADD COLUMN notes TEXT DEFAULT ''"] as $sql) {
+        try { $pdo->exec($sql); } catch (Throwable $e) { /* column already there */ }
+    }
     return $pdo;
 }
 
@@ -76,6 +85,39 @@ function dibsResolveBrokerage(string $dataDir): array {
         'status' => (string)$row['status'],
         'db_path' => $dataDir . '/' . $file,
     ];
+}
+
+/**
+ * A brokerage's status, enforced on every request: "suspended" refuses everything except checking
+ * sign-in; "readonly" refuses changes (anything but GET) except signing in and out.
+ */
+function dibsEnforceBrokerageStatus(array $brokerage): void {
+    $status = $brokerage['status'];
+    if ($status === 'active') return;
+    $action = (string)($_GET['action'] ?? '');
+    $stop = function (string $msg) { http_response_code(403); echo json_encode(['success' => false, 'error' => $msg]); exit; };
+    if ($status === 'suspended' && $action !== 'check_auth') $stop('This brokerage is suspended on Dibs. Contact Dibs support.');
+    if ($status === 'readonly' && ($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET' && !in_array($action, ['login', 'logout'], true)) {
+        $stop('This brokerage is read-only on Dibs right now, so changes can\'t be saved.');
+    }
+}
+
+/**
+ * A new brokerage's first account: the brokerage admin the platform owner named when creating it
+ * (a realtor who is also the brokerage admin). Runs only while the brokerage has no users. There
+ * is no default password anywhere.
+ */
+function dibsSeedBrokerageAdmin(PDO $pdo, string $dataDir): void {
+    if (DIBS_BROKERAGE_ID === 1) return;
+    if ((int)$pdo->query("SELECT COUNT(*) FROM users")->fetchColumn() > 0) return;
+    $p = dibsPlatformDb($dataDir);
+    $st = $p->prepare("SELECT setup_admin_username, setup_admin_hash, setup_admin_name FROM brokerages WHERE id = :id");
+    $st->execute([':id' => DIBS_BROKERAGE_ID]);
+    $row = $st->fetch();
+    if (!$row || empty($row['setup_admin_username']) || empty($row['setup_admin_hash'])) return;
+    $pdo->prepare("INSERT INTO users (username, password_hash, is_admin, role, full_name) VALUES (:u, :h, 1, 'realtor', :n)")
+        ->execute([':u' => $row['setup_admin_username'], ':h' => $row['setup_admin_hash'], ':n' => (string)($row['setup_admin_name'] ?? '')]);
+    $p->prepare("UPDATE brokerages SET setup_admin_hash = NULL WHERE id = :id")->execute([':id' => DIBS_BROKERAGE_ID]);
 }
 
 /** Call right after a successful sign-in, with the session already regenerated. */

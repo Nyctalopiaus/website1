@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Dibs Platform Console</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+    <style>
+        :root { --ink: #1c1e22; --muted: #5c6068; --line: #d8dbe0; --bg: #f6f4ef; --card: #fff; --gold: #9a7420; --bad: #9b2c2c; --ok: #24603f; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
+        main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+        h1 { font-size: 1.4rem; margin: 0 0 4px; }
+        h2 { font-size: 1.05rem; margin: 28px 0 10px; }
+        .sub { color: var(--muted); margin: 0 0 18px; }
+        .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+        label { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--muted); font-weight: 600; }
+        input, select { font: inherit; color: var(--ink); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+        button { font: inherit; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
+        button.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+        button:disabled { opacity: 0.6; cursor: default; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+        td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+        .muted { color: var(--muted); font-size: 0.82rem; }
+        .msg { margin: 10px 0 0; font-size: 0.88rem; }
+        .msg.err { color: var(--bad); }
+        .msg.ok { color: var(--ok); }
+        .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+        .scroll { overflow-x: auto; }
+        code { font-size: 0.85rem; }
+        [hidden] { display: none !important; }
+        tr.svc-edit-row > td { background: #faf8f3; padding: 12px 10px 14px; }
+        tr.svc-editing > td { background: #faf8f3; border-bottom: none; }
+        .svc-form { margin: 0; }
+    </style>
+</head>
+<body>
+<main>
+    <div class="top">
+        <div>
+            <h1>Dibs Platform Console</h1>
+            <p class="sub">Brokerages on Dibs. This console can't see inside a brokerage's clients or listings.</p>
+        </div>
+        <div id="who" hidden><span class="muted" id="who-name"></span> <button type="button" id="btn-pw">Change password</button> <button type="button" id="btn-logout">Sign out</button></div>
+    </div>
+
+    <section class="card" id="sec-adopt" hidden>
+        <h2 style="margin-top:0;">Set up the platform owner</h2>
+        <p>No platform owner exists yet. To set it up without typing a password here, sign in to Dibs at <a href="./">/dibs/</a> with the <strong>admin</strong> account, then come back and press the button. The owner gets the same username and password as that account.</p>
+        <button type="button" class="primary" id="btn-adopt">Make the admin account the platform owner</button>
+        <p class="msg" id="adopt-msg"></p>
+    </section>
+
+    <section class="card" id="sec-login" hidden>
+        <h2 style="margin-top:0;">Sign in</h2>
+        <form id="form-login" class="grid" autocomplete="on">
+            <label>Username<input name="username" autocomplete="username" required></label>
+            <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+            <div style="display:flex; align-items:flex-end;"><button type="submit" class="primary">Sign in</button></div>
+        </form>
+        <p class="msg" id="login-msg"></p>
+    </section>
+
+    <div id="sec-console" hidden>
+        <section class="card" id="sec-pw" hidden>
+            <h2 style="margin-top:0;">Change your console password</h2>
+            <form id="form-pw" class="grid" autocomplete="on">
+                <input type="text" name="username" autocomplete="username" hidden>
+                <label>Current password<input name="current" type="password" autocomplete="current-password" required></label>
+                <label>New password (14+ characters)<input name="new" type="password" minlength="14" autocomplete="new-password" required></label>
+                <label>New password again<input name="again" type="password" minlength="14" autocomplete="new-password" required></label>
+                <div style="display:flex; align-items:flex-end; gap:8px;"><button type="submit" class="primary">Save</button><button type="button" id="btn-pw-cancel">Cancel</button></div>
+            </form>
+            <p class="msg" id="pw-msg"></p>
+        </section>
+
+        <section class="card">
+            <div class="top">
+                <h2 style="margin-top:0;">Brokerages</h2>
+                <p class="muted" id="mrr"></p>
+            </div>
+            <div class="scroll"><table>
+                <thead><tr><th>Brokerage</th><th>Address</th><th>Status</th><th>Plan</th><th>Agents</th><th>Clients</th><th>Listings</th><th>Last sign-in</th></tr></thead>
+                <tbody id="brokerage-rows"><tr><td colspan="8">Loading…</td></tr></tbody>
+            </table></div>
+            <p class="msg" id="list-msg"></p>
+        </section>
+
+        <section class="card">
+            <h2 style="margin-top:0;">Pricing</h2>
+            <form id="form-pricing" class="grid">
+                <label>Per agent, monthly ($)<input name="seat_price_monthly" type="number" min="0" step="0.01" required></label>
+                <label>Per agent, yearly ($)<input name="seat_price_yearly" type="number" min="0" step="0.01" required></label>
+                <label>Free trial<select name="trial_days"></select></label>
+                <div style="display:flex; align-items:flex-end;"><button type="submit" class="primary">Save pricing</button></div>
+            </form>
+            <p class="muted">New brokerages start a trial of this length. Brokerage admins see these prices on their Billing tab. Nothing is charged until Stripe is connected.</p>
+            <p class="msg" id="pricing-msg"></p>
+        </section>
+
+        <section class="card">
+            <h2 style="margin-top:0;">Add a brokerage</h2>
+            <form id="form-create" autocomplete="off">
+                <div class="grid">
+                    <label>Brokerage name<input name="name" maxlength="120" required placeholder="e.g. Front Range Realty"></label>
+                    <label>Address name<input name="slug" maxlength="40" required pattern="[a-z0-9][a-z0-9-]{1,39}" placeholder="e.g. front-range"></label>
+                    <label>Contact email (optional)<input name="contact_email" type="email" maxlength="254"></label>
+                </div>
+                <p class="muted">Their Dibs address will be <code id="slug-preview"></code></p>
+                <div class="grid">
+                    <label>First admin's full name<input name="admin_name" maxlength="80" required></label>
+                    <label>First admin's username<input name="admin_username" maxlength="40" required pattern="[a-z0-9._-]{3,40}"></label>
+                    <label>Starting password (12+ characters)<input name="admin_password" type="password" minlength="12" autocomplete="new-password" required></label>
+                </div>
+                <p class="muted">The first admin signs in at their address and is both an agent and the brokerage admin. Send them the starting password separately and have them change it.</p>
+                <button type="submit" class="primary">Create brokerage</button>
+                <p class="msg" id="create-msg"></p>
+            </form>
+        </section>
+
+        <section class="card">
+            <div class="top">
+                <h2 style="margin-top:0;">Services &amp; costs</h2>
+                <button type="button" id="btn-svc-new">Add a service</button>
+            </div>
+            <p class="muted">Every outside service Dibs relies on: what it's for, the plan, what it costs, and whether its key is set on the server. Keys and passwords never go here; keep them in <code>api.env</code> and enter only the setting's name.</p>
+            <p id="svc-totals"></p>
+            <div class="scroll"><table>
+                <thead><tr><th>Service</th><th>Used for</th><th>Plan</th><th>Cost</th><th>Key on server</th><th>Renews</th><th>Status</th><th></th></tr></thead>
+                <tbody id="svc-rows"><tr><td colspan="8">Loading…</td></tr></tbody>
+            </table></div>
+            <div id="svc-form-home" hidden></div>
+            <form id="form-svc" hidden autocomplete="off" class="svc-form">
+                <input type="hidden" name="id">
+                <div class="grid">
+                    <label>Name<input name="name" maxlength="120" required></label>
+                    <label>Category<select name="category"></select></label>
+                    <label>Status<select name="status"></select></label>
+                    <label>Website<input name="provider_url" maxlength="300" placeholder="https://"></label>
+                </div>
+                <div class="grid" style="margin-top:10px;">
+                    <label style="grid-column:1/-1;">Used for<input name="purpose" maxlength="300"></label>
+                    <label>Account (login email or account ID, no password)<input name="account_ref" maxlength="120"></label>
+                    <label>Key setting name in api.env<input name="key_env_name" maxlength="60" placeholder="e.g. RENTCAST_API_KEY"></label>
+                    <label>Plan<input name="plan" maxlength="160"></label>
+                </div>
+                <div class="grid" style="margin-top:10px;">
+                    <label>Cost ($)<input name="cost_amount" type="number" min="0" step="0.01"></label>
+                    <label>Billed<select name="cost_period"></select></label>
+                    <label>Renews on<input name="renewal_date" type="date"></label>
+                    <label>Cost notes<input name="cost_notes" maxlength="300"></label>
+                </div>
+                <label style="margin-top:10px;">Notes<input name="notes" maxlength="1000"></label>
+                <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+                    <button type="submit" class="primary">Save</button>
+                    <button type="button" id="btn-svc-cancel">Cancel</button>
+                    <button type="button" id="btn-svc-delete" style="margin-left:auto; color:var(--bad);" hidden>Delete</button>
+                </div>
+                <p class="msg" id="svc-msg"></p>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2 style="margin-top:0;">Console log</h2>
+            <div class="scroll"><table><thead><tr><th>When (UTC)</th><th>Who</th><th>What</th><th>Detail</th></tr></thead><tbody id="audit-rows"></tbody></table></div>
+        </section>
+    </div>
+</main>
+<script>
+(() => {
+    const API = 'backend/platform.php';
+    const STATUSES = { active: 'Active', readonly: 'Read-only', suspended: 'Suspended', closed: 'Closed' };
+    const PLANS = { trial: 'Trial', monthly: 'Monthly', annual: 'Yearly', comped: 'Comped (free)' };
+    let csrf = '';
+    const $ = id => document.getElementById(id);
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const base = location.origin + location.pathname.replace(/platform\.html.*$/, '');
+
+    async function call(action, body) {
+        const opts = body ? { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(body), credentials: 'same-origin' } : { credentials: 'same-origin' };
+        const r = await fetch(`${API}?action=${action}`, opts);
+        const j = await r.json().catch(() => ({ success: false, error: 'Unexpected server response.' }));
+        if (j.csrf) csrf = j.csrf;
+        if (!j.success) throw new Error(j.error || 'Something went wrong.');
+        return j;
+    }
+    function msg(id, text, ok) { const el = $(id); el.textContent = text || ''; el.className = 'msg ' + (ok ? 'ok' : 'err'); }
+
+    async function start() {
+        const me = await call('me');
+        csrf = me.csrf;
+        $('sec-adopt').hidden = me.has_owner || me.signed_in;
+        $('sec-login').hidden = !me.has_owner || me.signed_in;
+        $('sec-console').hidden = !me.signed_in;
+        $('who').hidden = !me.signed_in;
+        $('who-name').textContent = me.username ? `Signed in as ${me.username}` : '';
+        if (me.signed_in) { loadList(); loadAudit(); loadServices(); loadPricing(); }
+    }
+
+    async function loadList() {
+        try {
+            const j = await call('list_brokerages');
+            $('mrr').textContent = `Monthly revenue at current prices: $${Number(j.mrr || 0).toLocaleString('en-US')} (paying plans only)`;
+            $('brokerage-rows').innerHTML = j.brokerages.map(b => `
+                <tr>
+                    <td><strong>${esc(b.stats.display_name || b.name || (b.id === 1 ? 'Original install' : b.slug))}</strong><div class="muted">#${b.id}${b.contact_email ? ' · ' + esc(b.contact_email) : ''}${b.setup_pending ? ' · first admin not created yet' : ''}</div></td>
+                    <td><a href="${esc(base + (b.id === 1 ? '' : 'b/' + b.slug + '/'))}" target="_blank" rel="noopener">${esc(b.id === 1 ? '/dibs/' : '/dibs/b/' + b.slug + '/')}</a></td>
+                    <td>${b.id === 1 ? 'Active' : `<select data-status="${b.id}">${Object.entries(STATUSES).map(([v, l]) => `<option value="${v}" ${v === b.status ? 'selected' : ''}>${l}</option>`).join('')}</select>`}</td>
+                    <td><select data-plan="${b.id}">${Object.entries(PLANS).map(([v, l]) => `<option value="${v}" ${v === b.plan ? 'selected' : ''}>${l}</option>`).join('')}</select>${b.plan === 'trial' && b.trial_ends_at ? `<div class="muted">ends ${esc(b.trial_ends_at.slice(0, 10))}</div>` : ''}${b.monthly_value ? `<div class="muted">${'$' + b.monthly_value.toLocaleString('en-US')}/mo</div>` : ''}</td>
+                    <td>${b.stats.agents}</td><td>${b.stats.clients}</td><td>${b.stats.listings}</td>
+                    <td class="muted">${esc(b.stats.last_login || '—')}</td>
+                </tr>`).join('') || '<tr><td colspan="8">None yet.</td></tr>';
+        } catch (e) { msg('list-msg', e.message); }
+    }
+    async function loadAudit() {
+        try {
+            const j = await call('audit');
+            $('audit-rows').innerHTML = j.entries.map(e => `<tr><td class="muted">${esc(e.at)}</td><td>${esc(e.username || '')}</td><td>${esc(e.action)}</td><td class="muted">${esc(e.detail)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Nothing yet.</td></tr>';
+        } catch (e) { /* not critical */ }
+    }
+
+    // ---- Password, pricing, plans
+    $('btn-pw').addEventListener('click', () => { $('sec-pw').hidden = false; $('form-pw').elements.current.focus(); });
+    $('btn-pw-cancel').addEventListener('click', () => { $('sec-pw').hidden = true; $('form-pw').reset(); });
+    $('form-pw').addEventListener('submit', async e => {
+        e.preventDefault();
+        const f = Object.fromEntries(new FormData(e.target));
+        if (f.new !== f.again) { msg('pw-msg', "The new passwords don't match."); return; }
+        try { await call('change_password', { current: f.current, new: f.new }); e.target.reset(); msg('pw-msg', 'Password changed.', true); setTimeout(() => { $('sec-pw').hidden = true; msg('pw-msg', ''); }, 1500); loadAudit(); }
+        catch (err) { msg('pw-msg', err.message); }
+    });
+    async function loadPricing() {
+        try {
+            const p = await call('get_pricing');
+            const form = $('form-pricing');
+            form.elements.trial_days.innerHTML = [0, 7, 14, 21, 30, 45, 60].map(d => `<option value="${d}" ${d === p.trial_days ? 'selected' : ''}>${d ? d + ' days' : 'No trial'}</option>`).join('');
+            form.elements.seat_price_monthly.value = p.seat_price_monthly;
+            form.elements.seat_price_yearly.value = p.seat_price_yearly;
+        } catch (e) { msg('pricing-msg', e.message); }
+    }
+    $('form-pricing').addEventListener('submit', async e => {
+        e.preventDefault();
+        const f = Object.fromEntries(new FormData(e.target));
+        try { await call('save_pricing', { seat_price_monthly: Number(f.seat_price_monthly), seat_price_yearly: Number(f.seat_price_yearly), trial_days: Number(f.trial_days) }); msg('pricing-msg', 'Pricing saved.', true); loadList(); loadAudit(); }
+        catch (err) { msg('pricing-msg', err.message); }
+    });
+    document.addEventListener('change', async e => {
+        const sel = e.target.closest('select[data-plan]');
+        if (!sel) return;
+        if (!confirm(`Set this brokerage's plan to "${PLANS[sel.value]}"?`)) { loadList(); return; }
+        try { await call('set_plan', { id: Number(sel.dataset.plan), plan: sel.value }); msg('list-msg', 'Plan updated.', true); loadList(); loadAudit(); }
+        catch (err) { msg('list-msg', err.message); loadList(); }
+    });
+
+    // ---- Services & costs
+    const PERIOD_LABEL = { month: '/ month', year: '/ year', usage: 'usage-based', 'one-time': 'one time', free: 'free' };
+    const STATUS_LABEL = { active: 'Active', planned: 'Planned', cancelled: 'Cancelled' };
+    let svc = { services: [] };
+    const money = v => '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    /** Puts the form back in its resting place (outside the table) and removes the editor row. */
+    function closeSvcForm() {
+        const form = $('form-svc');
+        form.hidden = true;
+        $('svc-form-home').appendChild(form);
+        document.querySelectorAll('tr.svc-edit-row').forEach(r => r.remove());
+        document.querySelectorAll('tr.svc-editing').forEach(r => r.classList.remove('svc-editing'));
+    }
+    async function loadServices() {
+        closeSvcForm();
+        try {
+            svc = await call('list_services');
+            const t = svc.totals;
+            $('svc-totals').innerHTML = `<strong>Fixed costs: ${money(t.per_month_all_in)} a month</strong> <span class="muted">(${money(t.monthly)} monthly bills + ${money(t.yearly)} a year spread over 12 months; usage-based services not included)</span>`;
+            $('svc-rows').innerHTML = svc.services.map(s => `
+                <tr data-svc-row="${s.id}"${s.status === 'cancelled' ? ' style="opacity:.55"' : ''}>
+                    <td><strong>${s.provider_url ? `<a href="${esc(s.provider_url)}" target="_blank" rel="noopener">${esc(s.name)}</a>` : esc(s.name)}</strong><div class="muted">${esc(s.category)}${s.account_ref ? ' · ' + esc(s.account_ref) : ''}</div></td>
+                    <td class="muted">${esc(s.purpose)}</td>
+                    <td>${esc(s.plan)}</td>
+                    <td>${s.cost_period === 'free' ? 'Free' : (s.cost_amount !== null ? `${money(s.cost_amount)} ${PERIOD_LABEL[s.cost_period] || ''}` : `<span class="muted">${s.cost_period === 'usage' ? 'usage-based' : 'not entered'}</span>`)}${s.cost_notes ? `<div class="muted">${esc(s.cost_notes)}</div>` : ''}</td>
+                    <td>${s.key_env_name ? (s.key_configured ? `✓ <code>${esc(s.key_env_name)}</code>` : `<span style="color:var(--bad)">Missing</span> <code>${esc(s.key_env_name)}</code>`) : '<span class="muted">n/a</span>'}</td>
+                    <td class="muted">${esc(s.renewal_date || '—')}</td>
+                    <td>${STATUS_LABEL[s.status] || esc(s.status)}</td>
+                    <td><button type="button" data-svc-edit="${s.id}">Edit</button></td>
+                </tr>`).join('') || '<tr><td colspan="8">None yet.</td></tr>';
+        } catch (e) { $('svc-rows').innerHTML = `<tr><td colspan="8">${esc(e.message)}</td></tr>`; }
+    }
+    /** Opens the editor right under that service's row (or at the top of the table for a new one). */
+    function openSvcForm(s) {
+        closeSvcForm();
+        const form = $('form-svc');
+        const row = document.createElement('tr');
+        row.className = 'svc-edit-row';
+        row.innerHTML = '<td colspan="8"></td>';
+        const anchor = s ? document.querySelector(`tr[data-svc-row="${s.id}"]`) : null;
+        if (anchor) { anchor.after(row); anchor.classList.add('svc-editing'); }
+        else $('svc-rows').prepend(row);
+        row.firstElementChild.appendChild(form);
+        const fill = (name, list, labels) => { form.elements[name].innerHTML = list.map(v => `<option value="${v}">${labels ? labels[v] || v : v}</option>`).join(''); };
+        fill('category', svc.categories); fill('status', svc.statuses, STATUS_LABEL); fill('cost_period', svc.periods, { month: 'Monthly', year: 'Yearly', usage: 'By usage', 'one-time': 'One time', free: 'Free' });
+        form.reset();
+        ['id', 'name', 'category', 'status', 'provider_url', 'purpose', 'account_ref', 'key_env_name', 'plan', 'cost_amount', 'cost_period', 'renewal_date', 'cost_notes', 'notes']
+            .forEach(k => { form.elements[k].value = s && s[k] !== null && s[k] !== undefined ? s[k] : (k === 'status' ? 'active' : (k === 'cost_period' ? 'month' : (k === 'category' ? 'other' : ''))); });
+        $('btn-svc-delete').hidden = !s;
+        msg('svc-msg', '');
+        form.hidden = false;
+        form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    $('btn-svc-new').addEventListener('click', () => openSvcForm(null));
+    $('btn-svc-cancel').addEventListener('click', closeSvcForm);
+    document.addEventListener('click', e => {
+        const b = e.target.closest('[data-svc-edit]');
+        if (b) openSvcForm(svc.services.find(s => s.id === Number(b.dataset.svcEdit)));
+    });
+    $('form-svc').addEventListener('submit', async e => {
+        e.preventDefault();
+        const f = Object.fromEntries(new FormData(e.target));
+        f.id = Number(f.id) || 0;
+        try { await call('save_service', f); loadServices(); loadAudit(); }
+        catch (err) { msg('svc-msg', err.message); }
+    });
+    $('btn-svc-delete').addEventListener('click', async () => {
+        const id = Number($('form-svc').elements.id.value);
+        if (!id || !confirm('Delete this service from the list?')) return;
+        try { await call('delete_service', { id }); loadServices(); loadAudit(); }
+        catch (err) { msg('svc-msg', err.message); }
+    });
+
+    $('btn-adopt').addEventListener('click', async e => {
+        e.target.disabled = true;
+        try { await call('adopt_owner', {}); await start(); }
+        catch (err) { msg('adopt-msg', err.message); e.target.disabled = false; }
+    });
+    $('form-login').addEventListener('submit', async e => {
+        e.preventDefault();
+        const f = new FormData(e.target);
+        try { await call('login', { username: f.get('username'), password: f.get('password') }); e.target.reset(); await start(); }
+        catch (err) { msg('login-msg', err.message); }
+    });
+    $('btn-logout').addEventListener('click', async () => { try { await call('logout', {}); } finally { location.reload(); } });
+    $('form-create').addEventListener('input', e => {
+        if (e.target.name === 'slug') $('slug-preview').textContent = base + 'b/' + (e.target.value || '<name>') + '/';
+    });
+    $('slug-preview').textContent = base + 'b/<name>/';
+    $('form-create').addEventListener('submit', async e => {
+        e.preventDefault();
+        const form = e.target, btn = form.querySelector('button[type=submit]');
+        const f = Object.fromEntries(new FormData(form));
+        btn.disabled = true;
+        try {
+            const j = await call('create_brokerage', f);
+            // Open the brokerage once so its database and first admin account are created.
+            await fetch(`b/${encodeURIComponent(j.slug)}/backend/api.php?action=check_auth`, { credentials: 'omit' });
+            form.reset();
+            msg('create-msg', `Created. Their address is ${base}b/${j.slug}/`, true);
+            loadList(); loadAudit();
+        } catch (err) { msg('create-msg', err.message); }
+        finally { btn.disabled = false; }
+    });
+    document.addEventListener('change', async e => {
+        const sel = e.target.closest('select[data-status]');
+        if (!sel) return;
+        if (!confirm(`Set this brokerage to "${STATUSES[sel.value]}"?`)) { loadList(); return; }
+        try { await call('set_status', { id: Number(sel.dataset.status), status: sel.value }); msg('list-msg', 'Status updated.', true); loadAudit(); }
+        catch (err) { msg('list-msg', err.message); loadList(); }
+    });
+    start().catch(e => msg('login-msg', e.message));
+})();
+</script>
+</body>
+</html>

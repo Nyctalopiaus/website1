@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="warm-light" data-bg="currency">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Haven — Mindful Monthly Budgeting for Beginners</title>
+  <meta name="description" content="A warm, welcoming, and 100% private beginner monthly budgeting tool. Learn the difference between gross and net income, allocate with the 50/30/20 framework, and visualize where your money goes.">
+  
+  <!-- Security Headers & Content Security Policy -->
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#f5faf7" id="theme-color-meta">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c27847'><path d='M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z'/></svg>">
+
+  <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js"></script>
+
+  <!-- Chart.js for Reports & Visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css?v=7.0">
+</head>
+<body>
+
+  <!-- Dynamic Atmospheric Background Layer -->
+  <div class="haven-bg-canvas" id="haven-bg-canvas" aria-hidden="true">
+    <div class="bg-ambient-spot spot-primary"></div>
+    <div class="bg-ambient-spot spot-secondary"></div>
+    <div class="bg-pattern-overlay"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Privacy Explainer Modal -->
+  <div id="privacy-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="privacy-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="privacy-modal-title" class="modal-title">100% Private & Local Storage Guarantee</h3>
+        <button type="button" class="btn btn-subtle btn-icon-only" id="btn-close-privacy-modal" aria-label="Close dialog">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p><strong>Your financial peace of mind is our highest priority.</strong></p>
+        <br>
+        <p>• <strong>Zero Server Transmission:</strong> None of the income figures, numbers, expense items, or categories you enter are ever sent to our servers or any third parties.</p>
+        <br>
+        <p>• <strong>Strictly In Your Browser:</strong> All calculations happen client-side using JavaScript, and your budget is saved directly inside your computer or phone's web browser storage (<code>localStorage</code>).</p>
+        <br>
+        <p>• <strong>No Accounts or Tracking:</strong> There are no logins, passwords, tracking cookies, or analytics tracking what you spend.</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" id="btn-privacy-got-it">Got It</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sample Budget Preview Modal -->
+  <div id="sample-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="sample-modal-title">
+    <div class="modal-card modal-card-lg">
+      <div class="modal-header">
+        <div class="card-title-group">
+          <div class="card-icon" style="background: var(--brand-warm-glow); color: var(--brand-warm);" aria-hidden="true">
+            <i data-lucide="eye"></i>
+          </div>
+          <div>
+            <h3 id="sample-modal-title" class="modal-title">Sample Beginner Budget Preview</h3>
+            <p class="card-subtitle">Here is what a complete, balanced monthly budget looks like in Haven</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-subtle btn-icon-only" id="btn-close-sample-modal" aria-label="Close dialog">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body sample-modal-body">
+        <!-- Sample High-Level Snapshot -->
+        <div class="sample-snapshot-bar">
+          <div class="sample-kpi">
+            <span class="sample-kpi-label">Gross Monthly</span>
+            <span class="sample-kpi-val">$4,600</span>
+          </div>
+          <div class="sample-kpi">
+            <span class="sample-kpi-label">Take-Home (Net)</span>
+            <span class="sample-kpi-val" style="color: var(--tier-savings);">$3,588</span>
+          </div>
+          <div class="sample-kpi">
+            <span class="sample-kpi-label">Planned Spending</span>
+            <span class="sample-kpi-val">$3,505</span>
+          </div>
+          <div class="sample-kpi">
+            <span class="sample-kpi-label">Monthly Cushion</span>
+            <span class="sample-kpi-val" style="color: var(--tier-savings);">+$83</span>
+          </div>
+        </div>
+
+        <!-- 50/30/20 Mini Breakdown -->
+        <div class="sample-framework-preview">
+          <div class="sample-pillar">
+            <div class="sample-pillar-header">
+              <span class="sample-pillar-title" style="color: var(--tier-needs);">Essential Needs: $2,435 (68%)</span>
+              <span class="sample-pillar-hint">Rent, utilities, groceries, car</span>
+            </div>
+            <div class="progress-track" style="margin-top: 0.35rem;">
+              <div class="progress-fill needs" style="width: 68%;"></div>
+            </div>
+          </div>
+          <div class="sample-pillar">
+            <div class="sample-pillar-header">
+              <span class="sample-pillar-title" style="color: var(--tier-wants);">Lifestyle Wants: $423 (12%)</span>
+              <span class="sample-pillar-hint">Dining out, streaming, events</span>
+            </div>
+            <div class="progress-track" style="margin-top: 0.35rem;">
+              <div class="progress-fill wants" style="width: 12%;"></div>
+            </div>
+          </div>
+          <div class="sample-pillar">
+            <div class="sample-pillar-header">
+              <span class="sample-pillar-title" style="color: var(--tier-savings);">Future Savings: $550 (15%)</span>
+              <span class="sample-pillar-hint">Emergency buffer, Roth IRA</span>
+            </div>
+            <div class="progress-track" style="margin-top: 0.35rem;">
+              <div class="progress-fill savings" style="width: 15%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sample Items Breakdown List -->
+        <h4 style="font-size: 0.95rem; font-weight: 700; margin: 1rem 0 0.5rem; color: var(--text-main);">Sample Spending Breakdown (16 Items)</h4>
+        <div class="sample-items-list" id="sample-items-container">
+          <!-- Dynamically populated or rendered via JS -->
+        </div>
+      </div>
+
+      <div class="modal-actions" style="border-top: 1px solid var(--border-light); padding-top: 1rem; margin-top: 0.75rem;">
+        <button type="button" class="btn btn-secondary" id="btn-close-sample-modal-foot">Close Preview</button>
+        <button type="button" class="btn btn-primary" id="btn-apply-sample-template">
+          <i data-lucide="copy"></i>
+          <span>Copy Template to My Budget</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guided Starter Tour Modal -->
+  <div id="tour-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="tour-modal-title">
+    <div class="modal-card modal-card-lg" style="max-width: 680px;">
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div class="card-title-group">
+          <div class="card-icon" style="background: var(--brand-warm-glow); color: var(--brand-warm);" aria-hidden="true">
+            <i data-lucide="sparkles"></i>
+          </div>
+          <div>
+            <h3 id="tour-modal-title" class="modal-title">2-Minute Starter Walkthrough</h3>
+            <p class="card-subtitle">Let's gently build your first monthly budget entries together</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-subtle btn-icon-only" id="btn-close-tour-modal" aria-label="Close walkthrough">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <!-- Stepper Header -->
+      <div class="tour-stepper">
+        <div class="tour-step-item active" id="tour-step-indicator-1">
+          <div class="tour-step-circle">1</div>
+          <span>Income</span>
+        </div>
+        <div class="tour-step-line" id="tour-step-line-1"></div>
+        <div class="tour-step-item" id="tour-step-indicator-2">
+          <div class="tour-step-circle">2</div>
+          <span>Top Needs</span>
+        </div>
+        <div class="tour-step-line" id="tour-step-line-2"></div>
+        <div class="tour-step-item" id="tour-step-indicator-3">
+          <div class="tour-step-circle">3</div>
+          <span>Joy & Savings</span>
+        </div>
+      </div>
+
+      <!-- Modal Body (The 3 Step Panels) -->
+      <div class="modal-body" style="margin-bottom: 1rem;">
+        
+        <!-- STEP 1: Income Panel -->
+        <div class="tour-panel active" id="tour-panel-1">
+          <h4 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
+            Step 1: What is your estimated monthly income?
+          </h4>
+          <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1.25rem;">
+            <strong>Gross</strong> is what you earn on paper before taxes; <strong>Net</strong> is what actually lands in your bank account on payday. We always budget with your Net take-home pay!
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <div class="form-group">
+              <label for="tour-input-gross" class="form-label">
+                <span>Estimated Gross Monthly Income</span>
+                <span class="form-label-hint">Before taxes</span>
+              </label>
+              <div class="input-with-symbol">
+                <span class="input-symbol">$</span>
+                <input type="number" id="tour-input-gross" class="form-input" placeholder="e.g. 4000" min="0" step="50">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span>Estimated Tax & Withholding: <strong id="tour-withholding-pct" style="color: var(--brand-warm);">22%</strong></span>
+                <span class="form-label-hint" id="tour-withholding-dollars">$0 / mo</span>
+              </label>
+              <div class="slider-container">
+                <input type="range" id="tour-slider" class="range-slider" min="10" max="40" step="1" value="22" aria-label="Tax withholding percentage">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="tour-input-net" class="form-label">
+                <span>Estimated Take-Home (Net Pay)</span>
+                <span class="form-label-hint">Editable anytime</span>
+              </label>
+              <div class="input-with-symbol">
+                <span class="input-symbol">$</span>
+                <input type="number" id="tour-input-net" class="form-input" placeholder="0" min="0" step="10" style="border-color: var(--tier-savings);">
+              </div>
+            </div>
+
+            <!-- Walkthrough Tipped Income Helper -->
+            <div style="padding: 0.75rem 0.95rem; background: var(--bg-surface); border: 1.5px dashed var(--tier-wants-border); border-radius: var(--radius-md);">
+              <label style="display: flex; align-items: center; gap: 0.55rem; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--text-main);">
+                <input type="checkbox" id="tour-tips-checkbox" style="width: 17px; height: 17px; cursor: pointer;">
+                <span>✨ I earn tips or variable shifts (Waitress, Bartender, Stylist)</span>
+              </label>
+              <div id="tour-tips-fields" style="display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border-light); grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                <div>
+                  <label class="form-label" style="font-size: 0.76rem;">Avg Tips / Shift ($)</label>
+                  <input type="number" id="tour-tips-shift-amt" class="form-input" style="padding: 0.5rem 0.75rem; font-size: 0.95rem;" placeholder="e.g. 120" min="0">
+                </div>
+                <div>
+                  <label class="form-label" style="font-size: 0.76rem;">Shifts / Week</label>
+                  <input type="number" id="tour-tips-shifts-wk" class="form-input" style="padding: 0.5rem 0.75rem; font-size: 0.95rem;" placeholder="e.g. 4" min="1" max="7">
+                </div>
+              </div>
+            </div>
+
+            <div class="tour-live-counter" style="background: var(--tier-savings-bg); border-color: var(--tier-savings-border);">
+              <span style="color: var(--tier-savings); font-weight: 700;">Monthly Take-Home Available:</span>
+              <span id="tour-step1-net-display" style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; color: var(--tier-savings);">$0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: Top Essentials (Needs) -->
+        <div class="tour-panel" id="tour-panel-2">
+          <h4 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
+            Step 2: Add your top 3 essential needs
+          </h4>
+          <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1.25rem;">
+            Needs are non-negotiable living costs (housing, groceries, utilities). The 50/30/20 guideline recommends keeping these to roughly ~50% of your take-home pay.
+          </p>
+
+          <div class="tour-card-grid">
+            <!-- Card 1: Housing -->
+            <div class="tour-card-item">
+              <div class="tour-card-header">
+                <i data-lucide="home" style="color: var(--tier-needs);"></i>
+                <span>1. Housing</span>
+              </div>
+              <p style="font-size: 0.76rem; color: var(--text-muted);">Rent or Mortgage payment</p>
+              <div class="input-with-symbol" style="margin-top: auto;">
+                <span class="input-symbol">$</span>
+                <input type="number" id="tour-input-housing" class="form-input" placeholder="e.g. 1200" min="0" step="25">
+              </div>
+            </div>
+
+            <!-- Card 2: Groceries -->
+            <div class="tour-card-item">
+              <div class="tour-card-header">
+                <i data-lucide="shopping-cart" style="color: var(--tier-needs);"></i>
+                <span>2. Groceries</span>
+              </div>
+              <p style="font-size: 0.76rem; color: var(--text-muted);">Supermarket & food supplies</p>
+              <div class="input-with-symbol" style="margin-top: auto;">
+                <span class="input-symbol">$</span>
+                <input type="number" id="tour-input-groceries" class="form-input" placeholder="e.g. 350" min="0" step="10">
+              </div>
+            </div>
+
+            <!-- Card 3: Utilities / Transport -->
+            <div class="tour-card-item">
+              <div class="tour-card-header">
+                <i data-lucide="zap" style="color: var(--tier-needs);"></i>
+                <span>3. Utilities / Car</span>
+              </div>
+              <p style="font-size: 0.76rem; color: var(--text-muted);">Electric, gas, or car payment</p>
+              <div class="input-with-symbol" style="margin-top: auto;">
+                <span class="input-symbol">$</span>
+                <input type="number" id="tour-input-utilities" class="form-input" placeholder="e.g. 200" min="0" step="10">
+              </div>
+            </div>
+          </div>
+
+          <div class="tour-live-counter">
+            <div>
+              <span>Total Needs Budgeted: </span>
+              <strong id="tour-needs-total" style="color: var(--tier-needs);">$0</strong>
+            </div>
+            <span id="tour-needs-pct" class="badge" style="background: var(--tier-needs-bg); color: var(--tier-needs);">0% of income</span>
+          </div>
+        </div>
+
+        <!-- STEP 3: Joy & Savings -->
+        <div class="tour-panel" id="tour-panel-3">
+          <h4 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.35rem;">
+            Step 3: Leave room for joy & future security
+          </h4>
+          <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1.25rem;">
+            A good budget gives you guilt-free permission to enjoy life today (~30% Wants) while planting seeds for an emergency cushion (~20% Savings).
+          </p>
+
+          <div class="tour-card-grid" style="grid-template-columns: 1fr 1fr;">
+            <!-- Fun item -->
+            <div class="tour-card-item" style="border-left: 3px solid var(--tier-wants);">
+              <div class="tour-card-header">
+                <i data-lucide="coffee" style="color: var(--tier-wants);"></i>
+                <span>Lifestyle & Fun (Wants)</span>
+              </div>
+              <p style="font-size: 0.76rem; color: var(--text-muted);">Dining out, streaming, coffee, or hobbies</p>
+              <div class="input-with-symbol" style="margin-top: auto;">
+                <span class="input-symbol">$</span>
+                <input type="number" id="tour-input-fun" class="form-input" placeholder="e.g. 150" min="0" step="10">
+              </div>
+            </div>
+
+            <!-- Savings item -->
+            <div class="tour-card-item" style="border-left: 3px solid var(--tier-savings);">
+              <div class="tour-card-header">
+                <i data-lucide="shield" style="color: var(--tier-savings);"></i>
+                <span>Rainy Day Fund (Savings)</span>
+              </div>
+              <p style="font-size: 0.76rem; color: var(--text-muted);">Even $50/mo builds powerful habits</p>
+              <div class="input-with-symbol" style="margin-top: auto;">
+                <span class="input-symbol">$</span>
+                <input type="number" id="tour-input-savings" class="form-input" placeholder="e.g. 100" min="0" step="10">
+              </div>
+            </div>
+          </div>
+
+          <!-- Summary bar -->
+          <div class="tour-live-counter" style="background: var(--bg-subtle);">
+            <div>
+              <span>Safe Leftover Cushion: </span>
+              <strong id="tour-summary-cushion" style="color: var(--tier-savings); font-family: var(--font-heading); font-size: 1.15rem;">+$0</strong>
+            </div>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">Remaining to spend or save</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Stepper Action Buttons -->
+      <div class="modal-actions" style="border-top: 1px solid var(--border-light); padding-top: 1rem;">
+        <button type="button" class="btn btn-subtle" id="btn-tour-prev" style="display: none;">
+          <i data-lucide="arrow-left"></i>
+          <span>Back</span>
+        </button>
+        <button type="button" class="btn btn-subtle" id="btn-tour-skip">
+          <span>I'll Explore on My Own</span>
+        </button>
+        <button type="button" class="btn btn-primary" id="btn-tour-next">
+          <span>Next: Add Top Needs</span>
+          <i data-lucide="arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Categories Modal -->
+  <div id="custom-category-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="custom-cat-modal-title">
+    <div class="modal-card modal-card-lg" style="max-width: 620px;">
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div class="card-title-group">
+          <div class="card-icon" style="background: var(--brand-warm-glow); color: var(--brand-warm);" aria-hidden="true">
+            <i data-lucide="folder-plus"></i>
+          </div>
+          <div>
+            <h3 id="custom-cat-modal-title" class="modal-title">Custom Spending Categories</h3>
+            <p class="card-subtitle">Add tailored categories for expenses unique to your life & routines</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-subtle btn-icon-only" id="btn-close-cat-modal" aria-label="Close modal">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body custom-cat-modal-body">
+        <!-- Create New Category Form Card -->
+        <form id="custom-cat-form" class="custom-cat-form">
+          <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;">
+            <i data-lucide="sparkles" style="width: 16px; height: 16px; color: var(--brand-warm);"></i>
+            <span>Create a New Category</span>
+          </h4>
+
+          <!-- Category Name -->
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="custom-cat-name-input" class="form-label">
+              <span>Category Name</span>
+              <span class="form-label-hint">What do you want to call it?</span>
+            </label>
+            <input type="text" id="custom-cat-name-input" class="form-input" placeholder="e.g. Pet Care & Vet, Childcare, Art Supplies, Side Hustle..." required maxlength="45">
+          </div>
+
+          <!-- 50/30/20 Tier Selector (Needs / Wants / Savings) -->
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label">
+              <span>50/30/20 Framework Bucket</span>
+              <span class="form-label-hint">How does this expense function for you?</span>
+            </label>
+            <div class="cat-tier-selector">
+              <label class="cat-tier-option tier-needs">
+                <input type="radio" name="custom-cat-tier" value="needs" checked>
+                <div class="cat-tier-card">
+                  <span class="cat-tier-title"><i data-lucide="home"></i> Essential Need</span>
+                  <span class="cat-tier-desc">Vital essentials: pets, meds, daycare, tuition, insurance</span>
+                </div>
+              </label>
+              <label class="cat-tier-option tier-wants">
+                <input type="radio" name="custom-cat-tier" value="wants">
+                <div class="cat-tier-card">
+                  <span class="cat-tier-title"><i data-lucide="coffee"></i> Lifestyle Want</span>
+                  <span class="cat-tier-desc">Personal joy: hobbies, treats, sports, gaming, gifts</span>
+                </div>
+              </label>
+              <label class="cat-tier-option tier-savings">
+                <input type="radio" name="custom-cat-tier" value="savings">
+                <div class="cat-tier-card">
+                  <span class="cat-tier-title"><i data-lucide="target"></i> Future Savings</span>
+                  <span class="cat-tier-desc">Sinking funds, dedicated goals, future investments</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Group & Icon Row -->
+          <div class="custom-cat-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; margin-bottom: 1.15rem;">
+            <div class="form-group">
+              <label for="custom-cat-group-select" class="form-label">
+                <span>Category Group</span>
+                <span class="form-label-hint">For visual charts</span>
+              </label>
+              <select id="custom-cat-group-select" class="form-select">
+                <option value="Personal & Family">Personal & Family</option>
+                <option value="Pets & Animals">Pets & Animals</option>
+                <option value="Hobbies & Leisure">Hobbies & Leisure</option>
+                <option value="Education & Kids">Education & Kids</option>
+                <option value="Work & Side Hustle">Work & Side Hustle</option>
+                <option value="Housing">Housing</option>
+                <option value="Utilities">Utilities</option>
+                <option value="Food & Groceries">Food & Groceries</option>
+                <option value="Transportation">Transportation</option>
+                <option value="Health & Wellness">Health & Wellness</option>
+                <option value="Debt & Loans">Debt & Loans</option>
+                <option value="Lifestyle & Fun">Lifestyle & Fun</option>
+                <option value="Savings & Future">Savings & Future</option>
+                <option value="Miscellaneous">Miscellaneous</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span>Select an Icon</span>
+                <span class="form-label-hint" id="custom-cat-icon-hint">Selected: paw-print</span>
+              </label>
+              <div class="cat-icon-picker-strip" id="custom-cat-icon-picker">
+                <!-- Dynamically populated via JS -->
+              </div>
+              <input type="hidden" id="custom-cat-selected-icon" value="paw-print">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="btn-save-custom-category" style="width: 100%; justify-content: center;">
+            <i data-lucide="plus-circle"></i>
+            <span>Add Custom Category</span>
+          </button>
+        </form>
+
+        <!-- Existing Custom Categories Section -->
+        <div class="existing-custom-cats-section" style="margin-top: 1.5rem; border-top: 1px solid var(--border-light); padding-top: 1.25rem;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">
+              Your Custom Categories
+            </h4>
+            <span id="custom-cat-count-badge" class="badge" style="background: var(--bg-subtle); color: var(--text-muted); font-size: 0.75rem;">0 custom</span>
+          </div>
+          <div id="custom-cat-list" class="custom-cat-list">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="border-top: 1px solid var(--border-light); padding-top: 1rem;">
+        <button type="button" class="btn btn-secondary" id="btn-close-cat-modal-foot">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- File Import Input (Hidden) -->
+  <input type="file" id="file-import-input" accept=".json" style="display: none;" aria-hidden="true">
+
+  <!-- Header & Navigation -->
+  <header class="haven-header">
+    <div class="haven-container">
+      <div class="haven-header-inner">
+        <a href="./" class="haven-brand">
+          <div class="haven-logo-icon" aria-hidden="true">
+            <i data-lucide="shield-check"></i>
+          </div>
+          <div>
+            <div class="haven-brand-title">Haven</div>
+            <div class="haven-brand-subtitle">Mindful Monthly Budgeting</div>
+          </div>
+        </a>
+
+        <!-- Header Actions -->
+        <div class="haven-nav-actions">
+          <button type="button" class="badge badge-privacy" id="badge-privacy" title="Learn how your privacy is guaranteed">
+            <i data-lucide="lock"></i>
+            <span>100% Private & Browser Stored</span>
+          </button>
+
+          <button type="button" class="btn btn-primary" id="btn-start-tour" title="Take the 2-minute guided starter walkthrough">
+            <i data-lucide="sparkles"></i>
+            <span>Quick Tour</span>
+          </button>
+
+          <button type="button" class="btn btn-secondary" id="btn-view-sample" title="View a sample completed budget in a modal">
+            <i data-lucide="eye"></i>
+            <span>View Sample</span>
+          </button>
+
+          <button type="button" class="btn btn-subtle" id="btn-clear-budget" title="Clear all budget rows">
+            <i data-lucide="refresh-cw"></i>
+            <span>Reset</span>
+          </button>
+
+          <button type="button" class="btn btn-subtle" id="btn-print" title="Print a clean one-page summary or save to PDF">
+            <i data-lucide="printer"></i>
+            <span>Print</span>
+          </button>
+
+          <button type="button" class="btn btn-subtle btn-icon-only" id="btn-theme-toggle" title="Toggle cozy theme" aria-label="Toggle theme">
+            <i data-lucide="moon"></i>
+          </button>
+
+          <a href="../" class="btn btn-subtle" title="Return to Nycto's Project Lab">
+            <i data-lucide="arrow-left"></i>
+            <span>Lab</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="haven-container">
+
+    <!-- Warm Welcome Card -->
+    <section class="haven-hero" aria-label="Welcome">
+      <div class="haven-welcome-card">
+        <h1 class="haven-welcome-title">
+          <span>Welcome to Stress-Free Budgeting</span>
+        </h1>
+        <p class="haven-welcome-text">
+          Budgeting isn't about restriction—it's about giving yourself permission to spend with total clarity. Haven helps you gently understand where your money goes, align with the beginner-friendly 50/30/20 framework, and build financial calm.
+        </p>
+      </div>
+    </section>
+
+    <!-- SECTION 1: Income Setup & Gross vs. Net Explainer -->
+    <section class="income-section" aria-labelledby="income-card-title">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="card-icon" aria-hidden="true"><i data-lucide="wallet"></i></div>
+            <div>
+              <h2 id="income-card-title" class="card-title">1. Your Monthly Income</h2>
+              <div class="card-subtitle">Understand what you earn and what actually arrives in your bank account</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Educational Gross vs. Net Explainer Box -->
+        <div class="gross-net-explainer" role="region" aria-label="Gross versus Net Income Explanation">
+          <div class="explainer-side gross-side">
+            <span class="explainer-pill"><i data-lucide="file-text"></i> Gross Income (On Paper)</span>
+            <h3 class="explainer-title">What You Earn Before Deductions</h3>
+            <p class="explainer-desc">
+              Gross income is your headline salary or total hourly wages before anything is taken out. While it's what an offer letter states, it isn't what you can spend, because federal taxes, state taxes, Social Security, and health benefits are deducted first.
+            </p>
+          </div>
+
+          <div class="explainer-side net-side">
+            <span class="explainer-pill" style="color: var(--tier-savings);"><i data-lucide="check-circle-2"></i> Net Income (Take-Home Pay)</span>
+            <h3 class="explainer-title">The Real Money in Your Bank Account</h3>
+            <p class="explainer-desc">
+              Net income is the exact paycheck amount that gets directly deposited into your bank account. <strong>This is the true number you must budget with</strong>, so you never accidentally overspend on money that went to taxes or benefits.
+            </p>
+          </div>
+        </div>
+
+        <!-- Income Inputs Grid -->
+        <div class="income-grid">
+          <div class="form-group">
+            <label for="gross-income-input" class="form-label">
+              <span>Estimated Gross Monthly Income</span>
+              <span class="form-label-hint">Before taxes</span>
+            </label>
+            <div class="input-with-symbol">
+              <span class="input-symbol">$</span>
+              <input type="number" id="gross-income-input" class="form-input" placeholder="0" min="0" step="50">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              <span>Estimated Tax & Withholding: <strong id="withholding-pct-label" style="color: var(--brand-warm);">22%</strong></span>
+              <span class="form-label-hint" id="withholding-dollar-label">$0 / mo</span>
+            </label>
+            <div class="slider-container">
+              <input type="range" id="withholding-slider" class="range-slider" min="10" max="40" step="1" value="22" aria-label="Tax withholding percentage">
+              <div class="slider-labels">
+                <span>10% (Low tax)</span>
+                <span>22% (Typical US avg)</span>
+                <span>40% (High tax/benefits)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="net-income-input" class="form-label">
+              <span>Actual Take-Home Pay (Net Monthly)</span>
+              <span class="form-label-hint">Editable anytime</span>
+            </label>
+            <div class="input-with-symbol">
+              <span class="input-symbol">$</span>
+              <input type="number" id="net-income-input" class="form-input" placeholder="0" min="0" step="10" style="border-color: var(--tier-savings);">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="pay-frequency-select" class="form-label">
+              <span>Paycheck Frequency</span>
+              <span class="form-label-hint">Helper</span>
+            </label>
+            <select id="pay-frequency-select" class="form-select">
+              <option value="monthly">Monthly (1 paycheck/month)</option>
+              <option value="bi-weekly">Bi-Weekly (Every 2 weeks / 26 paychecks/yr)</option>
+              <option value="semi-monthly">Twice a Month (1st & 15th / 24 paychecks/yr)</option>
+              <option value="weekly">Weekly (Every week)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Tipped & Service Worker Income Helper Button & Panel -->
+        <button type="button" class="tips-toggle-btn" id="btn-toggle-tips-calc">
+          <div class="tips-title-wrap">
+            <i data-lucide="sparkles" style="color: var(--brand-warm);"></i>
+            <span><strong>Earn Tips or Variable Pay?</strong> (Waitress, Bartender, Delivery, Stylist)</span>
+          </div>
+          <span id="tips-toggle-icon" style="font-size: 0.82rem; font-weight: 700; color: var(--brand-warm);">Calculate Average Tips ▾</span>
+        </button>
+
+        <div class="tips-calculator-panel" id="tips-calculator-panel">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">
+              Service & Tipped Worker Income Estimator
+            </h4>
+            <span class="badge" style="background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-light);">
+              Designed for servers, bartenders & hourly shifts
+            </span>
+          </div>
+
+          <div class="tips-calculator-grid">
+            <div class="form-group">
+              <label for="tips-base-paycheck" class="form-label">
+                <span>Base Paycheck (Take-Home)</span>
+                <span class="form-label-hint">Can be $0 if taxes eat wage</span>
+              </label>
+              <div class="input-with-symbol">
+                <span class="input-symbol">$</span>
+                <input type="number" id="tips-base-paycheck" class="form-input" placeholder="e.g. 150" min="0" step="10">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="tips-avg-shift" class="form-label">
+                <span>Average Tips per Shift / Day</span>
+                <span class="form-label-hint">Cash & credit tips</span>
+              </label>
+              <div class="input-with-symbol">
+                <span class="input-symbol">$</span>
+                <input type="number" id="tips-avg-shift" class="form-input" placeholder="e.g. 120" min="0" step="5">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="tips-shifts-week" class="form-label">
+                <span>Average Shifts per Week</span>
+                <span class="form-label-hint">e.g. 3 to 5 shifts</span>
+              </label>
+              <input type="number" id="tips-shifts-week" class="form-input" style="padding-left: 0.95rem;" placeholder="4" min="1" max="7" step="1">
+            </div>
+          </div>
+
+          <div class="tips-callout-box">
+            <strong>💡 Pro-Tip for Service Workers:</strong> Tip income fluctuates between busy holiday rushes and slow shifts. Budget based on an average or slightly slower week (~4.33 weeks per month). That way, great shifts become a bonus buffer instead of coming up short on slow weeks.
+          </div>
+
+          <div class="tips-summary-strip">
+            <div>
+              <span style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: var(--tier-savings); letter-spacing: 0.04em;">Estimated Total Monthly Take-Home:</span>
+              <div id="tips-calculated-total-display" style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 700; color: var(--text-main);">$0 / month</div>
+            </div>
+            <button type="button" class="btn btn-primary" id="btn-apply-tips-income">
+              <i data-lucide="check"></i>
+              <span>Use as My Net Monthly Income</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: 50/30/20 Framework & Cash Flow Dashboard -->
+    <section class="overview-section" aria-labelledby="overview-title">
+      <h2 id="overview-title" class="sr-only">Budget Overview & 50/30/20 Framework</h2>
+
+      <!-- KPI Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Monthly Take-Home Pay</span>
+            <i data-lucide="arrow-down-left" style="color: var(--tier-savings);"></i>
+          </div>
+          <div class="kpi-value" id="kpi-income">$0</div>
+          <div class="kpi-subtext" style="color: var(--text-muted);">Total available money</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-label">
+            <span>Total Planned Spending</span>
+            <i data-lucide="arrow-up-right" style="color: var(--tier-needs);"></i>
+          </div>
+          <div class="kpi-value" id="kpi-expenses">$0</div>
+          <div class="kpi-subtext" style="color: var(--text-muted);">Allocated to expenses & savings</div>
+        </div>
+
+        <div class="kpi-card cushion-positive" id="kpi-cushion-card">
+          <div class="kpi-label">
+            <span>Safe Cushion / Unassigned</span>
+            <i data-lucide="pie-chart"></i>
+          </div>
+          <div class="kpi-value" id="kpi-cushion">$0</div>
+          <div class="kpi-subtext positive" id="kpi-cushion-subtext">
+            <i data-lucide="check-circle-2"></i> Safe to save or allocate
+          </div>
+        </div>
+      </div>
+
+      <!-- 50/30/20 Visual Guidance Bar -->
+      <div class="framework-card">
+        <div class="framework-header">
+          <div>
+            <h3 class="framework-title">The 50 / 30 / 20 Framework</h3>
+            <p class="card-subtitle">A proven, flexible benchmark to make budgeting feel balanced and rewarding</p>
+          </div>
+          <span class="badge" style="background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border-light);">
+            <i data-lucide="info"></i> Aim for ~50% Needs, ~30% Wants, ~20% Savings
+          </span>
+        </div>
+
+        <div class="framework-bars">
+          <!-- Pillar 1: Needs -->
+          <div class="framework-pillar">
+            <div class="pillar-top">
+              <span class="pillar-name needs"><i data-lucide="home"></i> Needs (Target ~50%)</span>
+              <span class="pillar-amount" id="pillar-needs-amount">$0 (0%)</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill needs" id="pillar-needs-bar" style="width: 0%;"></div>
+            </div>
+            <div class="pillar-bottom">
+              <span>Housing, food, utilities, car</span>
+              <span class="pillar-status" id="pillar-needs-status">Under 50% target</span>
+            </div>
+          </div>
+
+          <!-- Pillar 2: Wants -->
+          <div class="framework-pillar">
+            <div class="pillar-top">
+              <span class="pillar-name wants"><i data-lucide="coffee"></i> Wants (Target ~30%)</span>
+              <span class="pillar-amount" id="pillar-wants-amount">$0 (0%)</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill wants" id="pillar-wants-bar" style="width: 0%;"></div>
+            </div>
+            <div class="pillar-bottom">
+              <span>Dining out, fun, hobbies, travel</span>
+              <span class="pillar-status" id="pillar-wants-status">Within 30% guideline</span>
+            </div>
+          </div>
+
+          <!-- Pillar 3: Savings -->
+          <div class="framework-pillar">
+            <div class="pillar-top">
+              <span class="pillar-name savings"><i data-lucide="trending-up"></i> Savings (Target ~20%)</span>
+              <span class="pillar-amount" id="pillar-savings-amount">$0 (0%)</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill savings" id="pillar-savings-bar" style="width: 0%;"></div>
+            </div>
+            <div class="pillar-bottom">
+              <span>Emergency fund, retirement, debt</span>
+              <span class="pillar-status" id="pillar-savings-status">Building habit</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: The Spending Planner (Interactive Table / Rows) -->
+    <section class="planner-section" aria-labelledby="planner-title">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title-group">
+            <div class="card-icon" aria-hidden="true"><i data-lucide="list"></i></div>
+            <div>
+              <h2 id="planner-title" class="card-title">2. Monthly Spending Items</h2>
+              <div class="card-subtitle">Add your bills and expenses with friendly category dropdowns</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary" id="btn-manage-categories" title="Create and manage custom categories">
+              <i data-lucide="folder-plus"></i>
+              <span>Custom Categories</span>
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-add-item">
+              <i data-lucide="plus"></i>
+              <span>Add Spending Item</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="planner-controls">
+          <div class="filter-tabs" role="tablist" aria-label="Filter spending by 50/30/20 tier">
+            <button type="button" class="filter-tab active" data-filter="all" role="tab">All Items</button>
+            <button type="button" class="filter-tab" data-filter="needs" role="tab">Essential Needs (50%)</button>
+            <button type="button" class="filter-tab" data-filter="wants" role="tab">Lifestyle Wants (30%)</button>
+            <button type="button" class="filter-tab" data-filter="savings" role="tab">Future Savings (20%)</button>
+          </div>
+          <div style="font-size: 0.82rem; color: var(--text-muted);">
+            Tip: Click any tier badge to change between Needs, Wants, or Savings
+          </div>
+        </div>
+
+        <!-- Spending Table -->
+        <div class="planner-table-container">
+          <table class="planner-table">
+            <thead>
+              <tr>
+                <th style="min-width: 220px;">Expense Name / Description</th>
+                <th style="min-width: 220px;">Category</th>
+                <th style="min-width: 140px;">Framework Tier</th>
+                <th style="min-width: 140px; text-align: right;">Monthly Amount</th>
+                <th style="width: 70px;"></th>
+              </tr>
+            </thead>
+            <tbody id="budget-table-body">
+              <!-- Dynamically populated via app.js -->
+            </tbody>
+          </table>
+
+          <!-- Empty State -->
+          <div id="table-empty-state" class="empty-table-state" style="display: block;">
+            <i data-lucide="sparkles" style="width: 44px; height: 44px; color: var(--brand-warm); margin-bottom: 0.75rem;"></i>
+            <h3 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 700; margin-bottom: 0.35rem; color: var(--text-main);">Your budget is ready to build</h3>
+            <p style="font-size: 0.92rem; color: var(--text-muted); max-width: 480px; margin: 0 auto 1.35rem; line-height: 1.5;">
+              New to monthly budgeting? Let our 2-minute starter walkthrough guide your first entries step-by-step, or jump right in.
+            </p>
+            <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+              <button type="button" class="btn btn-primary" id="btn-start-tour-empty">
+                <i data-lucide="sparkles"></i>
+                <span>Start 2-Min Walkthrough</span>
+              </button>
+              <button type="button" class="btn btn-secondary" id="btn-add-item-empty">
+                <i data-lucide="plus"></i>
+                <span>Add Item Manually</span>
+              </button>
+              <button type="button" class="btn btn-subtle" id="btn-view-sample-empty">
+                <i data-lucide="eye"></i>
+                <span>View Sample</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: Visual Reports & Charts -->
+    <section class="reports-section" aria-labelledby="reports-title">
+      <div class="card-header" style="margin-bottom: 1.25rem;">
+        <div class="card-title-group">
+          <div class="card-icon" aria-hidden="true"><i data-lucide="bar-chart-2"></i></div>
+          <div>
+            <h2 id="reports-title" class="card-title">3. Visual Reports & Breakdown</h2>
+            <div class="card-subtitle">See where every dollar is flowing and get gentle personalized tips</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <!-- Chart 1: Donut Category Breakdown -->
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <h3 class="framework-title" style="font-size: 1.15rem;">Spending by Category</h3>
+            <p class="card-subtitle">How your money divides across major life buckets</p>
+          </div>
+          <div class="chart-canvas-container" id="donut-canvas-container">
+            <canvas id="chart-donut-categories"></canvas>
+            <div class="chart-empty-overlay" id="donut-empty-overlay" style="display: none;">
+              <i data-lucide="pie-chart"></i>
+              <p><strong>No spending items yet</strong></p>
+              <p style="font-size: 0.8rem; margin-top: 0.25rem;">Your category distribution chart will appear here once you add expenses.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart 2: 50/30/20 Comparison -->
+        <div class="chart-card">
+          <div class="chart-card-header">
+            <h3 class="framework-title" style="font-size: 1.15rem;">50/30/20 Target vs. Actual</h3>
+            <p class="card-subtitle">Comparing your real allocations against the classic guide</p>
+          </div>
+          <div class="chart-canvas-container" id="framework-canvas-container">
+            <canvas id="chart-bar-framework"></canvas>
+            <div class="chart-empty-overlay" id="framework-empty-overlay" style="display: none;">
+              <i data-lucide="bar-chart-2"></i>
+              <p><strong>Awaiting your figures</strong></p>
+              <p style="font-size: 0.8rem; margin-top: 0.25rem;">Add income and expenses to compare your allocations to the 50/30/20 targets.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+          <div class="chart-card-header">
+            <h3 class="framework-title" style="font-size: 1.15rem;">50/30/20 Target vs. Actual</h3>
+            <p class="card-subtitle">Comparing your real allocations against the classic guide</p>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-bar-framework"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Smart Beginner Insights -->
+      <div class="insights-card">
+        <div class="card-title-group">
+          <div class="card-icon" style="background: var(--tier-savings-bg); color: var(--tier-savings);" aria-hidden="true">
+            <i data-lucide="lightbulb"></i>
+          </div>
+          <div>
+            <h3 class="framework-title" style="font-size: 1.2rem;">Haven Personalized Insights</h3>
+            <p class="card-subtitle">Supportive observations tailored directly to your numbers</p>
+          </div>
+        </div>
+
+        <div class="insights-list" id="insights-list">
+          <!-- Dynamically populated via app.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: Privacy Guarantee & Data Controls -->
+    <section class="privacy-section" aria-labelledby="privacy-footer-title">
+      <div class="privacy-card">
+        <div class="privacy-badge-icon" aria-hidden="true">
+          <i data-lucide="lock"></i>
+        </div>
+        <div class="privacy-content">
+          <h2 id="privacy-footer-title" class="privacy-title">Your Privacy is 100% Protected</h2>
+          <p class="privacy-text">
+            All your financial information stays on your personal device. Haven does not store your budget on a database, does not require an email or password, and never transmits your data across the internet. To keep a personal copy or move to another browser, use the backup buttons below:
+          </p>
+          <div class="data-actions">
+            <button type="button" class="btn btn-secondary" id="btn-export">
+              <i data-lucide="download"></i>
+              <span>Download JSON Backup</span>
+            </button>
+            <button type="button" class="btn btn-secondary" id="btn-import">
+              <i data-lucide="upload"></i>
+              <span>Restore from Backup File</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="haven-footer">
+    <div class="haven-container">
+      <p><strong>Haven</strong> — Mindful Monthly Budgeting for Beginners</p>
+      <div class="footer-links">
+        <a href="../" class="footer-link">Nycto's Project Lab</a>
+        <span style="opacity: 0.4;">•</span>
+        <a href="../dibs/" class="footer-link">Dibs Property Scout</a>
+        <span style="opacity: 0.4;">•</span>
+        <a href="../housenomics/" class="footer-link">Housenomics</a>
+        <span style="opacity: 0.4;">•</span>
+        <button type="button" class="footer-link" id="btn-footer-privacy" style="background: none; border: none; cursor: pointer; font: inherit;">Privacy Guarantee</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Haven Application Modules -->
+  <script src="js/constants.js?v=7.0"></script>
+  <script src="js/storage.js?v=7.0"></script>
+  <script src="js/calculations.js?v=7.0"></script>
+  <script src="js/categories.js?v=7.0"></script>
+  <script src="js/tour.js?v=7.0"></script>
+  <script src="js/charts.js?v=7.0"></script>
+  <script src="js/app.js?v=7.0"></script>
+</body>
+</html>

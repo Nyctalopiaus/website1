@@ -73,6 +73,7 @@ import './js/tourView.js';
 import './js/mobileSections.js';
 import './js/buyerReport.js'; // Realtor & lender report (Export modal card)
 import './js/brokerageAdmin.js'; // Brokerage settings & agent roster (Admin Tools menu)
+import './js/clientRelease.js'; // Release offers to clients + "Download my data"
 
 // Browsers that last picked a client before public ids may still hold a sequential id; the server
 // refuses those now (DIBS_REFUSE_NUMERIC_USER_IDS), so drop them and let the user pick again.

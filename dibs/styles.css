@@ -8969,3 +8969,6 @@ body {
     *, *::before, *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
     .property-card { content-visibility: auto; contain-intrinsic-size: auto 560px; }
 }
+
+/* Client release offer (js/clientRelease.js) */
+.cr-note { margin: 0.5rem 0; padding: 0.5rem 0.75rem; border-left: 3px solid var(--accent-gold); background: var(--bg-card); font-size: 0.9rem; }

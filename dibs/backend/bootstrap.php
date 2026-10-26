@@ -71,6 +71,7 @@ $brokerage = dibsResolveBrokerage($dbDir);
 define('DIBS_BROKERAGE_ID', $brokerage['id']);
 define('DIBS_BROKERAGE_SLUG', $brokerage['slug']);
 $dbPath = $brokerage['db_path'];
+dibsEnforceBrokerageStatus($brokerage);
 
 // A session belongs to the brokerage it signed in to. Sessions from before brokerages existed are
 // bound to the one they're used on (only #1 existed then). Used on another brokerage's URL, the
@@ -908,9 +909,11 @@ try {
 
     purgeUserScopedMlsJson($pdo);
 
-    // Seed default admin user if users table is empty
+    // A new brokerage's first admin comes from the platform console (no default password).
+    dibsSeedBrokerageAdmin($pdo, $dbDir);
+    // Seed default admin user if users table is empty (the original install only)
     $userCount = (int)($pdo->query("SELECT COUNT(*) FROM users")->fetchColumn() ?: 0);
-    if ($userCount === 0) {
+    if ($userCount === 0 && DIBS_BROKERAGE_ID === 1) {
         $defaultPassword = password_hash('ScoutPass2026!', PASSWORD_BCRYPT);
         $stmtSeed = $pdo->prepare("INSERT INTO users (username, password_hash, is_admin, role) VALUES (:username, :hash, 1, 'admin')");
         $stmtSeed->execute([':username' => 'admin', ':hash' => $defaultPassword]);

@@ -200,6 +200,14 @@ function handleAcceptInvite(PDO $pdo) {
     $taken->execute([':u' => $username]);
     if ($taken->fetchColumn()) { inviteFail(409, 'That username is taken. Try another.'); return; }
 
+    // Optional: bring their data from the Dibs brokerage they're leaving (backend/transfer.php).
+    // Checked before anything is created, so a wrong old sign-in creates nothing.
+    $source = null;
+    if (!empty($in['import']) && is_array($in['import']) && ($inv['invite_role'] ?? 'client') !== 'realtor' && function_exists('transferVerifySource')) {
+        $source = transferVerifySource($in['import']);
+        if (is_string($source)) { inviteFail(400, $source); return; }
+    }
+
     try {
         $pdo->beginTransaction();
         // Claim the invite first: only one submission can win.
@@ -231,6 +239,17 @@ function handleAcceptInvite(PDO $pdo) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     dibsBindSessionToBrokerage();
     $pdo->prepare("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = :id")->execute([':id' => $userId]);
+
+    $imported = null;
+    if (is_array($source)) {
+        try {
+            $imported = transferImport($pdo, $userId, $source);
+            logEvent($pdo, 'auth', 'info', 'Client data transferred in from another brokerage', null, ['from' => $source[2], 'counts' => $imported], $username);
+        } catch (Throwable $e) {
+            logEvent($pdo, 'auth', 'error', 'Client data transfer failed: ' . $e->getMessage(), null, ['from' => $source[2]], $username);
+            $imported = ['error' => "Your account is ready, but your data from your old brokerage couldn't be copied. Ask your agent to contact Dibs support."];
+        }
+    }
     logEvent($pdo, 'auth', 'info', $isAgent ? 'Agent joined from invite' : 'Client joined from invite', null, ['invite_id' => (int)$inv['id'], 'user_id' => $userId], $username);
 
     if ($isAgent) {
@@ -239,5 +258,5 @@ function handleAcceptInvite(PDO $pdo) {
         createNotification($pdo, (int)$inv['realtor_id'], 'client_joined', 'Client joined Dibs',
             "{$inv['full_name']} accepted your invite and is now in your client roster.", '#realtor');
     }
-    echo json_encode(['success' => true]);
+    echo json_encode(['success' => true, 'imported' => $imported]);
 }

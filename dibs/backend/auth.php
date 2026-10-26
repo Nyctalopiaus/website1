@@ -31,10 +31,10 @@ if (!function_exists('requireAuth')) {
                 $st->execute([':id' => (int)$_SESSION['user_id']]);
                 $status = $st->fetchColumn();
             } catch (Throwable $e) { $status = 'active'; }   // before the status column exists
-            if ($status === false || $status === 'deactivated') {
+            if ($status === false || $status === 'deactivated' || $status === 'closed') {
                 $_SESSION = [];
                 http_response_code(401);
-                echo json_encode(['error' => 'This account has been deactivated. Contact your brokerage.']);
+                echo json_encode(['error' => $status === 'closed' ? 'This account was closed.' : 'This account has been deactivated. Contact your brokerage.']);
                 exit;
             }
         }
@@ -137,7 +137,7 @@ function handleCheckAuth(PDO $pdo) {
     $stmt = $pdo->prepare("SELECT id, public_id, username, full_name, email, phone, avatar_url, COALESCE(logo_url, '') AS logo_url, brokerage_name, role, is_admin, realtor_id, target_min_price, target_max_price, target_cities, target_beds, target_timeline, must_haves, deal_breakers, created_at, last_login, COALESCE(status, 'active') AS status FROM users WHERE id = :id LIMIT 1");
     $stmt->execute([':id' => $_SESSION['user_id']]);
     $user = $stmt->fetch();
-    if (!$user || ($user['status'] ?? 'active') === 'deactivated') {
+    if (!$user || in_array($user['status'] ?? 'active', ['deactivated', 'closed'], true)) {
         $_SESSION = [];
         echo json_encode(['authenticated' => false]);
         return;
@@ -226,10 +226,10 @@ function handleLogin(PDO $pdo) {
         echo json_encode(['error' => 'Invalid username or password.']);
         return;
     }
-    if (($user['status'] ?? 'active') === 'deactivated' && password_verify($password, $user['password_hash'])) {
-        logLoginAttempt($pdo, $username, false, 'Account deactivated');
+    if (in_array($user['status'] ?? 'active', ['deactivated', 'closed'], true) && password_verify($password, $user['password_hash'])) {
+        logLoginAttempt($pdo, $username, false, 'Account ' . $user['status']);
         http_response_code(403);
-        echo json_encode(['error' => 'This account has been deactivated. Contact your brokerage.']);
+        echo json_encode(['error' => $user['status'] === 'closed' ? 'This account was closed.' : 'This account has been deactivated. Contact your brokerage.']);
         return;
     }
 

@@ -92,13 +92,14 @@ function handleListAgents(PDO $pdo) {
     requireAdmin();
     $rows = $pdo->query("SELECT u.id, u.public_id, u.username, COALESCE(NULLIF(u.full_name, ''), u.username) AS name, COALESCE(u.email, '') AS email,
             COALESCE(u.is_admin, 0) AS is_admin, COALESCE(u.status, 'active') AS status, u.deactivated_at, u.last_login,
-            (SELECT COUNT(*) FROM users c WHERE c.role = 'client' AND c.realtor_id = u.id) AS client_count
+            (SELECT COUNT(*) FROM users c WHERE c.role = 'client' AND c.realtor_id = u.id AND COALESCE(c.status, 'active') = 'active') AS client_count
         FROM users u WHERE u.role = 'realtor' ORDER BY (COALESCE(u.status, 'active') = 'active') DESC, name COLLATE NOCASE")->fetchAll(PDO::FETCH_ASSOC);
     $clients = $pdo->query("SELECT id, public_id, COALESCE(NULLIF(full_name, ''), username) AS name, realtor_id FROM users
-        WHERE role = 'client' AND realtor_id IS NOT NULL ORDER BY name COLLATE NOCASE")->fetchAll(PDO::FETCH_ASSOC);
+        WHERE role = 'client' AND realtor_id IS NOT NULL AND COALESCE(status, 'active') = 'active' ORDER BY name COLLATE NOCASE")->fetchAll(PDO::FETCH_ASSOC);
     $byAgent = [];
     // Only public ids leave the server (sequential ids are refused on the way back in).
-    foreach ($clients as $c) $byAgent[(int)$c['realtor_id']][] = ['id' => $c['public_id'], 'name' => $c['name']];
+    $pendingRel = function_exists('brokeragePendingReleases') ? brokeragePendingReleases($pdo) : [];
+    foreach ($clients as $c) $byAgent[(int)$c['realtor_id']][] = ['id' => $c['public_id'], 'name' => $c['name'], 'release' => $pendingRel[(int)$c['id']] ?? null];
     $out = [];
     foreach ($rows as $r) {
         $out[] = [
@@ -128,7 +129,7 @@ function handleDeactivateAgent(PDO $pdo) {
     if (dibsIsLastAdmin($pdo, $agentId)) return brokerageFail(400, 'This is the only admin account. Make someone else an admin first.');
 
     // Every client must go to an active realtor other than the one leaving.
-    $clients = $pdo->prepare("SELECT id, COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE role = 'client' AND realtor_id = :a");
+    $clients = $pdo->prepare("SELECT id, COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE role = 'client' AND realtor_id = :a AND COALESCE(status, 'active') = 'active'");
     $clients->execute([':a' => $agentId]);
     $clients = $clients->fetchAll(PDO::FETCH_ASSOC);
     // {client public id: new realtor public id}
@@ -185,4 +186,197 @@ function handleReactivateAgent(PDO $pdo) {
     echo json_encode(['success' => true]);
 }
 
+// ------------------------------------------------------------------ client release (step 4)
+//
+//   request_client_release   brokerage admin (CSRF): {client_id, agent_name, new_brokerage, note}
+//   cancel_client_release    brokerage admin (CSRF): {release_id}
+//   get_my_release           client: the pending release offer, if any
+//   respond_client_release   client (CSRF): {release_id, decision: go|stay, close_account}
+//   export_my_data           client: everything the client entered, for download
+//
+// Releasing a client means offering them the choice to follow a departing agent. Nothing moves
+// until the client agrees. Agreeing gives them a download of their own data (never the
+// brokerage's private notes) and the choice to close their account here. Moving the account to
+// the agent's new brokerage on Dibs comes with step 5.
+
+function brokerageReleaseMigrate(PDO $pdo): void {
+    runMigration($pdo, "CREATE TABLE IF NOT EXISTS client_releases (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER NOT NULL,
+        agent_name TEXT NOT NULL DEFAULT '',
+        new_brokerage TEXT NOT NULL DEFAULT '',
+        note TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending',      -- pending | accepted | declined | cancelled
+        closed_account INTEGER NOT NULL DEFAULT 0,
+        requested_by INTEGER,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        decided_at DATETIME DEFAULT NULL,
+        FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE
+    )", 'client_releases');
+}
+
+function handleRequestClientRelease(PDO $pdo) {
+    requireAdmin();
+    requireCsrf();
+    $in = json_decode(dibsRequestBody(), true) ?: [];
+    $clientId = (int)($in['client_id'] ?? 0);   // translated from the public id by dibsRequestBody
+    $text = fn($v, $max) => mb_substr(trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', strip_tags((string)$v))), 0, $max);
+    $agentName = $text($in['agent_name'] ?? '', 80);
+    $newBrokerage = $text($in['new_brokerage'] ?? '', 120);
+    $note = $text($in['note'] ?? '', 500);
+    $c = $pdo->prepare("SELECT id, COALESCE(NULLIF(full_name, ''), username) AS name FROM users WHERE id = :id AND role = 'client' AND COALESCE(status, 'active') = 'active'");
+    $c->execute([':id' => $clientId]);
+    $client = $c->fetch(PDO::FETCH_ASSOC);
+    if (!$client) return brokerageFail(404, 'That client was not found.');
+    if (mb_strlen($agentName) < 2) return brokerageFail(400, "Enter the agent's name.");
+    $open = $pdo->prepare("SELECT 1 FROM client_releases WHERE client_id = :c AND status = 'pending'");
+    $open->execute([':c' => $clientId]);
+    if ($open->fetchColumn()) return brokerageFail(409, 'This client already has a release waiting for their answer.');
+    $pdo->prepare("INSERT INTO client_releases (client_id, agent_name, new_brokerage, note, requested_by) VALUES (:c, :a, :b, :n, :u)")
+        ->execute([':c' => $clientId, ':a' => $agentName, ':b' => $newBrokerage, ':n' => $note, ':u' => (int)$_SESSION['user_id']]);
+    createNotification($pdo, $clientId, 'release_offer', 'A choice about your agent',
+        "$agentName is moving" . ($newBrokerage !== '' ? " to $newBrokerage" : '') . '. Open Dibs to choose whether to go with them.', '#grid');
+    logEvent($pdo, 'system', 'info', 'Client release offered', null, ['client_id' => $clientId, 'agent' => $agentName]);
+    echo json_encode(['success' => true]);
+}
+
+function handleCancelClientRelease(PDO $pdo) {
+    requireAdmin();
+    requireCsrf();
+    $in = json_decode(dibsRequestBody(), true) ?: [];
+    $st = $pdo->prepare("UPDATE client_releases SET status = 'cancelled', decided_at = CURRENT_TIMESTAMP WHERE id = :id AND status = 'pending'");
+    $st->execute([':id' => (int)($in['release_id'] ?? 0)]);
+    if ($st->rowCount() !== 1) return brokerageFail(404, 'That release is not waiting for an answer.');
+    echo json_encode(['success' => true]);
+}
+
+/** Pending release offers by client id (for the roster). */
+function brokeragePendingReleases(PDO $pdo): array {
+    $out = [];
+    foreach ($pdo->query("SELECT id, client_id, agent_name, new_brokerage, created_at FROM client_releases WHERE status = 'pending'")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $out[(int)$r['client_id']] = ['release_id' => (int)$r['id'], 'agent_name' => $r['agent_name'], 'new_brokerage' => $r['new_brokerage'], 'created_at' => $r['created_at']];
+    }
+    return $out;
+}
+
+function handleGetMyRelease(PDO $pdo) {
+    requireAuth();
+    $st = $pdo->prepare("SELECT id, agent_name, new_brokerage, note, created_at FROM client_releases WHERE client_id = :c AND status = 'pending' ORDER BY id DESC LIMIT 1");
+    $st->execute([':c' => (int)$_SESSION['user_id']]);
+    $r = $st->fetch(PDO::FETCH_ASSOC);
+    $settings = brokerageSettings($pdo);
+    echo json_encode(['success' => true, 'release' => $r ? [
+        'release_id' => (int)$r['id'], 'agent_name' => $r['agent_name'], 'new_brokerage' => $r['new_brokerage'],
+        'note' => $r['note'], 'created_at' => $r['created_at'], 'brokerage_name' => $settings['name'],
+    ] : null]);
+}
+
+function handleRespondClientRelease(PDO $pdo) {
+    requireAuth();
+    requireCsrf();
+    $in = json_decode(dibsRequestBody(), true) ?: [];
+    $me = (int)$_SESSION['user_id'];
+    $decision = ($in['decision'] ?? '') === 'go' ? 'accepted' : (($in['decision'] ?? '') === 'stay' ? 'declined' : '');
+    if ($decision === '') return brokerageFail(400, 'Choose whether to go with your agent or stay.');
+    $close = $decision === 'accepted' && !empty($in['close_account']);
+    $st = $pdo->prepare("UPDATE client_releases SET status = :s, closed_account = :c, decided_at = CURRENT_TIMESTAMP WHERE id = :id AND client_id = :me AND status = 'pending'");
+    $st->execute([':s' => $decision, ':c' => $close ? 1 : 0, ':id' => (int)($in['release_id'] ?? 0), ':me' => $me]);
+    if ($st->rowCount() !== 1) return brokerageFail(404, 'That choice is no longer open.');
+    $row = $pdo->prepare("SELECT agent_name, requested_by FROM client_releases WHERE id = :id");
+    $row->execute([':id' => (int)$in['release_id']]);
+    $rel = $row->fetch(PDO::FETCH_ASSOC);
+    $name = $pdo->prepare("SELECT COALESCE(NULLIF(full_name, ''), username) FROM users WHERE id = :id");
+    $name->execute([':id' => $me]);
+    $clientName = (string)$name->fetchColumn();
+    if (!empty($rel['requested_by'])) {
+        createNotification($pdo, (int)$rel['requested_by'], 'release_answer', $decision === 'accepted' ? 'Client is leaving' : 'Client is staying',
+            $decision === 'accepted'
+                ? "$clientName chose to go with {$rel['agent_name']}" . ($close ? ' and closed their account.' : ' and kept their account for now.')
+                : "$clientName chose to stay with the brokerage.", '#realtor');
+    }
+    logEvent($pdo, 'system', 'info', 'Client release answered', null, ['client_id' => $me, 'decision' => $decision, 'closed' => $close]);
+    if ($close) {
+        // The data was offered for download before this call; the account stops working now.
+        $pdo->prepare("UPDATE users SET status = 'closed', deactivated_at = CURRENT_TIMESTAMP WHERE id = :id AND role = 'client'")->execute([':id' => $me]);
+        $_SESSION = [];
+    }
+    echo json_encode(['success' => true, 'decision' => $decision, 'closed' => $close]);
+}
+
+/**
+ * Everything the signed-in client entered in Dibs, for their own download: decisions, ratings,
+ * notes they wrote, notes their agent shared, tour scores and results, Top Picks, My Home, brief
+ * and saved searches. Never the brokerage's private notes or agent-only brief criteria.
+ */
+function handleExportMyData(PDO $pdo) {
+    requireAuth();
+    $me = (int)$_SESSION['user_id'];
+    $u = $pdo->prepare("SELECT username, full_name, email, phone, role, created_at FROM users WHERE id = :id");
+    $u->execute([':id' => $me]);
+    $user = $u->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    $h = $pdo->prepare("SELECT m.mls_id, p.address, p.city, p.zip, p.price, p.status, p.beds, p.baths, p.sqft_finished, p.year_built, p.mls_url,
+            COALESCE(m.favorite, 0) AS favorite, COALESCE(m.possibility, 0) AS possibility, COALESCE(m.hidden, 0) AS passed,
+            COALESCE(m.rating, 0) AS rating, COALESCE(m.user_notes, '') AS my_notes, COALESCE(m.realtor_notes, '') AS agent_shared_notes,
+            COALESCE(m.toured, 0) AS toured, m.toured_at, COALESCE(m.tour_notes, '') AS tour_notes, m.pick_rank, m.tour_scores_json, m.updated_at
+        FROM user_metadata m JOIN properties p ON p.mls_id = m.mls_id
+        WHERE m.user_id = :id AND (m.favorite = 1 OR m.possibility = 1 OR m.hidden = 1 OR m.rating > 0 OR m.toured = 1
+            OR COALESCE(m.user_notes, '') != '' OR COALESCE(m.tour_notes, '') != '' OR COALESCE(m.realtor_notes, '') != '')
+        ORDER BY (m.pick_rank IS NULL), m.pick_rank, p.address");
+    $h->execute([':id' => $me]);
+    $homes = [];
+    foreach ($h->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $r['tour_scores'] = json_decode($r['tour_scores_json'] ?? 'null', true) ?: null;
+        unset($r['tour_scores_json']);
+        foreach (['my_notes', 'agent_shared_notes', 'tour_notes'] as $k) $r[$k] = trim(html_entity_decode(strip_tags(preg_replace('#<br\s*/?>|</(p|div|li)>#i', "\n", (string)$r[$k])), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $homes[] = $r;
+    }
+    $t = $pdo->prepare("SELECT tour_date, impressions, followups_json, top3_json, updated_at FROM tour_debriefs WHERE client_id = :id ORDER BY tour_date");
+    $t->execute([':id' => $me]);
+    $tours = array_map(fn($r) => ['tour_date' => $r['tour_date'], 'impressions' => $r['impressions'],
+        'followups' => json_decode($r['followups_json'] ?: '[]', true) ?: [], 'top3' => json_decode($r['top3_json'] ?: '[]', true) ?: [],
+        'updated_at' => $r['updated_at']], $t->fetchAll(PDO::FETCH_ASSOC));
+    $mh = $pdo->prepare("SELECT * FROM my_homes WHERE user_id = :id");
+    $mh->execute([':id' => $me]);
+    $myHome = $mh->fetch(PDO::FETCH_ASSOC) ?: null;
+    if ($myHome) unset($myHome['user_id']);
+    $brief = null;
+    if (function_exists('briefLoad')) {
+        $loaded = briefLoad($pdo, $me);
+        $brief = $loaded['brief'] ?? null;
+        if (is_array($brief) && isset($brief['criteria'])) $brief['criteria'] = array_values(array_filter($brief['criteria'], fn($c) => ($c['visibility'] ?? '') !== 'agent_only'));
+    }
+    $sf = $pdo->prepare("SELECT name, filter_json, created_at FROM saved_filters WHERE user_id = :id ORDER BY name");
+    $sf->execute([':id' => $me]);
+    $searches = array_map(fn($r) => ['name' => $r['name'], 'filters' => json_decode($r['filter_json'] ?: '{}', true), 'created_at' => $r['created_at']], $sf->fetchAll(PDO::FETCH_ASSOC));
+
+    logEvent($pdo, 'system', 'info', 'Client exported their data', null, ['homes' => count($homes)]);
+    echo json_encode(['success' => true, 'exported_at' => gmdate('c'), 'brokerage' => brokerageSettings($pdo)['name'],
+        'account' => $user, 'homes' => $homes, 'tours' => $tours, 'my_home' => $myHome, 'brief' => $brief, 'saved_searches' => $searches],
+        JSON_INVALID_UTF8_SUBSTITUTE | JSON_PRETTY_PRINT);
+}
+
+/**
+ * Billing tab (read-only for now; claude/billing-spec.md): this brokerage's plan, trial, seats and
+ * what it would cost. The state lives in data/platform.db (set from the platform console).
+ */
+function handleBillingStatus(PDO $pdo) {
+    requireAdmin();
+    $seats = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE role = 'realtor' AND COALESCE(status, 'active') = 'active'")->fetchColumn();
+    $out = ['plan' => 'trial', 'trial_ends_at' => null, 'seats' => $seats, 'price_monthly' => 39.0, 'price_yearly' => 390.0, 'payments_connected' => false];
+    try {
+        $p = dibsPlatformDb(__DIR__ . '/../data');
+        $b = $p->prepare("SELECT plan, trial_ends_at, stripe_status FROM billing WHERE brokerage_id = :id");
+        $b->execute([':id' => DIBS_BROKERAGE_ID]);
+        if ($row = $b->fetch()) { $out['plan'] = $row['plan']; $out['trial_ends_at'] = $row['trial_ends_at']; $out['payments_connected'] = !empty($row['stripe_status']); }
+        foreach ($p->query("SELECT key, value FROM platform_settings")->fetchAll() as $s) {
+            if ($s['key'] === 'seat_price_monthly') $out['price_monthly'] = (float)$s['value'];
+            if ($s['key'] === 'seat_price_yearly') $out['price_yearly'] = (float)$s['value'];
+        }
+    } catch (Throwable $e) { /* billing not set up yet: defaults */ }
+    if (DIBS_BROKERAGE_ID === 1 && $out['plan'] === 'trial' && !$out['trial_ends_at']) $out['plan'] = 'comped';
+    echo json_encode(['success' => true, 'billing' => $out]);
+}
+
 brokerageMigrate($pdo);
+brokerageReleaseMigrate($pdo);

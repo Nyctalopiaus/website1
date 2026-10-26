@@ -23,6 +23,8 @@
         .join-submit { width: 100%; justify-content: center; padding: 0.75rem; font-size: 0.95rem; }
         .join-foot { margin-top: 1.1rem; font-size: 0.8rem; color: var(--text-muted); text-align: center; }
         .join-foot a { color: var(--accent-gold); }
+        .join-import { margin: 0.5rem 0 1rem; border: 1px dashed var(--border-color, #ccc); border-radius: 10px; padding: 0.6rem 0.8rem; }
+        .join-import summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -72,6 +74,17 @@
                         <input type="password" name="password" autocomplete="new-password" required minlength="10" maxlength="200"></label>
                     <label class="join-field">Type it again
                         <input type="password" name="confirm" autocomplete="new-password" required minlength="10" maxlength="200"></label>
+                    ${inv.invite_role === 'realtor' ? '' : `
+                    <details class="join-import">
+                        <summary>Moving from another brokerage on Dibs? Bring your homes and notes</summary>
+                        <p class="join-hint">If your old brokerage released you to move, sign in to your old Dibs account here. Your favorites, ratings, notes, tour results, Top Picks, My Home and brief come with you, and your old account is closed.</p>
+                        <label class="join-field">Your old Dibs address <span class="join-hint">e.g. nycto.ninja/dibs/b/old-brokerage/</span>
+                            <input type="text" name="old_slug" autocomplete="off" maxlength="200" autocapitalize="none" spellcheck="false"></label>
+                        <label class="join-field">Old username
+                            <input type="text" name="old_username" autocomplete="off" maxlength="40" autocapitalize="none" spellcheck="false"></label>
+                        <label class="join-field">Old password
+                            <input type="password" name="old_password" autocomplete="off" maxlength="200"></label>
+                    </details>`}
                     <p class="join-error" id="join-error" role="alert"></p>
                     <button type="submit" class="btn btn-gold join-submit">Create my account</button>
                 </form>
@@ -88,8 +101,23 @@
                 const btn = form.querySelector('button');
                 btn.disabled = true; btn.textContent = 'Creating your account…';
                 try {
-                    await api('accept_invite', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token, email: f.email, username: f.username, password: f.password }) });
+                    const body = { token, email: f.email, username: f.username, password: f.password };
+                    if ((f.old_username || '').trim() || (f.old_password || '').trim()) {
+                        body.import = { slug: f.old_slug || '', username: (f.old_username || '').trim(), password: f.old_password || '' };
+                    }
+                    const res = await api('accept_invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                    const im = res && res.imported;
+                    if (im && im.error) {
+                        root.innerHTML = `<p class="join-brand">Dibs</p><h1>You're in</h1><p class="join-lead">${esc(im.error)}</p><p><a class="btn btn-gold" href="./">Open Dibs</a></p>`;
+                        return;
+                    }
+                    if (im) {
+                        const parts = [`${im.homes + im.homes_waiting} homes`, im.tours ? `${im.tours} tour result${im.tours === 1 ? '' : 's'}` : '', im.my_home ? 'My Home' : '', im.brief ? 'your brief' : '', im.searches ? `${im.searches} saved search${im.searches === 1 ? '' : 'es'}` : ''].filter(Boolean);
+                        root.innerHTML = `<p class="join-brand">Dibs</p><h1>You're in, and your data came with you</h1>
+                            <p class="join-lead">Brought over: ${esc(parts.join(', '))}.${im.homes_waiting ? ` ${im.homes_waiting} of those homes will show up here once your new brokerage adds the listing.` : ''}</p>
+                            <p><a class="btn btn-gold" href="./">Open Dibs</a></p>`;
+                        return;
+                    }
                     root.innerHTML = '<p class="join-brand">Dibs</p><h1>You\'re in</h1><p class="join-lead">Taking you to Dibs…</p>';
                     location.replace('./');
                 } catch (e) {

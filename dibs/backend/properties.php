@@ -1181,6 +1181,8 @@ function handleSync(PDO $pdo) {
             }
             if ($isNewProperty) {
                 recordPropertyActivity($pdo, $mlsId, 'listing_imported', 'public', 'Listing added from Matrix MLS.');
+                // A client who transferred in from another brokerage may have data waiting for this listing.
+                if (function_exists('transferApplyPending')) transferApplyPending($pdo, $mlsId);
             } elseif (strcasecmp(trim((string)$existingStatus), $incomingStatus) !== 0) {
                 recordPropertyActivity($pdo, $mlsId, 'listing_status_changed', 'public', "MLS status changed from " . trim((string)$existingStatus) . " to $incomingStatus.", ['previous_status' => $existingStatus, 'status' => $incomingStatus]);
             }

@@ -39,6 +39,7 @@ function ensureModal() {
                 <div class="bk-tabs" role="tablist">
                     <button type="button" role="tab" class="bk-tab" data-bk-tab="office">Office</button>
                     <button type="button" role="tab" class="bk-tab" data-bk-tab="agents">Agents</button>
+                    <button type="button" role="tab" class="bk-tab" data-bk-tab="billing">Billing</button>
                 </div>
             </div>
             <div id="brokerage-body"><p class="my-home-loading">Loading…</p></div>
@@ -80,6 +81,7 @@ function render() {
         b.classList.toggle('is-on', b.dataset.bkTab === tab);
         b.setAttribute('aria-selected', String(b.dataset.bkTab === tab));
     });
+    if (tab === 'billing') { renderBilling(); return; }
     document.getElementById('brokerage-body').innerHTML = tab === 'office' ? officeHtml() : agentsHtml();
     if (window.lucide) window.lucide.createIcons();
 }
@@ -136,6 +138,7 @@ function agentsHtml() {
             <tbody>${rows || '<tr><td colspan="5">No agents yet.</td></tr>'}</tbody>
         </table>
         <p class="bk-hint">${active.length} active agent${active.length === 1 ? '' : 's'}. Deactivating an agent moves each of their clients to another agent first, with all of the client's history; the agent can no longer sign in.</p>
+        ${clientsHtml()}
         <h3 class="my-home-section-title"><i data-lucide="user-plus"></i> Invite an agent</h3>
         <form class="bk-grid" data-bk-form="invite" novalidate>
             <label>Name<input type="text" name="full_name" maxlength="80" required placeholder="Agent's full name"></label>
@@ -144,6 +147,69 @@ function agentsHtml() {
         </form>
         <div id="bk-invite-result"></div>
         ${agentInvites.length ? `<p class="bk-hint">Pending agent invites: ${agentInvites.map(i => esc(i.full_name)).join(', ')}.</p>` : ''}`;
+}
+
+/** Billing tab: plan, trial, seats and the price. Payment setup comes when Stripe is connected. */
+async function renderBilling() {
+    const body = document.getElementById('brokerage-body');
+    body.innerHTML = '<p class="my-home-loading">Loading…</p>';
+    try {
+        const res = await apiFetch(`${API}?action=billing_status`);
+        if (!res?.success) throw new Error(res?.error || 'Could not load billing.');
+        const b = res.billing;
+        const money = v => '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        const daysLeft = b.trial_ends_at ? Math.max(0, Math.ceil((new Date(b.trial_ends_at.replace(' ', 'T') + 'Z') - Date.now()) / 86400000)) : null;
+        const plan = {
+            comped: 'Free (no charge)',
+            trial: daysLeft !== null ? `Free trial: ${daysLeft} day${daysLeft === 1 ? '' : 's'} left` : 'Free trial',
+            monthly: 'Monthly', annual: 'Yearly',
+        }[b.plan] || b.plan;
+        const seats = Math.max(1, b.seats);
+        body.innerHTML = `
+            <table class="bk-table"><tbody>
+                <tr><td>Plan</td><td><strong>${esc(plan)}</strong></td></tr>
+                <tr><td>Agent seats</td><td>${b.seats} active agent${b.seats === 1 ? '' : 's'}</td></tr>
+                <tr><td>Price</td><td>${money(b.price_monthly)} per agent a month, or ${money(b.price_yearly)} per agent a year</td></tr>
+                ${b.plan === 'comped' ? '' : `<tr><td>Your cost</td><td>${money(seats * b.price_monthly)} a month (${seats} seat${seats === 1 ? '' : 's'}), or ${money(seats * b.price_yearly)} a year</td></tr>`}
+            </tbody></table>
+            <p class="bk-hint">Seats are agents who can sign in. Clients are always free. Deactivating an agent frees their seat.</p>
+            ${b.plan === 'comped' ? '' : `<p class="bk-hint">${b.payments_connected ? '' : 'Online payment setup is coming soon. Nothing will be charged until you add a card.'}</p>`}`;
+    } catch (e) {
+        body.innerHTML = `<p class="my-home-loading">${esc(e.message)}</p>`;
+    }
+}
+
+/** Every active agent's clients, with "Release…" (offer the client the choice to follow an agent who's leaving). */
+function clientsHtml() {
+    const rows = agents.filter(a => a.status === 'active').flatMap(a => a.roster.map(c => ({ c, a })));
+    if (!rows.length) return '';
+    return `
+        <h3 class="my-home-section-title"><i data-lucide="users"></i> Clients</h3>
+        <table class="bk-table"><tbody>
+            ${rows.map(({ c, a }) => `<tr>
+                <td><strong>${esc(c.name)}</strong><div class="bk-sub">Agent: ${esc(a.name)}</div></td>
+                <td>${c.release ? `Offered to go with ${esc(c.release.agent_name)}; waiting for their answer` : ''}</td>
+                <td class="bk-actions">${c.release
+                    ? `<button type="button" class="btn btn-secondary btn-sm" data-bk="release-cancel" data-id="${esc(c.release.release_id)}">Withdraw offer</button>`
+                    : `<button type="button" class="btn btn-secondary btn-sm" data-bk="release" data-id="${esc(c.id)}" data-agent="${esc(a.id)}">Release…</button>`}</td>
+            </tr>`).join('')}
+        </tbody></table>
+        <p class="bk-hint">"Release" asks the client whether they want to follow an agent who's leaving. Nothing changes unless they agree; if they do, they can download their own data (never your private notes) and close their account here.</p>`;
+}
+
+function releaseHtml(client, agent) {
+    return `
+        <h3 class="my-home-section-title"><i data-lucide="route"></i> Release ${esc(client.name)}</h3>
+        <p class="bk-hint">${esc(client.name)} will be asked whether to stay with the brokerage or go with the agent below. You'll get a notice with their answer.</p>
+        <form class="bk-grid" data-bk-form="release" data-client="${esc(client.id)}" novalidate>
+            <label>Agent they'd follow<input type="text" name="agent_name" maxlength="80" required value="${esc(agent?.name || '')}"></label>
+            <label>Agent's new brokerage (optional)<input type="text" name="new_brokerage" maxlength="120" placeholder="e.g. Compass"></label>
+            <label class="bk-wide">Note to the client (optional)<input type="text" name="note" maxlength="500" placeholder="Anything they should know"></label>
+            <div class="brief-actions bk-wide">
+                <button type="button" class="btn btn-secondary" data-bk="back">Cancel</button>
+                <button type="submit" class="btn btn-primary">Send the choice to ${esc(client.name)}</button>
+            </div>
+        </form>`;
 }
 
 /** The deactivate dialog: pick a new agent for each client (or one for all). */
@@ -215,6 +281,17 @@ document.addEventListener('click', async e => {
                 await load();
                 break;
             }
+            case 'release': {
+                const agent = agents.find(a => a.id === el.dataset.agent);
+                const client = agent?.roster.find(c => c.id === id);
+                if (client) { document.getElementById('brokerage-body').innerHTML = releaseHtml(client, agent); if (window.lucide) window.lucide.createIcons(); }
+                break;
+            }
+            case 'release-cancel':
+                await post('cancel_client_release', { release_id: Number(id) });
+                showToast('Offer withdrawn.', 'success');
+                await load();
+                break;
             case 'reactivate':
                 await post('reactivate_agent', { agent_id: id });
                 showToast('Agent reactivated.', 'success');
@@ -266,6 +343,11 @@ document.addEventListener('submit', async e => {
             });
             settings = res.settings;
             showToast('Brokerage settings saved.', 'success');
+        } else if (form.dataset.bkForm === 'release') {
+            await post('request_client_release', { client_id: form.dataset.client, agent_name: f.get('agent_name'), new_brokerage: f.get('new_brokerage'), note: f.get('note') });
+            showToast('Sent. The client will see the choice next time they open Dibs.', 'success');
+            await load();
+            return;
         } else if (form.dataset.bkForm === 'invite') {
             const res = await post('create_invite', { full_name: f.get('full_name'), email: f.get('email'), invite_role: 'realtor' });
             const link = `${new URL('join.html', location.href.split('#')[0]).href}#t=${res.token}`;

@@ -21,6 +21,7 @@ require_once __DIR__ . '/schedule.php';
 require_once __DIR__ . '/packet.php';
 require_once __DIR__ . '/branding.php';
 require_once __DIR__ . '/brokerage.php';
+require_once __DIR__ . '/transfer.php';
 
 // Every JSON response leaves with public user ids instead of sequential ones (bootstrap.php).
 ob_start(function (string $buffer) use ($pdo) { return dibsPublicizeResponse($buffer, $pdo); });
@@ -254,6 +255,30 @@ switch ($action) {
 
     case 'reactivate_agent':
         handleReactivateAgent($pdo);
+        break;
+
+    case 'request_client_release':
+        handleRequestClientRelease($pdo);
+        break;
+
+    case 'cancel_client_release':
+        handleCancelClientRelease($pdo);
+        break;
+
+    case 'get_my_release':
+        handleGetMyRelease($pdo);
+        break;
+
+    case 'respond_client_release':
+        handleRespondClientRelease($pdo);
+        break;
+
+    case 'export_my_data':
+        handleExportMyData($pdo);
+        break;
+
+    case 'billing_status':
+        handleBillingStatus($pdo);
         break;
 
     case 'create_invite':

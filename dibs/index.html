@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
     <!-- Leaflet CSS for Interactive Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="stylesheet" href="styles.css?v=3.38">
+    <link rel="stylesheet" href="styles.css?v=3.39">
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Lucide Icons (replaces emoji glyphs in the header/KPI chrome) -->
@@ -102,6 +102,7 @@
                             <button class="dropdown-item" id="btn-user-profile"><i data-lucide="user-cog"></i> My Profile</button>
                             <button class="dropdown-item" id="btn-user-my-home"><i data-lucide="house"></i> My Home</button>
                             <button class="dropdown-item" id="btn-user-brief"><i data-lucide="sliders-horizontal"></i> My Brief</button>
+                            <button class="dropdown-item buyer-only" id="btn-user-export-data" data-export-my-data style="display: none;"><i data-lucide="download"></i> Download My Data</button>
                             <button class="dropdown-item" id="btn-user-password"><i data-lucide="key-round"></i> Change Password</button>
                             <button class="dropdown-item" id="btn-user-ai-setup"><i data-lucide="sparkles"></i> AI Setup</button>
                             <div class="dropdown-divider"></div>
@@ -1909,6 +1910,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=3.55"></script>
+    <script type="module" src="app.js?v=3.58"></script>
 </body>
 </html>
