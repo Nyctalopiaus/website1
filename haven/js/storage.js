@@ -45,12 +45,15 @@
       const rawItems = raw.items.slice(0, 200);
       sanitized.items = rawItems.map((item, idx) => {
         if (!item || typeof item !== 'object') return null;
+        const itemId = typeof item.id === 'string' && item.id.length > 0 ? item.id.slice(0, 50) : ('item_' + Date.now() + '_' + idx);
         return {
-          id: 'item_' + Date.now() + '_' + idx,
+          id: itemId,
           name: String(item.name || '').trim().slice(0, 80),
           categoryId: String(item.categoryId || 'misc_buffer').trim().slice(0, 50),
           tier: ['needs', 'wants', 'savings'].includes(item.tier) ? item.tier : 'needs',
-          amount: Math.max(0, Math.min(10000000, Math.round(Number(item.amount) || 0)))
+          amount: Math.max(0, Math.min(10000000, Math.round(Number(item.amount) || 0))),
+          paycheck: ['all', 'p1', 'p2'].includes(item.paycheck) ? item.paycheck : 'all',
+          goalAmount: Math.max(0, Math.min(10000000, Math.round(Number(item.goalAmount) || 0)))
         };
       }).filter(Boolean);
     }
@@ -110,7 +113,7 @@
   // Reset state to empty
   function clearState(keepCategories = true) {
     const existingCats = keepCategories ? (Haven.state.customCategories || []) : [];
-    Haven.state.items = [];
+    Haven.state = JSON.parse(JSON.stringify(EMPTY_STATE));
     Haven.state.customCategories = existingCats;
     saveState();
   }

@@ -74,6 +74,43 @@
     'target', 'shield', 'home', 'car', 'tag'
   ];
 
+  // Supported World Currencies
+  const CURRENCIES = {
+    USD: { code: 'USD', symbol: '$', name: 'USD ($)' },
+    EUR: { code: 'EUR', symbol: '€', name: 'EUR (€)' },
+    GBP: { code: 'GBP', symbol: '£', name: 'GBP (£)' },
+    CAD: { code: 'CAD', symbol: 'C$', name: 'CAD (C$)' },
+    AUD: { code: 'AUD', symbol: 'A$', name: 'AUD (A$)' },
+    JPY: { code: 'JPY', symbol: '¥', name: 'JPY (¥)' },
+    INR: { code: 'INR', symbol: '₹', name: 'INR (₹)' }
+  };
+
+  let activeCurrencyCode = localStorage.getItem('haven_currency') || 'USD';
+
+  function getActiveCurrency() {
+    return CURRENCIES[activeCurrencyCode] || CURRENCIES.USD;
+  }
+
+  function setActiveCurrency(code) {
+    if (CURRENCIES[code]) {
+      activeCurrencyCode = code;
+      localStorage.setItem('haven_currency', code);
+    }
+  }
+
+  // Quick-Add Common Essentials Palette
+  const COMMON_PRESETS = [
+    { name: 'Supermarket Groceries', categoryId: 'food_groceries', tier: 'needs', amount: 350, icon: 'shopping-cart' },
+    { name: 'High-Speed Wifi', categoryId: 'util_internet', tier: 'needs', amount: 65, icon: 'wifi' },
+    { name: 'Electric & Gas Heating', categoryId: 'util_power', tier: 'needs', amount: 95, icon: 'zap' },
+    { name: 'Mobile Phone Plan', categoryId: 'util_phone', tier: 'needs', amount: 75, icon: 'smartphone' },
+    { name: 'Auto Insurance', categoryId: 'trans_insurance', tier: 'needs', amount: 130, icon: 'shield' },
+    { name: 'Gasoline / Fuel', categoryId: 'trans_gas', tier: 'needs', amount: 150, icon: 'fuel' },
+    { name: 'Streaming Services', categoryId: 'life_streaming', tier: 'wants', amount: 25, icon: 'tv' },
+    { name: 'Dining Out & Treats', categoryId: 'food_dining', tier: 'wants', amount: 120, icon: 'utensils' },
+    { name: 'Emergency Rainy Buffer', categoryId: 'save_emergency', tier: 'savings', amount: 100, icon: 'umbrella' }
+  ];
+
   // Whitelist of all allowed icons to prevent arbitrary attribute or script injection
   const ALLOWED_ICONS = new Set([
     ...CUSTOM_ICONS,
@@ -84,7 +121,7 @@
     'file-text', 'plus', 'plus-circle', 'x', 'folder-plus', 'activity',
     'droplet', 'zap', 'wifi', 'smartphone', 'shopping-cart', 'box', 'utensils',
     'car', 'train', 'fuel', 'tool', 'navigation', 'tv', 'film', 'compass',
-    'umbrella', 'award', 'help-circle'
+    'umbrella', 'award', 'help-circle', 'sliders', 'calendar', 'clock', 'coins'
   ]);
 
   // Sanitize Icon Name against strict whitelist
@@ -100,10 +137,13 @@
     }[c]));
   }
 
-  // Format Currency
-  function formatMoney(amount) {
+  // Format Currency with dynamic active currency symbol
+  function formatMoney(amount, currencyCode = null) {
     const num = Number(amount) || 0;
-    return '$' + Math.round(num).toLocaleString('en-US');
+    const curr = currencyCode ? (CURRENCIES[currencyCode] || getActiveCurrency()) : getActiveCurrency();
+    const isNegative = num < 0;
+    const absVal = Math.abs(Math.round(num));
+    return (isNegative ? '-' : '') + curr.symbol + absVal.toLocaleString('en-US');
   }
 
   // Beginner Sample Budget Preset
@@ -137,6 +177,10 @@
   Haven.CUSTOM_ICONS = CUSTOM_ICONS;
   Haven.ALLOWED_ICONS = ALLOWED_ICONS;
   Haven.SAMPLE_BUDGET = SAMPLE_BUDGET;
+  Haven.CURRENCIES = CURRENCIES;
+  Haven.COMMON_PRESETS = COMMON_PRESETS;
+  Haven.getActiveCurrency = getActiveCurrency;
+  Haven.setActiveCurrency = setActiveCurrency;
   Haven.sanitizeIcon = sanitizeIcon;
   Haven.escapeHtml = escapeHtml;
   Haven.formatMoney = formatMoney;

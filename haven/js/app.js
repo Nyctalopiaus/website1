@@ -1,6 +1,8 @@
 /**
  * Haven — Mindful Monthly Budgeting for Beginners
  * Main Coordinator & UI Application Controller
+ * Handles 7 Core Pillars: Income Setup, 50/30/20 Dashboard, Guilt-Free Allowance,
+ * Payday Rhythm Splitter, Quick-Add Palette, Sinking Funds, and What-If Simulator.
  */
 
 (function () {
@@ -8,19 +10,26 @@
 
   window.Haven = window.Haven || {};
 
-  // DOM Elements
+  // DOM Elements: Income & Taxes
   const grossInput = document.getElementById('gross-income-input');
   const netInput = document.getElementById('net-income-input');
   const withholdingSlider = document.getElementById('withholding-slider');
   const withholdingPctLabel = document.getElementById('withholding-pct-label');
   const withholdingDollarLabel = document.getElementById('withholding-dollar-label');
   const payFreqSelect = document.getElementById('pay-frequency-select');
+  const currencySelect = document.getElementById('currency-select');
 
+  // DOM Elements: KPI & Framework Dashboard
   const kpiIncomeEl = document.getElementById('kpi-income');
   const kpiExpensesEl = document.getElementById('kpi-expenses');
   const kpiCushionEl = document.getElementById('kpi-cushion');
   const kpiCushionCard = document.getElementById('kpi-cushion-card');
   const kpiCushionSubtext = document.getElementById('kpi-cushion-subtext');
+
+  // Guilt-Free Spending KPI
+  const kpiAllowanceCard = document.getElementById('kpi-allowance-card');
+  const kpiAllowanceDaily = document.getElementById('kpi-allowance-daily');
+  const kpiAllowanceWeekly = document.getElementById('kpi-allowance-weekly');
 
   const pillarNeedsBar = document.getElementById('pillar-needs-bar');
   const pillarNeedsAmount = document.getElementById('pillar-needs-amount');
@@ -34,10 +43,22 @@
   const pillarSavingsAmount = document.getElementById('pillar-savings-amount');
   const pillarSavingsStatus = document.getElementById('pillar-savings-status');
 
+  // DOM Elements: Spending Planner & Palette
   const tableBody = document.getElementById('budget-table-body');
   const emptyState = document.getElementById('table-empty-state');
   const filterTabs = document.querySelectorAll('.filter-tab');
+  const quickAddChips = document.getElementById('quick-add-chips');
 
+  // Payday Rhythm Elements
+  const paycheckSplitterBanner = document.getElementById('paycheck-splitter-banner');
+  const p1NetVal = document.getElementById('p1-net-val');
+  const p1BillsVal = document.getElementById('p1-bills-val');
+  const p1CushionVal = document.getElementById('p1-cushion-val');
+  const p2NetVal = document.getElementById('p2-net-val');
+  const p2BillsVal = document.getElementById('p2-bills-val');
+  const p2CushionVal = document.getElementById('p2-cushion-val');
+
+  // Toolbar & General Actions
   const addItemBtn = document.getElementById('btn-add-item');
   const addItemEmptyBtn = document.getElementById('btn-add-item-empty');
   const viewSampleBtn = document.getElementById('btn-view-sample');
@@ -58,6 +79,41 @@
   const tipsCalculatedTotalDisplay = document.getElementById('tips-calculated-total-display');
   const btnApplyTipsIncome = document.getElementById('btn-apply-tips-income');
 
+  // Sinking Fund Elements
+  const btnOpenSinkingFund = document.getElementById('btn-open-sinking-fund');
+  const sinkingFundModal = document.getElementById('sinking-fund-modal');
+  const btnCloseSinkingFund = document.getElementById('btn-close-sinking-fund');
+  const btnCloseSinkingFundFoot = document.getElementById('btn-close-sinking-fund-foot');
+  const sfBillNameInput = document.getElementById('sf-bill-name');
+  const sfTotalTargetInput = document.getElementById('sf-total-target');
+  const sfMonthsDueInput = document.getElementById('sf-months-due');
+  const sfMonthlyResult = document.getElementById('sf-monthly-result');
+  const sfNarrativeResult = document.getElementById('sf-narrative-result');
+  const btnAddSinkingFundItem = document.getElementById('btn-add-sinking-fund-item');
+
+  // What-If Scenario Simulator Elements
+  const btnOpenWhatIf = document.getElementById('btn-open-what-if');
+  const whatIfModal = document.getElementById('what-if-modal');
+  const btnCloseWhatIf = document.getElementById('btn-close-what-if');
+  const btnCloseWhatIfFoot = document.getElementById('btn-close-what-if-foot');
+  const whatIfIncomeSlider = document.getElementById('what-if-income-slider');
+  const whatIfWantsSlider = document.getElementById('what-if-wants-slider');
+  const whatIfHousingSlider = document.getElementById('what-if-housing-slider');
+  const whatIfIncomeDisplay = document.getElementById('what-if-income-display');
+  const whatIfWantsDisplay = document.getElementById('what-if-wants-display');
+  const whatIfHousingDisplay = document.getElementById('what-if-housing-display');
+  const whatIfBaseCushion = document.getElementById('what-if-base-cushion');
+  const whatIfSimCushion = document.getElementById('what-if-sim-cushion');
+  const whatIfAnnualBanner = document.getElementById('what-if-annual-banner');
+  const whatIfAnnualDiff = document.getElementById('what-if-annual-diff');
+  const whatIfAnnualNarrative = document.getElementById('what-if-annual-narrative');
+  const whatIfSimNeeds = document.getElementById('what-if-sim-needs');
+  const whatIfSimWants = document.getElementById('what-if-sim-wants');
+  const whatIfSimSavings = document.getElementById('what-if-sim-savings');
+  const btnResetWhatIfSliders = document.getElementById('btn-reset-what-if-sliders');
+  const btnApplyWhatIfChanges = document.getElementById('btn-apply-what-if-changes');
+
+  // Header and Utility Buttons
   const clearBudgetBtn = document.getElementById('btn-clear-budget');
   const exportBtn = document.getElementById('btn-export');
   const importInput = document.getElementById('file-import-input');
@@ -96,6 +152,14 @@
     }, 2800);
   }
 
+  // Update Currency Symbols across all static symbol badges
+  function updateCurrencySymbols() {
+    const symbol = Haven.getActiveCurrency ? Haven.getActiveCurrency().symbol : '$';
+    document.querySelectorAll('.input-symbol').forEach(el => {
+      el.textContent = symbol;
+    });
+  }
+
   // Sync Input Controls with State
   function syncIncomeInputs() {
     const s = Haven.state || {};
@@ -104,6 +168,9 @@
     if (withholdingSlider) withholdingSlider.value = s.withholdingPct || 22;
     if (withholdingPctLabel) withholdingPctLabel.textContent = `${s.withholdingPct}%`;
     if (payFreqSelect) payFreqSelect.value = s.payFrequency || 'monthly';
+    if (currencySelect && Haven.getActiveCurrency) {
+      currencySelect.value = Haven.getActiveCurrency().code;
+    }
 
     if (withholdingDollarLabel) {
       if (s.grossMonthly > 0) {
@@ -113,6 +180,8 @@
         withholdingDollarLabel.textContent = `$0 / mo`;
       }
     }
+
+    updateCurrencySymbols();
   }
 
   // Recalculate Net from Gross & Slider
@@ -144,6 +213,72 @@
     return res;
   }
 
+  // Render Quick-Add "Common Essentials" Tap Palette
+  function renderQuickAddChips() {
+    if (!quickAddChips) return;
+    quickAddChips.innerHTML = '';
+    const presets = Haven.COMMON_PRESETS || [];
+
+    presets.forEach((preset) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'quick-chip';
+      btn.innerHTML = `
+        <i data-lucide="${preset.icon}" style="width: 14px; height: 14px;"></i>
+        <span>${Haven.escapeHtml(preset.name)}</span>
+        <span class="quick-chip-amt">${Haven.formatMoney(preset.amount)}</span>
+      `;
+
+      btn.addEventListener('click', () => {
+        const newItem = {
+          id: 'item_' + Date.now(),
+          name: preset.name,
+          categoryId: preset.categoryId,
+          tier: preset.tier,
+          amount: preset.amount,
+          paycheck: 'all',
+          goalAmount: 0
+        };
+        Haven.state.items.push(newItem);
+        Haven.saveState();
+        renderAll();
+        showToast(`Added ${preset.name} (${Haven.formatMoney(preset.amount)})`, 'plus-circle');
+      });
+
+      quickAddChips.appendChild(btn);
+    });
+
+    if (window.lucide) lucide.createIcons({ root: quickAddChips });
+  }
+
+  // Render Payday Rhythm Splitter Banner
+  function renderPaydayRhythm() {
+    if (!paycheckSplitterBanner) return;
+    const isApplicable = Haven.state.payFrequency === 'bi-weekly' || Haven.state.payFrequency === 'semi-monthly';
+
+    if (!isApplicable) {
+      paycheckSplitterBanner.style.display = 'none';
+      return;
+    }
+
+    paycheckSplitterBanner.style.display = 'block';
+    const split = Haven.calculatePaycheckSplit(Haven.state.items, Haven.state.netMonthly, Haven.state.payFrequency);
+
+    if (p1NetVal) p1NetVal.textContent = Haven.formatMoney(split.halfNet);
+    if (p1BillsVal) p1BillsVal.textContent = Haven.formatMoney(split.p1Total);
+    if (p1CushionVal) {
+      p1CushionVal.textContent = (split.p1Cushion >= 0 ? '+' : '') + Haven.formatMoney(split.p1Cushion);
+      p1CushionVal.className = split.p1Cushion >= 0 ? 'positive' : 'negative';
+    }
+
+    if (p2NetVal) p2NetVal.textContent = Haven.formatMoney(split.halfNet);
+    if (p2BillsVal) p2BillsVal.textContent = Haven.formatMoney(split.p2Total);
+    if (p2CushionVal) {
+      p2CushionVal.textContent = (split.p2Cushion >= 0 ? '+' : '') + Haven.formatMoney(split.p2Cushion);
+      p2CushionVal.className = split.p2Cushion >= 0 ? 'positive' : 'negative';
+    }
+  }
+
   // Render Spending Planner Table
   function renderTable() {
     if (!tableBody) return;
@@ -167,6 +302,8 @@
       if (!groups[cat.group]) groups[cat.group] = [];
       groups[cat.group].push(cat);
     });
+
+    const activeCurr = Haven.getActiveCurrency ? Haven.getActiveCurrency() : { symbol: '$' };
 
     itemsToDisplay.forEach((item) => {
       const tr = document.createElement('tr');
@@ -193,9 +330,26 @@
       const tierLabel = item.tier === 'needs' ? 'Essential (Needs)' : (item.tier === 'wants' ? 'Lifestyle (Wants)' : 'Future (Savings)');
       const safeAmountVal = (Number.isFinite(Number(item.amount)) && item.amount > 0) ? Math.max(0, Math.round(Number(item.amount))) : '';
 
+      // Paycheck tag
+      const paycheckVal = item.paycheck || 'all';
+      const paycheckLabel = paycheckVal === 'p1' ? 'Paycheck 1' : (paycheckVal === 'p2' ? 'Paycheck 2' : 'Split / All');
+      const paycheckTitle = paycheckVal === 'p1' ? 'Assigned to Paycheck 1' : (paycheckVal === 'p2' ? 'Assigned to Paycheck 2' : 'Split across Paychecks 1 & 2');
+
+      // Savings Goal Badge
+      let goalHtml = '';
+      if (item.tier === 'savings' && item.amount > 0) {
+        if (item.goalAmount > 0) {
+          const cd = Haven.calculateGoalCountdown(item.amount, item.goalAmount);
+          goalHtml = `<div class="goal-countdown-badge btn-edit-goal" title="Click to edit savings goal" style="cursor: pointer;"><i data-lucide="target" style="width: 12px; height: 12px;"></i><span>Target: ${Haven.formatMoney(item.goalAmount)} (${cd.months} mo)</span></div>`;
+        } else {
+          goalHtml = `<div class="goal-countdown-badge btn-edit-goal" style="background: transparent; border-style: dashed; opacity: 0.75; cursor: pointer;" title="Set target savings goal"><i data-lucide="target" style="width: 12px; height: 12px;"></i><span>+ Goal</span></div>`;
+        }
+      }
+
       tr.innerHTML = `
         <td>
           <input type="text" class="item-name-input" value="${Haven.escapeHtml(item.name)}" placeholder="Item name..." aria-label="Item name">
+          ${goalHtml}
         </td>
         <td>
           <select class="category-select" aria-label="Item category">
@@ -209,9 +363,14 @@
         </td>
         <td>
           <div class="input-with-symbol" style="max-width: 140px;">
-            <span class="input-symbol">$</span>
+            <span class="input-symbol">${activeCurr.symbol}</span>
             <input type="number" class="item-amount-input form-input" value="${safeAmountVal}" placeholder="0" min="0" step="1" aria-label="Planned monthly amount">
           </div>
+        </td>
+        <td class="col-paycheck">
+          <button type="button" class="paycheck-pill ${paycheckVal}" title="${paycheckTitle}">
+            ${paycheckLabel}
+          </button>
         </td>
         <td>
           <div class="row-actions">
@@ -226,6 +385,8 @@
       const catSelect = tr.querySelector('.category-select');
       const tierBtn = tr.querySelector('.tier-pill');
       const amountInput = tr.querySelector('.item-amount-input');
+      const paycheckBtn = tr.querySelector('.paycheck-pill');
+      const editGoalBtn = tr.querySelector('.btn-edit-goal');
       const delBtn = tr.querySelector('.btn-delete-row');
 
       nameInput.addEventListener('input', (e) => {
@@ -267,6 +428,30 @@
         renderSummaryAndCharts();
       });
 
+      if (paycheckBtn) {
+        paycheckBtn.addEventListener('click', () => {
+          if (!item.paycheck || item.paycheck === 'all') item.paycheck = 'p1';
+          else if (item.paycheck === 'p1') item.paycheck = 'p2';
+          else item.paycheck = 'all';
+          Haven.saveState();
+          renderAll();
+        });
+      }
+
+      if (editGoalBtn) {
+        editGoalBtn.addEventListener('click', () => {
+          const currentTarget = item.goalAmount || (item.amount * 6) || 1000;
+          const userVal = prompt(`Enter target savings amount for "${item.name || 'this goal'}":`, currentTarget);
+          if (userVal !== null) {
+            const parsed = Math.max(0, parseInt(userVal, 10) || 0);
+            item.goalAmount = parsed;
+            Haven.saveState();
+            renderAll();
+            showToast(parsed > 0 ? `Target set to ${Haven.formatMoney(parsed)}` : 'Target cleared', 'target');
+          }
+        });
+      }
+
       delBtn.addEventListener('click', () => {
         const deletedName = item.name || 'Spending item';
         Haven.state.items = Haven.state.items.filter(i => i.id !== item.id);
@@ -281,11 +466,11 @@
     if (window.lucide) lucide.createIcons({ root: tableBody });
   }
 
-  // Render KPI Cards & 50/30/20 Progress Bars
+  // Render KPI Cards, Guilt-Free Allowance, Payday Rhythm, & 50/30/20 Progress Bars
   function renderSummaryAndCharts() {
     const summary = Haven.getFinancialSummary(Haven.state, Haven.getAllCategories());
 
-    // KPIs
+    // Main 3 KPIs
     if (kpiIncomeEl) kpiIncomeEl.textContent = Haven.formatMoney(summary.net);
     if (kpiExpensesEl) kpiExpensesEl.textContent = Haven.formatMoney(summary.totalExpenses);
 
@@ -300,6 +485,20 @@
         kpiCushionCard.className = 'kpi-card cushion-negative';
         kpiCushionSubtext.className = 'kpi-subtext warning';
         kpiCushionSubtext.innerHTML = '<i data-lucide="alert-triangle"></i> Budget is over monthly income';
+      }
+    }
+
+    // Daily & Weekly Guilt-Free Spending Allowance
+    if (kpiAllowanceDaily && kpiAllowanceWeekly) {
+      const gf = Haven.calculateGuiltFreeSpending(summary.wantsTotal, summary.cushion);
+      kpiAllowanceDaily.innerHTML = `${Haven.formatMoney(gf.dailyAllowance)} <span style="font-size: 0.95rem; font-weight: 500; color: var(--text-muted);">/ day</span>`;
+
+      if (gf.isDeficit) {
+        if (kpiAllowanceCard) kpiAllowanceCard.classList.add('is-deficit');
+        kpiAllowanceWeekly.innerHTML = `<span style="color: var(--brand-rose);"><i data-lucide="alert-triangle"></i> Deficit: -${Haven.formatMoney(gf.deficitAmount)} — trim wants</span>`;
+      } else {
+        if (kpiAllowanceCard) kpiAllowanceCard.classList.remove('is-deficit');
+        kpiAllowanceWeekly.textContent = `${Haven.formatMoney(gf.weeklyAllowance)} / week (Wants + Cushion)`;
       }
     }
 
@@ -363,7 +562,12 @@
       }
     }
 
-    if (window.lucide) lucide.createIcons({ root: kpiCushionCard });
+    renderPaydayRhythm();
+
+    if (window.lucide) {
+      if (kpiCushionCard) lucide.createIcons({ root: kpiCushionCard });
+      if (kpiAllowanceCard) lucide.createIcons({ root: kpiAllowanceCard });
+    }
 
     // Update Charts & Insights Modules
     if (Haven.updateCharts) Haven.updateCharts(summary);
@@ -408,7 +612,9 @@
       name: '',
       categoryId: defaultCat.id,
       tier: defaultCat.tier,
-      amount: 0
+      amount: 0,
+      paycheck: 'all',
+      goalAmount: 0
     };
     Haven.state.items.push(newItem);
     Haven.saveState();
@@ -421,6 +627,109 @@
         if (input) input.focus();
       }
     }, 50);
+  }
+
+  // Sinking Fund Live Calculation & Modal
+  function updateSinkingFundCalc() {
+    const target = parseFloat(sfTotalTargetInput ? sfTotalTargetInput.value : 0) || 0;
+    const months = Math.max(1, parseInt(sfMonthsDueInput ? sfMonthsDueInput.value : 6) || 1);
+    const res = Haven.calculateSinkingFund(target, months);
+
+    if (sfMonthlyResult) {
+      sfMonthlyResult.textContent = `${Haven.formatMoney(res.monthlyContribution)} / month`;
+    }
+    if (sfNarrativeResult) {
+      sfNarrativeResult.textContent = target > 0
+        ? `In ${months} months, you will have the full ${Haven.formatMoney(target)} saved with zero stress!`
+        : 'Enter an amount and timeframe above';
+    }
+    return res;
+  }
+
+  function openSinkingFundModal() {
+    if (sfBillNameInput) sfBillNameInput.value = '';
+    if (sfTotalTargetInput) sfTotalTargetInput.value = '';
+    if (sfMonthsDueInput) sfMonthsDueInput.value = '6';
+    updateSinkingFundCalc();
+    if (sinkingFundModal) sinkingFundModal.classList.add('active');
+  }
+
+  function closeSinkingFundModal() {
+    if (sinkingFundModal) sinkingFundModal.classList.remove('active');
+  }
+
+  // What-If? Scenario Simulation
+  function runWhatIfSimulation() {
+    const incomeDelta = parseFloat(whatIfIncomeSlider ? whatIfIncomeSlider.value : 0) || 0;
+    const wantsTrimPct = parseFloat(whatIfWantsSlider ? whatIfWantsSlider.value : 0) || 0;
+    const housingDelta = parseFloat(whatIfHousingSlider ? whatIfHousingSlider.value : 0) || 0;
+
+    const res = Haven.simulateWhatIfScenario(Haven.state, { incomeDelta, wantsTrimPct, housingDelta });
+
+    if (whatIfIncomeDisplay) {
+      const sign = incomeDelta > 0 ? '+' : '';
+      whatIfIncomeDisplay.textContent = `${sign}${Haven.formatMoney(incomeDelta)} / mo`;
+      whatIfIncomeDisplay.style.color = incomeDelta >= 0 ? 'var(--tier-savings)' : 'var(--brand-rose)';
+    }
+
+    if (whatIfWantsDisplay) {
+      whatIfWantsDisplay.textContent = `${wantsTrimPct}% trim (${Haven.formatMoney(res.wantsSaved)}/mo saved)`;
+    }
+
+    if (whatIfHousingDisplay) {
+      const sign = housingDelta > 0 ? '+' : '';
+      whatIfHousingDisplay.textContent = `${sign}${Haven.formatMoney(housingDelta)} / mo`;
+      whatIfHousingDisplay.style.color = housingDelta <= 0 ? 'var(--tier-savings)' : 'var(--brand-rose)';
+    }
+
+    if (whatIfBaseCushion) {
+      whatIfBaseCushion.textContent = `${res.baseCushion >= 0 ? '+' : ''}${Haven.formatMoney(res.baseCushion)} / mo`;
+    }
+
+    if (whatIfSimCushion) {
+      whatIfSimCushion.textContent = `${res.simCushion >= 0 ? '+' : ''}${Haven.formatMoney(res.simCushion)} / mo`;
+      whatIfSimCushion.style.color = res.simCushion >= 0 ? 'var(--tier-savings)' : 'var(--brand-rose)';
+    }
+
+    if (whatIfAnnualDiff) {
+      const sign = res.annualSavingsDelta > 0 ? '+' : '';
+      whatIfAnnualDiff.textContent = `${sign}${Haven.formatMoney(res.annualSavingsDelta)} / year`;
+      whatIfAnnualDiff.style.color = res.annualSavingsDelta >= 0 ? 'var(--tier-savings)' : 'var(--brand-rose)';
+    }
+
+    if (whatIfAnnualBanner) {
+      whatIfAnnualBanner.style.background = res.annualSavingsDelta >= 0 ? 'var(--tier-savings-bg)' : 'rgba(225, 29, 72, 0.08)';
+      whatIfAnnualBanner.style.borderColor = res.annualSavingsDelta >= 0 ? 'var(--tier-savings-border)' : 'rgba(225, 29, 72, 0.25)';
+    }
+
+    if (whatIfAnnualNarrative) {
+      if (res.annualSavingsDelta > 0) {
+        whatIfAnnualNarrative.textContent = `🚀 Superb! This scenario frees up an extra ${Haven.formatMoney(res.annualSavingsDelta)} every single year!`;
+      } else if (res.annualSavingsDelta < 0) {
+        whatIfAnnualNarrative.textContent = `⚠️ Caution: This scenario creates a ${Haven.formatMoney(Math.abs(res.annualSavingsDelta))}/year cash crunch.`;
+      } else {
+        whatIfAnnualNarrative.textContent = 'Adjust the sliders to test different scenarios.';
+      }
+    }
+
+    const simNet = res.simNet || 1;
+    if (whatIfSimNeeds) whatIfSimNeeds.textContent = `${Haven.formatMoney(res.simNeeds)} (${Math.round((res.simNeeds / simNet) * 100)}%)`;
+    if (whatIfSimWants) whatIfSimWants.textContent = `${Haven.formatMoney(res.simWants)} (${Math.round((res.simWants / simNet) * 100)}%)`;
+    if (whatIfSimSavings) whatIfSimSavings.textContent = `${Haven.formatMoney(res.simSavings)} (${Math.round((res.simSavings / simNet) * 100)}%)`;
+
+    return res;
+  }
+
+  function openWhatIfModal() {
+    if (whatIfIncomeSlider) whatIfIncomeSlider.value = 0;
+    if (whatIfWantsSlider) whatIfWantsSlider.value = 0;
+    if (whatIfHousingSlider) whatIfHousingSlider.value = 0;
+    runWhatIfSimulation();
+    if (whatIfModal) whatIfModal.classList.add('active');
+  }
+
+  function closeWhatIfModal() {
+    if (whatIfModal) whatIfModal.classList.remove('active');
   }
 
   // Render Everything
@@ -445,6 +754,20 @@
       payFreqSelect.addEventListener('change', (e) => {
         Haven.state.payFrequency = e.target.value;
         Haven.saveState();
+        renderSummaryAndCharts();
+      });
+    }
+
+    // Currency Selector
+    if (currencySelect) {
+      currencySelect.addEventListener('change', (e) => {
+        const newCode = e.target.value;
+        if (Haven.setActiveCurrency) Haven.setActiveCurrency(newCode);
+        syncIncomeInputs();
+        renderAll();
+        renderQuickAddChips();
+        renderSampleModalItems();
+        showToast(`Currency set to ${Haven.getActiveCurrency().name}`, 'coins');
       });
     }
 
@@ -524,6 +847,111 @@
         Haven.saveState();
         renderAll();
         showToast(`Applied ${Haven.formatMoney(res.totalNet)} monthly take-home income!`, 'check-circle-2');
+      });
+    }
+
+    // Sinking Fund Modal Handlers
+    if (btnOpenSinkingFund) btnOpenSinkingFund.addEventListener('click', openSinkingFundModal);
+    if (btnCloseSinkingFund) btnCloseSinkingFund.addEventListener('click', closeSinkingFundModal);
+    if (btnCloseSinkingFundFoot) btnCloseSinkingFundFoot.addEventListener('click', closeSinkingFundModal);
+
+    if (sfTotalTargetInput) sfTotalTargetInput.addEventListener('input', updateSinkingFundCalc);
+    if (sfMonthsDueInput) sfMonthsDueInput.addEventListener('input', updateSinkingFundCalc);
+
+    if (sinkingFundModal) {
+      sinkingFundModal.addEventListener('click', (e) => {
+        if (e.target === sinkingFundModal) closeSinkingFundModal();
+      });
+    }
+
+    if (btnAddSinkingFundItem) {
+      btnAddSinkingFundItem.addEventListener('click', () => {
+        const sfRes = updateSinkingFundCalc();
+        if (sfRes.monthlyContribution <= 0) {
+          showToast('Please enter a target bill amount and months due.', 'alert-circle');
+          return;
+        }
+        const nameVal = (sfBillNameInput ? sfBillNameInput.value.trim() : '') || 'Sinking Fund Item';
+        const tierRadio = document.querySelector('input[name="sf-tier"]:checked');
+        const tierVal = tierRadio ? tierRadio.value : 'needs';
+        const categoryId = tierVal === 'needs' ? 'trans_insurance' : 'save_goal';
+
+        const newItem = {
+          id: 'item_' + Date.now(),
+          name: `${nameVal} (Sinking Fund)`,
+          categoryId: categoryId,
+          tier: tierVal,
+          amount: sfRes.monthlyContribution,
+          paycheck: 'all',
+          goalAmount: sfRes.target
+        };
+
+        Haven.state.items.push(newItem);
+        Haven.saveState();
+        renderAll();
+        closeSinkingFundModal();
+        showToast(`Added "${newItem.name}" (${Haven.formatMoney(sfRes.monthlyContribution)}/mo)`, 'calendar');
+      });
+    }
+
+    // What-If? Scenario Simulator Handlers
+    if (btnOpenWhatIf) btnOpenWhatIf.addEventListener('click', openWhatIfModal);
+    if (btnCloseWhatIf) btnCloseWhatIf.addEventListener('click', closeWhatIfModal);
+    if (btnCloseWhatIfFoot) btnCloseWhatIfFoot.addEventListener('click', closeWhatIfModal);
+
+    if (whatIfIncomeSlider) whatIfIncomeSlider.addEventListener('input', runWhatIfSimulation);
+    if (whatIfWantsSlider) whatIfWantsSlider.addEventListener('input', runWhatIfSimulation);
+    if (whatIfHousingSlider) whatIfHousingSlider.addEventListener('input', runWhatIfSimulation);
+
+    if (btnResetWhatIfSliders) {
+      btnResetWhatIfSliders.addEventListener('click', () => {
+        if (whatIfIncomeSlider) whatIfIncomeSlider.value = 0;
+        if (whatIfWantsSlider) whatIfWantsSlider.value = 0;
+        if (whatIfHousingSlider) whatIfHousingSlider.value = 0;
+        runWhatIfSimulation();
+        showToast('Sliders reset to current budget baseline.', 'refresh-cw');
+      });
+    }
+
+    if (btnApplyWhatIfChanges) {
+      btnApplyWhatIfChanges.addEventListener('click', () => {
+        const sim = runWhatIfSimulation();
+        if (confirm(`Apply this scenario to your budget? (Net will become ${Haven.formatMoney(sim.simNet)}, housing adjusted by ${Haven.formatMoney(sim.simExpenses - sim.baseExpenses)})`)) {
+          Haven.state.netMonthly = sim.simNet;
+          const incomeDelta = parseFloat(whatIfIncomeSlider ? whatIfIncomeSlider.value : 0) || 0;
+          Haven.state.grossMonthly = Math.max(0, Haven.state.grossMonthly + incomeDelta);
+
+          // Apply wants trim proportionally across wants items
+          const wantsTrimPct = parseFloat(whatIfWantsSlider ? whatIfWantsSlider.value : 0) || 0;
+          if (wantsTrimPct > 0) {
+            Haven.state.items.forEach(item => {
+              if (item.tier === 'wants' && item.amount > 0) {
+                item.amount = Math.max(0, Math.round(item.amount * (1 - wantsTrimPct / 100)));
+              }
+            });
+          }
+
+          // Apply housing delta to housing items
+          const housingDelta = parseFloat(whatIfHousingSlider ? whatIfHousingSlider.value : 0) || 0;
+          if (housingDelta !== 0) {
+            const rentItem = Haven.state.items.find(i => i.categoryId === 'housing_rent');
+            if (rentItem) {
+              rentItem.amount = Math.max(0, rentItem.amount + housingDelta);
+            }
+          }
+
+          syncIncomeInputs();
+          Haven.saveState();
+          renderAll();
+          closeWhatIfModal();
+          showToast('Applied scenario to your live budget!', 'sparkles');
+        }
+      });
+    }
+
+    if (whatIfModal) {
+      whatIfModal.addEventListener('click', (e) => {
+        if (e.target === whatIfModal) closeWhatIfModal();
       });
     }
 
@@ -643,6 +1071,7 @@
     if (Haven.bindTourEvents) Haven.bindTourEvents();
     if (Haven.initIconPicker) Haven.initIconPicker();
     if (Haven.renderCustomCategoryList) Haven.renderCustomCategoryList();
+    renderQuickAddChips();
     renderAll();
 
     if (window.lucide) lucide.createIcons();
@@ -652,6 +1081,8 @@
   Haven.syncIncomeInputs = syncIncomeInputs;
   Haven.renderAll = renderAll;
   Haven.renderTable = renderTable;
+  Haven.renderQuickAddChips = renderQuickAddChips;
+  Haven.renderPaydayRhythm = renderPaydayRhythm;
   Haven.showToast = showToast;
   Haven.init = init;
 

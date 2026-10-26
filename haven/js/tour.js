@@ -141,7 +141,7 @@
 
     if (tourWithholdingPct) tourWithholdingPct.textContent = `${pct}%`;
     const ded = Math.round(gross * (pct / 100));
-    if (tourWithholdingDollars) tourWithholdingDollars.textContent = `~$${ded.toLocaleString()} / mo`;
+    if (tourWithholdingDollars) tourWithholdingDollars.textContent = `~${Haven.formatMoney(ded)} / mo`;
 
     const estNet = Math.max(0, Math.round(gross * (1 - (pct / 100))));
     if (document.activeElement !== tourNetInput && tourNetInput) {

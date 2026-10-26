@@ -143,6 +143,9 @@ body {
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
+  contain: strict;
+  max-width: 100vw;
+  max-height: 100vh;
   transition: background-color 0.4s ease;
 }
 
@@ -2147,6 +2150,21 @@ body {
     font-size: 1.75rem;
   }
 
+  /* Ambient Background Spots on Mobile */
+  .bg-ambient-spot.spot-primary {
+    width: 280px;
+    height: 280px;
+    top: -80px;
+    left: 10%;
+  }
+
+  .bg-ambient-spot.spot-secondary {
+    width: 220px;
+    height: 220px;
+    top: 60px;
+    right: 5%;
+  }
+
   /* 50/30/20 Framework Bars */
   .framework-card {
     padding: 1.25rem 1.2rem;
@@ -2210,13 +2228,13 @@ body {
 
   .planner-table tr {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: 1fr auto auto auto;
     grid-template-areas: 
-      "name name name"
-      "cat cat cat"
-      "tier amount delete";
+      "name name name name"
+      "cat cat cat cat"
+      "tier paycheck amount delete";
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.65rem;
     background: var(--bg-card);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
@@ -2247,6 +2265,10 @@ body {
   }
 
   .planner-table td:nth-child(5) {
+    grid-area: paycheck;
+  }
+
+  .planner-table td:nth-child(6) {
     grid-area: delete;
     justify-self: end;
   }
@@ -2452,6 +2474,299 @@ body {
   /* Footer */
   .haven-footer {
     padding-bottom: max(2rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* ==========================================================================
+   Currency Selector
+   ========================================================================== */
+.currency-picker-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.currency-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--bg-surface);
+  color: var(--text-main);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 0.45rem 1.8rem 0.45rem 0.75rem;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238d98a5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.45rem center;
+  background-size: 14px;
+}
+
+.currency-select:hover {
+  border-color: var(--border-focus);
+  background-color: var(--bg-subtle);
+}
+
+.currency-select:focus {
+  outline: none;
+  border-color: var(--brand-warm);
+  box-shadow: 0 0 0 3px var(--brand-warm-glow);
+}
+
+/* ==========================================================================
+   Guilt-Free Spending KPI Card
+   ========================================================================== */
+.kpi-card.guilt-free-card {
+  border-color: var(--tier-wants-border);
+  background: linear-gradient(160deg, var(--bg-card), var(--tier-wants-bg));
+}
+
+.kpi-card.guilt-free-card.is-deficit {
+  border-color: rgba(225, 29, 72, 0.3);
+  background: linear-gradient(160deg, var(--bg-card), rgba(225, 29, 72, 0.05));
+}
+
+/* ==========================================================================
+   Quick-Add Common Essentials Palette
+   ========================================================================== */
+.quick-add-palette {
+  margin: 1.15rem 0 0.85rem;
+  padding: 0.85rem 1rem;
+  background: var(--bg-subtle);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-focus);
+}
+
+.quick-add-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+  font-size: 0.8rem;
+}
+
+.quick-add-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  color: var(--brand-warm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.quick-add-hint {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.quick-add-scroll {
+  display: flex;
+  gap: 0.55rem;
+  overflow-x: auto;
+  padding-bottom: 0.35rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.quick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+}
+
+.quick-chip:hover {
+  background: var(--brand-warm-glow);
+  border-color: var(--brand-warm);
+  color: var(--brand-warm);
+  transform: translateY(-1px);
+}
+
+.quick-chip:active {
+  transform: scale(0.97);
+}
+
+.quick-chip-amt {
+  font-weight: 700;
+  color: var(--tier-savings);
+  background: var(--tier-savings-bg);
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-full);
+  font-size: 0.76rem;
+}
+
+/* ==========================================================================
+   Payday Rhythm Splitter Banner
+   ========================================================================== */
+.paycheck-splitter-banner {
+  margin: 1.15rem 0;
+  padding: 1.1rem 1.25rem;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--tier-needs-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.paycheck-banner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.paycheck-banner-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--tier-needs);
+}
+
+.paycheck-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 640px) {
+  .paycheck-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.paycheck-card {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1.1rem;
+}
+
+.paycheck-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 0.45rem;
+}
+
+.paycheck-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.paycheck-net {
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--tier-savings);
+}
+
+.paycheck-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+}
+
+.paycheck-stat-row strong.positive {
+  color: var(--tier-savings);
+}
+
+.paycheck-stat-row strong.negative {
+  color: var(--brand-rose);
+}
+
+.paycheck-banner-footer {
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border-light);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* Paycheck Allocation Tag in Table */
+.paycheck-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid var(--border-light);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+  min-width: 72px;
+}
+
+.paycheck-pill:hover {
+  border-color: var(--border-focus);
+  background: var(--bg-subtle);
+}
+
+.paycheck-pill.p1 {
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--tier-needs);
+  border-color: var(--tier-needs-border);
+}
+
+.paycheck-pill.p2 {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--tier-savings);
+  border-color: var(--tier-savings-border);
+}
+
+.paycheck-pill.all {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+}
+
+/* Savings Goal Countdown Badge */
+.goal-countdown-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--tier-savings);
+  background: var(--tier-savings-bg);
+  border: 1px solid var(--tier-savings-border);
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--radius-full);
+  margin-top: 0.3rem;
+}
+
+/* What-If Modal Layout & Sliders */
+@media (max-width: 768px) {
+  .what-if-layout {
+    grid-template-columns: 1fr !important;
   }
 }
 

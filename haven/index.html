@@ -16,6 +16,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#f5faf7" id="theme-color-meta">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23c27847'><path d='M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z'/></svg>">
+  <link rel="manifest" href="manifest.json">
 
   <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,7 +30,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="styles.css?v=7.0">
+  <link rel="stylesheet" href="styles.css?v=8.0">
 </head>
 <body>
 
@@ -517,6 +518,234 @@
     </div>
   </div>
 
+  <!-- Sinking Fund & Irregular Bill Predictor Modal -->
+  <div id="sinking-fund-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="sinking-fund-modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="card-title-group">
+          <div class="card-icon" style="background: var(--tier-savings-bg); color: var(--tier-savings);" aria-hidden="true">
+            <i data-lucide="calendar"></i>
+          </div>
+          <div>
+            <h3 id="sinking-fund-modal-title" class="modal-title">Sinking Fund Calculator</h3>
+            <p class="card-subtitle">Smooth out irregular bills into manageable, stress-free monthly bites</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-subtle btn-icon-only" id="btn-close-sinking-fund" aria-label="Close dialog">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="sinking-fund-explainer" style="background: var(--bg-subtle); padding: 0.85rem 1rem; border-radius: var(--radius-md); font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1.25rem;">
+          💡 <strong>What is a Sinking Fund?</strong> Instead of being blindsided by a $600 semi-annual car insurance bill or $1,000 holiday gifts, you save a small predictable amount each month so the money is already there.
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div class="form-group">
+            <label for="sf-bill-name" class="form-label">
+              <span>Bill or Goal Name</span>
+              <span class="form-label-hint">What is this expense?</span>
+            </label>
+            <input type="text" id="sf-bill-name" class="form-input" placeholder="e.g. Auto Insurance Semi-Annual, Car Registration, Holiday Gifts" maxlength="60">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem;">
+            <div class="form-group">
+              <label for="sf-total-target" class="form-label">
+                <span>Total Bill Amount</span>
+                <span class="form-label-hint">Full cost</span>
+              </label>
+              <div class="input-with-symbol">
+                <span class="input-symbol">$</span>
+                <input type="number" id="sf-total-target" class="form-input" placeholder="e.g. 600" min="1" step="10">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="sf-months-due" class="form-label">
+                <span>Months Until Due</span>
+                <span class="form-label-hint" id="sf-months-hint">6 months</span>
+              </label>
+              <input type="number" id="sf-months-due" class="form-input" placeholder="6" min="1" max="60" value="6">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              <span>Framework Tier</span>
+            </label>
+            <div class="cat-tier-selector">
+              <label class="cat-tier-option tier-needs">
+                <input type="radio" name="sf-tier" value="needs" checked>
+                <div class="cat-tier-card">
+                  <span class="cat-tier-title"><i data-lucide="shield"></i> Essential Need</span>
+                  <span class="cat-tier-desc">Insurance, taxes, vehicle tags</span>
+                </div>
+              </label>
+              <label class="cat-tier-option tier-savings">
+                <input type="radio" name="sf-tier" value="savings">
+                <div class="cat-tier-card">
+                  <span class="cat-tier-title"><i data-lucide="target"></i> Future Savings</span>
+                  <span class="cat-tier-desc">Holiday gifts, vacation, repair fund</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Sinking Fund Live Calculation Display -->
+          <div class="sf-result-card" style="background: var(--tier-savings-bg); border: 1.5px solid var(--tier-savings-border); border-radius: var(--radius-md); padding: 1rem 1.15rem; text-align: center;">
+            <div style="font-size: 0.82rem; font-weight: 700; color: var(--tier-savings); text-transform: uppercase; letter-spacing: 0.05em;">Monthly Amount to Set Aside:</div>
+            <div id="sf-monthly-result" style="font-family: var(--font-heading); font-size: 2rem; font-weight: 800; color: var(--text-main); margin: 0.35rem 0;">$0 / month</div>
+            <div id="sf-narrative-result" style="font-size: 0.84rem; color: var(--text-muted);">Enter an amount and timeframe above</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="border-top: 1px solid var(--border-light); padding-top: 1rem;">
+        <button type="button" class="btn btn-secondary" id="btn-close-sinking-fund-foot">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-add-sinking-fund-item">
+          <i data-lucide="plus-circle"></i>
+          <span>Add to Monthly Budget</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive What-If? Scenario Simulator Modal -->
+  <div id="what-if-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="what-if-modal-title">
+    <div class="modal-card modal-card-lg">
+      <div class="modal-header">
+        <div class="card-title-group">
+          <div class="card-icon" style="background: var(--brand-warm-glow); color: var(--brand-warm);" aria-hidden="true">
+            <i data-lucide="sliders"></i>
+          </div>
+          <div>
+            <h3 id="what-if-modal-title" class="modal-title">Interactive "What-If?" Scenario Simulator</h3>
+            <p class="card-subtitle">Non-destructive financial sandbox to test potential raises, cuts, and moves</p>
+          </div>
+        </div>
+        <button type="button" class="btn btn-subtle btn-icon-only" id="btn-close-what-if" aria-label="Close dialog">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="modal-body what-if-body">
+        <div style="display: grid; grid-template-columns: 1.1fr 1fr; gap: 1.5rem;" class="what-if-layout">
+          <!-- Controls Column -->
+          <div class="what-if-controls-col" style="display: flex; flex-direction: column; gap: 1.25rem;">
+            <!-- Control 1: Income Shift -->
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
+                <label for="what-if-income-slider" class="form-label" style="margin: 0;">
+                  <span>1. Monthly Income Change</span>
+                </label>
+                <strong id="what-if-income-display" style="font-size: 0.95rem; color: var(--tier-savings);">+$0 / mo</strong>
+              </div>
+              <input type="range" id="what-if-income-slider" class="range-slider" min="-2000" max="3000" step="50" value="0">
+              <div class="slider-labels">
+                <span>-$2,000 (Hours cut)</span>
+                <span>$0</span>
+                <span>+$3,000 (Promotion)</span>
+              </div>
+            </div>
+
+            <!-- Control 2: Wants Trim -->
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
+                <label for="what-if-wants-slider" class="form-label" style="margin: 0;">
+                  <span>2. Trim Lifestyle Wants %</span>
+                </label>
+                <strong id="what-if-wants-display" style="font-size: 0.95rem; color: var(--tier-wants);">0% trim ($0 saved)</strong>
+              </div>
+              <input type="range" id="what-if-wants-slider" class="range-slider" min="0" max="50" step="5" value="0">
+              <div class="slider-labels">
+                <span>0% (As-is)</span>
+                <span>25% (Moderate trim)</span>
+                <span>50% (Lean mode)</span>
+              </div>
+            </div>
+
+            <!-- Control 3: Housing Shift -->
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
+                <label for="what-if-housing-slider" class="form-label" style="margin: 0;">
+                  <span>3. Housing Cost Change</span>
+                </label>
+                <strong id="what-if-housing-display" style="font-size: 0.95rem; color: var(--tier-needs);">+$0 / mo</strong>
+              </div>
+              <input type="range" id="what-if-housing-slider" class="range-slider" min="-800" max="1500" step="50" value="0">
+              <div class="slider-labels">
+                <span>-$800 (Cheaper rent)</span>
+                <span>$0</span>
+                <span>+$1,500 (Upgrade rent)</span>
+              </div>
+            </div>
+
+            <button type="button" class="btn btn-subtle" id="btn-reset-what-if-sliders" style="align-self: flex-start;">
+              <i data-lucide="refresh-cw"></i>
+              <span>Reset Sandbox Sliders</span>
+            </button>
+          </div>
+
+          <!-- Simulation Live Impact Column -->
+          <div class="what-if-impact-col" style="background: var(--bg-surface); border: 1.5px solid var(--border-light); border-radius: var(--radius-lg); padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <h4 style="font-size: 0.92rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.85rem;">
+                Projected Impact on Your Cash Flow
+              </h4>
+
+              <!-- Cushion Comparison Card -->
+              <div class="what-if-kpi-pair" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                <div style="background: var(--bg-subtle); padding: 0.75rem 0.9rem; border-radius: var(--radius-md);">
+                  <div style="font-size: 0.76rem; color: var(--text-muted);">Current Safe Cushion:</div>
+                  <div id="what-if-base-cushion" style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-top: 0.2rem;">$0 / mo</div>
+                </div>
+                <div style="background: var(--tier-savings-bg); border: 1px solid var(--tier-savings-border); padding: 0.75rem 0.9rem; border-radius: var(--radius-md);">
+                  <div style="font-size: 0.76rem; color: var(--tier-savings); font-weight: 700;">Simulated Cushion:</div>
+                  <div id="what-if-sim-cushion" style="font-size: 1.25rem; font-weight: 800; color: var(--tier-savings); margin-top: 0.2rem;">+$0 / mo</div>
+                </div>
+              </div>
+
+              <!-- Annualized Cumulative Difference Banner -->
+              <div class="what-if-annual-banner" id="what-if-annual-banner" style="padding: 0.85rem 1rem; border-radius: var(--radius-md); background: var(--tier-savings-bg); border: 1px solid var(--tier-savings-border); margin-bottom: 1rem; text-align: center;">
+                <div style="font-size: 0.76rem; text-transform: uppercase; font-weight: 700; color: var(--tier-savings); letter-spacing: 0.04em;">12-Month Annual Impact:</div>
+                <div id="what-if-annual-diff" style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 800; color: var(--tier-savings); margin: 0.25rem 0;">+$0 / year</div>
+                <div id="what-if-annual-narrative" style="font-size: 0.82rem; color: var(--text-muted);">Adjust sliders to simulate your scenario</div>
+              </div>
+
+              <!-- Mini Breakdown Bars -->
+              <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.4rem;">Simulated 50/30/20 Distribution:</div>
+              <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.76rem;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span>Needs:</span> <strong id="what-if-sim-needs">$0 (0%)</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span>Wants:</span> <strong id="what-if-sim-wants">$0 (0%)</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span>Savings:</span> <strong id="what-if-sim-savings">$0 (0%)</strong>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top: 1.25rem; padding-top: 0.85rem; border-top: 1px solid var(--border-light); font-size: 0.78rem; color: var(--text-muted);">
+              🛡️ <strong>Sandbox Safety:</strong> Playing with these sliders does not affect your actual budget until you click "Apply Scenario".
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="border-top: 1px solid var(--border-light); padding-top: 1rem;">
+        <button type="button" class="btn btn-secondary" id="btn-close-what-if-foot">Close Sandbox</button>
+        <button type="button" class="btn btn-primary" id="btn-apply-what-if-changes">
+          <i data-lucide="check"></i>
+          <span>Apply Scenario to My Budget</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- File Import Input (Hidden) -->
   <input type="file" id="file-import-input" accept=".json" style="display: none;" aria-hidden="true">
 
@@ -560,6 +789,19 @@
             <i data-lucide="printer"></i>
             <span>Print</span>
           </button>
+
+          <div class="currency-picker-wrap" title="Change currency">
+            <label for="currency-select" class="sr-only">Currency</label>
+            <select id="currency-select" class="currency-select" aria-label="Currency">
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="GBP">GBP (£)</option>
+              <option value="CAD">CAD (C$)</option>
+              <option value="AUD">AUD (A$)</option>
+              <option value="JPY">JPY (¥)</option>
+              <option value="INR">INR (₹)</option>
+            </select>
+          </div>
 
           <button type="button" class="btn btn-subtle btn-icon-only" id="btn-theme-toggle" title="Toggle cozy theme" aria-label="Toggle theme">
             <i data-lucide="moon"></i>
@@ -777,6 +1019,17 @@
             <i data-lucide="check-circle-2"></i> Safe to save or allocate
           </div>
         </div>
+
+        <div class="kpi-card guilt-free-card" id="kpi-allowance-card">
+          <div class="kpi-label">
+            <span>Guilt-Free Spending</span>
+            <i data-lucide="coffee" style="color: var(--tier-wants);"></i>
+          </div>
+          <div class="kpi-value" id="kpi-allowance-daily">$0 <span style="font-size: 0.95rem; font-weight: 500; color: var(--text-muted);">/ day</span></div>
+          <div class="kpi-subtext" id="kpi-allowance-weekly" style="color: var(--text-muted);">
+            $0 / week (Wants + Cushion)
+          </div>
+        </div>
       </div>
 
       <!-- 50/30/20 Visual Guidance Bar -->
@@ -852,6 +1105,14 @@
             </div>
           </div>
           <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+            <button type="button" class="btn btn-subtle" id="btn-open-sinking-fund" title="Calculate irregular bills & sinking funds">
+              <i data-lucide="calendar"></i>
+              <span>Sinking Fund</span>
+            </button>
+            <button type="button" class="btn btn-subtle" id="btn-open-what-if" title="Simulate what-if changes without altering budget">
+              <i data-lucide="sliders"></i>
+              <span>What-If?</span>
+            </button>
             <button type="button" class="btn btn-secondary" id="btn-manage-categories" title="Create and manage custom categories">
               <i data-lucide="folder-plus"></i>
               <span>Custom Categories</span>
@@ -860,6 +1121,63 @@
               <i data-lucide="plus"></i>
               <span>Add Spending Item</span>
             </button>
+          </div>
+        </div>
+
+        <!-- Quick-Add Common Essentials Palette -->
+        <div class="quick-add-palette" id="quick-add-palette" aria-label="Quick-add common essential bills">
+          <div class="quick-add-header">
+            <span class="quick-add-title"><i data-lucide="sparkles"></i> Quick-Add Essentials:</span>
+            <span class="quick-add-hint">Tap any pill to instantly add a common bill</span>
+          </div>
+          <div class="quick-add-scroll" id="quick-add-chips">
+            <!-- Dynamically populated via app.js -->
+          </div>
+        </div>
+
+        <!-- Payday Rhythm Splitter Banner (Bi-Weekly & Semi-Monthly) -->
+        <div class="paycheck-splitter-banner" id="paycheck-splitter-banner" style="display: none;" role="region" aria-label="Payday Rhythm Balance">
+          <div class="paycheck-banner-header">
+            <div class="paycheck-banner-title">
+              <i data-lucide="coins"></i>
+              <span>Payday Rhythm Splitter</span>
+            </div>
+            <span class="badge" style="background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-light);">
+              Cash Flow Timing Balance
+            </span>
+          </div>
+          <div class="paycheck-cards-grid">
+            <div class="paycheck-card" id="paycheck-card-p1">
+              <div class="paycheck-card-head">
+                <span class="paycheck-name">Paycheck 1 (Days 1–15)</span>
+                <span class="paycheck-net" id="p1-net-val">$0</span>
+              </div>
+              <div class="paycheck-stat-row">
+                <span>Assigned Bills:</span>
+                <strong id="p1-bills-val">$0</strong>
+              </div>
+              <div class="paycheck-stat-row">
+                <span>Remaining Cushion:</span>
+                <strong id="p1-cushion-val" class="positive">+$0</strong>
+              </div>
+            </div>
+            <div class="paycheck-card" id="paycheck-card-p2">
+              <div class="paycheck-card-head">
+                <span class="paycheck-name">Paycheck 2 (Days 16–End)</span>
+                <span class="paycheck-net" id="p2-net-val">$0</span>
+              </div>
+              <div class="paycheck-stat-row">
+                <span>Assigned Bills:</span>
+                <strong id="p2-bills-val">$0</strong>
+              </div>
+              <div class="paycheck-stat-row">
+                <span>Remaining Cushion:</span>
+                <strong id="p2-cushion-val" class="positive">+$0</strong>
+              </div>
+            </div>
+          </div>
+          <div class="paycheck-banner-footer" id="paycheck-banner-hint">
+            💡 <strong>Timing tip:</strong> Toggle the Paycheck tag on any row below to balance your expenses across checks and avoid mid-month crunches.
           </div>
         </div>
 
@@ -882,9 +1200,10 @@
             <thead>
               <tr>
                 <th style="min-width: 220px;">Expense Name / Description</th>
-                <th style="min-width: 220px;">Category</th>
-                <th style="min-width: 140px;">Framework Tier</th>
+                <th style="min-width: 200px;">Category</th>
+                <th style="min-width: 130px;">Framework Tier</th>
                 <th style="min-width: 140px; text-align: right;">Monthly Amount</th>
+                <th style="min-width: 110px;" class="col-paycheck">Paycheck</th>
                 <th style="width: 70px;"></th>
               </tr>
             </thead>
@@ -964,15 +1283,6 @@
           </div>
         </div>
       </div>
-          <div class="chart-card-header">
-            <h3 class="framework-title" style="font-size: 1.15rem;">50/30/20 Target vs. Actual</h3>
-            <p class="card-subtitle">Comparing your real allocations against the classic guide</p>
-          </div>
-          <div class="chart-canvas-container">
-            <canvas id="chart-bar-framework"></canvas>
-          </div>
-        </div>
-      </div>
 
       <!-- Smart Beginner Insights -->
       <div class="insights-card">
@@ -1036,12 +1346,12 @@
   </footer>
 
   <!-- Haven Application Modules -->
-  <script src="js/constants.js?v=7.0"></script>
-  <script src="js/storage.js?v=7.0"></script>
-  <script src="js/calculations.js?v=7.0"></script>
-  <script src="js/categories.js?v=7.0"></script>
-  <script src="js/tour.js?v=7.0"></script>
-  <script src="js/charts.js?v=7.0"></script>
-  <script src="js/app.js?v=7.0"></script>
+  <script src="js/constants.js?v=8.0"></script>
+  <script src="js/storage.js?v=8.0"></script>
+  <script src="js/calculations.js?v=8.0"></script>
+  <script src="js/categories.js?v=8.0"></script>
+  <script src="js/tour.js?v=8.0"></script>
+  <script src="js/charts.js?v=8.0"></script>
+  <script src="js/app.js?v=8.0"></script>
 </body>
 </html>

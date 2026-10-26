@@ -1,0 +1,26 @@
+{
+  "name": "Haven — Mindful Monthly Budgeting",
+  "short_name": "Haven",
+  "description": "A warm, welcoming, and 100% private beginner monthly budgeting tool.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fbf9f5",
+  "theme_color": "#f5faf7",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192' fill='%23c27847'><rect width='192' height='192' rx='42' fill='%23f4efe6'/><path d='M96 32L36 92h20v68h40v-40h20v40h40V92h20L96 32z' fill='%23c27847'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' fill='%23c27847'><rect width='512' height='512' rx='110' fill='%23f4efe6'/><path d='M256 80L96 240h54v192h106v-110h54v110h106V240h54L256 80z' fill='%23c27847'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "lifestyle", "productivity"]
+}
