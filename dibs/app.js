@@ -71,6 +71,14 @@ import './js/photoViewer.js';
 import './js/tourView.js';
 // Phone-only collapsible dashboard / control-bar sections (collapsed by default on load).
 import './js/mobileSections.js';
+import './js/buyerReport.js'; // Realtor & lender report (Export modal card)
+import './js/brokerageAdmin.js'; // Brokerage settings & agent roster (Admin Tools menu)
+
+// Browsers that last picked a client before public ids may still hold a sequential id; the server
+// refuses those now (DIBS_REFUSE_NUMERIC_USER_IDS), so drop them and let the user pick again.
+for (const k of ['active_realtor_client_id', 'active_tour_client_id']) {
+    try { if (/^\d+$/.test(localStorage.getItem(k) || '')) localStorage.removeItem(k); } catch (_) { /* storage blocked */ }
+}
 
 // Global JS error capture — posts to the same action=client_log endpoint the bookmarklet uses
 // (backend/properties.php's handleClientLog / event_log table), so an error in the main app is
@@ -121,7 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const hashView = window.location.hash.replace('#', '');
         const savedView = localStorage.getItem('scout_active_view');
         const role = state.currentUserProfile?.role;
-        const isAdminUser = state.isAdmin || role === 'admin';
+        // A realtor who is also the brokerage admin starts on the Agent Hub, not the admin screen.
+        const isAdminUser = role === 'admin' || (state.isAdmin && role !== 'realtor');
         const isRealtorUser = role === 'realtor';
         const defaultRoleView = isAdminUser ? 'admin' : (isRealtorUser ? 'realtor' : (savedView || 'grid'));
 

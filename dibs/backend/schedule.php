@@ -118,6 +118,28 @@ function handleGetAgentSchedule(PDO $pdo) {
         }
     }
 
+    // Shared calendars (Brokerage settings): other agents' showings at the same listings, so an agent
+    // can see a listing that's double-booked. Only the listing, the time and the other agent's
+    // name are shared, never their client.
+    $office = [];
+    $shared = function_exists('brokerageSettings') && brokerageSettings($pdo)['share_calendars'];
+    $mine = array_values(array_unique(array_merge(array_column($showings, 'mls_id'), array_column($unscheduled, 'mls_id'))));
+    if ($shared && !scheduleIsAdmin() && $mine) {
+        $ph = implode(',', array_fill(0, count($mine), '?'));
+        $os = $pdo->prepare("SELECT si.mls_id, si.showing_time, si.planned_start, si.planned_end, COALESCE(si.duration_mins, 20) AS duration_mins,
+                COALESCE(NULLIF(a.full_name, ''), a.username) AS agent_name
+            FROM showing_itinerary si JOIN users c ON c.id = si.client_id JOIN users a ON a.id = c.realtor_id
+            WHERE si.mls_id IN ($ph) AND si.status = 'confirmed' AND c.realtor_id IS NOT NULL AND c.realtor_id != ?");
+        $os->execute(array_merge($mine, [(int)$_SESSION['user_id']]));
+        foreach ($os->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $booked = scheduleLocalTime($r['showing_time'] ?? '');
+            if ($booked !== '') { $s = $booked; $e = scheduleAddMinutes($booked, max(5, (int)$r['duration_mins'])); }
+            elseif (($ps = scheduleLocalTime($r['planned_start'] ?? '')) !== '' && ($pe = scheduleLocalTime($r['planned_end'] ?? '')) !== '') { $s = $ps; $e = $pe; }
+            else continue;
+            if ($s < $rangeEnd && $e > $rangeStart) $office[] = ['mls_id' => $r['mls_id'], 'agent_name' => $r['agent_name'], 'start' => $s, 'end' => $e];
+        }
+    }
+
     $ev = $pdo->prepare("SELECT id, kind, title, start_at, end_at, client_id, location, notes
         FROM agent_events WHERE agent_id = :aid AND start_at < :re AND end_at > :rs ORDER BY start_at");
     $ev->execute([':aid' => (int)$_SESSION['user_id'], ':re' => $rangeEnd, ':rs' => $rangeStart]);
@@ -145,6 +167,7 @@ function handleGetAgentSchedule(PDO $pdo) {
         'showings' => $showings,
         'unscheduled' => $unscheduled,
         'events' => $events,
+        'office_showings' => $office,
         'kinds' => SCHEDULE_EVENT_KINDS,
         'clients' => array_values(array_map(fn($c) => ['client_id' => (int)$c['id'], 'client_name' => $c['full_name'] ?: $c['username']], $clients)),
     ], JSON_INVALID_UTF8_SUBSTITUTE);

@@ -41,6 +41,12 @@ function resetLocalStateForAccount(username) {
             el.style.display = isRealtor ? 'flex' : 'none';
         });
 
+        // Buyer tools (Top Picks): any signed-in user except realtor logins, who have no favorites of their own.
+        const isRealtorLogin = state.currentUserProfile?.role === 'realtor';
+        document.querySelectorAll('.buyer-only').forEach(el => {
+            el.style.display = authenticated && !isRealtorLogin ? 'flex' : 'none';
+        });
+
         const adminDivider = document.getElementById('admin-divider');
         if (adminDivider) {
             adminDivider.style.display = (isAdmin || isRealtor) ? 'block' : 'none';
@@ -158,7 +164,7 @@ function resetLocalStateForAccount(username) {
                     }
                     await syncUserPreferencesFromServer();
                     fetchProperties();
-                    if ((data.role === 'admin' || data.is_admin) && (!window.location.hash || window.location.hash === '#admin')) {
+                    if ((data.role === 'admin' || (data.is_admin && data.role !== 'realtor')) && (!window.location.hash || window.location.hash === '#admin')) {
                         if (window.switchView) window.switchView('admin');
                     } else if (data.role === 'realtor' && (!window.location.hash || window.location.hash === '#realtor')) {
                         if (window.switchView) window.switchView('realtor');
@@ -261,7 +267,7 @@ function resetLocalStateForAccount(username) {
                 await syncUserPreferencesFromServer();
                 showToast(`Welcome back, ${data.full_name || data.username}!`, 'success');
                 fetchProperties();
-                if (data.role === 'admin' || data.is_admin) {
+                if (data.role === 'admin' || (data.is_admin && data.role !== 'realtor')) {
                     if (window.switchView) window.switchView('admin');
                 } else if (data.role === 'realtor') {
                     if (window.switchView) window.switchView('realtor');
@@ -672,7 +678,7 @@ function resetLocalStateForAccount(username) {
             if (role === 'admin') {
                 roleBadge = '<span class="user-role-badge role-admin"><i data-lucide="shield-check" style="width:11px; height:11px; margin-right:3px;"></i> ADMIN</span>';
             } else if (role === 'realtor') {
-                roleBadge = '<span class="user-role-badge role-realtor"><i data-lucide="award" style="width:11px; height:11px; margin-right:3px;"></i> REALTOR</span>';
+                roleBadge = `<span class="user-role-badge role-realtor"><i data-lucide="award" style="width:11px; height:11px; margin-right:3px;"></i> REALTOR${Number(u.is_admin) === 1 ? ' · ADMIN' : ''}</span>`;
             }
 
             const assignedRealtorName = u.realtor_id ? (realtorsMap.get(u.realtor_id) || `ID #${u.realtor_id}`) : null;
@@ -697,7 +703,7 @@ function resetLocalStateForAccount(username) {
                     <td>
                         <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">
                             ${state.isAdmin ? `<button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="promptResetPassword('${u.id}', '${escapeHtml(u.username)}')"><i data-lucide="key-round"></i> Password</button>` : ''}
-                            ${(state.isAdmin && !isAdminAcc) ? `<button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="promptChangeRole('${u.id}', '${escapeHtml(u.username)}', '${role}', '${u.realtor_id || ''}')"><i data-lucide="user-check"></i> Edit Role</button>` : ''}
+                            ${(state.isAdmin && !isAdminAcc) ? `<button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem;" onclick="promptChangeRole('${u.id}', '${escapeHtml(u.username)}', '${role === 'realtor' && Number(u.is_admin) === 1 ? 'realtor + brokerage admin' : role}', '${u.realtor_id || ''}')"><i data-lucide="user-check"></i> Edit Role</button>` : ''}
                             ${(state.isAdmin && !isAdminAcc) ? `<button class="btn btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.75rem; color:var(--accent-red);" onclick="confirmDeleteUser('${u.id}', '${escapeHtml(u.username)}')"><i data-lucide="trash-2"></i> Delete</button>` : ''}
                             ${!state.isAdmin ? `<span style="font-size:0.75rem; color:var(--text-muted); background:var(--bg-input); padding:0.2rem 0.5rem; border-radius:4px; border:1px solid var(--border-color); display:inline-flex; align-items:center; gap:0.25rem;"><i data-lucide="lock" style="width:11px; height:11px;"></i> View Only</span>` : ''}
                         </div>
@@ -1045,7 +1051,8 @@ function resetLocalStateForAccount(username) {
             body: JSON.stringify({ 
                 username, 
                 password, 
-                role, 
+                role: role === 'realtor_admin' ? 'realtor' : role,
+                is_admin: role === 'realtor_admin' || role === 'admin' ? 1 : 0,
                 realtor_id: realtorIdVal || null 
             })
         })
@@ -1093,28 +1100,68 @@ function resetLocalStateForAccount(username) {
         .catch(() => showToast('Error resetting user password', 'error'));
     };
 
+    // Role picker: a small dialog with a dropdown (replaces the old numbered prompt).
+    const ROLE_OPTIONS = [
+        ['client', 'Client (homebuyer)'],
+        ['realtor', 'Realtor / agent'],
+        ['realtor_admin', 'Realtor + brokerage admin (own clients, plus the admin tools)'],
+        ['admin', 'Administrator (admin tools only, no clients)'],
+    ];
     window.promptChangeRole = function(userId, username, currentRole) {
-        const choice = prompt(`Select new role for account "${username}" (Currently: ${currentRole}):\n\n1. Client (Homebuyer)\n2. Realtor / Agent\n3. Administrator\n\nEnter 1, 2, or 3:`);
-        if (!choice) return;
-
-        let newRole = 'client';
-        if (choice.trim() === '2') newRole = 'realtor';
-        else if (choice.trim() === '3') newRole = 'admin';
-
-        apiFetch(CONFIG.API_URL + '?action=update_user_role', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, role: newRole })
-        })
-        .then(data => {
-            if (data.success) {
-                showToast(`Updated role for "${username}" to ${newRole.toUpperCase()}`, 'success');
-                fetchUsersList();
-            } else {
-                showToast(data.error || 'Failed to update user role', 'error');
-            }
-        })
-        .catch(() => showToast('Error updating user role', 'error'));
+        const current = currentRole === 'realtor + brokerage admin' ? 'realtor_admin'
+            : (ROLE_OPTIONS.some(([v]) => v === currentRole) ? currentRole : 'client');
+        document.getElementById('modal-change-role')?.remove();
+        const m = document.createElement('div');
+        m.className = 'modal-overlay active';
+        m.id = 'modal-change-role';
+        m.innerHTML = `
+            <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="change-role-title" style="max-width:440px;">
+                <button class="modal-close" aria-label="Close" data-role-close><i data-lucide="x"></i></button>
+                <h2 id="change-role-title" style="margin:0 0 0.35rem;"><i data-lucide="user-check"></i> Change role</h2>
+                <p style="margin:0 0 1rem; color:var(--text-muted); font-size:0.88rem;">Account <strong>${escapeHtml(username)}</strong></p>
+                <label class="filter-label" for="change-role-select">Role</label>
+                <select id="change-role-select" class="select-input" style="width:100%; margin-top:0.3rem;">
+                    ${ROLE_OPTIONS.map(([v, label]) => `<option value="${v}" ${v === current ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
+                </select>
+                <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.25rem;">
+                    <button type="button" class="btn btn-secondary" data-role-close>Cancel</button>
+                    <button type="button" class="btn btn-primary" data-role-save><i data-lucide="save"></i> Save</button>
+                </div>
+            </div>`;
+        document.body.appendChild(m);
+        if (window.lucide) window.lucide.createIcons();
+        const select = m.querySelector('#change-role-select');
+        select.focus();
+        const close = () => { m.remove(); document.removeEventListener('keydown', onKey); };
+        const onKey = e => { if (e.key === 'Escape') close(); };
+        document.addEventListener('keydown', onKey);
+        m.addEventListener('click', e => {
+            if (e.target === m || e.target.closest('[data-role-close]')) { close(); return; }
+            const saveBtn = e.target.closest('[data-role-save]');
+            if (!saveBtn) return;
+            const v = select.value;
+            if (v === current) { close(); return; }
+            const newRole = v === 'realtor_admin' ? 'realtor' : v;
+            const makeAdmin = v === 'realtor_admin' || v === 'admin';
+            const label = ROLE_OPTIONS.find(([k]) => k === v)?.[1].replace(/ \(.*\)$/, '') || v;
+            saveBtn.disabled = true;
+            apiFetch(CONFIG.API_URL + '?action=update_user_role', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, role: newRole, is_admin: makeAdmin ? 1 : 0 })
+            })
+            .then(data => {
+                if (data.success) {
+                    showToast(`"${username}" is now: ${label}`, 'success');
+                    close();
+                    fetchUsersList();
+                } else {
+                    showToast(data.error || 'Failed to update user role', 'error');
+                    saveBtn.disabled = false;
+                }
+            })
+            .catch(() => { showToast('Error updating user role', 'error'); saveBtn.disabled = false; });
+        });
     };
 
     window.confirmToggleUserRole = function(userId, username, currentlyAdmin) {

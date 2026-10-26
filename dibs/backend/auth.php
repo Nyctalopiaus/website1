@@ -23,6 +23,21 @@ if (!function_exists('requireAuth')) {
             echo json_encode(['error' => 'Unauthenticated access. Please log in.']);
             exit;
         }
+        // A deactivated account (an agent who left the brokerage) is signed out on its next request.
+        $pdo = $GLOBALS['pdo'] ?? null;
+        if ($pdo instanceof PDO) {
+            try {
+                $st = $pdo->prepare("SELECT COALESCE(status, 'active') FROM users WHERE id = :id");
+                $st->execute([':id' => (int)$_SESSION['user_id']]);
+                $status = $st->fetchColumn();
+            } catch (Throwable $e) { $status = 'active'; }   // before the status column exists
+            if ($status === false || $status === 'deactivated') {
+                $_SESSION = [];
+                http_response_code(401);
+                echo json_encode(['error' => 'This account has been deactivated. Contact your brokerage.']);
+                exit;
+            }
+        }
     }
 }
 
@@ -119,16 +134,18 @@ function handleCheckAuth(PDO $pdo) {
         echo json_encode(['authenticated' => false]);
         return;
     }
-    $stmt = $pdo->prepare("SELECT id, public_id, username, full_name, email, phone, avatar_url, COALESCE(logo_url, '') AS logo_url, brokerage_name, role, is_admin, realtor_id, target_min_price, target_max_price, target_cities, target_beds, target_timeline, must_haves, deal_breakers, created_at, last_login FROM users WHERE id = :id LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id, public_id, username, full_name, email, phone, avatar_url, COALESCE(logo_url, '') AS logo_url, brokerage_name, role, is_admin, realtor_id, target_min_price, target_max_price, target_cities, target_beds, target_timeline, must_haves, deal_breakers, created_at, last_login, COALESCE(status, 'active') AS status FROM users WHERE id = :id LIMIT 1");
     $stmt->execute([':id' => $_SESSION['user_id']]);
     $user = $stmt->fetch();
-    if (!$user) {
+    if (!$user || ($user['status'] ?? 'active') === 'deactivated') {
         $_SESSION = [];
         echo json_encode(['authenticated' => false]);
         return;
     }
     $isAdmin = (int)($user['is_admin'] ?? 0) === 1 ? 1 : 0;
-    $userRole = $isAdmin ? 'admin' : ($user['role'] ?: 'client');
+    // A realtor who is also the brokerage admin keeps the realtor role (her clients, tours,
+    // schedule); is_admin adds the admin tools on top.
+    $userRole = $isAdmin ? (($user['role'] ?? '') === 'realtor' ? 'realtor' : 'admin') : ($user['role'] ?: 'client');
     $_SESSION['is_admin'] = $isAdmin;
     $_SESSION['role'] = $userRole;
 
@@ -209,6 +226,12 @@ function handleLogin(PDO $pdo) {
         echo json_encode(['error' => 'Invalid username or password.']);
         return;
     }
+    if (($user['status'] ?? 'active') === 'deactivated' && password_verify($password, $user['password_hash'])) {
+        logLoginAttempt($pdo, $username, false, 'Account deactivated');
+        http_response_code(403);
+        echo json_encode(['error' => 'This account has been deactivated. Contact your brokerage.']);
+        return;
+    }
 
     if (!password_verify($password, $user['password_hash'])) {
         logLoginAttempt($pdo, $username, false, 'Password mismatch');
@@ -222,9 +245,10 @@ function handleLogin(PDO $pdo) {
     $_SESSION['user_id'] = $user['id'];
     $_SESSION['username'] = $user['username'];
     $_SESSION['is_admin'] = (int)($user['is_admin'] ?? 0) === 1 ? 1 : 0;
-    $userRole = $_SESSION['is_admin'] ? 'admin' : ($user['role'] ?: 'client');
+    $userRole = $_SESSION['is_admin'] ? (($user['role'] ?? '') === 'realtor' ? 'realtor' : 'admin') : ($user['role'] ?: 'client');
     $_SESSION['role'] = $userRole;
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    dibsBindSessionToBrokerage();
 
     $updateStmt = $pdo->prepare("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = :id");
     $updateStmt->execute([':id' => $user['id']]);
@@ -339,7 +363,7 @@ function handleListUsers(PDO $pdo) {
     }
     foreach ($users as &$u) {
         $u['is_admin'] = (int)$u['is_admin'] === 1 ? 1 : 0;
-        if ($u['is_admin']) $u['role'] = 'admin';
+        if ($u['is_admin'] && $u['role'] !== 'realtor') $u['role'] = 'admin';
         $u['initials'] = getUserInitials($u['full_name'] ?: $u['username']);
     }
     echo json_encode(['success' => true, 'users' => $users]);
@@ -445,7 +469,9 @@ function handleUpdateUserRole(PDO $pdo) {
         return;
     }
 
-    if (dibsIsLastAdmin($pdo, $targetUserId) && $role !== 'admin' && !(!$role && !empty($input['is_admin']))) {
+    // Admin rights after this change: the Administrator role, or a realtor marked brokerage admin.
+    $newIsAdmin = $role === 'admin' || (!$role && !empty($input['is_admin'])) || ($role === 'realtor' && !empty($input['is_admin']));
+    if (dibsIsLastAdmin($pdo, $targetUserId) && !$newIsAdmin) {
         http_response_code(400);
         echo json_encode(['error' => 'This is the only admin account, so it has to stay an admin. Make another account an admin first.']);
         return;
@@ -461,10 +487,10 @@ function handleUpdateUserRole(PDO $pdo) {
         $role = !empty($input['is_admin']) ? 'admin' : 'client';
     }
 
-    $isAdmin = ($role === 'admin') ? 1 : 0;
+    $isAdmin = $newIsAdmin ? 1 : 0;
     $realtorId = isset($input['realtor_id']) ? ($input['realtor_id'] ? (int)$input['realtor_id'] : null) : null;
 
-    if ($targetUserId === (int)$_SESSION['user_id'] && $role !== 'admin') {
+    if ($targetUserId === (int)$_SESSION['user_id'] && !$isAdmin) {
         http_response_code(400);
         echo json_encode(['error' => 'You cannot demote your own admin access.']);
         return;

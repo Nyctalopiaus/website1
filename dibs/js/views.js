@@ -548,9 +548,11 @@ export function switchView(viewName) {
             <div class="property-card" data-mls="${p.mls_id}" onclick="openDetailModal('${p.mls_id}')">
                 <div class="card-media">
                     <img src="${escapeHtml(imgUrl)}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="card-img" alt="${escapeHtml(p.address || 'Property photo')}">
-                    <span class="card-status-badge ${getStatusBadgeClass(p.status)}">${escapeHtml(p.status || '')}</span>
-                    ${p.toured ? `<span class="card-toured-badge" title="Toured property"><i data-lucide="footprints"></i> Toured</span>` : ''}
-                    ${p.pick_rank ? `<span class="card-rank-badge" title="Your #${p.pick_rank} pick (Top Picks)"><i data-lucide="trophy"></i> #${p.pick_rank}</span>` : ''}
+                    <div class="card-badge-stack">
+                        ${p.status && !/^active$/i.test(String(p.status).trim()) ? `<span class="card-status-badge ${getStatusBadgeClass(p.status)}">${escapeHtml(p.status)}</span>` : ''}
+                        ${p.toured ? `<span class="card-toured-badge" title="Toured property"><i data-lucide="footprints"></i> Toured</span>` : ''}
+                        ${p.pick_rank ? `<span class="card-rank-badge" title="Your #${p.pick_rank} pick (Top Picks)"><i data-lucide="trophy"></i> #${p.pick_rank}</span>` : ''}
+                    </div>
                     ${photoBadge}
                     ${fitBadgeHtml(p.mls_id)}
                     <button class="card-tour-quick-btn" onclick="window.handleQuickToggleTour('${p.mls_id}', event)" title="Add to Showing Tour" aria-label="Add to Showing Tour">

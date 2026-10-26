@@ -7,7 +7,7 @@
  * "Buy before selling" on (then both mortgages are carried until the home sells).
  */
 import { state } from './state.js';
-import { cleanDisplayAddress, escapeHtml } from './properties.js';
+import { cleanDisplayAddress, escapeHtml, ensureFullRaw } from './properties.js';
 import { showToast } from './toast.js';
 import { getMarketRate, loadMortgageRates } from './rates.js';
 import { monthlyCost, loadPaySettings, currentRate } from './compare.js';
@@ -237,6 +237,7 @@ async function runAi() {
     if (!p || !h || aiBusy) return;
     const s = loadSettings();
     const m = computeMove(p, h, s);
+    await ensureFullRaw([p]);
     const userPrompt = [
         '## Current home (the one they would sell)', ...homeFactLines(h), '',
         '## The listing they are considering', buildRankingFactSheet(p, 4000), '',

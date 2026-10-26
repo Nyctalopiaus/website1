@@ -7,7 +7,7 @@
  * side effects (setting window.openDetailModal etc.) is enough.
  */
 import { state, elements, CONFIG } from './state.js';
-import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, isSafeMediaUrl, NO_PHOTO_IMG, getStatusBadgeClass, getCompScore, buildCompScoreBadge, getCompsStaleness } from './properties.js';
+import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, isSafeMediaUrl, NO_PHOTO_IMG, getStatusBadgeClass, getCompScore, buildCompScoreBadge, getCompsStaleness, ensureFullRaw } from './properties.js';
 import { apiFetch, savePreferencesToServer } from './api.js';
 import { applyFiltersAndRender } from './filters.js';
 import { showToast } from './toast.js';
@@ -266,6 +266,14 @@ window.deleteCustomReactionChip = function(event, chipText) {
         }
         const p = state.allProperties.find(item => item.mls_id === mlsId);
         if (!p) return;
+        // The list holds a trimmed MLS record; fetch the rest (description, rooms...) once, then open.
+        if (p.raw_mls_json && Array.isArray(p.raw_mls_json._trimmed)) {
+            ensureFullRaw([p]).then(() => {
+                if (p.raw_mls_json && Array.isArray(p.raw_mls_json._trimmed)) delete p.raw_mls_json._trimmed;   // couldn't load: open with what we have
+                window.openDetailModal(mlsId);
+            });
+            return;
+        }
 
         // Track recently viewed home in localStorage
         try {

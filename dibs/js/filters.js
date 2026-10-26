@@ -832,6 +832,10 @@ import { getCardDaysOnMarket, hasPriceDrop } from './views.js';
             case 'rating-desc':
                 props.sort((a, b) => (b.rating || 0) - (a.rating || 0));
                 break;
+            case 'rank-asc':
+                // Ranked homes #1, #2, ...; unranked ones after them, keeping their current order.
+                props.sort((a, b) => (Number(a.pick_rank) || Infinity) - (Number(b.pick_rank) || Infinity));
+                break;
             case 'dom-asc':
             case 'dom-desc': {
                 // Same days-on-market number the card shows; listings with no value sort last.

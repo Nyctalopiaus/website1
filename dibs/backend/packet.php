@@ -301,7 +301,10 @@ function handleGetTourPacket(PDO $pdo) {
     $b = $pdo->prepare("SELECT brokerage_name, COALESCE(avatar_url, '') AS avatar_url, COALESCE(logo_url, '') AS logo_url FROM users WHERE id = :id");
     $b->execute([':id' => $me]);
     $brand = $b->fetch(PDO::FETCH_ASSOC) ?: [];
-    $brokerage = (string)($brand['brokerage_name'] ?? '');
+    // The agent's own logo and brokerage name win; otherwise the office's (brokerage settings).
+    $office = function_exists('brokerageSettings') ? brokerageSettings($pdo) : [];
+    $brokerage = (string)($brand['brokerage_name'] ?? '') ?: (string)($office['name'] ?? '');
+    if (empty($brand['logo_url']) && !empty($office['logo_url'])) $brand['logo_url'] = $office['logo_url'];
     // Images the PDF can load: uploads on this site, or an https URL (used only if that host allows it).
     $brandImg = fn($u) => (is_string($u) && (preg_match('#^media/[A-Za-z0-9_./-]+\.(?:jpe?g|png)$#i', $u) || preg_match('#^https://#i', $u))) ? $u : '';
 
@@ -342,6 +345,12 @@ function handleGetTourPacket(PDO $pdo) {
         ORDER BY si.sort_order, si.updated_at
         LIMIT " . PACKET_MAX_STOPS);
     $stmt->execute([':cid' => $clientId]);
+
+    // The client's Top Picks order, so each sheet can say "Currently your #2".
+    $rankOf = [];
+    if (function_exists('currentPickOrder')) {
+        foreach (currentPickOrder($pdo, $clientId) as $i => $id) $rankOf[(string)$id] = $i + 1;
+    }
 
     $homes = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $p) {
@@ -433,6 +442,7 @@ function handleGetTourPacket(PDO $pdo) {
                 'toured' => (int)$p['m_toured'] === 1,
             ],
             'private_notes' => $includePrivate ? (string)$p['m_private'] : '',
+            'pick_rank' => $rankOf[(string)$p['mls_id']] ?? null,
         ];
     }
 

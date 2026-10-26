@@ -188,7 +188,7 @@ export class RouteOptimizer {
     /**
      * Compute full itinerary ETAs, drive legs, stay durations, and OSRM road geometry.
      */
-    async computeScheduleMatrixAsync(startLocation, orderedStops, loopBack = false, stayDurationMins = 20, startTime = new Date()) {
+    async computeScheduleMatrixAsync(startLocation, orderedStops, loopBack = false, stayDurationMins = 20, startTime = new Date(), bufferMins = 0) {
         if (!orderedStops || orderedStops.length === 0) {
             return {
                 orderedStops: [],
@@ -208,7 +208,7 @@ export class RouteOptimizer {
             : (validStops[0] ? { lat: validStops[0].lat || validStops[0].latitude, lng: validStops[0].lng || validStops[0].longitude, address: validStops[0].address } : null);
 
         if (!effectiveStart) {
-            return this.computeScheduleMatrix(startLocation, orderedStops, loopBack, stayDurationMins, startTime);
+            return this.computeScheduleMatrix(startLocation, orderedStops, loopBack, stayDurationMins, startTime, bufferMins);
         }
 
         // Prepare waypoints for OSRM
@@ -252,7 +252,9 @@ export class RouteOptimizer {
             totalDistanceMiles += legDist;
             totalDriveMins += legDriveMins;
 
-            const arrivalTime = new Date(currentTime.getTime() + legDriveMins * 60000);
+            // Brokerage buffer between showings (not before the first one).
+            const gapMins = index > 0 ? Math.max(0, Number(bufferMins) || 0) : 0;
+            const arrivalTime = new Date(currentTime.getTime() + (legDriveMins + gapMins) * 60000);
             const durationForStop = Number(stop.duration_mins) || stayDurationMins;
             const departureTime = new Date(arrivalTime.getTime() + durationForStop * 60000);
 
@@ -303,7 +305,8 @@ export class RouteOptimizer {
         }
 
         const totalStayMins = schedule.reduce((acc, s) => acc + s.stayMins, 0);
-        const totalTripMins = totalDriveMins + totalStayMins;
+        const totalBufferMins = Math.max(0, schedule.length - 1) * Math.max(0, Number(bufferMins) || 0);
+        const totalTripMins = totalDriveMins + totalStayMins + totalBufferMins;
 
         return {
             orderedStops: schedule,
@@ -320,7 +323,7 @@ export class RouteOptimizer {
     /**
      * Synchronous fallback without network calls.
      */
-    computeScheduleMatrix(startLocation, orderedStops, loopBack = false, stayDurationMins = 20, startTime = new Date()) {
+    computeScheduleMatrix(startLocation, orderedStops, loopBack = false, stayDurationMins = 20, startTime = new Date(), bufferMins = 0) {
         let currentPoint = startLocation || { lat: 39.55, lng: -104.78 };
         let currentTime = new Date(startTime.getTime());
         let totalDriveMins = 0;
@@ -338,7 +341,9 @@ export class RouteOptimizer {
             totalDistanceMiles += legDist;
             totalDriveMins += legDriveMins;
 
-            const arrivalTime = new Date(currentTime.getTime() + legDriveMins * 60000);
+            // Brokerage buffer between showings (not before the first one).
+            const gapMins = index > 0 ? Math.max(0, Number(bufferMins) || 0) : 0;
+            const arrivalTime = new Date(currentTime.getTime() + (legDriveMins + gapMins) * 60000);
             const durationForStop = Number(stop.duration_mins) || stayDurationMins;
             const departureTime = new Date(arrivalTime.getTime() + durationForStop * 60000);
 
@@ -376,7 +381,8 @@ export class RouteOptimizer {
         }
 
         const totalStayMins = schedule.reduce((acc, s) => acc + s.stayMins, 0);
-        const totalTripMins = totalDriveMins + totalStayMins;
+        const totalBufferMins = Math.max(0, schedule.length - 1) * Math.max(0, Number(bufferMins) || 0);
+        const totalTripMins = totalDriveMins + totalStayMins + totalBufferMins;
 
         return {
             orderedStops: schedule,

@@ -677,6 +677,21 @@ function handleList(PDO $pdo) {
             $row['hidden'] = (int)$row['hidden'];
             $row['shared_with_realtor'] = (int)$row['shared_with_realtor'];
             $row['raw_mls_json'] = json_decode($row['raw_mls_json'] ?? '{}', true) ?: null;
+            // The full MLS record runs to tens of KB a home (photos list, description, detail
+            // sections, rooms), which made this response several MB. The list keeps the small
+            // fields (and "interior", which filters and the compare view read); the big ones are
+            // fetched with get_property_raw when a home is opened or analysed (js/properties.js
+            // ensureFullRaw). "_trimmed" names what was left out.
+            if (is_array($row['raw_mls_json'])) {
+                $trimmed = [];
+                foreach ($row['raw_mls_json'] as $k => $v) {
+                    if ($k === 'interior' || !is_array($v) && strlen((string)$v) <= 600) continue;
+                    if (is_array($v) && strlen(json_encode($v)) <= 600) continue;
+                    unset($row['raw_mls_json'][$k]);
+                    $trimmed[] = $k;
+                }
+                if ($trimmed) $row['raw_mls_json']['_trimmed'] = $trimmed;
+            }
 
             // Stored comps from a "Check Comps" lookup (backend/comps.php). The price score is
             // worked out in the browser from comp_estimate and the current price, so it stays
@@ -1983,7 +1998,21 @@ function currentPickOrder(PDO $pdo, int $userId): array {
 function handleGetTourDebrief(PDO $pdo) {
     $clientId = pickTargetUser($pdo, $_GET['client_id'] ?? null);
     if ($clientId === null) return;
+    $currentDate = debriefTourDate($pdo, $clientId, '');
     $tourDate = debriefTourDate($pdo, $clientId, $_GET['tour_date'] ?? '');
+
+    $d = $pdo->prepare('SELECT impressions, followups_json, top3_json, COALESCE(stops_json, \'[]\') AS stops_json, updated_at FROM tour_debriefs WHERE client_id = :c AND tour_date = :d');
+    $d->execute([':c' => $clientId, ':d' => $tourDate]);
+    $row = $d->fetch(PDO::FETCH_ASSOC) ?: null;
+    // A past tour shows the homes saved with its results (the client's tour may hold other homes now).
+    $isPast = $tourDate !== $currentDate;
+    $pastIds = $isPast && $row ? array_values(array_filter(array_map('tourValidMls', (array)(json_decode($row['stops_json'], true) ?: [])))) : [];
+    // The realtor also sees homes they wrote notes on that day, even if the client never saved results.
+    if ($isPast && $clientId !== (int)$_SESSION['user_id']) {
+        $an = $pdo->prepare('SELECT mls_id FROM agent_tour_notes WHERE client_id = :c AND tour_date = :d ORDER BY updated_at');
+        $an->execute([':c' => $clientId, ':d' => $tourDate]);
+        $pastIds = array_values(array_unique(array_merge($pastIds, $an->fetchAll(PDO::FETCH_COLUMN))));
+    }
 
     $stmt = $pdo->prepare("SELECT si.mls_id, COALESCE(si.status, 'confirmed') AS stop_status, COALESCE(si.sort_order, 0) AS sort_order,
             p.address, p.city, p.price, p.status, p.beds, p.baths, p.sqft_finished, p.main_image_url,
@@ -1995,8 +2024,26 @@ function handleGetTourDebrief(PDO $pdo) {
         LEFT JOIN user_metadata u ON u.mls_id = si.mls_id AND u.user_id = :c
         WHERE si.client_id = :c AND COALESCE(si.status, 'confirmed') <> 'removed'
         ORDER BY si.sort_order ASC, si.showing_time ASC");
-    $stmt->execute([':c' => $clientId]);
-    $stops = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if ($isPast) {
+        $stops = [];
+        if ($pastIds) {
+            $in = implode(',', array_fill(0, count($pastIds), '?'));
+            $ps = $pdo->prepare("SELECT p.mls_id, 'confirmed' AS stop_status, 0 AS sort_order,
+                    p.address, p.city, p.price, p.status, p.beds, p.baths, p.sqft_finished, p.main_image_url,
+                    COALESCE(u.favorite, 0) AS favorite, COALESCE(u.hidden, 0) AS hidden, COALESCE(u.possibility, 0) AS possibility,
+                    COALESCE(u.toured, 0) AS toured, u.toured_at, COALESCE(u.tour_notes, '') AS tour_notes,
+                    u.tour_scores_json, u.pick_rank
+                FROM properties p LEFT JOIN user_metadata u ON u.mls_id = p.mls_id AND u.user_id = ?
+                WHERE p.mls_id IN ($in)");
+            $ps->execute(array_merge([$clientId], $pastIds));
+            $byId = [];
+            foreach ($ps->fetchAll(PDO::FETCH_ASSOC) as $r) $byId[$r['mls_id']] = $r;
+            foreach ($pastIds as $id) if (isset($byId[$id])) $stops[] = $byId[$id];
+        }
+    } else {
+        $stmt->execute([':c' => $clientId]);
+        $stops = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
     applyEffectivePickRanks($stops);
     foreach ($stops as &$s) {
         $s['scores'] = json_decode($s['tour_scores_json'] ?? 'null', true) ?: null;
@@ -2006,16 +2053,31 @@ function handleGetTourDebrief(PDO $pdo) {
     }
     unset($s);
 
-    $d = $pdo->prepare('SELECT impressions, followups_json, top3_json, updated_at FROM tour_debriefs WHERE client_id = :c AND tour_date = :d');
-    $d->execute([':c' => $clientId, ':d' => $tourDate]);
-    $row = $d->fetch(PDO::FETCH_ASSOC) ?: null;
-    $past = $pdo->prepare('SELECT tour_date, updated_at FROM tour_debriefs WHERE client_id = :c ORDER BY tour_date DESC LIMIT 50');
+    // The realtor's private notes, only when the realtor (or an admin) is the one looking.
+    $viewerIsAgent = $clientId !== (int)$_SESSION['user_id'];
+    $agentNotes = new stdClass();
+    if ($viewerIsAgent) {
+        $an = $pdo->prepare('SELECT mls_id, notes_json FROM agent_tour_notes WHERE client_id = :c AND tour_date = :d');
+        $an->execute([':c' => $clientId, ':d' => $tourDate]);
+        foreach ($an->fetchAll(PDO::FETCH_ASSOC) as $r) $agentNotes->{$r['mls_id']} = json_decode($r['notes_json'], true) ?: new stdClass();
+    }
+
+    // Past tours: dates with saved results, plus (for the realtor) dates they wrote notes on.
+    $past = $pdo->prepare($viewerIsAgent
+        ? 'SELECT tour_date, MAX(updated_at) AS updated_at FROM (
+               SELECT tour_date, updated_at FROM tour_debriefs WHERE client_id = :c
+               UNION ALL SELECT tour_date, updated_at FROM agent_tour_notes WHERE client_id = :c
+           ) GROUP BY tour_date ORDER BY tour_date DESC LIMIT 50'
+        : 'SELECT tour_date, updated_at FROM tour_debriefs WHERE client_id = :c ORDER BY tour_date DESC LIMIT 50');
     $past->execute([':c' => $clientId]);
 
     echo json_encode([
         'success' => true,
         'tour_date' => $tourDate,
-        'editable' => $clientId === (int)$_SESSION['user_id'],
+        'current_tour_date' => $currentDate,
+        'is_past' => $isPast,
+        // Past tours are a record: viewable, not editable (scores and decisions live on each home).
+        'editable' => $clientId === (int)$_SESSION['user_id'] && !$isPast,
         'stops' => $stops,
         'debrief' => $row ? [
             'impressions' => (string)$row['impressions'],
@@ -2024,7 +2086,83 @@ function handleGetTourDebrief(PDO $pdo) {
             'updated_at' => $row['updated_at'],
         ] : null,
         'past' => $past->fetchAll(PDO::FETCH_ASSOC),
+        'agent_editable' => $viewerIsAgent,
+        'agent_notes' => $agentNotes,
     ], JSON_INVALID_UTF8_SUBSTITUTE);
+}
+
+const AGENT_NOTE_CONCERNS = ['roof', 'hvac', 'foundation', 'water', 'windows', 'electrical'];
+const AGENT_NOTE_FOLLOWUPS = ['comps', 'disclosures', 'hoa', 'second_showing', 'other_offers', 'inspection'];
+const AGENT_NOTE_TEXT = ['said' => 2000, 'objections' => 1000, 'repairs' => 60, 'offer' => 80, 'signals' => 500, 'notes' => 2000];
+
+/** One home's agent notes, whitelisted. Empty fields are dropped; an empty result means "no notes". */
+function agentNoteClean($in): array {
+    $in = is_array($in) ? $in : [];
+    $out = [];
+    $i = (int)($in['interest'] ?? 0);
+    if ($i >= 1 && $i <= 5) $out['interest'] = $i;
+    if (in_array($in['pricing'] ?? '', ['over', 'right', 'value'], true)) $out['pricing'] = $in['pricing'];
+    foreach (['concerns' => AGENT_NOTE_CONCERNS, 'followups' => AGENT_NOTE_FOLLOWUPS] as $k => $allowed) {
+        $v = array_values(array_unique(array_intersect((array)($in[$k] ?? []), $allowed)));
+        if ($v) $out[$k] = $v;
+    }
+    foreach (AGENT_NOTE_TEXT as $k => $max) {
+        $t = tourText($in[$k] ?? '', $max);
+        if ($t !== '') $out[$k] = $t;
+    }
+    return $out;
+}
+
+/**
+ * The realtor saves their own tour notes for a client's tour: body {client_id, tour_date, homes: {mls: notes}}.
+ * Realtor of that client or admin only; the client can never read or write these.
+ */
+function handleSaveAgentTourNotes(PDO $pdo) {
+    $data = json_decode(dibsRequestBody(), true) ?: [];
+    $fail = function (int $code, string $msg) { http_response_code($code); echo json_encode(['success' => false, 'error' => $msg]); };
+    if (empty($data['client_id'])) return $fail(400, 'Pick a client.');
+    $clientId = pickTargetUser($pdo, $data['client_id']);
+    if ($clientId === null) return;
+    if ($clientId === (int)$_SESSION['user_id']) return $fail(403, 'These notes are for your realtor.');
+    $tourDate = trim((string)($data['tour_date'] ?? ''));
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tourDate)) return $fail(400, 'Invalid tour date.');
+
+    // Homes on this client's tour now, or saved with that tour's results.
+    $ok = $pdo->prepare('SELECT mls_id FROM showing_itinerary WHERE client_id = :c');
+    $ok->execute([':c' => $clientId]);
+    $allowed = array_flip($ok->fetchAll(PDO::FETCH_COLUMN));
+    $st = $pdo->prepare('SELECT stops_json FROM tour_debriefs WHERE client_id = :c AND tour_date = :d');
+    $st->execute([':c' => $clientId, ':d' => $tourDate]);
+    foreach ((array)(json_decode((string)$st->fetchColumn(), true) ?: []) as $id) $allowed[(string)$id] = true;
+    // ...or ones the realtor already has notes on for that day (so past notes stay editable).
+    $mine = $pdo->prepare('SELECT mls_id FROM agent_tour_notes WHERE client_id = :c AND tour_date = :d');
+    $mine->execute([':c' => $clientId, ':d' => $tourDate]);
+    foreach ($mine->fetchAll(PDO::FETCH_COLUMN) as $id) $allowed[(string)$id] = true;
+
+    $homes = is_array($data['homes'] ?? null) ? $data['homes'] : [];
+    if (count($homes) > 60) return $fail(400, 'Too many homes.');
+    $up = $pdo->prepare("INSERT INTO agent_tour_notes (client_id, tour_date, mls_id, realtor_id, notes_json, updated_at)
+        VALUES (:c, :d, :m, :r, :j, CURRENT_TIMESTAMP)
+        ON CONFLICT(client_id, tour_date, mls_id) DO UPDATE SET notes_json = excluded.notes_json, realtor_id = excluded.realtor_id, updated_at = CURRENT_TIMESTAMP");
+    $del = $pdo->prepare('DELETE FROM agent_tour_notes WHERE client_id = :c AND tour_date = :d AND mls_id = :m');
+    $saved = 0;
+    $pdo->beginTransaction();
+    try {
+        foreach ($homes as $mls => $notes) {
+            $mls = tourValidMls($mls);
+            if ($mls === null || !isset($allowed[$mls])) continue;
+            $clean = agentNoteClean($notes);
+            if ($clean) $up->execute([':c' => $clientId, ':d' => $tourDate, ':m' => $mls, ':r' => (int)$_SESSION['user_id'], ':j' => json_encode($clean)]);
+            else $del->execute([':c' => $clientId, ':d' => $tourDate, ':m' => $mls]);
+            $saved++;
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        error_log('save_agent_tour_notes: ' . $e->getMessage());
+        return $fail(500, 'Could not save your notes.');
+    }
+    echo json_encode(['success' => true, 'saved' => $saved]);
 }
 
 function handleSaveTourDebrief(PDO $pdo) {
@@ -2114,11 +2252,14 @@ function handleSaveTourDebrief(PDO $pdo) {
             foreach ($order as $n => $id) $upd->execute([':r' => $n + 1, ':u' => $clientId, ':m' => $id]);
         }
 
-        $pdo->prepare("INSERT INTO tour_debriefs (client_id, tour_date, impressions, followups_json, top3_json, updated_by_user_id, updated_at)
-                VALUES (:c, :d, :i, :f, :t, :c, CURRENT_TIMESTAMP)
+        $stopIds = $pdo->prepare("SELECT mls_id FROM showing_itinerary WHERE client_id = :c AND COALESCE(status, 'confirmed') <> 'removed' ORDER BY sort_order ASC, showing_time ASC");
+        $stopIds->execute([':c' => $clientId]);
+        $pdo->prepare("INSERT INTO tour_debriefs (client_id, tour_date, impressions, followups_json, top3_json, stops_json, updated_by_user_id, updated_at)
+                VALUES (:c, :d, :i, :f, :t, :s, :c, CURRENT_TIMESTAMP)
             ON CONFLICT(client_id, tour_date) DO UPDATE SET impressions = excluded.impressions, followups_json = excluded.followups_json,
-                top3_json = excluded.top3_json, updated_by_user_id = excluded.updated_by_user_id, updated_at = CURRENT_TIMESTAMP")
-            ->execute([':c' => $clientId, ':d' => $tourDate, ':i' => $impressions, ':f' => json_encode($followups), ':t' => json_encode($top3)]);
+                top3_json = excluded.top3_json, stops_json = excluded.stops_json, updated_by_user_id = excluded.updated_by_user_id, updated_at = CURRENT_TIMESTAMP")
+            ->execute([':c' => $clientId, ':d' => $tourDate, ':i' => $impressions, ':f' => json_encode($followups), ':t' => json_encode($top3),
+                ':s' => json_encode($stopIds->fetchAll(PDO::FETCH_COLUMN))]);
         $pdo->commit();
     } catch (Throwable $t) {
         $pdo->rollBack();
@@ -2795,6 +2936,9 @@ function handleGetClientMatrix(PDO $pdo) {
     $unreviewed = [];
 
     foreach ($metaProps as $p) {
+        // The full scraped MLS record (~12 KB a home) isn't used by the Agent Hub; sending it made
+        // this response ~4 MB and the hub sat on its loading skeleton for seconds.
+        unset($p['raw_mls_json']);
         // Decode gallery images JSON if needed
         if (!empty($p['gallery_images']) && is_string($p['gallery_images'])) {
             try { $p['gallery_images'] = json_decode($p['gallery_images'], true); } catch(Throwable $t) {}
@@ -3282,7 +3426,8 @@ function handleGetTourItinerary(PDO $pdo) {
             'start_source' => $myHomeAddress ? 'my_home' : 'custom',
             'start_time' => '',
             'tour_date' => '',
-            'stay_duration_mins' => 20,
+            // A new tour starts with the brokerage's usual time at each showing (Brokerage settings).
+            'stay_duration_mins' => function_exists('brokerageSettings') ? brokerageSettings($pdo)['showing_minutes'] : 20,
             'loop_back' => 1
         ];
     }
@@ -3345,7 +3490,9 @@ function handleGetTourItinerary(PDO $pdo) {
         'my_home_address' => $myHomeAddress,
         'realtor_office_address' => $realtorOfficeAddress,
         'stops' => $stops,
-        'suggestions' => $suggestions
+        'suggestions' => $suggestions,
+        // Minutes added between showings (parking, walking in, lockbox), from Brokerage settings.
+        'buffer_mins' => function_exists('brokerageSettings') ? brokerageSettings($pdo)['buffer_minutes'] : 0,
     ]);
 }
 
@@ -3618,3 +3765,23 @@ function handleRemoveFromTour(PDO $pdo) {
     echo json_encode(['success' => true, 'mls_id' => $mlsId]);
 }
 
+
+
+/**
+ * The full MLS record for up to 250 homes: GET mls_ids=a,b,c. The property list sends a trimmed
+ * copy (see handleList); this fills in the rest when a home is opened or analysed.
+ */
+function handleGetPropertyRaw(PDO $pdo) {
+    $ids = array_values(array_unique(array_filter(array_map('tourValidMls', explode(',', (string)($_GET['mls_ids'] ?? ''))))));
+    if (!$ids) { http_response_code(400); echo json_encode(['success' => false, 'error' => 'No homes given.']); return; }
+    $ids = array_slice($ids, 0, 250);
+    $isAdmin = !empty($_SESSION['is_admin']) || ($_SESSION['role'] ?? '') === 'admin';
+    $in = implode(',', array_fill(0, count($ids), '?'));
+    $sql = "SELECT p.mls_id, p.raw_mls_json FROM properties p LEFT JOIN property_visibility v ON v.mls_id = p.mls_id
+        WHERE p.mls_id IN ($in)" . ($isAdmin ? '' : ' AND COALESCE(v.is_hidden, 0) = 0');
+    $st = $pdo->prepare($sql);
+    $st->execute($ids);
+    $out = new stdClass();
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $out->{$r['mls_id']} = json_decode($r['raw_mls_json'] ?? '{}', true) ?: new stdClass();
+    echo json_encode(['success' => true, 'raw' => $out], JSON_INVALID_UTF8_SUBSTITUTE);
+}

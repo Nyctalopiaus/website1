@@ -11,7 +11,7 @@
  * even after a reload, until "rank again" is used.
  */
 import { state } from './state.js';
-import { cleanDisplayAddress, escapeHtml, getCompScore, getPropertyReviewStatus, NO_PHOTO_IMG } from './properties.js';
+import { cleanDisplayAddress, escapeHtml, getCompScore, getPropertyReviewStatus, NO_PHOTO_IMG, ensureFullRaw } from './properties.js';
 import { showToast } from './toast.js';
 import { logClientEvent } from './api.js';
 import {
@@ -284,6 +284,7 @@ async function run(homes) {
 
     try {
         const triage = isTriageSet(homes);
+        await ensureFullRaw(homes);   // the fact sheets use the full MLS record
         const { data, model } = await generateGeminiJson(SYSTEM_PROMPT + (triage ? TRIAGE_PROMPT : ''), buildUserPrompt(homes, priorities), schemaFor(triage));
         last = { signature, homes, model, priorities, filteredTotal, at: new Date(), ...normalizeResult(data, homes) };
         saveResult(last);

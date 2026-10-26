@@ -102,10 +102,16 @@ function handleCreateInvite(PDO $pdo) {
     if (strlen($email) > 254 || !filter_var($email, FILTER_VALIDATE_EMAIL)) { inviteFail(400, 'Enter a valid email address.'); return; }
 
     // Clients are only ever assigned to a realtor. Realtors invite to themselves; an admin must
-    // pick a realtor account (never an admin, including the built-in "admin" login).
+    // pick a realtor account (a realtor who is also the brokerage admin counts; the built-in
+    // "admin" login and other admin-only accounts never do).
+    $inviteRole = ($in['invite_role'] ?? 'client') === 'realtor' ? 'realtor' : 'client';
+    if ($inviteRole === 'realtor' && !inviteIsAdmin()) { inviteFail(403, 'Only a brokerage admin can invite agents.'); return; }
     $realtorId = $me;
-    if (inviteIsAdmin()) {
-        $chk = $pdo->prepare("SELECT id FROM users WHERE id = :id AND role = 'realtor' AND COALESCE(is_admin, 0) = 0 AND username != 'admin'");
+    if ($inviteRole === 'realtor') {
+        // An agent invite: realtor_id records who sent it; the new agent has no realtor.
+        $realtorId = $me;
+    } elseif (inviteIsAdmin()) {
+        $chk = $pdo->prepare("SELECT id FROM users WHERE id = :id AND role = 'realtor' AND username != 'admin'");
         $chk->execute([':id' => (int)($in['realtor_id'] ?? 0)]);
         if (!$chk->fetchColumn()) { inviteFail(400, 'Choose a realtor from the list.'); return; }
         $realtorId = (int)$in['realtor_id'];
@@ -124,10 +130,10 @@ function handleCreateInvite(PDO $pdo) {
         ->execute([':now' => inviteNow(), ':e' => $email]);
 
     $token = bin2hex(random_bytes(32));
-    $stmt = $pdo->prepare("INSERT INTO client_invites (token_hash, realtor_id, full_name, email, created_by, created_at, expires_at)
-        VALUES (:h, :r, :n, :e, :by, :now, :exp)");
+    $stmt = $pdo->prepare("INSERT INTO client_invites (token_hash, realtor_id, full_name, email, created_by, created_at, expires_at, invite_role)
+        VALUES (:h, :r, :n, :e, :by, :now, :exp, :role)");
     $stmt->execute([':h' => hash('sha256', $token), ':r' => $realtorId, ':n' => $name, ':e' => $email, ':by' => $me,
-        ':now' => inviteNow(), ':exp' => inviteNow(INVITE_DAYS * 86400)]);
+        ':now' => inviteNow(), ':exp' => inviteNow(INVITE_DAYS * 86400), ':role' => $inviteRole]);
     logEvent($pdo, 'auth', 'info', 'Client invite created', null, ['invite_id' => (int)$pdo->lastInsertId(), 'realtor_id' => $realtorId], $_SESSION['username'] ?? null);
 
     // The raw token is returned only here; the browser builds the link (join.html#t=...).
@@ -137,7 +143,7 @@ function handleCreateInvite(PDO $pdo) {
 
 function handleListInvites(PDO $pdo) {
     requireRealtorOrAdmin();
-    $sql = "SELECT i.id, i.full_name, i.email, i.created_at, i.expires_at, i.accepted_at, i.revoked_at,
+    $sql = "SELECT i.id, i.full_name, i.email, i.created_at, i.expires_at, i.accepted_at, i.revoked_at, COALESCE(i.invite_role, 'client') AS invite_role,
             COALESCE(NULLIF(u.full_name, ''), u.username) AS agent_name
         FROM client_invites i LEFT JOIN users u ON u.id = i.realtor_id";
     $params = [];
@@ -146,7 +152,7 @@ function handleListInvites(PDO $pdo) {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $rows = array_map(function ($i) {
-        return ['id' => (int)$i['id'], 'full_name' => $i['full_name'], 'email' => $i['email'], 'agent_name' => $i['agent_name'],
+        return ['id' => (int)$i['id'], 'full_name' => $i['full_name'], 'email' => $i['email'], 'agent_name' => $i['agent_name'], 'invite_role' => $i['invite_role'],
             'status' => inviteStatus($i), 'created_at' => gmdate('c', strtotime($i['created_at'] . ' UTC')),
             'expires_at' => gmdate('c', strtotime($i['expires_at'] . ' UTC'))];
     }, $stmt->fetchAll(PDO::FETCH_ASSOC));
@@ -172,7 +178,7 @@ function handleCheckInvite(PDO $pdo) {
     [$inv, $reason] = inviteFind($pdo, $_GET['t'] ?? '');
     if (!$inv) { inviteFail(410, $reason); return; }
     echo json_encode(['success' => true, 'first_name' => explode(' ', $inv['full_name'])[0], 'agent_name' => $inv['agent_name'] ?: 'Your agent',
-        'email_hint' => inviteMaskEmail($inv['email']), 'expires_at' => gmdate('c', strtotime($inv['expires_at'] . ' UTC'))]);
+        'email_hint' => inviteMaskEmail($inv['email']), 'invite_role' => ($inv['invite_role'] ?? 'client') === 'realtor' ? 'realtor' : 'client', 'expires_at' => gmdate('c', strtotime($inv['expires_at'] . ' UTC'))]);
 }
 
 function handleAcceptInvite(PDO $pdo) {
@@ -201,10 +207,11 @@ function handleAcceptInvite(PDO $pdo) {
         $claim->execute([':now' => inviteNow(), ':id' => $inv['id']]);
         if ($claim->rowCount() !== 1) { $pdo->rollBack(); inviteFail(410, 'This invite is no longer valid.'); return; }
 
+        $isAgent = ($inv['invite_role'] ?? 'client') === 'realtor';
         $ins = $pdo->prepare("INSERT INTO users (username, password_hash, is_admin, role, realtor_id, full_name, email)
-            VALUES (:u, :h, 0, 'client', :r, :n, :e)");
-        $ins->execute([':u' => $username, ':h' => password_hash($password, PASSWORD_BCRYPT), ':r' => $inv['realtor_id'],
-            ':n' => $inv['full_name'], ':e' => $inv['email']]);
+            VALUES (:u, :h, 0, :role, :r, :n, :e)");
+        $ins->execute([':u' => $username, ':h' => password_hash($password, PASSWORD_BCRYPT), ':role' => $isAgent ? 'realtor' : 'client',
+            ':r' => $isAgent ? null : $inv['realtor_id'], ':n' => $inv['full_name'], ':e' => $inv['email']]);
         $userId = (int)$pdo->lastInsertId();
         $pdo->prepare("UPDATE client_invites SET accepted_user_id = :u WHERE id = :id")->execute([':u' => $userId, ':id' => $inv['id']]);
         $pdo->commit();
@@ -220,12 +227,15 @@ function handleAcceptInvite(PDO $pdo) {
     $_SESSION['user_id'] = $userId;
     $_SESSION['username'] = $username;
     $_SESSION['is_admin'] = 0;
-    $_SESSION['role'] = 'client';
+    $_SESSION['role'] = $isAgent ? 'realtor' : 'client';
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    dibsBindSessionToBrokerage();
     $pdo->prepare("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = :id")->execute([':id' => $userId]);
-    logEvent($pdo, 'auth', 'info', 'Client joined from invite', null, ['invite_id' => (int)$inv['id'], 'user_id' => $userId], $username);
+    logEvent($pdo, 'auth', 'info', $isAgent ? 'Agent joined from invite' : 'Client joined from invite', null, ['invite_id' => (int)$inv['id'], 'user_id' => $userId], $username);
 
-    if (!empty($inv['realtor_id'])) {
+    if ($isAgent) {
+        createNotification($pdo, (int)$inv['created_by'], 'agent_joined', 'Agent joined Dibs', "{$inv['full_name']} accepted your invite and is now on the agent roster.", '#realtor');
+    } elseif (!empty($inv['realtor_id'])) {
         createNotification($pdo, (int)$inv['realtor_id'], 'client_joined', 'Client joined Dibs',
             "{$inv['full_name']} accepted your invite and is now in your client roster.", '#realtor');
     }

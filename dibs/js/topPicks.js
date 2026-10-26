@@ -234,14 +234,6 @@ document.addEventListener('dragend', () => {
     document.querySelectorAll('#tp-ranked .is-dragging, #tp-ranked .is-drop-target').forEach(r => r.classList.remove('is-dragging', 'is-drop-target'));
 });
 
-// Realtor logins have no favorites of their own, so hide the menu item for them (as My Home does).
-document.addEventListener('click', event => {
-    const t = event.target;
-    if (!(t instanceof Element) || !t.closest('#user-dropdown-container')) return;
-    const btn = document.getElementById('btn-user-top-picks');
-    if (btn) btn.style.display = (state.currentUserProfile?.role || '') === 'realtor' ? 'none' : '';
-}, true);
-
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && document.getElementById('modal-top-picks')?.classList.contains('active')) close();
 });

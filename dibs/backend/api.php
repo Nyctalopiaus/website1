@@ -20,6 +20,7 @@ require_once __DIR__ . '/requests.php';
 require_once __DIR__ . '/schedule.php';
 require_once __DIR__ . '/packet.php';
 require_once __DIR__ . '/branding.php';
+require_once __DIR__ . '/brokerage.php';
 
 // Every JSON response leaves with public user ids instead of sequential ones (bootstrap.php).
 ob_start(function (string $buffer) use ($pdo) { return dibsPublicizeResponse($buffer, $pdo); });
@@ -230,6 +231,31 @@ switch ($action) {
         handleList($pdo);
         break;
 
+    case 'get_property_raw':
+        requireAuth();
+        handleGetPropertyRaw($pdo);
+        break;
+
+    case 'get_brokerage_settings':
+        handleGetBrokerageSettings($pdo);
+        break;
+
+    case 'save_brokerage_settings':
+        handleSaveBrokerageSettings($pdo);
+        break;
+
+    case 'list_agents':
+        handleListAgents($pdo);
+        break;
+
+    case 'deactivate_agent':
+        handleDeactivateAgent($pdo);
+        break;
+
+    case 'reactivate_agent':
+        handleReactivateAgent($pdo);
+        break;
+
     case 'create_invite':
         requireAuth();
         requireCsrf();
@@ -360,6 +386,12 @@ switch ($action) {
         requireAuth();
         requireCsrf();
         handleSaveTourDebrief($pdo);
+        break;
+
+    case 'save_agent_tour_notes':
+        requireAuth();
+        requireCsrf();
+        handleSaveAgentTourNotes($pdo);
         break;
 
     case 'get_top_picks':

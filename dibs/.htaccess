@@ -7,3 +7,14 @@
         Header set Cache-Control "no-cache"
     </FilesMatch>
 </IfModule>
+
+# Brokerages: /dibs/b/<slug>/... serves this same app for brokerage <slug>; backend/tenant.php reads
+# the slug from the requested URL and opens that brokerage's database. The plain /dibs/ URL is
+# brokerage #1. (Local dev: dev-router.php does the same for PHP's built-in server.)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /dibs/
+    RewriteRule ^b/([a-z0-9][a-z0-9-]{1,39})$ b/$1/ [R=301,L]
+    RewriteRule ^b/[a-z0-9][a-z0-9-]{1,39}/$ index.html [L]
+    RewriteRule ^b/[a-z0-9][a-z0-9-]{1,39}/(.+)$ $1 [L]
+</IfModule>

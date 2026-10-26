@@ -116,6 +116,15 @@ function dayItems(k) {
             conflicts.push({ kind: 'tight', text: `Only ${span(have)} to get from ${label(x)} to ${label(y)}: about ${span(need)} of driving.` });
         }
     }
+    // Shared calendars: another agent has a showing at the same listing at an overlapping time.
+    (data.office_showings || []).forEach(o => {
+        const a = mins(o.start), b = mins(o.end);
+        items.forEach(it => {
+            if (it.type !== 'showing' || String(it.s.mls_id) !== String(o.mls_id) || !(a < it.b && b > it.a)) return;
+            it.flags.push('overlap');
+            conflicts.push({ kind: 'listing', text: `${o.agent_name} also has a showing at ${cleanDisplayAddress(it.s.address, it.s.mls_id)} from ${clock(o.start)} to ${clock(o.end)}.` });
+        });
+    });
     return { items, conflicts };
 }
 

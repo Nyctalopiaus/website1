@@ -1,0 +1,9 @@
+# This folder holds the database, its backups and logs. Nothing in it may ever be served over
+# the web; the PHP code reads it directly from disk. (Oct 2026: properties.db was downloadable.)
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

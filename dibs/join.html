@@ -62,7 +62,7 @@
             root.innerHTML = `
                 <p class="join-brand">Dibs</p>
                 <h1>Welcome, ${esc(inv.first_name)}</h1>
-                <p class="join-lead">${esc(inv.agent_name)} invited you to Dibs to search for homes together. Set up your sign-in below. This invite is good until ${esc(expires)}.</p>
+                <p class="join-lead">${inv.invite_role === 'realtor' ? `${esc(inv.agent_name)} invited you to join your brokerage on Dibs as an agent.` : `${esc(inv.agent_name)} invited you to Dibs to search for homes together.`} Set up your sign-in below. This invite is good until ${esc(expires)}.</p>
                 <form id="join-form" novalidate>
                     <label class="join-field">The email your invite was sent to <span class="join-hint">(${esc(inv.email_hint)})</span>
                         <input type="email" name="email" autocomplete="email" required maxlength="254"></label>

@@ -22,6 +22,11 @@ const SCORES = [
     ['location', 'Location & street'], ['value', 'Value for price'], ['live_here', 'Would live here'],
 ];
 const DECISIONS = [['love', 'Love it'], ['again', 'See it again'], ['pass', 'Pass']];
+// The realtor's own notes: the agent copy's "Tour notes" form (js/tourPacket.js agentNotes).
+const CONCERNS = [['roof', 'Roof'], ['hvac', 'HVAC'], ['foundation', 'Foundation'], ['water', 'Water / moisture'], ['windows', 'Windows'], ['electrical', 'Electrical']];
+const AGENT_FOLLOWUPS = [['comps', 'Run comps'], ['disclosures', 'Request disclosures'], ['hoa', 'HOA documents'], ['second_showing', 'Book second showing'], ['other_offers', 'Ask about other offers'], ['inspection', 'Inspection quote']];
+const PRICING = [['over', 'Overpriced'], ['right', 'About right'], ['value', 'Good value']];
+const AGENT_TEXT = ['said', 'objections', 'repairs', 'offer', 'signals', 'notes'];
 
 let data = null;
 let form = null;        // { homes: {mls: {scores, decision, notes}}, top3: [], impressions, followups: [] }
@@ -29,6 +34,9 @@ let savedJson = '';
 let original = {};     // per home, the values at load (to send only what changed)
 let editable = false;
 let clientId = null;
+let agentEditable = false;
+let agent = {};          // { mls: {interest, pricing, concerns[], followups[], said, objections, repairs, offer, signals, notes} }
+let agentOriginal = {};
 
 /** tour_notes is stored as HTML (the detail modal edits it as rich text); show it as plain text. */
 function htmlToText(html) {
@@ -49,6 +57,9 @@ function ensureModal() {
             <div class="my-home-header">
                 <h2><i data-lucide="clipboard-check"></i> <span id="tour-results-title">Tour Results</span></h2>
                 <p id="tour-results-subtitle"></p>
+                <label class="tr-date-pick" id="tour-results-date-wrap" hidden>Tour
+                    <select id="tour-results-date" class="select-input" aria-label="Which tour"></select>
+                </label>
             </div>
             <div id="tour-results-body"><p class="my-home-loading">Loading…</p></div>
             <div class="my-home-actions" id="tour-results-actions"></div>
@@ -72,9 +83,65 @@ function initForm() {
     normalizeTop3();
     original = JSON.parse(JSON.stringify(homes));
     savedJson = JSON.stringify(form);
+    agent = {};
+    data.stops.forEach(s => {
+        const n = (data.agent_notes || {})[s.mls_id] || {};
+        const a = { interest: Number(n.interest) || 0, pricing: n.pricing || '', concerns: [...(n.concerns || [])], followups: [...(n.followups || [])] };
+        AGENT_TEXT.forEach(k => { a[k] = n[k] || ''; });
+        agent[s.mls_id] = a;
+    });
+    agentOriginal = JSON.parse(JSON.stringify(agent));
 }
 
 const dirty = () => form && JSON.stringify(form) !== savedJson;
+const agentDirty = () => agentEditable && JSON.stringify(agent) !== JSON.stringify(agentOriginal);
+const anyDirty = () => (editable && dirty()) || agentDirty();
+
+/** How much of a home's agent notes is filled in, for the collapsed summary. */
+function agentFilled(a) {
+    return (a.interest ? 1 : 0) + (a.pricing ? 1 : 0) + a.concerns.length + a.followups.length + AGENT_TEXT.filter(k => a[k]).length;
+}
+
+/** The realtor's private notes for one home, laid out like the agent copy's Tour notes. */
+function agentHtml(s) {
+    const a = agent[s.mls_id];
+    const m = esc(s.mls_id);
+    const filled = agentFilled(a);
+    const dots = [1, 2, 3, 4, 5].map(n => `<button type="button" class="tr-dot${a.interest >= n ? ' is-on' : ''}" data-tr="a-interest" data-mls="${m}" data-n="${n}" aria-label="Interest ${n} of 5" aria-pressed="${a.interest === n}">${n}</button>`).join('');
+    const checks = (list, key) => list.map(([v, label]) => `<label class="tr-a-check"><input type="checkbox" data-tr-a-list="${key}" data-mls="${m}" value="${v}" ${a[key].includes(v) ? 'checked' : ''}> ${label}</label>`).join('');
+    const text = (key, label, ph = '') => `<label class="tr-a-field"><span>${label}</span><input type="text" data-tr-a="${key}" data-mls="${m}" value="${esc(a[key])}" placeholder="${ph}"></label>`;
+    const area = (key, label, rows) => `<label class="tr-a-field"><span>${label}</span><textarea rows="${rows}" data-tr-a="${key}" data-mls="${m}">${esc(a[key])}</textarea></label>`;
+    return `
+        <details class="tr-agent"${filled ? ' open' : ''}>
+            <summary><i data-lucide="notebook-pen"></i> Your tour notes <span class="tr-private">Private to you</span><span class="tr-a-count">${filled ? `${filled} filled in` : 'Not started'}</span></summary>
+            <div class="tr-a-cols">
+                <div>
+                    <div class="tr-a-head">What they thought</div>
+                    <div class="tr-score"><span>Interest (your read)</span><span class="tr-dots">${dots}</span></div>
+                    ${area('said', 'What they said', 3)}
+                    ${text('objections', 'Objections / deal-breakers')}
+                </div>
+                <div>
+                    <div class="tr-a-head">Your read</div>
+                    <div class="tr-a-sub">Condition concerns</div>
+                    <div class="tr-a-checks">${checks(CONCERNS, 'concerns')}</div>
+                    ${text('repairs', 'Est. repairs $', 'e.g. 15,000')}
+                    <div class="tr-a-sub">Pricing</div>
+                    <div class="tr-decision">${PRICING.map(([v, label]) => `<button type="button" class="btn btn-secondary btn-sm${a.pricing === v ? ' is-on' : ''}" data-tr="a-pricing" data-mls="${m}" data-v="${v}" aria-pressed="${a.pricing === v}">${label}</button>`).join('')}</div>
+                    ${text('offer', 'Likely offer range $', 'e.g. 640-655k')}
+                    ${text('signals', 'Competition / seller signals')}
+                </div>
+            </div>
+            <div class="tr-a-sub">Follow-ups</div>
+            <div class="tr-a-checks tr-a-checks-3">${checks(AGENT_FOLLOWUPS, 'followups')}</div>
+            ${area('notes', 'Notes', 2)}
+        </details>`;
+}
+
+function paintAgentCount(mls) {
+    const box = document.getElementById(`tr-home-${mls}`)?.querySelector('.tr-a-count');
+    if (box) { const n = agentFilled(agent[mls]); box.textContent = n ? `${n} filled in` : 'Not started'; }
+}
 
 /** Three slots; a slot whose home is no longer "Love it" is emptied (other slots don't shift). */
 function normalizeTop3() {
@@ -111,6 +178,7 @@ function homeHtml(s, i) {
                 ${DECISIONS.map(([v, label]) => `<button type="button" class="btn btn-secondary btn-sm${f.decision === v ? ' is-on' : ''}" ${editable ? '' : 'disabled'} data-tr="decision" data-mls="${esc(s.mls_id)}" data-v="${v}" aria-pressed="${f.decision === v}">${label}</button>`).join('')}
             </div>
             <textarea class="tr-notes" rows="3" data-tr-input="notes" data-mls="${esc(s.mls_id)}" placeholder="${editable ? 'Your notes from this home' : ''}" ${editable ? '' : 'readonly'}>${esc(f.notes)}</textarea>
+            ${agentEditable ? agentHtml(s) : ''}
         </section>`;
 }
 
@@ -167,11 +235,16 @@ function paintActions() {
     const actions = document.getElementById('tour-results-actions');
     if (!actions) return;
     const d = dirty();
+    const ad = agentDirty();
     actions.innerHTML = editable
         ? `${d ? '<span class="tp-dirty">Unsaved changes</span>' : ''}
            <button type="button" class="btn btn-secondary" data-tr="close">${d ? 'Discard' : 'Close'}</button>
            <button type="button" class="btn btn-primary" data-tr="save" ${d ? '' : 'disabled'}><i data-lucide="save"></i> Save results</button>`
-        : `<button type="button" class="btn btn-secondary" data-tr="close">Close</button>`;
+        : agentEditable && data?.stops?.length
+            ? `${ad ? '<span class="tp-dirty">Unsaved notes</span>' : ''}
+               <button type="button" class="btn btn-secondary" data-tr="close">${ad ? 'Discard' : 'Close'}</button>
+               <button type="button" class="btn btn-primary" data-tr="save-agent" ${ad ? '' : 'disabled'}><i data-lucide="save"></i> Save my notes</button>`
+            : `<button type="button" class="btn btn-secondary" data-tr="close">Close</button>`;
     if (window.lucide) window.lucide.createIcons();
 }
 
@@ -179,7 +252,7 @@ function paintActions() {
  * Opens Tour Results. focusMls scrolls to one home. forClientId (realtor/admin) opens that
  * client's results read-only.
  */
-export async function openTourResults(focusMls = null, forClientId = null) {
+export async function openTourResults(focusMls = null, forClientId = null, tourDate = null) {
     const m = ensureModal();
     m.classList.add('active');
     clientId = forClientId;
@@ -187,16 +260,28 @@ export async function openTourResults(focusMls = null, forClientId = null) {
     document.getElementById('tour-results-body').innerHTML = '<p class="my-home-loading">Loading…</p>';
     document.getElementById('tour-results-actions').innerHTML = '';
     try {
-        const q = forClientId ? `&client_id=${encodeURIComponent(forClientId)}` : '';
+        const q = (forClientId ? `&client_id=${encodeURIComponent(forClientId)}` : '')
+            + (tourDate ? `&tour_date=${encodeURIComponent(tourDate)}` : '');
         const res = await apiFetch(`backend/api.php?action=get_tour_debrief${q}`);
         if (!res || !res.success) throw new Error(res?.error || 'Could not load tour results.');
         data = res;
         editable = !!res.editable && !forClientId;
+        agentEditable = !!res.agent_editable && !!forClientId;
         const when = new Date(res.tour_date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
         document.getElementById('tour-results-title').textContent = `Tour Results · ${when}`;
-        document.getElementById('tour-results-subtitle').textContent = editable
-            ? 'Copy in what you wrote on your tour packet. Homes you fill in are marked toured, and your realtor sees everything here.'
-            : "What the client wrote on their tour packet. Read-only.";
+        document.getElementById('tour-results-subtitle').textContent = res.is_past
+            ? 'A past tour, kept as a record. Ratings and decisions show as they stand today.'
+            : (editable
+                ? 'Copy in what you wrote on your tour packet. Homes you fill in are marked toured, and your realtor sees everything here.'
+                : (agentEditable
+                    ? "What the client wrote on their tour packet (read-only). Under each home, \"Your tour notes\" are yours to fill in and only you can see them."
+                    : "What the client wrote on their tour packet. Read-only."));
+        // Tour picker: the current tour plus every past tour with saved results, newest first.
+        const dates = [...new Set([res.current_tour_date, ...(res.past || []).map(p => p.tour_date)].filter(Boolean))].sort().reverse();
+        const pick = document.getElementById('tour-results-date');
+        const wrap = document.getElementById('tour-results-date-wrap');
+        wrap.hidden = dates.length < 2;
+        pick.innerHTML = dates.map(d => `<option value="${esc(d)}" ${d === res.tour_date ? 'selected' : ''}>${esc(new Date(d + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }))}${d === res.current_tour_date ? ' (current tour)' : ''}</option>`).join('');
         initForm();
         render();
         if (focusMls) document.getElementById(`tr-home-${focusMls}`)?.scrollIntoView({ block: 'start' });
@@ -207,7 +292,7 @@ export async function openTourResults(focusMls = null, forClientId = null) {
 }
 
 function close(force = false) {
-    if (!force && editable && dirty() && !window.confirm('Discard your unsaved tour results?')) return;
+    if (!force && anyDirty() && !window.confirm(agentDirty() ? 'Discard your unsaved notes?' : 'Discard your unsaved tour results?')) return;
     document.getElementById('modal-tour-results')?.classList.remove('active');
 }
 
@@ -240,6 +325,27 @@ async function save(btn) {
     }
 }
 
+async function saveAgent(btn) {
+    btn.disabled = true;
+    const homes = {};
+    Object.entries(agent).forEach(([id, a]) => {
+        if (JSON.stringify(a) !== JSON.stringify(agentOriginal[id])) homes[id] = a;
+    });
+    try {
+        const res = await apiFetch('backend/api.php?action=save_agent_tour_notes', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ client_id: clientId, tour_date: data.tour_date, homes }),
+        });
+        if (!res || !res.success) throw new Error(res?.error || 'Could not save your notes.');
+        agentOriginal = JSON.parse(JSON.stringify(agent));
+        paintActions();
+        showToast('Your tour notes are saved.', 'success');
+    } catch (e) {
+        showToast(e.message, 'error');
+        btn.disabled = false;
+    }
+}
+
 document.addEventListener('click', event => {
     const t = event.target;
     if (!(t instanceof Element)) return;
@@ -255,6 +361,28 @@ document.addEventListener('click', event => {
     switch (el.dataset.tr) {
         case 'close': close(); break;
         case 'save': save(el); break;
+        case 'save-agent': saveAgent(el); break;
+        case 'a-interest': {
+            const a = agent[mls], n = Number(el.dataset.n);
+            a.interest = a.interest === n ? 0 : n;
+            el.parentElement.querySelectorAll('.tr-dot').forEach(d => {
+                const dn = Number(d.dataset.n);
+                d.classList.toggle('is-on', a.interest >= dn);
+                d.setAttribute('aria-pressed', String(a.interest === dn));
+            });
+            paintAgentCount(mls); paintActions();
+            break;
+        }
+        case 'a-pricing': {
+            const a = agent[mls];
+            a.pricing = a.pricing === el.dataset.v ? '' : el.dataset.v;
+            el.parentElement.querySelectorAll('[data-tr="a-pricing"]').forEach(b => {
+                b.classList.toggle('is-on', b.dataset.v === a.pricing);
+                b.setAttribute('aria-pressed', String(b.dataset.v === a.pricing));
+            });
+            paintAgentCount(mls); paintActions();
+            break;
+        }
         case 'score': {
             const sc = form.homes[mls].scores, k = el.dataset.key, n = Number(el.dataset.n);
             if (sc[k] === n) delete sc[k]; else sc[k] = n;   // tap the same dot again to clear
@@ -283,6 +411,11 @@ document.addEventListener('click', event => {
 
 document.addEventListener('input', event => {
     const el = event.target;
+    if (el instanceof Element && el.dataset.trA && el.closest('#modal-tour-results')) {
+        agent[el.dataset.mls][el.dataset.trA] = el.value;
+        paintAgentCount(el.dataset.mls); paintActions();
+        return;
+    }
     if (!(el instanceof Element) || !el.closest('#modal-tour-results') || !el.dataset.trInput) return;
     const j = Number(el.dataset.j);
     switch (el.dataset.trInput) {
@@ -296,6 +429,19 @@ document.addEventListener('input', event => {
 });
 document.addEventListener('change', event => {
     const el = event.target;
+    if (el instanceof HTMLSelectElement && el.id === 'tour-results-date') {
+        if (anyDirty() && !window.confirm(agentDirty() ? 'Discard your unsaved notes?' : 'Discard your unsaved tour results?')) { el.value = data.tour_date; return; }
+        openTourResults(null, clientId, el.value);
+        return;
+    }
+    if (el instanceof HTMLInputElement && el.dataset.trAList && el.closest('#modal-tour-results')) {
+        const list = agent[el.dataset.mls][el.dataset.trAList];
+        const i = list.indexOf(el.value);
+        if (el.checked && i < 0) list.push(el.value);
+        if (!el.checked && i >= 0) list.splice(i, 1);
+        paintAgentCount(el.dataset.mls); paintActions();
+        return;
+    }
     if (el instanceof HTMLInputElement && el.type === 'checkbox' && el.dataset.trInput === 'fu-done' && el.closest('#modal-tour-results')) {
         form.followups[Number(el.dataset.j)].done = el.checked;
         paintActions();

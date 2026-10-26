@@ -282,3 +282,23 @@ if (typeof window !== 'undefined') {
 }
 
 
+
+/**
+ * The property list carries a trimmed MLS record (raw_mls_json._trimmed names the left-out
+ * fields: description, detail sections, rooms...). Call this before anything that needs the full
+ * record: the detail view and the AI prompts. Fills the records in place; safe to call often.
+ */
+export async function ensureFullRaw(props) {
+    const need = (props || []).filter(p => p && p.raw_mls_json && Array.isArray(p.raw_mls_json._trimmed));
+    for (let i = 0; i < need.length; i += 100) {
+        const chunk = need.slice(i, i + 100);
+        try {
+            const res = await apiFetch(`backend/api.php?action=get_property_raw&mls_ids=${encodeURIComponent(chunk.map(p => p.mls_id).join(','))}`);
+            if (!res?.success) continue;
+            chunk.forEach(p => {
+                const full = res.raw?.[p.mls_id];
+                if (full && typeof full === 'object') p.raw_mls_json = full;
+            });
+        } catch (e) { /* the trimmed record still works; the full one loads next time */ }
+    }
+}

@@ -803,7 +803,8 @@ function scorecardPage(s, P) {
         cx += cols[1].w;
         const r = small ? 3.4 : 4.2, gap = small ? 10.5 : 11.6;
         for (let k = 0; k < 4; k++) { s.circles(cx + 3, ry + rh / 2 - r, 5, r, gap); cx += 66; }
-        const opts = ['Offer', '2nd', 'Pass'];
+        // Same three choices as the home pages and Dibs' own buttons.
+        const opts = ['Love it', 'Again', 'Pass'];
         let ox = cx + 4;
         const ow = (cols[6].w - 8) / 3;
         opts.forEach(o => { s.stroke(C.ink, 0.6).rect(ox, ry + rh / 2 - 4, 8, 8); s.one(o, ox + 11, ry + rh / 2 + 3, ow - 12, small ? 6.8 : 7.5); ox += ow; });
@@ -943,6 +944,7 @@ function buyerHomePage(s, P, st, idx) {
     s.stroke(C.ink, 1).rect(M, M, 86, 17, 'S', 3);
     s.one(`STOP ${idx + 1} OF ${P.stops.length}`, M, M + 12, 86, 8, 'bold', C.ink, 'center');
     s.one(st.window ? `${st.window}${st.requested ? '  ·  REQUESTED, NOT CONFIRMED' : ''}` : '', M + 94, M + 12, 300, 8.6, 'bold');
+    if (h.pick_rank) s.one(`Currently your #${h.pick_rank} in Top Picks`, PAGE_W - M - 200, M + 12, 200, 8, 'bold', C.ink, 'right');
     let y = M + 22;
     s.one(h.address, M, y + 19, 340, 18, 'displayBold');
     s.one(`${h.city || ''}, ${h.state || 'CO'} ${h.zip || ''}${h.subdivision ? ' · ' + h.subdivision : ''}`, M, y + 32, 340, 9, 'normal', C.muted);
@@ -1074,7 +1076,7 @@ function homeFront(s, P, st, idx) {
     s.one(`STOP ${idx + 1} OF ${total}`, M, M + 12.5, 92, 8.5, 'bold', C.ink, 'center');
     s.one(st.window || '', M + 100, M + 13, 200, 9.5, 'bold');
     if (st.requested) s.one('REQUESTED \u00b7 NOT CONFIRMED', M + 290, M + 13, 150, 7.5, 'bold', C.ink);
-    s.one(`MLS #${h.mls_id}`, PAGE_W - M - 150, M + 13, 150, 8.5, 'normal', C.muted, 'right');
+    s.one(`${h.pick_rank ? `Client's #${h.pick_rank} pick \u00b7 ` : ''}MLS #${h.mls_id}`, PAGE_W - M - 220, M + 13, 220, 8.5, 'normal', C.muted, 'right');
 
     // Address + price
     let y = M + 24;
@@ -1587,6 +1589,7 @@ function paintDialog(msg = '') {
                 <legend>Who is this copy for?</legend>
                 <label><input type="radio" name="packet-copy" value="agent" checked> <strong>Agent copy</strong>: access notes, listing-agent contacts, full MLS details</label>
                 <label><input type="radio" name="packet-copy" value="buyer"> <strong>Buyer copy</strong>: no lockbox or access info, no listing-agent contacts, no private notes</label>
+                <label><input type="radio" name="packet-copy" value="both"> <strong>Both</strong>: the agent copy and the buyer copy, as two PDFs</label>
             </fieldset>
             <label data-packet-private><input type="checkbox" data-packet-opt="privateNotes"> My private notes (agent copy only)</label>
         </div>
@@ -1622,10 +1625,16 @@ document.addEventListener('click', async event => {
     building = true;
     btn.disabled = true;
     try {
-        const copy = document.querySelector('#modal-tour-packet input[name="packet-copy"]:checked')?.value === 'buyer' ? 'buyer' : 'agent';
-        const r = await buildPacket({ copy, photos: opt('photos'), map: opt('map'), privateNotes: copy === 'agent' && opt('privateNotes') }, m => { if (status) status.textContent = m; });
+        const pick = document.querySelector('#modal-tour-packet input[name="packet-copy"]:checked')?.value;
+        const copies = pick === 'both' ? ['agent', 'buyer'] : [pick === 'buyer' ? 'buyer' : 'agent'];
+        const done = [];
+        for (const copy of copies) {
+            const tag = copies.length > 1 ? `${copy === 'buyer' ? 'Buyer' : 'Agent'} copy: ` : '';
+            const r = await buildPacket({ copy, photos: opt('photos'), map: opt('map'), privateNotes: copy === 'agent' && opt('privateNotes') }, m => { if (status) status.textContent = tag + m; });
+            done.push(`${copies.length > 1 ? (copy === 'buyer' ? 'buyer ' : 'agent ') : ''}${r.sheets} sheets`);
+        }
         document.getElementById('modal-tour-packet').classList.remove('active');
-        showToast(`Tour packet ready: ${r.pages} pages (${r.sheets} sheets, double-sided).`, 'success');
+        showToast(`Tour packet${copies.length > 1 ? 's' : ''} ready: ${done.join(', ')}, double-sided.`, 'success');
     } catch (e) {
         console.error('[TourPacket]', e);
         if (status) status.textContent = e.message || 'Could not build the packet.';
@@ -1643,14 +1652,23 @@ document.addEventListener('change', event => {
     if (!priv) return;
     priv.disabled = t.value === 'buyer';
     const sheets = document.querySelector('#modal-tour-packet [data-packet-sheets]');
-    if (sheets) sheets.textContent = `${t.value === 'buyer' ? sheets.dataset.buyer : sheets.dataset.agent} sheets`;
+    if (sheets) sheets.textContent = t.value === 'both'
+        ? `${Number(sheets.dataset.agent) + Number(sheets.dataset.buyer)} sheets (${sheets.dataset.agent} agent + ${sheets.dataset.buyer} buyer)`
+        : `${t.value === 'buyer' ? sheets.dataset.buyer : sheets.dataset.agent} sheets`;
     const sheet2 = document.querySelector('#modal-tour-packet [data-packet-sheet2]');
-    if (sheet2) sheet2.textContent = t.value === 'buyer'
+    if (sheet2) sheet2.textContent = t.value === 'both'
+        ? "Sheet 2: the client's brief. The agent copy has your call sheet on the back, the buyer copy a scorecard"
+        : t.value === 'buyer'
         ? "Sheet 2: the client's brief and a bring-along checklist, with a scorecard to compare the homes on the back"
         : "Sheet 2: the client's brief, their questions and a checklist, with your call sheet for the day on the back";
     const homes = document.querySelector('#modal-tour-packet [data-packet-homes]');
-    if (homes) homes.textContent = t.value === 'buyer'
+    if (homes) homes.textContent = t.value === 'both'
+        ? 'Then the homes: one sheet each in the agent copy, two per sheet in the buyer copy'
+        : t.value === 'buyer'
         ? 'Then two homes per sheet, one page each: photo, key facts, fit, what to check, and room for notes'
         : 'Then one sheet per home: full listing details on the front; fit, what to check, MLS details and your tour notes on the back';
     if (priv.disabled) priv.checked = false;
 });
+
+// Shared with the realtor & lender report (js/buyerReport.js).
+export { loadLibs, loadFonts, Sheet, C, PAGE_W, PAGE_H, M, CW, FOOT_Y };

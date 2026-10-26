@@ -10,9 +10,11 @@ export function exportCSV() {
     const props = state.filteredProperties;
     if (!props.length) return showToast('No properties to export', 'warning');
 
-    const headers = ['MLS ID', 'Address', 'City', 'Price', 'Beds', 'Baths', 'SqFt', 'Lot Acres', 'Year Built', 'HOA Fee', 'Annual Tax', 'Personal Notes'];
-    const rows = props.map(p => [
-        p.mls_id, `"${p.address}"`, `"${p.city}"`, p.price, p.beds, p.baths, p.sqft_finished, p.lot_acres, p.year_built, p.hoa_fee, p.annual_tax, `"${(p.user_notes || '').replace(/"/g, '""')}"`
+    const headers = ['Rank', 'MLS ID', 'Address', 'City', 'Price', 'Beds', 'Baths', 'SqFt', 'Lot Acres', 'Year Built', 'HOA Fee', 'Annual Tax', 'Personal Notes'];
+    // Top Picks first, in rank order; everything else keeps its current order after them.
+    const sorted = props.map((p, i) => [p, i]).sort((a, b) => (Number(a[0].pick_rank) || 1e9) - (Number(b[0].pick_rank) || 1e9) || a[1] - b[1]).map(x => x[0]);
+    const rows = sorted.map(p => [
+        p.pick_rank || '', p.mls_id, `"${p.address}"`, `"${p.city}"`, p.price, p.beds, p.baths, p.sqft_finished, p.lot_acres, p.year_built, p.hoa_fee, p.annual_tax, `"${(p.user_notes || '').replace(/"/g, '""')}"`
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');

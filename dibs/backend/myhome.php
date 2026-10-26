@@ -74,6 +74,8 @@ function handleGetMyHome(PDO $pdo) {
             'can_edit' => $ownerId === (int)$_SESSION['user_id'],
             'can_lookup' => $ownerId === (int)$_SESSION['user_id'] && canLookupComps(),
             'usage' => compsLookupUsage($pdo),
+            // Starting value for a home's selling cost % (Brokerage settings).
+            'default_sell_cost_pct' => function_exists('brokerageSettings') ? brokerageSettings($pdo)['sell_cost_pct'] : 7,
         ], JSON_INVALID_UTF8_SUBSTITUTE);
     } catch (Throwable $t) {
         logEvent($pdo, 'system', 'error', 'get_my_home failed: ' . $t->getMessage());

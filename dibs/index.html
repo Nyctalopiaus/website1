@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
     <!-- Leaflet CSS for Interactive Map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="stylesheet" href="styles.css?v=3.30">
+    <link rel="stylesheet" href="styles.css?v=3.38">
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <!-- Lucide Icons (replaces emoji glyphs in the header/KPI chrome) -->
@@ -75,6 +75,7 @@
                         <!-- Section A: System Administration (Admin Only) -->
                         <div class="admin-only" style="display: flex; flex-direction: column;">
                             <div class="dropdown-header">System Administration</div>
+                            <button class="dropdown-item" id="btn-brokerage-settings" data-open-brokerage><i data-lucide="building-2"></i> Brokerage &amp; Agents</button>
                             <button class="dropdown-item" id="btn-user-mgmt"><i data-lucide="users"></i> User Management</button>
                             <button class="dropdown-item" id="btn-view-logs"><i data-lucide="clipboard-list"></i> View System Audit Logs</button>
                             <button class="dropdown-item" id="btn-admin-cleanup"><i data-lucide="eraser"></i> Property & Media Cleanup</button>
@@ -100,7 +101,6 @@
                         <div class="dropdown-menu" id="user-dropdown-menu">
                             <button class="dropdown-item" id="btn-user-profile"><i data-lucide="user-cog"></i> My Profile</button>
                             <button class="dropdown-item" id="btn-user-my-home"><i data-lucide="house"></i> My Home</button>
-                            <button class="dropdown-item" id="btn-user-top-picks"><i data-lucide="trophy"></i> Top Picks</button>
                             <button class="dropdown-item" id="btn-user-brief"><i data-lucide="sliders-horizontal"></i> My Brief</button>
                             <button class="dropdown-item" id="btn-user-password"><i data-lucide="key-round"></i> Change Password</button>
                             <button class="dropdown-item" id="btn-user-ai-setup"><i data-lucide="sparkles"></i> AI Setup</button>
@@ -263,6 +263,9 @@
                 <!-- Add these to tour: the homes in the current filter or map area (js/tourBulkAdd.js) -->
                 <button type="button" class="btn btn-secondary btn-add-view-to-tour" id="btn-add-view-to-tour" title="Add the homes you're looking at to the showing tour"><i data-lucide="route"></i> Add these to tour</button>
 
+                <!-- Top Picks: rank the favorites you've toured (js/topPicks.js). Hidden for realtor logins. -->
+                <button type="button" class="btn btn-secondary buyer-only" id="btn-user-top-picks" title="Rank the favorites you've toured" style="display: none;"><i data-lucide="trophy"></i> Top Picks</button>
+
                 <div class="sort-control-group">
                     <label for="sort-select" class="sort-label">Sort By:</label>
                     <select id="sort-select" class="select-input sort-select-input">
@@ -275,6 +278,7 @@
                         <option value="ppsqft-asc">Price/SqFt: Low to High</option>
                         <option value="compscore-desc">Price Score: Best Value First</option>
                         <option value="rating-desc">My Rating: Highest</option>
+                        <option value="rank-asc">Top Picks Rank: #1 First</option>
                     </select>
                 </div>
             </div>
@@ -953,6 +957,13 @@
                         <div class="export-card-sub">One-page-wide report of your Table View columns</div>
                     </div>
                 </button>
+                <button type="button" class="export-action-card card-emerald buyer-only" id="btn-export-buyer-report" style="display: none;">
+                    <div class="export-card-icon"><i data-lucide="landmark"></i></div>
+                    <div class="export-card-info">
+                        <div class="export-card-title">Realtor &amp; Lender Report</div>
+                        <div class="export-card-sub">Top Picks and favorites with your financing and monthly estimates: PDF + CSV for both</div>
+                    </div>
+                </button>
             </div>
         </div>
     </div>
@@ -987,7 +998,8 @@
                         <select id="new-user-role" class="select-input">
                             <option value="client">Client (Homebuyer)</option>
                             <option value="realtor">Realtor / Agent</option>
-                            <option value="admin">Administrator</option>
+                            <option value="realtor_admin">Realtor + Brokerage Admin</option>
+                            <option value="admin">Administrator (admin tools only)</option>
                         </select>
                     </div>
                     <div class="form-field-group" id="wrapper-new-user-realtor">
@@ -1897,6 +1909,6 @@
         </div>
     </div>
 
-    <script type="module" src="app.js?v=3.39"></script>
+    <script type="module" src="app.js?v=3.55"></script>
 </body>
 </html>

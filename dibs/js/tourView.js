@@ -120,6 +120,7 @@ class TourViewManager {
 
         // Hydrate settings
         const s = res.settings || {};
+        this.tourData.bufferMins = Math.max(0, parseInt(res.buffer_mins, 10) || 0);
         this.tourData.settings = {
             start_address: s.start_address || this.tourData.myHomeAddress || 'Denver, CO',
             start_lat: s.start_lat ? parseFloat(s.start_lat) : null,
@@ -184,7 +185,8 @@ class TourViewManager {
             this.tourData.stops,
             Boolean(this.tourData.settings.loop_back),
             this.tourData.settings.stay_duration_mins,
-            startTime
+            startTime,
+            this.tourData.bufferMins || 0
         );
 
         if (updateMap && this.map) {

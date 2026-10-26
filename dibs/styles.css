@@ -4769,7 +4769,7 @@ body {
 
 [data-theme="dark"] .user-role-badge.role-client {
     background: rgba(148, 163, 184, 0.2);
-    color: #cbd5e1;
+    color: var(--text-muted);
     border-color: rgba(148, 163, 184, 0.3);
 }
 
@@ -8900,3 +8900,72 @@ body {
 .tr-followup input[type="text"] { flex: 1; background: var(--bg-card); color: inherit; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.4rem 0.55rem; font: inherit; font-size: 0.88rem; }
 .tr-followups > .btn { justify-self: start; }
 @media (max-width: 560px) { .tr-scores { grid-template-columns: 1fr; } .tr-dot { width: 30px; height: 30px; } }
+
+/* Tour Results: which tour (js/tourResults.js) */
+.tr-date-pick { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-top: 0.35rem; }
+.tr-date-pick[hidden] { display: none; }
+.tr-date-pick .select-input { width: auto; }
+
+/* Tour Results: the realtor's private tour notes under each home (js/tourResults.js agentHtml) */
+.tr-agent { margin-top: 0.6rem; border: 1px dashed var(--border-color); border-radius: 10px; padding: 0.5rem 0.75rem; background: var(--bg-card); }
+.tr-agent > summary { cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-weight: 700; font-size: 0.86rem; list-style: none; }
+.tr-agent > summary::-webkit-details-marker { display: none; }
+.tr-agent > summary svg { width: 15px; height: 15px; }
+.tr-private { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); border: 1px solid var(--border-color); border-radius: 999px; padding: 0.05rem 0.45rem; }
+.tr-a-count { margin-left: auto; font-size: 0.75rem; font-weight: 500; color: var(--text-muted); }
+.tr-a-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.6rem; }
+.tr-a-head { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; }
+.tr-a-sub { font-size: 0.76rem; color: var(--text-muted); margin: 0.45rem 0 0.25rem; }
+.tr-a-field { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.76rem; color: var(--text-muted); margin-top: 0.45rem; }
+.tr-a-field input, .tr-a-field textarea { width: 100%; box-sizing: border-box; font: inherit; font-size: 0.85rem; color: var(--text-main); padding: 0.4rem 0.5rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-input, var(--bg-card)); resize: vertical; }
+.tr-a-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.2rem 0.6rem; }
+.tr-a-checks-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tr-a-check { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; cursor: pointer; }
+.tr-agent .tr-decision { flex-wrap: nowrap; margin-bottom: 0; }
+.tr-agent .tr-decision .btn { padding: 0.3rem 0.55rem; font-size: 0.76rem; white-space: nowrap; }
+@media (max-width: 640px) { .tr-a-cols, .tr-a-checks-3 { grid-template-columns: 1fr; } .tr-agent .tr-decision { flex-wrap: wrap; } }
+
+/* Card corner badges, stacked (js/views.js): status only when it isn't Active, then Toured, then the
+   Top Picks rank. They used to sit on top of each other, so Toured could hide a Pending status. */
+.card-badge-stack { position: absolute; top: 10px; left: 10px; z-index: 3; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; }
+.card-badge-stack:empty { display: none; }
+.card-badge-stack > .card-status-badge, .card-badge-stack > .card-toured-badge, .card-badge-stack > .card-rank-badge { position: static; top: auto; left: auto; }
+
+/* Brokerage settings & agent roster (js/brokerageAdmin.js) */
+.brokerage-modal { max-width: 760px; }
+.bk-tabs { display: flex; gap: 0.35rem; margin-top: 0.6rem; }
+.bk-tab { border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-muted); border-radius: 999px; padding: 0.3rem 0.9rem; font-weight: 700; font-size: 0.82rem; cursor: pointer; }
+.bk-tab.is-on { background: var(--accent-gold); border-color: var(--accent-gold); color: #fff; }
+.bk-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem 1rem; margin-bottom: 0.9rem; }
+.bk-grid label, .bk-all { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
+.bk-grid .bk-wide { grid-column: 1 / -1; }
+.bk-grid input, .bk-invite-link input { font: inherit; font-size: 0.88rem; color: var(--text-main); padding: 0.45rem 0.6rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-input, var(--bg-card)); }
+.bk-logo { margin-bottom: 0.9rem; }
+.bk-logo-row { display: flex; align-items: center; gap: 0.6rem; margin: 0.35rem 0; }
+.bk-logo .branding-preview { width: 160px; height: 72px; flex: 0 0 160px; display: flex; align-items: center; justify-content: center; padding: 6px; box-sizing: border-box; }
+.bk-logo .branding-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.bk-hint { font-size: 0.78rem; color: var(--text-muted); margin: 0.35rem 0 0.75rem; }
+.bk-check { display: flex; align-items: center; gap: 0.45rem; font-size: 0.85rem; margin-bottom: 0.5rem; }
+.bk-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; margin-bottom: 0.4rem; }
+.bk-table th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border-color); }
+.bk-table td { padding: 0.5rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
+.bk-table tr.bk-off td { opacity: 0.6; }
+.bk-sub { font-size: 0.75rem; color: var(--text-muted); }
+.bk-you { font-size: 0.75rem; color: var(--accent-gold); font-weight: 700; }
+.bk-actions { text-align: right; white-space: nowrap; }
+.bk-invite-go { display: flex; align-items: flex-end; }
+.bk-invite-link { border: 1px dashed var(--border-color); border-radius: 10px; padding: 0.6rem 0.75rem; margin-bottom: 0.75rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.bk-invite-link p { flex-basis: 100%; margin: 0; font-size: 0.82rem; }
+.bk-invite-link input { flex: 1; min-width: 200px; }
+.bk-all { flex-direction: row; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+
+/* Phones and tablets (Oct 2026): pages painted in pieces on a phone (half-drawn panels, blank
+   blocks). Every frosted-glass panel and each of the ~200 listing cards used backdrop-filter: blur
+   over a fixed full-page background, which re-blurs the whole background on every scroll and runs
+   mobile browsers out of graphics memory. On touch screens: no blur, a background that scrolls
+   with the page, and off-screen cards skipped until they scroll into view. */
+@media (hover: none), (max-width: 900px) {
+    body, .header-sticky-wrapper { background-attachment: scroll !important; }
+    *, *::before, *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+    .property-card { content-visibility: auto; contain-intrinsic-size: auto 560px; }
+}

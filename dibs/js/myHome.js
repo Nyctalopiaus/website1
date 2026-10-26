@@ -15,6 +15,8 @@ import { renderActiveView } from './views.js';
 const esc = v => escapeHtml(String(v ?? ''));
 const FACING = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 export const DEFAULT_SELL_COST_PCT = 7;
+// The brokerage's usual selling cost (Brokerage settings), used until the owner sets their own.
+let defaultSellCost = DEFAULT_SELL_COST_PCT;
 
 let loadState = 'idle'; // idle | loading | done
 state.myHome = null;
@@ -51,7 +53,7 @@ export function myHomeSaleMath(h) {
     if (!h) return null;
     const price = num(h.my_price);
     const payoff = num(h.mortgage_payoff) || 0;
-    const pct = num(h.sell_cost_pct) ?? DEFAULT_SELL_COST_PCT;
+    const pct = num(h.sell_cost_pct) ?? defaultSellCost;
     const extra = num(h.extra_cash) || 0;
     if (price === null) return { price: null, equity: null, sellCosts: null, net: null, downPayment: extra || null };
     const sellCosts = price * pct / 100;
@@ -82,6 +84,7 @@ export async function loadMyHome(force = false) {
         state.myHomeComps = res && res.success ? res.comps : null;
         canLookup = !!(res && res.can_lookup);
         lookupUsage = res && res.usage ? res.usage : null;
+        if (res && Number.isFinite(Number(res.default_sell_cost_pct))) defaultSellCost = Number(res.default_sell_cost_pct);
     } catch (e) {
         state.myHome = null;
     }
@@ -98,7 +101,7 @@ export function ensureMyHomeLoaded() {
 
 function fieldHtml([key, label, kind, extra], h, readOnly) {
     let v = h ? h[key] : null;
-    if (key === 'sell_cost_pct' && (v === null || v === undefined)) v = DEFAULT_SELL_COST_PCT;
+    if (key === 'sell_cost_pct' && (v === null || v === undefined)) v = defaultSellCost;
     const dis = readOnly ? 'disabled' : '';
     const id = `my-home-${key}`;
     if (kind === 'textarea') {

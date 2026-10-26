@@ -57,6 +57,8 @@ export function getMarketRate(type = '30yr') {
     return s?.latest ? Number(s.latest.rate) : null;
 }
 
+export function getLatestQuote(type) { return latestQuote(type); }
+
 function latestQuote(type) {
     return (ratesData?.quotes || []).find(q => q.loan_type === type) || null;
 }

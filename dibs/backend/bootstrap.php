@@ -64,7 +64,26 @@ if (!is_dir($dbDir)) {
     mkdir($dbDir, 0755, true);
 }
 
-$dbPath = $dbDir . '/properties.db';
+// Which brokerage this request is for (backend/tenant.php). Brokerage #1 is the original install
+// at data/properties.db; others have their own file under data/brokerages/.
+require_once __DIR__ . '/tenant.php';
+$brokerage = dibsResolveBrokerage($dbDir);
+define('DIBS_BROKERAGE_ID', $brokerage['id']);
+define('DIBS_BROKERAGE_SLUG', $brokerage['slug']);
+$dbPath = $brokerage['db_path'];
+
+// A session belongs to the brokerage it signed in to. Sessions from before brokerages existed are
+// bound to the one they're used on (only #1 existed then). Used on another brokerage's URL, the
+// session is signed out rather than let in.
+if (!empty($_SESSION['user_id'])) {
+    if (!isset($_SESSION['brokerage_id'])) {
+        $_SESSION['brokerage_id'] = DIBS_BROKERAGE_ID;
+    } elseif ((int)$_SESSION['brokerage_id'] !== DIBS_BROKERAGE_ID) {
+        $keepCsrf = $_SESSION['csrf_token'] ?? null;
+        $_SESSION = [];
+        if ($keepCsrf) $_SESSION['csrf_token'] = $keepCsrf;
+    }
+}
 
 // Local cache for listing photos.
 define('MEDIA_DIR', __DIR__ . '/../media');
@@ -207,7 +226,7 @@ const DIBS_USER_REF_KEYS = ['client_id', 'user_id', 'realtor_id', 'target_user_i
  * refuse (treated as no user). Flip to true once the event log has stayed free of
  * "Numeric user id received" warnings through normal use.
  */
-const DIBS_REFUSE_NUMERIC_USER_IDS = false;
+const DIBS_REFUSE_NUMERIC_USER_IDS = true;   // flipped 2026-10-25: only 2 stale hits (10-24), none since
 
 /** A user reference -> the internal integer id. Unknown public ids become 0 (matches nothing). */
 function dibsUserIdFromRef(PDO $pdo, $v, string $key = '') {
@@ -869,6 +888,22 @@ try {
         FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (updated_by_user_id) REFERENCES users(id) ON DELETE SET NULL
     )", 'tour_debriefs');
+    // The homes on the tour when its results were saved, so a past tour can be reopened after the
+    // client's tour has moved on to new homes.
+    runMigration($pdo, "ALTER TABLE tour_debriefs ADD COLUMN stops_json TEXT DEFAULT '[]'", 'tour_debriefs.stops_json');
+    // The realtor's own tour notes per home (the agent copy's "Tour notes" form). Private to the
+    // realtor: never returned to the client. See handleSaveAgentTourNotes in properties.php.
+    runMigration($pdo, "CREATE TABLE IF NOT EXISTS agent_tour_notes (
+        client_id INTEGER NOT NULL,
+        tour_date TEXT NOT NULL,
+        mls_id TEXT NOT NULL,
+        realtor_id INTEGER,
+        notes_json TEXT NOT NULL DEFAULT '{}',
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (client_id, tour_date, mls_id),
+        FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (realtor_id) REFERENCES users(id) ON DELETE SET NULL
+    )", 'agent_tour_notes');
     dibsTranslateRequestRefs($pdo);
 
     purgeUserScopedMlsJson($pdo);

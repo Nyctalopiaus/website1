@@ -12,7 +12,7 @@
  */
 import { CONFIG, state } from './state.js';
 import { apiFetch, logClientEvent } from './api.js';
-import { getCompScore } from './properties.js';
+import { getCompScore, ensureFullRaw } from './properties.js';
 import { loadPaySettings, monthlyCost, currentRate } from './compare.js';
 
 // One Gemini key for every nycto.ninja app (the model choice is per app). These are certforge's storage names and vault format
@@ -502,6 +502,7 @@ export function buildPropertyAnalysisPrompt(p, activity, searchAvailable = true)
  * app (which searches the web on the free tier and accepts attached photos). No API key needed.
  */
 export async function buildCopyablePrompt(p) {
+    await ensureFullRaw([p]);
     const activity = await fetchActivity(p.mls_id);
     const { systemPrompt, userPrompt } = buildPropertyAnalysisPrompt(p, activity, true);
     return `${systemPrompt}\n\n---\n\n${userPrompt}`;
@@ -567,6 +568,7 @@ async function fetchActivity(mlsId) {
 
 /** Returns the finished Markdown for the listing. Throws with a user-readable message. */
 export async function generatePropertyAnalysis(p) {
+    await ensureFullRaw([p]);
     const apiKey = getUsableGeminiKey();
     const model = getGeminiModel();
     if (!apiKey) throw new Error('Unlock or add your Gemini API key first.');

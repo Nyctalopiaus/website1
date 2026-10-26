@@ -11,7 +11,7 @@
  */
 
 const BRANDING_MAX_BYTES = 4 * 1024 * 1024;
-const BRANDING_COLUMNS = ['headshot' => 'avatar_url', 'logo' => 'logo_url'];
+const BRANDING_COLUMNS = ['headshot' => 'avatar_url', 'logo' => 'logo_url', 'brokerage_logo' => 'brokerage'];
 
 function brandingDir(): string {
     $dir = MEDIA_DIR . '/branding';
@@ -39,6 +39,7 @@ function handleUploadBrandingImage(PDO $pdo) {
     $fail = function (string $msg, int $code = 400) { http_response_code($code); echo json_encode(['error' => $msg]); };
 
     if (!$kind) return $fail('Choose headshot or logo.');
+    if ($kind === 'brokerage_logo' && !brokerageIsAdmin()) return $fail('Only a brokerage admin can change the office logo.', 403);
     if (!$file || !is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
         $err = $file['error'] ?? UPLOAD_ERR_NO_FILE;
         return $fail(in_array($err, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true) ? 'That image is too large (4 MB max).' : 'No image received. Try again.');
@@ -58,6 +59,15 @@ function handleUploadBrandingImage(PDO $pdo) {
         return $fail('Could not save the image on the server.', 500);
     }
 
+    if ($kind === 'brokerage_logo') {
+        // The office logo lives in brokerage_settings (brokerage.php); only a brokerage admin sets it.
+        $previous = (string)($pdo->query("SELECT logo_url FROM brokerage_settings WHERE id = 1")->fetchColumn() ?: '');
+        $pdo->prepare("UPDATE brokerage_settings SET logo_url = :v, updated_at = CURRENT_TIMESTAMP WHERE id = 1")->execute([':v' => $relative]);
+        brandingDeleteOld($previous);
+        logEvent($pdo, 'system', 'info', 'Brokerage logo uploaded', null, ['width' => $w, 'height' => $h]);
+        echo json_encode(['success' => true, 'kind' => $kind, 'url' => $relative, 'width' => $w, 'height' => $h]);
+        return;
+    }
     $col = BRANDING_COLUMNS[$kind];
     $me = (int)$_SESSION['user_id'];
     $old = $pdo->prepare("SELECT $col FROM users WHERE id = :id");
@@ -76,6 +86,14 @@ function handleRemoveBrandingImage(PDO $pdo) {
     $data = json_decode(dibsRequestBody(), true) ?: [];
     $kind = brandingKind($data['kind'] ?? '');
     if (!$kind) { http_response_code(400); echo json_encode(['error' => 'Choose headshot or logo.']); return; }
+    if ($kind === 'brokerage_logo') {
+        if (!brokerageIsAdmin()) { http_response_code(403); echo json_encode(['error' => 'Only a brokerage admin can change the office logo.']); return; }
+        $previous = (string)($pdo->query("SELECT logo_url FROM brokerage_settings WHERE id = 1")->fetchColumn() ?: '');
+        $pdo->prepare("UPDATE brokerage_settings SET logo_url = '' WHERE id = 1")->execute();
+        brandingDeleteOld($previous);
+        echo json_encode(['success' => true, 'kind' => $kind]);
+        return;
+    }
     $col = BRANDING_COLUMNS[$kind];
     $me = (int)$_SESSION['user_id'];
     $old = $pdo->prepare("SELECT $col FROM users WHERE id = :id");

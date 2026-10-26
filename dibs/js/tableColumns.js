@@ -45,6 +45,8 @@ export const COLUMNS = [
     { key: 'photo', label: 'Photo', photo: true, pdfWidth: 62,
       value: p => (p.main_image_url ? new URL(p.main_image_url, location.href).href : ''), text: () => '',
       html: p => `<img src="${escapeHtml(p.main_image_url || NO_PHOTO_IMG)}" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${NO_PHOTO_IMG}';" class="table-thumb" alt="">` },
+    // Top Picks rank (1 = favorite home); unranked homes sort after ranked ones.
+    { key: 'pick_rank', label: 'Rank', align: 'right', value: p => (p.pick_rank ? Number(p.pick_rank) : null), text: p => (p.pick_rank ? `#${p.pick_rank}` : '—') },
     { key: 'mls_id', label: 'MLS #', locked: true, value: p => p.mls_id || '', text: p => String(p.mls_id || '') },
     { key: 'status', label: 'Status', value: p => p.status || '', text: p => p.status || '',
       html: p => `<span class="badge ${getStatusBadgeClass(p.status)}">${escapeHtml(p.status || '')}</span>` },

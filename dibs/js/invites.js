@@ -47,8 +47,9 @@ async function loadAgents() {
     try {
         const res = await apiFetch(`${API}?action=list_users`);
         agents = (res?.users || [])
-            // Realtors only: an admin account is never a client's agent (the server enforces this too).
-            .filter(u => u.role === 'realtor' && Number(u.is_admin) !== 1 && u.username !== 'admin')
+            // Realtors only (including a realtor who is also the brokerage admin); an admin-only
+            // account is never a client's agent. The server enforces this too.
+            .filter(u => u.role === 'realtor' && u.username !== 'admin')
             .map(u => ({ id: u.id, name: u.full_name || u.username }));
     } catch (e) {
         agents = [];
@@ -94,6 +95,8 @@ async function renderList() {
     try {
         const res = await apiFetch(`${API}?action=list_invites`);
         if (!res?.success) throw new Error(res?.error || 'Could not load invites.');
+        // Agent invites are listed in Brokerage settings > Agents, not here.
+        res.invites = res.invites.filter(i => i.invite_role !== 'realtor');
         if (!res.invites.length) { box.innerHTML = '<p class="brief-empty">No invites yet.</p>'; return; }
         box.innerHTML = `<ul class="invite-list">${res.invites.map(i => `
             <li class="invite-row">
