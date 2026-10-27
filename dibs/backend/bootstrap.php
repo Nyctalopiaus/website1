@@ -905,6 +905,40 @@ try {
         FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (realtor_id) REFERENCES users(id) ON DELETE SET NULL
     )", 'agent_tour_notes');
+    // Head-to-Head compare: the buyer's global 0-3 field weights. See claude/head-to-head-spec.md.
+    runMigration($pdo, "CREATE TABLE IF NOT EXISTS h2h_weights (
+        user_id INTEGER PRIMARY KEY,
+        weights_json TEXT NOT NULL DEFAULT '{}',
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )", 'h2h_weights');
+    // Head-to-Head: the buyer's repair / update estimate per home (adjusted true cost = price + this).
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN repair_estimate REAL DEFAULT NULL", 'user_metadata.repair_estimate');
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN repair_note TEXT DEFAULT NULL", 'user_metadata.repair_note');
+    // Print tray / Re-tour: the buyer's "Check on 2nd visit" list per home, [{id, text, done, done_at}].
+    // See claude/print-tray-spec.md.
+    runMigration($pdo, "ALTER TABLE user_metadata ADD COLUMN retour_checks_json TEXT DEFAULT NULL", 'user_metadata.retour_checks_json');
+    // Head-to-Head saved comparisons: a snapshot of both homes' field values, the picks, the weights
+    // used and the score, so a comparison reopens exactly as it was saved. Private to the buyer.
+    runMigration($pdo, "CREATE TABLE IF NOT EXISTS h2h_comparisons (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        public_id TEXT UNIQUE NOT NULL,
+        user_id INTEGER NOT NULL,
+        mls_a TEXT NOT NULL,
+        mls_b TEXT NOT NULL,
+        title TEXT DEFAULT '',
+        snapshot_json TEXT NOT NULL,
+        picks_json TEXT NOT NULL,
+        weights_json TEXT NOT NULL,
+        score_json TEXT NOT NULL,
+        verdict TEXT DEFAULT '',
+        gemini_text TEXT DEFAULT NULL,
+        gemini_at DATETIME DEFAULT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )", 'h2h_comparisons');
+    runMigration($pdo, "CREATE INDEX IF NOT EXISTS idx_h2h_user ON h2h_comparisons(user_id, updated_at)", 'idx_h2h_user');
     dibsTranslateRequestRefs($pdo);
 
     purgeUserScopedMlsJson($pdo);

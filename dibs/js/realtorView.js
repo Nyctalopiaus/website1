@@ -8,6 +8,7 @@ import { state, elements } from './state.js';
 import { showToast } from './toast.js';
 import { cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG } from './properties.js';
 import { sendPropertiesToHomeward, downloadTourCalendarICS } from './export.js';
+import { parseRetourChecks, retourChecksReadOnlyHtml } from './retourChecks.js';
 
 let activeClientId = null;
 let clientActivity = [];
@@ -802,6 +803,8 @@ function renderRealtorPropertyCard(p, clientId) {
                     <div class="note-box-title"><i data-lucide="globe"></i> Client Note:</div>
                     <div class="note-box-text">${escapeHtml(p.user_notes || 'No client note entered.')}</div>
                 </div>
+
+                ${Number(p.toured) ? retourChecksReadOnlyHtml(parseRetourChecks(p), { compact: true }) : ''}
 
                 <!-- Realtor Private Note Textarea -->
                 <div class="note-box realtor-private-note-box">

@@ -942,8 +942,14 @@ function buyerHomePage(s, P, st, idx) {
     const first = firstName(P.client.name);
     // Header
     s.stroke(C.ink, 1).rect(M, M, 86, 17, 'S', 3);
-    s.one(`STOP ${idx + 1} OF ${P.stops.length}`, M, M + 12, 86, 8, 'bold', C.ink, 'center');
-    s.one(st.window ? `${st.window}${st.requested ? '  ·  REQUESTED, NOT CONFIRMED' : ''}` : '', M + 94, M + 12, 300, 8.6, 'bold');
+    if (P.tray) {
+        // Print tray (no tour): "Home 2 of 5" and which sheet this is.
+        s.one(`HOME ${idx + 1} OF ${P.stops.length}`, M, M + 12, 86, 8, 'bold', C.ink, 'center');
+        s.one(st.retour ? `RE-TOUR${st.home.first_visit?.toured_at ? `  ·  FIRST VISIT ${shortDate(st.home.first_visit.toured_at).toUpperCase()}` : ''}` : 'INITIAL TOUR', M + 94, M + 12, 300, 8.6, 'bold');
+    } else {
+        s.one(`STOP ${idx + 1} OF ${P.stops.length}`, M, M + 12, 86, 8, 'bold', C.ink, 'center');
+        s.one(st.window ? `${st.window}${st.requested ? '  ·  REQUESTED, NOT CONFIRMED' : ''}` : '', M + 94, M + 12, 300, 8.6, 'bold');
+    }
     if (h.pick_rank) s.one(`Currently your #${h.pick_rank} in Top Picks`, PAGE_W - M - 200, M + 12, 200, 8, 'bold', C.ink, 'right');
     let y = M + 22;
     s.one(h.address, M, y + 19, 340, 18, 'displayBold');
@@ -1045,6 +1051,9 @@ function buyerHomePage(s, P, st, idx) {
         }
     });
     if (drew) y += qs + 10;
+
+    // Re-tour: what was recorded on the first visit takes the place of the blank rating form.
+    if (st.retour) { firstVisitBlock(s, h.first_visit || {}, y + 2, FOOT_Y - 18); return; }
 
     // Rate it and take notes (whatever room is left)
     y = s.title('Your notes', M, y + 2, CW);
@@ -1669,6 +1678,203 @@ document.addEventListener('change', event => {
         : 'Then one sheet per home: full listing details on the front; fit, what to check, MLS details and your tour notes on the back';
     if (priv.disabled) priv.checked = false;
 });
+
+// ------------------------------------------------------------------ buyer print tray (claude/print-tray-spec.md)
+// Any homes the buyer picks, two pages each (front + back) so a duplex print gives one sheet per
+// home. Initial tour: the buyer home sheet + a notes page. Re-tour: the home sheet with the first
+// visit in place of the blank rating form, and the "Check on 2nd visit" list on the back.
+
+const TRAY_SCORES = [
+    ['overall', 'Overall'], ['layout', 'Layout & flow'], ['condition', 'Condition'],
+    ['location', 'Location & street'], ['value', 'Value for price'], ['live_here', 'Would live here'],
+];
+const TRAY_DECISION = { love: 'Love it', again: 'See it again', pass: 'Pass' };
+
+/** tour_notes is stored as HTML (rich-text editor); print it as plain text. */
+function notesText(html) {
+    if (!html) return '';
+    const doc = new DOMParser().parseFromString(String(html).replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li)>/gi, '\n'), 'text/html');
+    return (doc.body.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/** Five circles with the first `n` filled (a recorded score); reads in grayscale. */
+function filledCircles(s, x, y, n, r = 4, gap = 11) {
+    s.stroke(C.ink, 0.7);
+    for (let i = 0; i < 5; i++) s.doc.circle(x + r + i * gap, y + r, r, i < n ? 'FD' : 'S');
+}
+
+/** Box with a check mark in it (an item already done). */
+function checkedBox(s, x, y) {
+    s.stroke(C.ink, 0.7).rect(x, y, 9, 9);
+    s.mark('pass', x + 1.5, y + 1.5, 6);
+}
+
+/** Front of a Re-tour sheet, bottom part: scores, decision, rank, repairs and notes from visit one. */
+function firstVisitBlock(s, fv, y, bottom) {
+    const when = fv.toured_at ? `Toured ${shortDate(fv.toured_at)}` : 'Toured';
+    s.title('First visit', M, y, CW);
+    s.one(when, M + CW - 200, y + 9, 200, 7.6, 'normal', C.muted, 'right');
+    y += 20;
+    const third = CW / 3;
+    const sc = fv.scores || {};
+    s.fill(C.ink);
+    TRAY_SCORES.forEach(([k, label], i) => {
+        const x = M + (i % 3) * third, yy = y + Math.floor(i / 3) * 14;
+        const v = Math.max(0, Math.min(5, Number(sc[k]) || 0));
+        s.one(label, x, yy + 7.5, 80, 7.6);
+        if (v) filledCircles(s, x + 84, yy, v);
+        else s.one('not scored', x + 84, yy + 7.5, 70, 7, 'italic', C.muted);
+    });
+    y += 30;
+    const bits = [
+        fv.decision ? `Decision: ${TRAY_DECISION[fv.decision] || fv.decision}` : 'Decision: none yet',
+        fv.repair_estimate != null ? `Repairs: ${money(fv.repair_estimate)}${fv.repair_note ? ` (${fv.repair_note})` : ''}` : '',
+    ].filter(Boolean);
+    s.one(bits.join('   ·   '), M, y + 8, CW, 8, 'bold');
+    y += 14;
+    const notes = notesText(fv.tour_notes);
+    const room = bottom - y;
+    if (notes && room > 20) {
+        s.one('YOUR NOTES', M, y + 7, 100, 6.8, 'bold', C.muted);
+        s.box(notes, M, y + 9, CW, room - 9, 7.8, 'normal', C.ink, 9.6);
+    } else if (room > 14) {
+        s.one('No tour notes were saved.', M, y + 8, CW, 7.6, 'italic', C.muted);
+    }
+}
+
+/** Back of an Initial tour sheet: a notes page labeled with the home. */
+function trayNotesBack(s, st) {
+    const h = st.home;
+    s.one(h.address, M, M + 14, CW - 140, 13, 'displayBold');
+    s.one(money(h.price), M + CW - 140, M + 14, 140, 11, 'bold', C.ink, 'right');
+    let y = s.title('Notes', M, M + 24, CW);
+    s.ruled(M, y, CW, FOOT_Y - 18 - y, 18);
+}
+
+/** Back of a Re-tour sheet: the "Check on 2nd visit" list, a second rating, then lines for notes. */
+function retourBack(s, st) {
+    const h = st.home;
+    const checks = Array.isArray(h.first_visit?.checks) ? h.first_visit.checks : [];
+    const open = checks.filter(c => !c.done);
+    const done = checks.filter(c => c.done);
+    s.one(h.address, M, M + 14, CW - 140, 13, 'displayBold');
+    s.one(money(h.price), M + CW - 140, M + 14, 140, 11, 'bold', C.ink, 'right');
+    let y = s.title('Check on 2nd visit', M, M + 24, CW);
+
+    // Keep at least the second-visit rating block and a few writing lines.
+    const reserve = 20 + 30 + 14 + 4 * 16;
+    const limit = FOOT_Y - 18 - reserve;
+    const textW = CW - 14;
+    let shown = 0;
+    if (!open.length && !done.length) {
+        for (let i = 0; i < 4; i++) { s.stroke(C.ink, 0.7).rect(M, y + 2 + i * 16, 9, 9); s.stroke(C.rule, 0.5).line(M + 14, y + 11 + i * 16, M + CW, y + 11 + i * 16); }
+        y += 4 * 16 + 4;
+    }
+    for (const c of open) {
+        const need = Math.max(12, s.measure(c.text, textW, 8.6, 10.6)) + 4;
+        if (y + need > limit) break;
+        s.stroke(C.ink, 0.7).rect(M, y + 1.5, 9, 9);
+        s.box(c.text, M + 14, y - 0.5, textW, need, 8.6, 'normal', C.ink, 10.6);
+        y += need;
+        shown++;
+    }
+    if (done.length && y + 14 <= limit) {
+        y += 4;
+        s.one('ALREADY DONE', M, y + 7, 100, 6.4, 'bold', C.muted);
+        y += 10;
+        for (const c of done) {
+            if (y + 11 > limit) break;
+            checkedBox(s, M, y);
+            s.one(`${c.text}${c.done_at ? `  (${shortDate(c.done_at)})` : ''}`, M + 14, y + 7.6, textW, 7.2, 'normal', C.muted);
+            y += 11;
+            shown++;
+        }
+    }
+    const left = checks.length - shown;
+    if (left > 0) { s.one(`+ ${left} more in Dibs`, M, y + 8, CW, 7.4, 'italic', C.muted); y += 12; }
+
+    y = s.title('Second visit', M, y + 6, CW);
+    const third = CW / 3;
+    TRAY_SCORES.forEach(([, label], i) => {
+        const x = M + (i % 3) * third, yy = y + Math.floor(i / 3) * 14;
+        s.one(label, x, yy + 7.5, 80, 7.6);
+        s.circles(x + 84, yy, 5, 4, 11);
+    });
+    y += 30;
+    ['Love it', 'See it again', 'Pass'].forEach((o, i) => s.checkbox(M + i * (CW / 3), y, o, 8, CW / 3));
+    y += 16;
+    s.one('NEW NOTES', M, y + 7, 100, 6.8, 'bold', C.muted);
+    y += 8;
+    const lines = FOOT_Y - 18 - y;
+    if (lines > 14) s.ruled(M, y, CW, lines, 16);
+}
+
+/**
+ * Builds and downloads the print-tray PDF. picks: [{ mls_id, kind: 'initial'|'retour' }] in print
+ * order. Returns { pages, sheets }.
+ */
+export async function buildPrintTrayPdf(picks, opts = {}, progress = () => {}) {
+    if (!picks.length) throw new Error('Pick at least one home to print.');
+    progress('Loading the homes…');
+    const { apiFetch } = await import('./api.js');
+    const [data] = await Promise.all([
+        (async () => {
+            const res = await apiFetch(`backend/api.php?action=get_print_homes&ids=${encodeURIComponent(picks.map(p => p.mls_id).join(','))}`);
+            if (!res || !res.success) throw new Error(res?.error || 'Could not load the homes.');
+            return res;
+        })(),
+        loadLibs(),
+        loadFonts(),
+    ]);
+    const byId = new Map(data.homes.map(h => [String(h.mls_id), h]));
+    const stops = picks.map(p => {
+        const home = byId.get(String(p.mls_id));
+        if (!home) return null;
+        return { home, retour: p.kind === 'retour' && Boolean(home.first_visit), window: '', requested: false, leg: '', photos: [] };
+    }).filter(Boolean);
+    if (!stops.length) throw new Error('None of those homes could be loaded.');
+
+    if (opts.photos !== false) {
+        let done = 0;
+        const total = stops.filter(st => st.home.photos.length).length;
+        const queue = stops.filter(st => st.home.photos.length);
+        const worker = async () => {
+            while (queue.length) {
+                const st = queue.shift();
+                st.photos[0] = await photoData(st.home.photos[0], 236, 160);
+                progress(`Adding photos (${++done} of ${total})…`);
+            }
+        };
+        await Promise.all([worker(), worker(), worker(), worker()]);
+    }
+
+    progress('Laying out pages…');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait', compress: true });
+    doc.setProperties({ title: `Dibs homes - ${data.client.name}`, subject: 'Home sheets', creator: 'Dibs' });
+    const s = new Sheet(doc, fontData || []);
+    const today = new Date();
+    const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const info = { clientName: data.client.name, dateShort: `Printed ${shortDate(ymd)}` };
+    const P = { copy: 'buyer', tray: true, client: data.client, agent: {}, payment: data.payment_basis, stops, info };
+    const labels = [];
+    stops.forEach((st, i) => {
+        const kind = st.retour ? 'Re-tour' : 'Initial tour';
+        if (i > 0) doc.addPage('letter', 'portrait');
+        buyerHomePage(s, P, st, i);
+        labels.push(`Sheet ${i + 1} · front · ${kind}`);
+        doc.addPage('letter', 'portrait');
+        if (st.retour) retourBack(s, st); else trayNotesBack(s, st);
+        labels.push(`Sheet ${i + 1} · back · ${kind}`);
+    });
+    const total = doc.getNumberOfPages();
+    for (let i = 1; i <= total; i++) { doc.setPage(i); footer(s, info, i, total, labels[i - 1] || '', {}); }
+
+    const nRe = stops.filter(st => st.retour).length, nIn = stops.length - nRe;
+    const name = nRe && nIn ? 'Home sheets' : (nRe ? 'Re-tour sheets' : 'Initial tour sheets');
+    doc.save(`${name} - ${ymd}.pdf`);
+    return { pages: total, sheets: total / 2 };
+}
 
 // Shared with the realtor & lender report (js/buyerReport.js).
 export { loadLibs, loadFonts, Sheet, C, PAGE_W, PAGE_H, M, CW, FOOT_Y };

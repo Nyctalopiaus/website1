@@ -599,6 +599,8 @@ function handleList(PDO $pdo) {
                 COALESCE(u.possibility, 0) as possibility,
                 COALESCE(u.ai_analysis, '') as ai_analysis,
                 COALESCE(u.facing, '') as facing,
+                u.repair_estimate, COALESCE(u.repair_note, '') as repair_note,
+                u.retour_checks_json,
                 u.pick_rank, u.tour_scores_json,
                 u.mls_status_baseline, u.mls_status_seen,
                 COALESCE(u.mls_status_conflict, 0) as mls_status_conflict,
@@ -1554,6 +1556,35 @@ function handleClientLog(PDO $pdo) {
     echo json_encode(['success' => true]);
 }
 
+/**
+ * Validates a "Check on 2nd visit" list: up to 30 items of {id, text, done, done_at}.
+ * Returns the cleaned list, or an error message string.
+ */
+function retourChecksClean($in) {
+    if ($in === null || $in === '') return [];
+    if (!is_array($in) || array_values($in) !== $in) return 'Check list must be a list.';
+    if (count($in) > 30) return 'Check on 2nd visit is limited to 30 items.';
+    $out = [];
+    $seen = [];
+    foreach ($in as $item) {
+        if (!is_array($item)) return 'Invalid check item.';
+        $id = (string)($item['id'] ?? '');
+        if (!preg_match('/^[a-z0-9]{1,16}$/', $id) || isset($seen[$id])) return 'Invalid check item id.';
+        $seen[$id] = true;
+        $text = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string)($item['text'] ?? '')) ?? '');
+        $len = function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : preg_match_all('/./us', $text);
+        if ($len < 1 || $len > 200) return 'Each check item must be 1-200 characters.';
+        $done = !empty($item['done']) && $item['done'] !== 'false';
+        $doneAt = null;
+        if ($done) {
+            $d = (string)($item['done_at'] ?? '');
+            $doneAt = preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) ? $d : gmdate('Y-m-d');
+        }
+        $out[] = ['id' => $id, 'text' => $text, 'done' => $done, 'done_at' => $doneAt];
+    }
+    return $out;
+}
+
 function handleUpdateUserData(PDO $pdo) {
     requireAuth();
     $raw = dibsRequestBody();
@@ -1675,6 +1706,44 @@ function handleUpdateUserData(PDO $pdo) {
         }
         $fields[] = "facing = :facing";
         $params[':facing'] = $facing;
+    }
+
+    // Head-to-Head repair / update estimate (whole dollars, 0 - 2,000,000; empty clears) and its note.
+    if (array_key_exists('repair_estimate', $data)) {
+        $re = $data['repair_estimate'];
+        if ($re === null || $re === '') {
+            $re = null;
+        } elseif (is_numeric($re) && (float)$re >= 0 && (float)$re <= 2000000) {
+            $re = (int)round((float)$re);
+        } else {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Repair estimate must be between $0 and $2,000,000.']);
+            return;
+        }
+        $fields[] = "repair_estimate = :repair_estimate";
+        $params[':repair_estimate'] = $re;
+    }
+    if (array_key_exists('repair_note', $data)) {
+        $rn = trim((string)($data['repair_note'] ?? ''));
+        if ((function_exists('mb_strlen') ? mb_strlen($rn, 'UTF-8') : preg_match_all('/./us', $rn)) > 300) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Repair note is limited to 300 characters.']);
+            return;
+        }
+        $fields[] = "repair_note = :repair_note";
+        $params[':repair_note'] = $rn;
+    }
+
+    // "Check on 2nd visit" list (print-tray spec): the whole list is replaced on each save.
+    if (array_key_exists('retour_checks', $data)) {
+        $clean = retourChecksClean($data['retour_checks']);
+        if (is_string($clean)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => $clean]);
+            return;
+        }
+        $fields[] = "retour_checks_json = :retour_checks_json";
+        $params[':retour_checks_json'] = $clean ? json_encode($clean, JSON_UNESCAPED_UNICODE) : null;
     }
 
     // "Send to MLS" outbox. Empty string / null cancels. Portal notes are capped at 500 chars
@@ -2020,7 +2089,7 @@ function handleGetTourDebrief(PDO $pdo) {
             p.address, p.city, p.price, p.status, p.beds, p.baths, p.sqft_finished, p.main_image_url,
             COALESCE(u.favorite, 0) AS favorite, COALESCE(u.hidden, 0) AS hidden, COALESCE(u.possibility, 0) AS possibility,
             COALESCE(u.toured, 0) AS toured, u.toured_at, COALESCE(u.tour_notes, '') AS tour_notes,
-            u.tour_scores_json, u.pick_rank
+            u.tour_scores_json, u.pick_rank, u.retour_checks_json
         FROM showing_itinerary si
         JOIN properties p ON p.mls_id = si.mls_id
         LEFT JOIN user_metadata u ON u.mls_id = si.mls_id AND u.user_id = :c
@@ -2034,7 +2103,7 @@ function handleGetTourDebrief(PDO $pdo) {
                     p.address, p.city, p.price, p.status, p.beds, p.baths, p.sqft_finished, p.main_image_url,
                     COALESCE(u.favorite, 0) AS favorite, COALESCE(u.hidden, 0) AS hidden, COALESCE(u.possibility, 0) AS possibility,
                     COALESCE(u.toured, 0) AS toured, u.toured_at, COALESCE(u.tour_notes, '') AS tour_notes,
-                    u.tour_scores_json, u.pick_rank
+                    u.tour_scores_json, u.pick_rank, u.retour_checks_json
                 FROM properties p LEFT JOIN user_metadata u ON u.mls_id = p.mls_id AND u.user_id = ?
                 WHERE p.mls_id IN ($in)");
             $ps->execute(array_merge([$clientId], $pastIds));
@@ -2050,6 +2119,8 @@ function handleGetTourDebrief(PDO $pdo) {
     foreach ($stops as &$s) {
         $s['scores'] = json_decode($s['tour_scores_json'] ?? 'null', true) ?: null;
         $s['decision'] = debriefDecision($s);
+        $s['retour_checks'] = json_decode($s['retour_checks_json'] ?? 'null', true) ?: [];
+        unset($s['retour_checks_json']);
         $s['price'] = (float)$s['price'];
         unset($s['tour_scores_json']);
     }
@@ -2908,6 +2979,7 @@ function handleGetClientMatrix(PDO $pdo) {
                COALESCE(m.tour_notes, '') as tour_notes,
                m.toured_at,
                COALESCE(m.shared_with_realtor, 0) as shared_with_realtor,
+               m.retour_checks_json,
                m.tags_json, m.updated_at as meta_updated_at
         FROM properties p
         LEFT JOIN user_metadata m ON p.mls_id = m.mls_id AND m.user_id = :cid

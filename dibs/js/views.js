@@ -9,6 +9,7 @@ import { getPropertyReviewStatus, cleanDisplayAddress, escapeHtml, NO_PHOTO_IMG,
 import { renderMap, highlightMapMarker, unhighlightMapMarker, getPropertiesInView } from './map.js';
 import { showToast } from './toast.js';
 import { updateCompareButtons } from './compare.js';
+import { printCheckboxHtml, updatePrintTray } from './printTray.js';
 import { renderAdminView } from './adminView.js';
 import { apiFetch } from './api.js';
 import { CONFIG } from './state.js';
@@ -619,10 +620,13 @@ export function switchView(viewName) {
                                 </button>
                             ` : ''}
                         </div>
-                        <label class="card-compare-checkbox-label ${isComparing ? 'is-checked' : ''}" title="Select to include in Compare Matrix (up to 4)">
-                            <input type="checkbox" class="card-compare-checkbox" data-mls="${p.mls_id}" ${isComparing ? 'checked' : ''} onchange="window.handleToggleCompare('${p.mls_id}', event)">
-                            <span class="checkbox-text">${isComparing ? '✓ Comparing' : 'Compare'}</span>
-                        </label>
+                        <div class="card-footer-right">
+                            <label class="card-compare-checkbox-label ${isComparing ? 'is-checked' : ''}" title="Select to include in Compare Matrix (up to 4)">
+                                <input type="checkbox" class="card-compare-checkbox" data-mls="${p.mls_id}" ${isComparing ? 'checked' : ''} onchange="window.handleToggleCompare('${p.mls_id}', event)">
+                                <span class="checkbox-text">${isComparing ? '✓ Comparing' : 'Compare'}</span>
+                            </label>
+                            ${printCheckboxHtml(p)}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -656,6 +660,7 @@ export function switchView(viewName) {
         containerEl.innerHTML = props.map(buildPropertyCardHtml).join('');
         if (window.lucide) window.lucide.createIcons();
         updateCompareButtons();
+        updatePrintTray();
 
         if (attachMapHoverEvents) {
             containerEl.querySelectorAll('.property-card').forEach(card => {

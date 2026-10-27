@@ -22,6 +22,7 @@ require_once __DIR__ . '/packet.php';
 require_once __DIR__ . '/branding.php';
 require_once __DIR__ . '/brokerage.php';
 require_once __DIR__ . '/transfer.php';
+require_once __DIR__ . '/h2h.php';
 
 // Every JSON response leaves with public user ids instead of sequential ones (bootstrap.php).
 ob_start(function (string $buffer) use ($pdo) { return dibsPublicizeResponse($buffer, $pdo); });
@@ -342,6 +343,11 @@ switch ($action) {
         handleTourPacketPhoto($pdo);
         break;
 
+    case 'get_print_homes':
+        requireAuth();
+        handleGetPrintHomes($pdo);
+        break;
+
     case 'get_agent_schedule':
         requireAuth();
         handleGetAgentSchedule($pdo);
@@ -446,6 +452,45 @@ switch ($action) {
         requireAuth();
         requireCsrf();
         handleCheckComps($pdo);
+        break;
+
+    case 'h2h_get_weights':
+        requireAuth();
+        handleH2hGetWeights($pdo);
+        break;
+
+    case 'h2h_save_weights':
+        requireAuth();
+        requireCsrf();
+        handleH2hSaveWeights($pdo);
+        break;
+
+    case 'h2h_list':
+        requireAuth();
+        handleH2hList($pdo);
+        break;
+
+    case 'h2h_get':
+        requireAuth();
+        handleH2hGet($pdo);
+        break;
+
+    case 'h2h_save':
+        requireAuth();
+        requireCsrf();
+        handleH2hSave($pdo);
+        break;
+
+    case 'h2h_save_gemini':
+        requireAuth();
+        requireCsrf();
+        handleH2hSaveGemini($pdo);
+        break;
+
+    case 'h2h_delete':
+        requireAuth();
+        requireCsrf();
+        handleH2hDelete($pdo);
         break;
 
     case 'get_my_home':

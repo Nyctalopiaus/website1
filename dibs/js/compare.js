@@ -206,7 +206,7 @@ function bathsCellHtml(p) {
     const i = interior(p);
     const parts = [];
     if (i.baths_full !== undefined && i.baths_full !== null) parts.push(`${i.baths_full} full`);
-    if (i.baths_3_4) parts.push(`${i.baths_3_4} ¾`);
+    if (i.baths_3_4) parts.push(`${i.baths_3_4} three-quarter`);
     if (i.baths_1_2) parts.push(`${i.baths_1_2} half`);
     return `${p.beds ?? '—'} Beds | ${p.baths ?? '—'} Baths${parts.length ? `<div class="compare-sub">${escapeHtml(parts.join(' · '))}</div>` : ''}`;
 }
@@ -344,6 +344,7 @@ function renderCompareTableHTML(props) {
                     <span><i data-lucide="scale"></i> Custom Property Comparison</span>
                 </div>
                 <span class="badge-gold">${props.length} / 4 Selected</span>
+                ${props.length === 2 ? `<button type="button" class="btn btn-primary compare-h2h-btn" onclick="window.openHeadToHead('${escapeHtml(props[0].mls_id)}', '${escapeHtml(props[1].mls_id)}')"><i data-lucide="swords"></i> Head-to-Head</button>` : ''}
             </div>
             <div class="matrix-info-grid">
                 <div class="matrix-info-item">

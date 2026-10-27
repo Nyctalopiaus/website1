@@ -285,6 +285,100 @@ function packetTourAccess(PDO $pdo): array {
     return [$clientId, $me];
 }
 
+/** One home in the packet's shape (shared by the agent's tour packet and the buyer's print tray). */
+function packetHomeRow(array $p, array $brief, string $viewer, ?float $ratePct, float $downPct, array $rankOf, bool $buyerCopy, bool $includePrivate): array {
+    $raw = json_decode((string)($p['raw_mls_json'] ?? ''), true) ?: [];
+    $interior = packetParseRepr($raw['interior'] ?? '');
+    $reso = json_decode((string)($p['reso_json'] ?? ''), true) ?: [];
+    $fit = $reso ? fitScore($brief, $reso, $viewer) : null;
+
+    $price = $p['price'] !== null ? (float)$p['price'] : null;
+    $orig = is_numeric($raw['original_list_price'] ?? null) ? (float)$raw['original_list_price'] : null;
+    $monthly = null;
+    if ($price && $ratePct) {
+        $loan = $price * (1 - $downPct / 100);
+        $r = $ratePct / 1200; $n = 360;
+        $pi = $r > 0 ? $loan * $r / (1 - pow(1 + $r, -$n)) : $loan / $n;
+        $monthly = ['pi' => round($pi), 'tax' => $p['annual_tax'] ? round($p['annual_tax'] / 12) : 0, 'hoa' => $p['hoa_fee'] ? round((float)$p['hoa_fee']) : 0];
+        $monthly['total'] = $monthly['pi'] + $monthly['tax'] + $monthly['hoa'];
+    }
+
+    $listDate = null;
+    if (!empty($p['list_date'])) {
+        $d = DateTime::createFromFormat('m/d/y', (string)$p['list_date']) ?: DateTime::createFromFormat('Y-m-d', substr((string)$p['list_date'], 0, 10));
+        if ($d) $listDate = $d->format('Y-m-d');
+    }
+
+    $photos = packetPhotoUrls($p, $raw);
+    return [
+        'mls_id' => $p['mls_id'],
+        'tour_status' => $p['tour_status'],
+        'showing_time' => $p['showing_time'],
+        'planned_start' => $p['planned_start'],
+        'planned_end' => $p['planned_end'],
+        'duration_mins' => (int)$p['duration_mins'],
+        'access_notes' => $buyerCopy ? '' : (string)$p['access_notes'],
+        'address' => $p['address'], 'city' => $p['city'], 'state' => $p['state'] ?: 'CO', 'zip' => $p['zip'],
+        'lat' => $p['latitude'] !== null ? (float)$p['latitude'] : null,
+        'lng' => $p['longitude'] !== null ? (float)$p['longitude'] : null,
+        'price' => $price,
+        'original_price' => $orig,
+        'status' => $p['status'],
+        'list_date' => $listDate,
+        'beds' => $p['beds'], 'baths' => $p['baths'],
+        'baths_full' => $interior['baths_full'] ?? null, 'baths_34' => $interior['baths_3_4'] ?? null, 'baths_half' => $interior['baths_1_2'] ?? null,
+        'sqft_total' => $p['sqft_total'], 'sqft_finished' => $p['sqft_finished'],
+        'sqft_above' => $interior['sqft_above_grade'] ?? null,
+        'sqft_below' => $interior['sqft_below_grade_total'] ?? null,
+        'sqft_below_finished' => $interior['sqft_below_grade_finished'] ?? null,
+        'lot_acres' => $p['lot_acres'], 'lot_sqft' => $p['lot_sqft'],
+        'year_built' => $p['year_built'], 'levels' => $p['levels'],
+        'property_type' => $raw['property_sub_type'] ?? $p['property_type'],
+        'structure_type' => $raw['structure_type'] ?? null,
+        'style' => $raw['architectural_style'] ?? null,
+        'subdivision' => $raw['subdivision_name'] ?? null,
+        'school_district' => $p['school_district'],
+        'schools' => [
+            'elementary' => $raw['elementary_school'] ?? ($raw['labeled_fields']['Elementary School'] ?? null),
+            'middle' => $raw['middle_school'] ?? ($raw['labeled_fields']['Middle/Junior Sch'] ?? ($raw['labeled_fields']['Middle Or Junior School'] ?? null)),
+            'high' => $raw['high_school'] ?? ($raw['labeled_fields']['High School'] ?? null),
+            'district' => $p['school_district']
+        ],
+        'parking_total' => $p['parking_total'], 'garage_spaces' => $p['garage_spaces'],
+        'hoa_fee' => $p['hoa_fee'] !== null ? (float)$p['hoa_fee'] : null,
+        'annual_tax' => $p['annual_tax'] !== null ? (float)$p['annual_tax'] : null, 'tax_year' => $p['tax_year'],
+        'parcel' => $raw['parcel_number'] ?? null,
+        'list_office' => $raw['list_office_name'] ?? null,
+        'basement' => $interior['basement'] ?? null,
+        'flooring' => $interior['flooring'] ?? null,
+        'fireplaces' => $interior['fireplaces'] ?? null,
+        'appliances' => $interior['appliances'] ?? null,
+        'exclusions' => $interior['exclusions'] ?? null,
+        'remarks' => (string)($raw['description'] ?? ''),
+        'rooms' => is_array($raw['rooms'] ?? null) ? array_values($raw['rooms']) : [],
+        // The deep scrape's own MLS sections when it captured them; otherwise a grouped summary
+        // built from the fields an older capture has (packetBuildDetails).
+        'details' => packetDetailsForCopy((is_array($raw['details'] ?? null) && $raw['details']) ? $raw['details'] : packetBuildDetails($p, $raw, $interior), $buyerCopy),
+        // Up to 3 photos as URLs the browser can load: saved copies directly, MLS-hosted ones through
+        // tour_packet_photo (same origin, so they can be drawn into the PDF).
+        'photos' => array_map(fn($u, $i) => strncmp($u, 'media/', 6) === 0 ? $u
+            : 'backend/api.php?action=tour_packet_photo&mls_id=' . rawurlencode($p['mls_id']) . '&n=' . $i,
+            array_slice($photos, 0, 3), array_keys(array_slice($photos, 0, 3))),
+        'fit' => $fit ? ['score' => $fit['score'], 'band' => $fit['band'], 'reasons' => $fit['reasons']] : null,
+        'monthly' => $monthly,
+        'value_estimate' => $p['comp_estimate'] !== null ? ['estimate' => (float)$p['comp_estimate'], 'low' => (float)$p['comp_low'], 'high' => (float)$p['comp_high'], 'as_of' => substr((string)$p['comp_at'], 0, 10)] : null,
+        'client' => [
+            'favorite' => (int)$p['m_favorite'] === 1,
+            'rating' => (int)$p['m_rating'],
+            'notes' => (string)$p['m_user_notes'],
+            'question' => (string)$p['m_question'],
+            'toured' => (int)$p['m_toured'] === 1,
+        ],
+        'private_notes' => $includePrivate ? (string)$p['m_private'] : '',
+        'pick_rank' => $rankOf[(string)$p['mls_id']] ?? null,
+    ];
+}
+
 function handleGetTourPacket(PDO $pdo) {
     [$clientId, $me] = packetTourAccess($pdo);
     // Buyer copy: the client may keep it, so nothing about getting in (access notes, lockbox),
@@ -354,96 +448,7 @@ function handleGetTourPacket(PDO $pdo) {
 
     $homes = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $p) {
-        $raw = json_decode((string)($p['raw_mls_json'] ?? ''), true) ?: [];
-        $interior = packetParseRepr($raw['interior'] ?? '');
-        $reso = json_decode((string)($p['reso_json'] ?? ''), true) ?: [];
-        $fit = $reso ? fitScore($brief, $reso, 'agent') : null;
-
-        $price = $p['price'] !== null ? (float)$p['price'] : null;
-        $orig = is_numeric($raw['original_list_price'] ?? null) ? (float)$raw['original_list_price'] : null;
-        $monthly = null;
-        if ($price && $ratePct) {
-            $loan = $price * (1 - $downPct / 100);
-            $r = $ratePct / 1200; $n = 360;
-            $pi = $r > 0 ? $loan * $r / (1 - pow(1 + $r, -$n)) : $loan / $n;
-            $monthly = ['pi' => round($pi), 'tax' => $p['annual_tax'] ? round($p['annual_tax'] / 12) : 0, 'hoa' => $p['hoa_fee'] ? round((float)$p['hoa_fee']) : 0];
-            $monthly['total'] = $monthly['pi'] + $monthly['tax'] + $monthly['hoa'];
-        }
-
-        $listDate = null;
-        if (!empty($p['list_date'])) {
-            $d = DateTime::createFromFormat('m/d/y', (string)$p['list_date']) ?: DateTime::createFromFormat('Y-m-d', substr((string)$p['list_date'], 0, 10));
-            if ($d) $listDate = $d->format('Y-m-d');
-        }
-
-        $photos = packetPhotoUrls($p, $raw);
-        $homes[] = [
-            'mls_id' => $p['mls_id'],
-            'tour_status' => $p['tour_status'],
-            'showing_time' => $p['showing_time'],
-            'planned_start' => $p['planned_start'],
-            'planned_end' => $p['planned_end'],
-            'duration_mins' => (int)$p['duration_mins'],
-            'access_notes' => $buyerCopy ? '' : (string)$p['access_notes'],
-            'address' => $p['address'], 'city' => $p['city'], 'state' => $p['state'] ?: 'CO', 'zip' => $p['zip'],
-            'lat' => $p['latitude'] !== null ? (float)$p['latitude'] : null,
-            'lng' => $p['longitude'] !== null ? (float)$p['longitude'] : null,
-            'price' => $price,
-            'original_price' => $orig,
-            'status' => $p['status'],
-            'list_date' => $listDate,
-            'beds' => $p['beds'], 'baths' => $p['baths'],
-            'baths_full' => $interior['baths_full'] ?? null, 'baths_34' => $interior['baths_3_4'] ?? null, 'baths_half' => $interior['baths_1_2'] ?? null,
-            'sqft_total' => $p['sqft_total'], 'sqft_finished' => $p['sqft_finished'],
-            'sqft_above' => $interior['sqft_above_grade'] ?? null,
-            'sqft_below' => $interior['sqft_below_grade_total'] ?? null,
-            'sqft_below_finished' => $interior['sqft_below_grade_finished'] ?? null,
-            'lot_acres' => $p['lot_acres'], 'lot_sqft' => $p['lot_sqft'],
-            'year_built' => $p['year_built'], 'levels' => $p['levels'],
-            'property_type' => $raw['property_sub_type'] ?? $p['property_type'],
-            'structure_type' => $raw['structure_type'] ?? null,
-            'style' => $raw['architectural_style'] ?? null,
-            'subdivision' => $raw['subdivision_name'] ?? null,
-            'school_district' => $p['school_district'],
-            'schools' => [
-                'elementary' => $raw['elementary_school'] ?? ($raw['labeled_fields']['Elementary School'] ?? null),
-                'middle' => $raw['middle_school'] ?? ($raw['labeled_fields']['Middle/Junior Sch'] ?? ($raw['labeled_fields']['Middle Or Junior School'] ?? null)),
-                'high' => $raw['high_school'] ?? ($raw['labeled_fields']['High School'] ?? null),
-                'district' => $p['school_district']
-            ],
-            'parking_total' => $p['parking_total'], 'garage_spaces' => $p['garage_spaces'],
-            'hoa_fee' => $p['hoa_fee'] !== null ? (float)$p['hoa_fee'] : null,
-            'annual_tax' => $p['annual_tax'] !== null ? (float)$p['annual_tax'] : null, 'tax_year' => $p['tax_year'],
-            'parcel' => $raw['parcel_number'] ?? null,
-            'list_office' => $raw['list_office_name'] ?? null,
-            'basement' => $interior['basement'] ?? null,
-            'flooring' => $interior['flooring'] ?? null,
-            'fireplaces' => $interior['fireplaces'] ?? null,
-            'appliances' => $interior['appliances'] ?? null,
-            'exclusions' => $interior['exclusions'] ?? null,
-            'remarks' => (string)($raw['description'] ?? ''),
-            'rooms' => is_array($raw['rooms'] ?? null) ? array_values($raw['rooms']) : [],
-            // The deep scrape's own MLS sections when it captured them; otherwise a grouped summary
-            // built from the fields an older capture has (packetBuildDetails).
-            'details' => packetDetailsForCopy((is_array($raw['details'] ?? null) && $raw['details']) ? $raw['details'] : packetBuildDetails($p, $raw, $interior), $buyerCopy),
-            // Up to 3 photos as URLs the browser can load: saved copies directly, MLS-hosted ones through
-            // tour_packet_photo (same origin, so they can be drawn into the PDF).
-            'photos' => array_map(fn($u, $i) => strncmp($u, 'media/', 6) === 0 ? $u
-                : 'backend/api.php?action=tour_packet_photo&mls_id=' . rawurlencode($p['mls_id']) . '&n=' . $i,
-                array_slice($photos, 0, 3), array_keys(array_slice($photos, 0, 3))),
-            'fit' => $fit ? ['score' => $fit['score'], 'band' => $fit['band'], 'reasons' => $fit['reasons']] : null,
-            'monthly' => $monthly,
-            'value_estimate' => $p['comp_estimate'] !== null ? ['estimate' => (float)$p['comp_estimate'], 'low' => (float)$p['comp_low'], 'high' => (float)$p['comp_high'], 'as_of' => substr((string)$p['comp_at'], 0, 10)] : null,
-            'client' => [
-                'favorite' => (int)$p['m_favorite'] === 1,
-                'rating' => (int)$p['m_rating'],
-                'notes' => (string)$p['m_user_notes'],
-                'question' => (string)$p['m_question'],
-                'toured' => (int)$p['m_toured'] === 1,
-            ],
-            'private_notes' => $includePrivate ? (string)$p['m_private'] : '',
-            'pick_rank' => $rankOf[(string)$p['mls_id']] ?? null,
-        ];
+        $homes[] = packetHomeRow($p, $brief, 'agent', $ratePct, $downPct, $rankOf, $buyerCopy, $includePrivate);
     }
 
     echo json_encode([
@@ -469,7 +474,7 @@ function handleGetTourPacket(PDO $pdo) {
 }
 
 function handleTourPacketPhoto(PDO $pdo) {
-    requireRealtorOrAdmin();
+    // Any signed-in user (the buyer's print tray uses it too); it only proxies photos already on a listing.
     $mlsId = tourValidMls($_GET['mls_id'] ?? '');
     $n = max(0, min(30, (int)($_GET['n'] ?? 0)));
     $stmt = $pdo->prepare("SELECT main_image_url, gallery_images, raw_mls_json FROM properties WHERE mls_id = :m");
@@ -495,4 +500,97 @@ function handleTourPacketPhoto(PDO $pdo) {
     header('Cache-Control: private, max-age=3600');
     header('X-Content-Type-Options: nosniff');
     echo $body;
+}
+
+/**
+ * Buyer print tray (claude/print-tray-spec.md): the buyer's own picked homes in the packet's
+ * buyer-copy shape, plus first-visit data for the Re-tour sheet. GET ids=MLS1,MLS2,... (max 25).
+ * Clients only; everything is scoped to the session user. No access notes, listing-agent
+ * contacts or realtor-private notes are included.
+ */
+function handleGetPrintHomes(PDO $pdo) {
+    $role = $_SESSION['role'] ?? 'client';
+    if ($role !== 'client') {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Printing homes is for buyers.']);
+        return;
+    }
+    $me = (int)$_SESSION['user_id'];
+    $ids = [];
+    foreach (explode(',', (string)($_GET['ids'] ?? '')) as $v) {
+        $id = tourValidMls($v);
+        if ($id !== null && !in_array($id, $ids, true)) $ids[] = $id;
+    }
+    if (!$ids) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Pick at least one home to print.']);
+        return;
+    }
+    if (count($ids) > PACKET_MAX_STOPS) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Print up to ' . PACKET_MAX_STOPS . ' homes at a time.']);
+        return;
+    }
+
+    $u = $pdo->prepare("SELECT username, full_name FROM users WHERE id = :id");
+    $u->execute([':id' => $me]);
+    $user = $u->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    $brief = briefLoad($pdo, $me)['brief'];
+    $paymentTarget = null;
+    foreach ($brief['criteria'] as $c) if ($c['key'] === 'monthly_payment' && !empty($c['enabled'])) $paymentTarget = $c['target'] ?? null;
+    $rate = $pdo->query("SELECT rate, obs_date FROM mortgage_rates WHERE series_id = 'MORTGAGE30US' ORDER BY obs_date DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: null;
+    $ratePct = isset($paymentTarget['rate_pct']) ? (float)$paymentTarget['rate_pct'] : ($rate ? (float)$rate['rate'] : null);
+    $downPct = isset($paymentTarget['down_pct']) ? (float)$paymentTarget['down_pct'] : 20.0;
+
+    $rankOf = [];
+    if (function_exists('currentPickOrder')) {
+        foreach (currentPickOrder($pdo, $me) as $i => $id) $rankOf[(string)$id] = $i + 1;
+    }
+
+    $in = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare("
+        SELECT p.*, NULL AS tour_status, NULL AS showing_time, '' AS access_notes, NULL AS planned_start, NULL AS planned_end,
+               20 AS duration_mins,
+               COALESCE(m.favorite, 0) AS m_favorite, COALESCE(m.rating, 0) AS m_rating,
+               COALESCE(m.user_notes, '') AS m_user_notes, COALESCE(m.realtor_notes, '') AS m_question,
+               '' AS m_private, COALESCE(m.toured, 0) AS m_toured,
+               COALESCE(m.hidden, 0) AS m_hidden, COALESCE(m.possibility, 0) AS m_possibility,
+               m.toured_at AS m_toured_at, COALESCE(m.tour_notes, '') AS m_tour_notes, m.tour_scores_json AS m_scores,
+               m.repair_estimate AS m_repair, COALESCE(m.repair_note, '') AS m_repair_note, m.retour_checks_json AS m_checks,
+               c.estimate AS comp_estimate, c.range_low AS comp_low, c.range_high AS comp_high, c.fetched_at AS comp_at,
+               r.reso_json
+        FROM properties p
+        LEFT JOIN user_metadata m ON m.user_id = ? AND m.mls_id = p.mls_id
+        LEFT JOIN property_comps c ON c.mls_id = p.mls_id
+        LEFT JOIN reso_property r ON r.listing_id = p.mls_id
+        LEFT JOIN property_visibility v ON v.mls_id = p.mls_id
+        WHERE p.mls_id IN ($in) AND COALESCE(v.is_hidden, 0) = 0");
+    $stmt->execute(array_merge([$me], $ids));
+
+    $byId = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $p) {
+        $h = packetHomeRow($p, $brief, 'client', $ratePct, $downPct, $rankOf, true, false);
+        $toured = (int)$p['m_toured'] === 1;
+        $h['first_visit'] = $toured ? [
+            'toured_at' => $p['m_toured_at'] ? substr((string)$p['m_toured_at'], 0, 10) : null,
+            'scores' => json_decode((string)($p['m_scores'] ?? ''), true) ?: null,
+            'decision' => debriefDecision(['hidden' => $p['m_hidden'], 'favorite' => $p['m_favorite'], 'possibility' => $p['m_possibility']]),
+            'tour_notes' => (string)$p['m_tour_notes'],
+            'repair_estimate' => $p['m_repair'] !== null ? (float)$p['m_repair'] : null,
+            'repair_note' => (string)$p['m_repair_note'],
+            'checks' => json_decode((string)($p['m_checks'] ?? ''), true) ?: [],
+        ] : null;
+        $byId[(string)$p['mls_id']] = $h;
+    }
+    $homes = [];
+    foreach ($ids as $id) if (isset($byId[$id])) $homes[] = $byId[$id];
+
+    echo json_encode([
+        'success' => true,
+        'generated_at' => date('Y-m-d H:i'),
+        'client' => ['name' => ($user['full_name'] ?? '') ?: ($user['username'] ?? 'Buyer')],
+        'payment_basis' => $ratePct ? ['rate_pct' => $ratePct, 'down_pct' => $downPct, 'rate_date' => $rate['obs_date'] ?? null, 'from_brief' => (bool)$paymentTarget] : null,
+        'homes' => $homes,
+    ], JSON_INVALID_UTF8_SUBSTITUTE);
 }

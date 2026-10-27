@@ -13,6 +13,7 @@ import { applyFiltersAndRender } from './filters.js';
 import { showToast } from './toast.js';
 import { renderClientNextSteps } from './clientNextSteps.js';
 import { buildAiAnalysisSectionHtml, getOpenAiAnalysisDraft, isAiAnalysisTooLong } from './aiAnalysis.js';
+import { retourChecksSectionHtml } from './retourChecks.js';
 
 
 
@@ -561,6 +562,8 @@ window.deleteCustomReactionChip = function(event, chipText) {
                         <div style="font-size:0.78rem; color:var(--text-muted);"><i data-lucide="users" style="width:12px; height:12px; vertical-align:-1px;"></i> Shared with your Realtor & visible in Tour dossiers.</div>
                         <div id="modal-tour-notes-editor" class="tour-popover-editor" style="background:var(--bg-card); padding:0.65rem 0.85rem; border-radius:6px; border:1px solid var(--border-color); min-height:85px;" contenteditable="true" placeholder="Enter tour notes, layout impressions, condition, light, pros/cons...">${p.tour_notes || ''}</div>
                     </div>
+
+                    ${retourChecksSectionHtml(p)}
 
                     <div style="display:flex; flex-direction:column; gap:0.5rem;">
                         <h3 style="font-size:0.95rem; font-weight:700; color:var(--text-primary);"><i data-lucide="pencil"></i> Personal Buyer Notes & Pros/Cons</h3>

@@ -13,6 +13,7 @@ import { apiFetch } from './api.js';
 import { state } from './state.js';
 import { showToast } from './toast.js';
 import { escapeHtml, NO_PHOTO_IMG, fetchProperties } from './properties.js';
+import { retourChecksReadOnlyHtml } from './retourChecks.js';
 
 const esc = v => escapeHtml(String(v ?? ''));
 const money = v => v ? '$' + Math.round(v).toLocaleString() : '';
@@ -178,6 +179,7 @@ function homeHtml(s, i) {
                 ${DECISIONS.map(([v, label]) => `<button type="button" class="btn btn-secondary btn-sm${f.decision === v ? ' is-on' : ''}" ${editable ? '' : 'disabled'} data-tr="decision" data-mls="${esc(s.mls_id)}" data-v="${v}" aria-pressed="${f.decision === v}">${label}</button>`).join('')}
             </div>
             <textarea class="tr-notes" rows="3" data-tr-input="notes" data-mls="${esc(s.mls_id)}" placeholder="${editable ? 'Your notes from this home' : ''}" ${editable ? '' : 'readonly'}>${esc(f.notes)}</textarea>
+            ${retourChecksReadOnlyHtml(s.retour_checks)}
             ${agentEditable ? agentHtml(s) : ''}
         </section>`;
 }

@@ -74,6 +74,7 @@ import './js/mobileSections.js';
 import './js/buyerReport.js'; // Realtor & lender report (Export modal card)
 import './js/brokerageAdmin.js'; // Brokerage settings & agent roster (Admin Tools menu)
 import './js/clientRelease.js'; // Release offers to clients + "Download my data"
+import './js/headToHead.js'; // Head-to-Head: two homes, field-by-field winners and a weighted score
 
 // Browsers that last picked a client before public ids may still hold a sequential id; the server
 // refuses those now (DIBS_REFUSE_NUMERIC_USER_IDS), so drop them and let the user pick again.
